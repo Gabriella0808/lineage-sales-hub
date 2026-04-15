@@ -23,7 +23,7 @@ export default function SettingsPage() {
         <h3 className="text-sm font-semibold mb-4">Data Integration</h3>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between items-center py-2 border-b">
-            <span className="text-muted-foreground">monday.com Sync</span>
+            <span className="text-muted-foreground">Acctivate SQL Server</span>
             <span className="text-xs bg-success/10 text-success px-2.5 py-0.5 rounded-full font-medium">Connected</span>
           </div>
           <div className="flex justify-between items-center py-2 border-b">

@@ -9,6 +9,7 @@ import TerritoriesPage from "@/pages/TerritoriesPage";
 import DealersPage from "@/pages/DealersPage";
 import DirectoryPage from "@/pages/DirectoryPage";
 import KpiPage from "@/pages/KpiPage";
+import ManagersPage from "@/pages/ManagersPage";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 
@@ -22,6 +23,7 @@ const App = () => (
         <AppLayout>
           <Routes>
             <Route path="/" element={<DashboardPage />} />
+            <Route path="/managers" element={<ManagersPage />} />
             <Route path="/reps" element={<SalesRepsPage />} />
             <Route path="/territories" element={<TerritoriesPage />} />
             <Route path="/dealers" element={<DealersPage />} />

@@ -2,9 +2,11 @@ import { Users, Map, Store, AlertTriangle, CheckCircle, Clock, TrendingUp, Mail,
 import { StatCard } from "@/components/StatCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { KpiGauge } from "@/components/KpiGauge";
-import { useSalesReps, useTerritories, useDealers, useActivities, useRepTerritories, formatCurrency, getInitials } from "@/hooks/usePortalData";
+import { useSalesReps, useTerritories, useDealers, useActivities, useRepTerritories, useDealerSales, formatCurrency, getInitials } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function DashboardPage() {
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
@@ -12,24 +14,41 @@ export default function DashboardPage() {
   const { data: dealers = [], isLoading: dlrLoading } = useDealers();
   const { data: activities = [] } = useActivities();
   const { data: repTerritories = [] } = useRepTerritories();
+  const { data: dealerSales = [], isLoading: salesLoading } = useDealerSales();
 
-  const isLoading = repsLoading || terLoading || dlrLoading;
+  const isLoading = repsLoading || terLoading || dlrLoading || salesLoading;
 
   const totalOverdue = reps.reduce((s, r) => s + (r.tasks_overdue ?? 0), 0);
   const totalPending = reps.reduce((s, r) => s + (r.tasks_pending ?? 0), 0);
-  const totalRevenue = reps.reduce((s, r) => s + (r.revenue ?? 0), 0);
-  const totalQuota = reps.reduce((s, r) => s + (r.quota ?? 0), 0);
 
-  const repChartData = reps.slice(0, 12).map(r => ({
-    name: r.name.split(' ').pop() || r.name,
-    revenue: (r.revenue ?? 0) / 1000,
-    quota: (r.quota ?? 0) / 1000,
-  }));
+  // Revenue from dealer_sales
+  const currentYear = new Date().getFullYear();
+  const currentYearSales = dealerSales.filter(s => s.year === currentYear);
+  const lastYearSales = dealerSales.filter(s => s.year === currentYear - 1);
+  const totalRevenue = currentYearSales.reduce((s, r) => s + (r.revenue ?? 0), 0);
+  const lastYearRevenue = lastYearSales.reduce((s, r) => s + (r.revenue ?? 0), 0);
+  const totalOrders = currentYearSales.reduce((s, r) => s + (r.order_count ?? 0), 0);
 
-  const territoryChartData = territories.map(t => ({
-    name: t.name.length > 12 ? t.name.slice(0, 12) + '…' : t.name,
-    kpi: t.kpi_score ?? 0,
-  }));
+  // Monthly revenue chart
+  const monthlyData = MONTH_ORDER.map(month => {
+    const thisYear = currentYearSales.filter(s => s.month === month).reduce((sum, s) => sum + (s.revenue ?? 0), 0);
+    const prevYear = lastYearSales.filter(s => s.month === month).reduce((sum, s) => sum + (s.revenue ?? 0), 0);
+    return { month, [String(currentYear)]: Math.round(thisYear / 1000), [String(currentYear - 1)]: Math.round(prevYear / 1000) };
+  });
+
+  // Top dealers by revenue
+  const dealerRevenueMap = new Map<string, number>();
+  currentYearSales.forEach(s => {
+    dealerRevenueMap.set(s.dealer_id, (dealerRevenueMap.get(s.dealer_id) ?? 0) + (s.revenue ?? 0));
+  });
+  const topDealers = [...dealerRevenueMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([dealerId, revenue]) => {
+      const dealer = dealers.find(d => d.id === dealerId);
+      const name = dealer?.name ?? 'Unknown';
+      return { name: name.length > 18 ? name.slice(0, 18) + '…' : name, revenue: Math.round(revenue / 1000) };
+    });
 
   const attentionItems = [
     ...reps.filter(r => (r.tasks_overdue ?? 0) > 3).map(r => ({ label: `${r.name} — ${r.tasks_overdue} overdue tasks`, type: 'rep' as const })),
@@ -65,24 +84,24 @@ export default function DashboardPage() {
         <StatCard title="Sales Reps" value={reps.length} icon={Users} trend="neutral" subtitle="assigned" />
         <StatCard title="Territories" value={territories.length} icon={Map} trend="neutral" subtitle="active" />
         <StatCard title="Dealers" value={dealers.length} icon={Store} trend="neutral" subtitle="total" />
-        <StatCard title="Revenue" value={formatCurrency(totalRevenue)} trend="neutral" variant="accent" />
-        <StatCard title="Quota Attain." value={totalQuota > 0 ? `${Math.round(totalRevenue / totalQuota * 100)}%` : '—'} trend="neutral" variant="success" />
+        <StatCard title={`${currentYear} Revenue`} value={formatCurrency(totalRevenue)} trend="neutral" variant="accent" />
+        <StatCard title="Orders" value={totalOrders.toLocaleString()} trend="neutral" subtitle={String(currentYear)} variant="success" />
         <StatCard title="Overdue" value={totalOverdue} trend="neutral" trendValue={`${totalPending} pending`} variant={totalOverdue > 10 ? 'destructive' : 'warning'} />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5 mb-6">
         <div className="glass-card p-5 lg:col-span-2">
-          <h3 className="text-sm font-semibold mb-4">Rep Revenue vs Quota ($K)</h3>
+          <h3 className="text-sm font-semibold mb-4">Monthly Revenue ($K) — {currentYear} vs {currentYear - 1}</h3>
           <div className="h-[240px]">
-            {repChartData.length > 0 ? (
+            {monthlyData.some(d => d[String(currentYear)] > 0 || d[String(currentYear - 1)] > 0) ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={repChartData} barGap={4}>
+                <BarChart data={monthlyData} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 90%)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v: number) => `$${v}K`} />
-                  <Bar dataKey="revenue" fill="hsl(220 35% 22%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="quota" fill="hsl(38 75% 50%)" radius={[4, 4, 0, 0]} opacity={0.5} />
+                  <Bar dataKey={String(currentYear)} fill="hsl(220 35% 22%)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey={String(currentYear - 1)} fill="hsl(38 75% 50%)" radius={[4, 4, 0, 0]} opacity={0.5} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -109,20 +128,20 @@ export default function DashboardPage() {
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="glass-card p-5 lg:col-span-2">
-          <h3 className="text-sm font-semibold mb-4">Territory KPI Scores</h3>
-          <div className="h-[220px]">
-            {territoryChartData.length > 0 ? (
+          <h3 className="text-sm font-semibold mb-4">Top Dealers by Revenue ($K) — {currentYear}</h3>
+          <div className="h-[260px]">
+            {topDealers.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={territoryChartData} layout="vertical" barSize={16}>
+                <BarChart data={topDealers} layout="vertical" barSize={16}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 90%)" horizontal={false} />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
-                  <Tooltip />
-                  <Bar dataKey="kpi" fill="hsl(152 60% 40%)" radius={[0, 4, 4, 0]} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(v: number) => `$${v}K`} />
+                  <Bar dataKey="revenue" fill="hsl(152 60% 40%)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-muted-foreground text-center pt-20">No KPI data synced yet.</p>
+              <p className="text-sm text-muted-foreground text-center pt-20">No dealer sales data yet.</p>
             )}
           </div>
         </div>

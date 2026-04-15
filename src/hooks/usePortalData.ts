@@ -190,6 +190,19 @@ export function useContacts() {
   });
 }
 
+export function useDealerSales() {
+  return useQuery({
+    queryKey: ["dealer_sales"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dealer_sales")
+        .select("*");
+      if (error) throw error;
+      return (data ?? []) as DbDealerSale[];
+    },
+  });
+}
+
 export function useRepTerritories() {
   return useQuery({
     queryKey: ["rep_territories"],

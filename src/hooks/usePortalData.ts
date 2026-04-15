@@ -94,6 +94,15 @@ export interface DbRepTerritory {
   territory_id: string;
 }
 
+export interface DbDealerSale {
+  id: string;
+  dealer_id: string;
+  year: number;
+  month: string;
+  revenue: number | null;
+  order_count: number | null;
+}
+
 // ── Hooks ─────────────────────────────────────────────────────────
 
 export function useSalesReps() {

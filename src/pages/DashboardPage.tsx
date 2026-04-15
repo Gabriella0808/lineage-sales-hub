@@ -37,8 +37,10 @@ export default function DashboardPage() {
   });
 
   // Top dealers by revenue
-  const dealerRevenueMap = new Map<string, number>();
+  const dealerRevenueMap: Record<string, number> = {};
   currentYearSales.forEach(s => {
+    dealerRevenueMap[s.dealer_id] = (dealerRevenueMap[s.dealer_id] ?? 0) + (s.revenue ?? 0);
+  });
     dealerRevenueMap.set(s.dealer_id, (dealerRevenueMap.get(s.dealer_id) ?? 0) + (s.revenue ?? 0));
   });
   const topDealers = [...dealerRevenueMap.entries()]

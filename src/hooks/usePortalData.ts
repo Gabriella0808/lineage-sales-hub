@@ -145,7 +145,7 @@ export function useManagers() {
       const { data, error } = await supabase
         .from("managers")
         .select("*")
-        .order("name");
+        .order("created_at");
       if (error) throw error;
       return (data ?? []) as DbManager[];
     },

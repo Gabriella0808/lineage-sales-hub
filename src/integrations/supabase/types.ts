@@ -14,7 +14,434 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activities: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          manager_id: string | null
+          related_to: string | null
+          related_type: string | null
+          timestamp: string
+          title: string
+          type: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          manager_id?: string | null
+          related_to?: string | null
+          related_type?: string | null
+          timestamp?: string
+          title: string
+          type?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          manager_id?: string | null
+          related_to?: string | null
+          related_type?: string | null
+          timestamp?: string
+          title?: string
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          assigned_to: string | null
+          cell: string | null
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          role: string | null
+          territory: string | null
+          title: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          cell?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          role?: string | null
+          territory?: string | null
+          title?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          cell?: string | null
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          role?: string | null
+          territory?: string | null
+          title?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      dealers: {
+        Row: {
+          acctivate_id: string | null
+          city: string | null
+          created_at: string
+          email: string | null
+          engagement: string | null
+          id: string
+          last_contact: string | null
+          name: string
+          phone: string | null
+          rep_id: string | null
+          revenue: number | null
+          state: string | null
+          status: string
+          territory_id: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          acctivate_id?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          engagement?: string | null
+          id?: string
+          last_contact?: string | null
+          name: string
+          phone?: string | null
+          rep_id?: string | null
+          revenue?: number | null
+          state?: string | null
+          status?: string
+          territory_id?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          acctivate_id?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          engagement?: string | null
+          id?: string
+          last_contact?: string | null
+          name?: string
+          phone?: string | null
+          rep_id?: string | null
+          revenue?: number | null
+          state?: string | null
+          status?: string
+          territory_id?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealers_rep_id_fkey"
+            columns: ["rep_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dealers_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_records: {
+        Row: {
+          conversion_rate: number | null
+          created_at: string
+          dealer_visits: number | null
+          id: string
+          month: string
+          new_dealers: number | null
+          quota: number | null
+          rep_id: string
+          revenue: number | null
+          tasks_completed: number | null
+          year: number
+        }
+        Insert: {
+          conversion_rate?: number | null
+          created_at?: string
+          dealer_visits?: number | null
+          id?: string
+          month: string
+          new_dealers?: number | null
+          quota?: number | null
+          rep_id: string
+          revenue?: number | null
+          tasks_completed?: number | null
+          year: number
+        }
+        Update: {
+          conversion_rate?: number | null
+          created_at?: string
+          dealer_visits?: number | null
+          id?: string
+          month?: string
+          new_dealers?: number | null
+          quota?: number | null
+          rep_id?: string
+          revenue?: number | null
+          tasks_completed?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_records_rep_id_fkey"
+            columns: ["rep_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      managers: {
+        Row: {
+          acctivate_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          region: string | null
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          region?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          region?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rep_territories: {
+        Row: {
+          rep_id: string
+          territory_id: string
+        }
+        Insert: {
+          rep_id: string
+          territory_id: string
+        }
+        Update: {
+          rep_id?: string
+          territory_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rep_territories_rep_id_fkey"
+            columns: ["rep_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rep_territories_territory_id_fkey"
+            columns: ["territory_id"]
+            isOneToOne: false
+            referencedRelation: "territories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_reps: {
+        Row: {
+          acctivate_id: string | null
+          created_at: string
+          email: string | null
+          id: string
+          kpi_score: number | null
+          last_activity: string | null
+          manager_id: string | null
+          name: string
+          phone: string | null
+          quota: number | null
+          revenue: number | null
+          status: string
+          tasks_completed: number | null
+          tasks_overdue: number | null
+          tasks_pending: number | null
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          kpi_score?: number | null
+          last_activity?: string | null
+          manager_id?: string | null
+          name: string
+          phone?: string | null
+          quota?: number | null
+          revenue?: number | null
+          status?: string
+          tasks_completed?: number | null
+          tasks_overdue?: number | null
+          tasks_pending?: number | null
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          kpi_score?: number | null
+          last_activity?: string | null
+          manager_id?: string | null
+          name?: string
+          phone?: string | null
+          quota?: number | null
+          revenue?: number | null
+          status?: string
+          tasks_completed?: number | null
+          tasks_overdue?: number | null
+          tasks_pending?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_reps_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          rep_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          rep_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          rep_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_rep_id_fkey"
+            columns: ["rep_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      territories: {
+        Row: {
+          acctivate_id: string | null
+          created_at: string
+          id: string
+          kpi_score: number | null
+          name: string
+          quota: number | null
+          region: string | null
+          revenue: number | null
+          state: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id?: string | null
+          created_at?: string
+          id?: string
+          kpi_score?: number | null
+          name: string
+          quota?: number | null
+          region?: string | null
+          revenue?: number | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string | null
+          created_at?: string
+          id?: string
+          kpi_score?: number | null
+          name?: string
+          quota?: number | null
+          region?: string | null
+          revenue?: number | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -93,7 +93,7 @@ export default function DashboardPage() {
         <div className="glass-card p-5 lg:col-span-2">
           <h3 className="text-sm font-semibold mb-4">Monthly Revenue ($K) — {currentYear} vs {currentYear - 1}</h3>
           <div className="h-[240px]">
-            {monthlyData.some(d => d[String(currentYear)] > 0 || d[String(currentYear - 1)] > 0) ? (
+            {monthlyData.some(d => (d[String(currentYear)] as number) > 0 || (d[String(currentYear - 1)] as number) > 0) ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthlyData} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 90%)" />

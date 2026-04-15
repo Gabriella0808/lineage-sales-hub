@@ -106,6 +106,47 @@ export type Database = {
         }
         Relationships: []
       }
+      dealer_sales: {
+        Row: {
+          created_at: string
+          dealer_id: string
+          id: string
+          month: string
+          order_count: number | null
+          revenue: number | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          dealer_id: string
+          id?: string
+          month: string
+          order_count?: number | null
+          revenue?: number | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          dealer_id?: string
+          id?: string
+          month?: string
+          order_count?: number | null
+          revenue?: number | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealer_sales_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dealers: {
         Row: {
           acctivate_id: string | null

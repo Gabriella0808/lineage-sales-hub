@@ -2,7 +2,7 @@
 import { LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings, UserCog, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import lineageLogo from "@/assets/lineage-logo.png";
+import lineageLogo from "@/assets/lineage-logo-white.png";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import lineageLogo from "@/assets/lineage-logo-white.png";
+import lineageLogo from "@/assets/lineage-logo.png";
 
 const signInSchema = z.object({
   email: z.string().trim().email("Invalid email").max(255),
@@ -74,7 +74,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-foreground p-4 gap-6">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-6">
       <img src={lineageLogo} alt="Lineage Collections" className="h-12 w-auto" />
       <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center space-y-2">

@@ -573,6 +573,9 @@ function DealerReport({
   selectedDealerIds, setSelectedDealerIds,
   onBack,
 }: DealerReportProps) {
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
+
   // Filter dealers based on selected reps and/or selected dealers
   const filteredDealers = useMemo(() => {
     let result = dealers;
@@ -615,119 +618,193 @@ function DealerReport({
     invoices2026: rows.reduce((s, r) => s + r.invoices2026, 0),
   }), [rows]);
 
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const paginatedRows = rows.slice(page * pageSize, (page + 1) * pageSize);
+
   const toggleRep = (id: string) => {
     setSelectedRepIds(
       selectedRepIds.includes(id) ? selectedRepIds.filter(x => x !== id) : [...selectedRepIds, id]
     );
+    setPage(0);
   };
   const toggleDealer = (id: string) => {
     setSelectedDealerIds(
       selectedDealerIds.includes(id) ? selectedDealerIds.filter(x => x !== id) : [...selectedDealerIds, id]
     );
+    setPage(0);
   };
 
   const hasFilters = selectedRepIds.length > 0 || selectedDealerIds.length > 0;
+
+  const bookingsChange = totals.bookings2025 > 0
+    ? ((totals.bookings2026 - totals.bookings2025) / totals.bookings2025) * 100
+    : 0;
+  const invoicesChange = totals.invoices2025 > 0
+    ? ((totals.invoices2026 - totals.invoices2025) / totals.invoices2025) * 100
+    : 0;
 
   return (
     <div className="animate-fade-in">
       <Button variant="ghost" size="sm" className="mb-4 -ml-2 text-muted-foreground" onClick={onBack}>
         <ArrowLeft className="h-4 w-4 mr-1" /> Back
       </Button>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-xl font-semibold">{manager.name} — Dealer Report</h1>
-          <p className="text-sm text-muted-foreground">{rows.length} dealers{hasFilters ? " (filtered)" : ""}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Rep filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1">
-                <Filter className="h-3.5 w-3.5" />
-                Reps {selectedRepIds.length > 0 && <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">{selectedRepIds.length}</Badge>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2" align="end">
-              <ScrollArea className="max-h-64">
-                {managerReps.map(r => (
-                  <label key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer text-sm">
-                    <Checkbox checked={selectedRepIds.includes(r.id)} onCheckedChange={() => toggleRep(r.id)} />
-                    {r.name}
-                  </label>
-                ))}
-              </ScrollArea>
-            </PopoverContent>
-          </Popover>
 
-          {/* Dealer filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1">
-                <Filter className="h-3.5 w-3.5" />
-                Dealers {selectedDealerIds.length > 0 && <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">{selectedDealerIds.length}</Badge>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-72 p-2" align="end">
-              <ScrollArea className="max-h-64">
-                {dealers.sort((a, b) => a.name.localeCompare(b.name)).map(d => (
-                  <label key={d.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer text-sm">
-                    <Checkbox checked={selectedDealerIds.includes(d.id)} onCheckedChange={() => toggleDealer(d.id)} />
-                    <span className="truncate">{d.name}</span>
-                  </label>
-                ))}
-              </ScrollArea>
-            </PopoverContent>
-          </Popover>
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold">{manager.name} — Dealer Report</h1>
+        <p className="text-sm text-muted-foreground">{rows.length} dealers{hasFilters ? " (filtered)" : ""}</p>
+      </div>
 
-          {hasFilters && (
-            <Button variant="ghost" size="sm" onClick={() => { setSelectedRepIds([]); setSelectedDealerIds([]); }}>
-              <X className="h-3.5 w-3.5 mr-1" /> Clear
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">2025 Bookings</p>
+            <p className="text-xl font-bold">{formatCurrency(totals.bookings2025)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">YTD 2026 Bookings</p>
+            <p className="text-xl font-bold">{formatCurrency(totals.bookings2026)}</p>
+            <p className={`text-xs mt-1 ${bookingsChange >= 0 ? "text-green-600" : "text-destructive"}`}>
+              {bookingsChange >= 0 ? "+" : ""}{bookingsChange.toFixed(1)}% vs 2025
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">2025 Invoices</p>
+            <p className="text-xl font-bold">{formatCurrency(totals.invoices2025)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-4">
+            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">YTD 2026 Invoices</p>
+            <p className="text-xl font-bold">{formatCurrency(totals.invoices2026)}</p>
+            <p className={`text-xs mt-1 ${invoicesChange >= 0 ? "text-green-600" : "text-destructive"}`}>
+              {invoicesChange >= 0 ? "+" : ""}{invoicesChange.toFixed(1)}% vs 2025
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center justify-end gap-2 mb-3">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1">
+              <Filter className="h-3.5 w-3.5" />
+              Reps {selectedRepIds.length > 0 && <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">{selectedRepIds.length}</Badge>}
             </Button>
-          )}
-        </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2" align="end">
+            <ScrollArea className="max-h-64">
+              {managerReps.map(r => (
+                <label key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                  <Checkbox checked={selectedRepIds.includes(r.id)} onCheckedChange={() => toggleRep(r.id)} />
+                  {r.name}
+                </label>
+              ))}
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-1">
+              <Filter className="h-3.5 w-3.5" />
+              Dealers {selectedDealerIds.length > 0 && <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">{selectedDealerIds.length}</Badge>}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-2" align="end">
+            <ScrollArea className="max-h-64">
+              {dealers.sort((a, b) => a.name.localeCompare(b.name)).map(d => (
+                <label key={d.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                  <Checkbox checked={selectedDealerIds.includes(d.id)} onCheckedChange={() => toggleDealer(d.id)} />
+                  <span className="truncate">{d.name}</span>
+                </label>
+              ))}
+            </ScrollArea>
+          </PopoverContent>
+        </Popover>
+
+        {hasFilters && (
+          <Button variant="ghost" size="sm" onClick={() => { setSelectedRepIds([]); setSelectedDealerIds([]); setPage(0); }}>
+            <X className="h-3.5 w-3.5 mr-1" /> Clear
+          </Button>
+        )}
       </div>
 
-      <div className="table-container">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/30">
-              <th className="text-left p-3 font-medium text-muted-foreground">Dealer Name</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Rep Code</th>
-              <th className="text-right p-3 font-medium text-muted-foreground">2025 Bookings</th>
-              <th className="text-right p-3 font-medium text-muted-foreground">YTD 2026 Bookings</th>
-              <th className="text-right p-3 font-medium text-muted-foreground">2025 Invoices</th>
-              <th className="text-right p-3 font-medium text-muted-foreground">YTD 2026 Invoices</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(row => (
-              <tr key={row.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                <td className="p-3 font-medium">{row.name}</td>
-                <td className="p-3 text-muted-foreground">{row.repCode}</td>
-                <td className="p-3 text-right">{formatCurrency(row.bookings2025)}</td>
-                <td className="p-3 text-right">{formatCurrency(row.bookings2026)}</td>
-                <td className="p-3 text-right">{formatCurrency(row.invoices2025)}</td>
-                <td className="p-3 text-right">{formatCurrency(row.invoices2026)}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No dealers match the current filters.</td></tr>
-            )}
-          </tbody>
-          {rows.length > 0 && (
-            <tfoot>
-              <tr className="border-t-2 bg-muted/20 font-semibold">
-                <td className="p-3">Totals</td>
-                <td className="p-3"></td>
-                <td className="p-3 text-right">{formatCurrency(totals.bookings2025)}</td>
-                <td className="p-3 text-right">{formatCurrency(totals.bookings2026)}</td>
-                <td className="p-3 text-right">{formatCurrency(totals.invoices2025)}</td>
-                <td className="p-3 text-right">{formatCurrency(totals.invoices2026)}</td>
-              </tr>
-            </tfoot>
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="table-container">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left p-3 font-medium text-muted-foreground">Dealer Name</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Rep Code</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">2025 Bookings</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">YTD 2026 Bookings</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">2025 Invoices</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">YTD 2026 Invoices</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedRows.map(row => (
+                  <tr key={row.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="p-3 font-medium">{row.name}</td>
+                    <td className="p-3 text-muted-foreground">{row.repCode}</td>
+                    <td className="p-3 text-right tabular-nums">{formatCurrency(row.bookings2025)}</td>
+                    <td className="p-3 text-right tabular-nums">{formatCurrency(row.bookings2026)}</td>
+                    <td className="p-3 text-right tabular-nums">{formatCurrency(row.invoices2025)}</td>
+                    <td className="p-3 text-right tabular-nums">{formatCurrency(row.invoices2026)}</td>
+                  </tr>
+                ))}
+                {rows.length === 0 && (
+                  <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No dealers match the current filters.</td></tr>
+                )}
+              </tbody>
+              {rows.length > 0 && (
+                <tfoot>
+                  <tr className="border-t-2 bg-primary/5 font-semibold">
+                    <td className="p-3">Totals</td>
+                    <td className="p-3"></td>
+                    <td className="p-3 text-right tabular-nums">{formatCurrency(totals.bookings2025)}</td>
+                    <td className="p-3 text-right tabular-nums">{formatCurrency(totals.bookings2026)}</td>
+                    <td className="p-3 text-right tabular-nums">{formatCurrency(totals.invoices2025)}</td>
+                    <td className="p-3 text-right tabular-nums">{formatCurrency(totals.invoices2026)}</td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <p className="text-xs text-muted-foreground">{rows.length} dealers</p>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <Button
+                    key={i}
+                    variant={page === i ? "default" : "ghost"}
+                    size="sm"
+                    className="h-7 w-7 p-0 text-xs"
+                    onClick={() => setPage(i)}
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           )}
-        </table>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

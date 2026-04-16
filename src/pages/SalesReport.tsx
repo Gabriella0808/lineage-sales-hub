@@ -35,6 +35,7 @@ type SortKey = "dealer" | "rep" | "manager" | "territory" | "value";
 type SortDir = "asc" | "desc";
 
 export default function SalesReport({ metric }: SalesReportProps) {
+  const navigate = useNavigate();
   const { data: reps = [], isLoading: l1 } = useSalesReps();
   const { data: territories = [], isLoading: l2 } = useTerritories();
   const { data: dealers = [], isLoading: l3 } = useDealers();

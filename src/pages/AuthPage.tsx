@@ -77,7 +77,7 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center space-y-4">
-          <img src={lineageLogo} alt="Lineage Collections" className="h-16 w-auto" />
+          <img src={lineageLogo} alt="Lineage Collections" className="h-10 w-auto" />
           <CardDescription>{mode === "signin" ? "Sign in to your account" : "Create your account"}</CardDescription>
         </CardHeader>
         <CardContent>

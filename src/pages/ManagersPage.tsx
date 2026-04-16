@@ -80,196 +80,84 @@ export default function ManagersPage() {
         <p className="text-sm text-muted-foreground mb-6">{mgrTerritoryIds.length} territories • {managerReps.length} reps • {mgrDealers.length} dealers • {mgrTravelLog.length} travel entries</p>
 
         <div className="grid gap-6">
-          {/* Territories Table */}
+          {/* Combined Reps × Territories × YTD × Travel */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Territories</CardTitle>
+              <CardTitle className="text-base">Rep Performance & Territories</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="table-container">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/30">
-                      <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Region</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">State</th>
-                      <th className="text-right p-3 font-medium text-muted-foreground">Revenue</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Rep Code</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Territory</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">2025 YTD Bookings</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">2025 YTD Invoicing</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">2026 YTD Bookings</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">2026 YTD Invoicing</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Last Travel Dates</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {mgrTerritoryIds.map(tId => {
-                      const ter = territories.find(t => t.id === tId);
-                      if (!ter) return null;
+                    {managerReps.map((rep, idx) => {
+                      // Stable dummy data per rep (deterministic from id)
+                      const seed = rep.id.charCodeAt(0) + rep.id.charCodeAt(rep.id.length - 1) + idx;
+                      const dummy = (base: number) => Math.round((base + (seed * 1373) % 250000) / 1000) * 1000;
+                      const b25 = dummy(420000);
+                      const i25 = dummy(380000);
+                      const b26 = dummy(180000);
+                      const i26 = dummy(140000);
+
+                      const repCode = rep.acctivate_id || rep.name.split(" ").map(n => n[0]).join("").toUpperCase();
+                      const repTerritoryNames = repTerritories
+                        .filter(rt => rt.rep_id === rep.id)
+                        .map(rt => getTerritoryName(territories, rt.territory_id))
+                        .filter(n => n !== "Unassigned" && n !== "Unknown");
+                      const repTrips = mgrTravelLog
+                        .filter(tl => tl.rep_id === rep.id)
+                        .sort((a, b) => new Date(b.travel_date).getTime() - new Date(a.travel_date).getTime())
+                        .slice(0, 4);
+
                       return (
-                        <tr key={tId} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                          <td className="p-3 font-medium">{ter.name}</td>
-                          <td className="p-3">{ter.region || "—"}</td>
-                          <td className="p-3">{ter.state || "—"}</td>
-                          <td className="p-3 text-right">{formatCurrency(ter.revenue)}</td>
+                        <tr key={rep.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors align-top">
+                          <td className="p-3 font-mono text-xs font-semibold">{repCode}</td>
+                          <td className="p-3">
+                            <div className="font-medium">{rep.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {repTerritoryNames.length > 0 ? repTerritoryNames.join(", ") : "—"}
+                            </div>
+                          </td>
+                          <td className="p-3 text-right tabular-nums">{formatCurrency(b25)}</td>
+                          <td className="p-3 text-right tabular-nums">{formatCurrency(i25)}</td>
+                          <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(b26)}</td>
+                          <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(i26)}</td>
+                          <td className="p-3">
+                            {repTrips.length === 0 ? (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1.5">
+                                {repTrips.map(trip => (
+                                  <button
+                                    key={trip.id}
+                                    onClick={() => setSelectedTrip(trip)}
+                                    className="text-xs text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+                                  >
+                                    {new Date(trip.travel_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
-                    {mgrTerritoryIds.length === 0 && (
-                      <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No territories linked yet.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Reps Table */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Sales Reps</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="table-container">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/30">
-                      <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Email</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                      <th className="text-right p-3 font-medium text-muted-foreground">Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {managerReps.map(rep => (
-                      <tr key={rep.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                        <td className="p-3 font-medium">{rep.name}</td>
-                        <td className="p-3">{rep.email || "—"}</td>
-                        <td className="p-3">
-                          <Badge variant={rep.status === "active" ? "default" : "secondary"}>{rep.status}</Badge>
-                        </td>
-                        <td className="p-3 text-right">{formatCurrency(rep.revenue)}</td>
-                      </tr>
-                    ))}
                     {managerReps.length === 0 && (
-                      <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No reps assigned.</td></tr>
+                      <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No reps assigned.</td></tr>
                     )}
                   </tbody>
                 </table>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Last Traveled Table */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <CardTitle className="text-base">Last Traveled</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className={cn("h-8 text-xs gap-1", !travelDateFrom && "text-muted-foreground")}>
-                        <CalendarIcon className="h-3.5 w-3.5" />
-                        {travelDateFrom ? format(travelDateFrom, "MMM d, yyyy") : "From"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                      <Calendar mode="single" selected={travelDateFrom} onSelect={(d) => { setTravelDateFrom(d); setTravelPage(0); }} initialFocus className={cn("p-3 pointer-events-auto")} />
-                    </PopoverContent>
-                  </Popover>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className={cn("h-8 text-xs gap-1", !travelDateTo && "text-muted-foreground")}>
-                        <CalendarIcon className="h-3.5 w-3.5" />
-                        {travelDateTo ? format(travelDateTo, "MMM d, yyyy") : "To"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="end">
-                      <Calendar mode="single" selected={travelDateTo} onSelect={(d) => { setTravelDateTo(d); setTravelPage(0); }} initialFocus className={cn("p-3 pointer-events-auto")} />
-                    </PopoverContent>
-                  </Popover>
-                  {(travelDateFrom || travelDateTo) && (
-                    <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => { setTravelDateFrom(undefined); setTravelDateTo(undefined); setTravelPage(0); }}>
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {(() => {
-                const filtered = mgrTravelLog.filter(t => {
-                  if (travelDateFrom && new Date(t.travel_date) < travelDateFrom) return false;
-                  if (travelDateTo && new Date(t.travel_date) > travelDateTo) return false;
-                  return true;
-                });
-                const pageSize = 7;
-                const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-                const paginated = filtered.slice(travelPage * pageSize, (travelPage + 1) * pageSize);
-
-                return (
-                  <>
-                    <div className="table-container">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-muted/30">
-                            <th className="text-left p-3 font-medium text-muted-foreground">Trip</th>
-                            <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
-                            <th className="text-left p-3 font-medium text-muted-foreground">Salesperson</th>
-                            <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paginated.map(trip => {
-                            const tripName = trip.notes?.split(" — ")[0] || trip.notes || "Trip";
-                            return (
-                              <tr key={trip.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                                <td className="p-3 font-medium">{tripName}</td>
-                                <td className="p-3">
-                                  <button
-                                    className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
-                                    onClick={() => setSelectedTrip(trip)}
-                                  >
-                                    {new Date(trip.travel_date).toLocaleDateString()}
-                                    {trip.travel_end_date ? ` – ${new Date(trip.travel_end_date).toLocaleDateString()}` : ""}
-                                  </button>
-                                </td>
-                                <td className="p-3 text-sm">{trip.salesperson_name || "—"}</td>
-                                <td className="p-3">
-                                  {trip.approval_status ? (
-                                    <Badge variant={trip.approval_status === "Approved" ? "default" : "secondary"}>{trip.approval_status}</Badge>
-                                  ) : "—"}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                          {filtered.length === 0 && (
-                            <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No travel data for this date range.</td></tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-between px-4 py-3 border-t">
-                        <p className="text-xs text-muted-foreground">{filtered.length} entries</p>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={travelPage === 0} onClick={() => setTravelPage(p => p - 1)}>
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          {Array.from({ length: totalPages }, (_, i) => (
-                            <Button
-                              key={i}
-                              variant={travelPage === i ? "default" : "ghost"}
-                              size="sm"
-                              className="h-7 w-7 p-0 text-xs"
-                              onClick={() => setTravelPage(i)}
-                            >
-                              {i + 1}
-                            </Button>
-                          ))}
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={travelPage >= totalPages - 1} onClick={() => setTravelPage(p => p + 1)}>
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
             </CardContent>
           </Card>
 

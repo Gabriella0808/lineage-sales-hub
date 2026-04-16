@@ -105,3 +105,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+function SignOutButton() {
+  const { user, signOut } = useAuth();
+  if (!user) return null;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground hidden md:inline truncate max-w-[180px]">{user.email}</span>
+      <Button variant="ghost" size="sm" onClick={() => signOut()} className="h-8">
+        <LogOut className="h-3.5 w-3.5 mr-1" /> Sign out
+      </Button>
+    </div>
+  );
+}

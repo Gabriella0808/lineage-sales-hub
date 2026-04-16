@@ -506,36 +506,58 @@ export type Database = {
       }
       travel_log: {
         Row: {
+          approval_status: string | null
           created_at: string
           id: string
+          manager_id: string | null
           monday_id: string | null
           notes: string | null
+          purpose: string | null
           rep_id: string | null
+          salesperson_name: string | null
           territory_id: string | null
           travel_date: string
+          travel_end_date: string | null
           updated_at: string
         }
         Insert: {
+          approval_status?: string | null
           created_at?: string
           id?: string
+          manager_id?: string | null
           monday_id?: string | null
           notes?: string | null
+          purpose?: string | null
           rep_id?: string | null
+          salesperson_name?: string | null
           territory_id?: string | null
           travel_date: string
+          travel_end_date?: string | null
           updated_at?: string
         }
         Update: {
+          approval_status?: string | null
           created_at?: string
           id?: string
+          manager_id?: string | null
           monday_id?: string | null
           notes?: string | null
+          purpose?: string | null
           rep_id?: string | null
+          salesperson_name?: string | null
           territory_id?: string | null
           travel_date?: string
+          travel_end_date?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "travel_log_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "travel_log_rep_id_fkey"
             columns: ["rep_id"]

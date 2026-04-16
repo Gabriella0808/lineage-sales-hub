@@ -48,6 +48,7 @@ export default function ManagersPage() {
   const managerReps = selectedManager ? reps.filter(r => r.manager_id === selectedManager.id) : [];
   const mgrTerritoryIds = [...new Set(managerReps.flatMap(r => repTerritories.filter(rt => rt.rep_id === r.id).map(rt => rt.territory_id)))];
   const mgrDealers = dealers.filter(d => managerReps.some(r => r.id === d.rep_id));
+  const mgrTravelLog = selectedManager ? travelLog.filter(tl => tl.manager_id === selectedManager.id) : [];
 
   // Back handler
   const handleBack = () => {
@@ -86,8 +87,8 @@ export default function ManagersPage() {
                 if (!ter) return null;
                 const terReps = managerReps.filter(r => repTerritories.some(rt => rt.rep_id === r.id && rt.territory_id === tId));
                 const terDealers = dealers.filter(d => d.territory_id === tId);
-                const lastTravel = travelLog
-                  .filter(tl => tl.territory_id === tId && terReps.some(r => r.id === tl.rep_id))
+                const lastTravel = mgrTravelLog
+                  .filter(tl => tl.territory_id === tId || terReps.some(r => r.id === tl.rep_id))
                   .sort((a, b) => b.travel_date.localeCompare(a.travel_date))[0];
 
                 return (
@@ -275,6 +276,47 @@ export default function ManagersPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Upcoming Travel */}
+        {mgrTravelLog.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold mb-3">Travel Log</h2>
+            <div className="table-container">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left p-3 font-medium text-muted-foreground">Trip</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground">Dates</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground">Purpose</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mgrTravelLog
+                    .sort((a, b) => b.travel_date.localeCompare(a.travel_date))
+                    .slice(0, 10)
+                    .map(tl => (
+                    <tr key={tl.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="p-3 font-medium">{tl.notes?.split(" — ")[0] || "—"}</td>
+                      <td className="p-3 text-muted-foreground">
+                        {new Date(tl.travel_date).toLocaleDateString()}
+                        {tl.travel_end_date ? ` – ${new Date(tl.travel_end_date).toLocaleDateString()}` : ""}
+                      </td>
+                      <td className="p-3">{tl.purpose || "—"}</td>
+                      <td className="p-3">
+                        {tl.approval_status ? (
+                          <Badge variant={tl.approval_status === "Approved" ? "default" : "secondary"}>
+                            {tl.approval_status}
+                          </Badge>
+                        ) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

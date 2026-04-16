@@ -115,6 +115,11 @@ export interface DbTravelLog {
   notes: string | null;
   monday_id: string | null;
   created_at: string;
+  manager_id: string | null;
+  salesperson_name: string | null;
+  purpose: string | null;
+  approval_status: string | null;
+  travel_end_date: string | null;
 }
 
 // ── Hooks ─────────────────────────────────────────────────────────

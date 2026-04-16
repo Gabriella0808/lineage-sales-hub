@@ -1,0 +1,1 @@
+ALTER TABLE public.travel_log ADD CONSTRAINT travel_log_monday_id_unique UNIQUE (monday_id);

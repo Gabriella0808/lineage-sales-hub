@@ -348,16 +348,6 @@ export default function SalesReport({ metric }: SalesReportProps) {
                   )}
                 </div>
 
-                <div className={cn(useDateRange && "opacity-50 pointer-events-none")}>
-                  <label className="text-xs uppercase tracking-wide text-muted-foreground mb-2 block">Year</label>
-                  <Select value={String(year)} onValueChange={(v) => setYear(Number(v))} disabled={useDateRange}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 <FilterSection
                   label="Managers"
                   count={selectedManagerIds.length}

@@ -4,8 +4,9 @@ import {
   useSalesReps, useTerritories, useDealers, useManagers,
   useRepTerritories, useDealerSales, useTravelLog,
   formatCurrency, getInitials, getTerritoryName,
-  type DbSalesRep, type DbDealer, type DbDealerSale,
+  type DbSalesRep, type DbDealer, type DbDealerSale, type DbTravelLog,
 } from "@/hooks/usePortalData";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

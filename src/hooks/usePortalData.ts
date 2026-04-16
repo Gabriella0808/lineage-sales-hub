@@ -101,6 +101,20 @@ export interface DbDealerSale {
   month: string;
   revenue: number | null;
   order_count: number | null;
+  bookings: number | null;
+  invoices: number | null;
+  booking_count: number | null;
+  invoice_count: number | null;
+}
+
+export interface DbTravelLog {
+  id: string;
+  rep_id: string | null;
+  territory_id: string | null;
+  travel_date: string;
+  notes: string | null;
+  monday_id: string | null;
+  created_at: string;
 }
 
 // ── Hooks ─────────────────────────────────────────────────────────

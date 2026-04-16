@@ -99,6 +99,9 @@ export default function AuthPage() {
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
+            <p className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground pt-2">
+              Sales Manager Portal
+            </p>
           </form>
           {mode === "signup" && (
             <button

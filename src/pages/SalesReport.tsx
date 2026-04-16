@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Download, Filter, X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowLeft, Download, Filter, X, ArrowUpDown, ArrowUp, ArrowDown, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
   ResponsiveContainer, LineChart, Line, CartesianGrid, Legend,
@@ -17,6 +18,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetFooter } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 type Metric = "bookings" | "invoices";
 
@@ -27,7 +31,7 @@ interface SalesReportProps {
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTH_INDEX: Record<string, number> = MONTHS.reduce((acc, m, i) => ({ ...acc, [m]: i }), {});
 
-type SortKey = "dealer" | "rep" | "manager" | "territory" | "state" | "value";
+type SortKey = "dealer" | "rep" | "manager" | "territory" | "value";
 type SortDir = "asc" | "desc";
 
 export default function SalesReport({ metric }: SalesReportProps) {
@@ -43,13 +47,16 @@ export default function SalesReport({ metric }: SalesReportProps) {
   const [year, setYear] = useState<number>(2026);
   const [monthFrom, setMonthFrom] = useState<number>(0); // Jan
   const [monthTo, setMonthTo] = useState<number>(11);    // Dec
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
   const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
   const [selectedRepIds, setSelectedRepIds] = useState<string[]>([]);
   const [selectedTerritoryIds, setSelectedTerritoryIds] = useState<string[]>([]);
   const [selectedDealerIds, setSelectedDealerIds] = useState<string[]>([]);
-  const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("value");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const useDateRange = !!(dateFrom && dateTo);
 
   const title = metric === "bookings" ? "YTD Bookings Report" : "YTD Invoicing Report";
   const valueLabel = metric === "bookings" ? "Bookings" : "Invoices";
@@ -74,17 +81,21 @@ export default function SalesReport({ metric }: SalesReportProps) {
     return Array.from(ys).sort((a, b) => b - a);
   }, [sales]);
 
-  const availableStates = useMemo(() => {
-    const s = new Set<string>();
-    dealers.forEach(d => d.state && s.add(d.state));
-    return Array.from(s).sort();
-  }, [dealers]);
+  // Date-range to (year, month) bounds when active
+  const dateBounds = useMemo(() => {
+    if (!useDateRange || !dateFrom || !dateTo) return null;
+    return {
+      fromY: dateFrom.getFullYear(),
+      fromM: dateFrom.getMonth(),
+      toY: dateTo.getFullYear(),
+      toM: dateTo.getMonth(),
+    };
+  }, [useDateRange, dateFrom, dateTo]);
 
   // Filter dealers
   const filteredDealers = useMemo(() => {
     return dealers.filter(d => {
       if (selectedDealerIds.length > 0 && !selectedDealerIds.includes(d.id)) return false;
-      if (selectedStates.length > 0 && !selectedStates.includes(d.state ?? "")) return false;
       if (selectedTerritoryIds.length > 0 && !selectedTerritoryIds.includes(d.territory_id ?? "")) return false;
       if (selectedRepIds.length > 0 && !selectedRepIds.includes(d.rep_id ?? "")) return false;
       if (selectedManagerIds.length > 0) {
@@ -93,20 +104,28 @@ export default function SalesReport({ metric }: SalesReportProps) {
       }
       return true;
     });
-  }, [dealers, selectedDealerIds, selectedStates, selectedTerritoryIds, selectedRepIds, selectedManagerIds, repsById]);
+  }, [dealers, selectedDealerIds, selectedTerritoryIds, selectedRepIds, selectedManagerIds, repsById]);
 
   const filteredDealerIds = useMemo(() => new Set(filteredDealers.map(d => d.id)), [filteredDealers]);
 
-  // Filter sales by year, month range, dealers
+  // Filter sales by date-range OR (year + month range), and by visible dealers
   const filteredSales = useMemo(() => {
     return sales.filter(s => {
-      if (s.year !== year) return false;
       const mIdx = MONTH_INDEX[s.month];
-      if (mIdx === undefined || mIdx < monthFrom || mIdx > monthTo) return false;
+      if (mIdx === undefined) return false;
+      if (dateBounds) {
+        const key = s.year * 12 + mIdx;
+        const lo = dateBounds.fromY * 12 + dateBounds.fromM;
+        const hi = dateBounds.toY * 12 + dateBounds.toM;
+        if (key < lo || key > hi) return false;
+      } else {
+        if (s.year !== year) return false;
+        if (mIdx < monthFrom || mIdx > monthTo) return false;
+      }
       if (!filteredDealerIds.has(s.dealer_id)) return false;
       return true;
     });
-  }, [sales, year, monthFrom, monthTo, filteredDealerIds]);
+  }, [sales, year, monthFrom, monthTo, dateBounds, filteredDealerIds]);
 
   const getValue = (s: typeof sales[number]) => {
     if (metric === "bookings") return (s.bookings ?? 0) > 0 ? (s.bookings ?? 0) : (s.revenue ?? 0);
@@ -145,7 +164,6 @@ export default function SalesReport({ metric }: SalesReportProps) {
         case "rep": cmp = a.rep.localeCompare(b.rep); break;
         case "manager": cmp = a.manager.localeCompare(b.manager); break;
         case "territory": cmp = a.territory.localeCompare(b.territory); break;
-        case "state": cmp = a.state.localeCompare(b.state); break;
         case "value": cmp = a.value - b.value; break;
       }
       return sortDir === "asc" ? cmp : -cmp;
@@ -199,11 +217,10 @@ export default function SalesReport({ metric }: SalesReportProps) {
     setSelectedRepIds([]);
     setSelectedTerritoryIds([]);
     setSelectedDealerIds([]);
-    setSelectedStates([]);
   };
 
   const hasFilters = selectedManagerIds.length + selectedRepIds.length +
-    selectedTerritoryIds.length + selectedDealerIds.length + selectedStates.length > 0;
+    selectedTerritoryIds.length + selectedDealerIds.length > 0;
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -222,10 +239,13 @@ export default function SalesReport({ metric }: SalesReportProps) {
   };
 
   const exportCsv = () => {
-    const headers = ["Dealer", "Rep Code", "Rep", "Manager", "Territory", "State", `${valueLabel} (${year})`];
+    const periodLabel = useDateRange && dateFrom && dateTo
+      ? `${format(dateFrom, "yyyy-MM-dd")}_to_${format(dateTo, "yyyy-MM-dd")}`
+      : `${year}-${MONTHS[monthFrom]}-${MONTHS[monthTo]}`;
+    const headers = ["Dealer", "Rep Code", "Rep", "Manager", "Territory", `${valueLabel} (${periodLabel})`];
     const lines = [headers.join(",")];
     sortedRows.forEach(r => {
-      const cells = [r.dealer, r.repCode, r.rep, r.manager, r.territory, r.state, r.value.toString()]
+      const cells = [r.dealer, r.repCode, r.rep, r.manager, r.territory, r.value.toString()]
         .map(c => `"${String(c).replace(/"/g, '""')}"`);
       lines.push(cells.join(","));
     });
@@ -233,7 +253,7 @@ export default function SalesReport({ metric }: SalesReportProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${metric}-report-${year}-${MONTHS[monthFrom]}-${MONTHS[monthTo]}.csv`;
+    a.download = `${metric}-report-${periodLabel}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -260,7 +280,9 @@ export default function SalesReport({ metric }: SalesReportProps) {
         <div>
           <h1 className="text-2xl font-semibold">{title}</h1>
           <p className="text-sm text-muted-foreground">
-            {dealerCount} active dealers • {MONTHS[monthFrom]}–{MONTHS[monthTo]} {year}
+            {dealerCount} active dealers • {useDateRange && dateFrom && dateTo
+              ? `${format(dateFrom, "MMM d, yyyy")} – ${format(dateTo, "MMM d, yyyy")}`
+              : `${MONTHS[monthFrom]}–${MONTHS[monthTo]} ${year}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -269,9 +291,9 @@ export default function SalesReport({ metric }: SalesReportProps) {
               <Button size="sm" variant="outline" className="gap-2">
                 <Filter className="h-4 w-4" />
                 Filters
-                {(hasFilters || year !== 2026 || monthFrom !== 0 || monthTo !== 11) && (
+                {(hasFilters || useDateRange || year !== 2026 || monthFrom !== 0 || monthTo !== 11) && (
                   <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">
-                    {selectedManagerIds.length + selectedRepIds.length + selectedTerritoryIds.length + selectedDealerIds.length + selectedStates.length + 1}
+                    {selectedManagerIds.length + selectedRepIds.length + selectedTerritoryIds.length + selectedDealerIds.length + 1}
                   </Badge>
                 )}
               </Button>
@@ -284,8 +306,51 @@ export default function SalesReport({ metric }: SalesReportProps) {
 
               <div className="mt-6 space-y-5">
                 <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs uppercase tracking-wide text-muted-foreground">Date range</label>
+                    {useDateRange && (
+                      <button
+                        type="button"
+                        onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={cn("h-9 flex-1 justify-start font-normal", !dateFrom && "text-muted-foreground")}>
+                          <CalendarIcon className="h-3.5 w-3.5 mr-2" />
+                          {dateFrom ? format(dateFrom, "MMM d, yyyy") : "From"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                    <span className="text-xs text-muted-foreground">to</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={cn("h-9 flex-1 justify-start font-normal", !dateTo && "text-muted-foreground")}>
+                          <CalendarIcon className="h-3.5 w-3.5 mr-2" />
+                          {dateTo ? format(dateTo, "MMM d, yyyy") : "To"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  {useDateRange && (
+                    <p className="text-[11px] text-muted-foreground mt-1.5">Date range overrides Year and Month selections.</p>
+                  )}
+                </div>
+
+                <div className={cn(useDateRange && "opacity-50 pointer-events-none")}>
                   <label className="text-xs uppercase tracking-wide text-muted-foreground mb-2 block">Year</label>
-                  <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+                  <Select value={String(year)} onValueChange={(v) => setYear(Number(v))} disabled={useDateRange}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
@@ -293,17 +358,17 @@ export default function SalesReport({ metric }: SalesReportProps) {
                   </Select>
                 </div>
 
-                <div>
+                <div className={cn(useDateRange && "opacity-50 pointer-events-none")}>
                   <label className="text-xs uppercase tracking-wide text-muted-foreground mb-2 block">Month range</label>
                   <div className="flex items-center gap-2">
-                    <Select value={String(monthFrom)} onValueChange={(v) => setMonthFrom(Number(v))}>
+                    <Select value={String(monthFrom)} onValueChange={(v) => setMonthFrom(Number(v))} disabled={useDateRange}>
                       <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {MONTHS.map((m, i) => <SelectItem key={m} value={String(i)}>{m}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     <span className="text-xs text-muted-foreground">to</span>
-                    <Select value={String(monthTo)} onValueChange={(v) => setMonthTo(Number(v))}>
+                    <Select value={String(monthTo)} onValueChange={(v) => setMonthTo(Number(v))} disabled={useDateRange}>
                       <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {MONTHS.map((m, i) => <SelectItem key={m} value={String(i)}>{m}</SelectItem>)}
@@ -337,25 +402,17 @@ export default function SalesReport({ metric }: SalesReportProps) {
                   onClear={() => setSelectedTerritoryIds([])}
                 />
                 <FilterSection
-                  label="Dealers"
+                  label={`Dealers (${dealers.length} synced)`}
                   count={selectedDealerIds.length}
                   items={dealers.map(d => ({ id: d.id, label: d.name }))}
                   selected={selectedDealerIds}
                   onToggle={(id) => toggle(selectedDealerIds, setSelectedDealerIds, id)}
                   onClear={() => setSelectedDealerIds([])}
                 />
-                <FilterSection
-                  label="States"
-                  count={selectedStates.length}
-                  items={availableStates.map(s => ({ id: s, label: s }))}
-                  selected={selectedStates}
-                  onToggle={(id) => toggle(selectedStates, setSelectedStates, id)}
-                  onClear={() => setSelectedStates([])}
-                />
               </div>
 
               <SheetFooter className="mt-6">
-                <Button variant="outline" size="sm" onClick={() => { clearAll(); setYear(2026); setMonthFrom(0); setMonthTo(11); }} className="gap-2">
+                <Button variant="outline" size="sm" onClick={() => { clearAll(); setYear(2026); setMonthFrom(0); setMonthTo(11); setDateFrom(undefined); setDateTo(undefined); }} className="gap-2">
                   <X className="h-4 w-4" /> Reset all
                 </Button>
               </SheetFooter>
@@ -465,7 +522,6 @@ export default function SalesReport({ metric }: SalesReportProps) {
                   <th className="text-left p-3 font-medium text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("rep")}>Rep{sortIcon("rep")}</th>
                   <th className="text-left p-3 font-medium text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("manager")}>Manager{sortIcon("manager")}</th>
                   <th className="text-left p-3 font-medium text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("territory")}>Territory{sortIcon("territory")}</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("state")}>State{sortIcon("state")}</th>
                   <th className="text-right p-3 font-medium text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("value")}>{valueLabel}{sortIcon("value")}</th>
                 </tr>
               </thead>
@@ -476,18 +532,18 @@ export default function SalesReport({ metric }: SalesReportProps) {
                     <td className="p-3">{row.rep}</td>
                     <td className="p-3 text-muted-foreground">{row.manager}</td>
                     <td className="p-3 text-muted-foreground">{row.territory}</td>
-                    <td className="p-3 text-muted-foreground">{row.state || "—"}</td>
+                    
                     <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(row.value)}</td>
                   </tr>
                 ))}
                 {sortedRows.length === 0 && (
-                  <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No data for current filters.</td></tr>
+                  <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No data for current filters.</td></tr>
                 )}
               </tbody>
               {sortedRows.length > 0 && (
                 <tfoot>
                   <tr className="border-t bg-muted/30 font-semibold">
-                    <td className="p-3" colSpan={5}>Total</td>
+                    <td className="p-3" colSpan={4}>Total</td>
                     <td className="p-3 text-right tabular-nums">{formatCurrency(total)}</td>
                   </tr>
                 </tfoot>

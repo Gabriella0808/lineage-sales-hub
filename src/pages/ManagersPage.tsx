@@ -1,12 +1,21 @@
-import { useState } from "react";
-import { Users, Map, Store, Mail, Phone, TrendingUp, ArrowLeft } from "lucide-react";
-import { useSalesReps, useTerritories, useDealers, useManagers, useRepTerritories, formatCurrency, getInitials, getTerritoryName, getDealersByRep } from "@/hooks/usePortalData";
-import { StatusBadge } from "@/components/StatusBadge";
-import { KpiGauge } from "@/components/KpiGauge";
+import { useState, useMemo } from "react";
+import { Map, Store, ArrowLeft, Filter, X } from "lucide-react";
+import {
+  useSalesReps, useTerritories, useDealers, useManagers,
+  useRepTerritories, useDealerSales, useTravelLog,
+  formatCurrency, getInitials, getTerritoryName,
+  type DbSalesRep, type DbDealer, type DbDealerSale,
+} from "@/hooks/usePortalData";
 import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+type DetailView = null | "territories" | "dealers";
 
 export default function ManagersPage() {
   const { data: managers = [], isLoading: mgrLoading } = useManagers();
@@ -14,8 +23,13 @@ export default function ManagersPage() {
   const { data: territories = [] } = useTerritories();
   const { data: dealers = [] } = useDealers();
   const { data: repTerritories = [] } = useRepTerritories();
+  const { data: dealerSales = [] } = useDealerSales();
+  const { data: travelLog = [] } = useTravelLog();
 
   const [selectedManagerId, setSelectedManagerId] = useState<string | null>(null);
+  const [detailView, setDetailView] = useState<DetailView>(null);
+  const [selectedRepIds, setSelectedRepIds] = useState<string[]>([]);
+  const [selectedDealerIds, setSelectedDealerIds] = useState<string[]>([]);
 
   const isLoading = mgrLoading || repsLoading;
 
@@ -32,20 +46,97 @@ export default function ManagersPage() {
 
   const selectedManager = managers.find(m => m.id === selectedManagerId);
   const managerReps = selectedManager ? reps.filter(r => r.manager_id === selectedManager.id) : [];
+  const mgrTerritoryIds = [...new Set(managerReps.flatMap(r => repTerritories.filter(rt => rt.rep_id === r.id).map(rt => rt.territory_id)))];
+  const mgrDealers = dealers.filter(d => managerReps.some(r => r.id === d.rep_id));
 
-  // Detail view for a selected manager
+  // Back handler
+  const handleBack = () => {
+    if (detailView) {
+      setDetailView(null);
+      setSelectedRepIds([]);
+      setSelectedDealerIds([]);
+    } else {
+      setSelectedManagerId(null);
+    }
+  };
+
+  // ── Territories detail view ──
+  if (selectedManager && detailView === "territories") {
+    return (
+      <div className="animate-fade-in">
+        <Button variant="ghost" size="sm" className="mb-4 -ml-2 text-muted-foreground" onClick={handleBack}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back
+        </Button>
+        <h1 className="text-xl font-semibold mb-1">{selectedManager.name} — Territories</h1>
+        <p className="text-sm text-muted-foreground mb-6">{mgrTerritoryIds.length} territories</p>
+
+        <div className="table-container">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="text-left p-3 font-medium text-muted-foreground">Territory</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Rep</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Last Traveled</th>
+                <th className="text-center p-3 font-medium text-muted-foreground">Dealers</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mgrTerritoryIds.map(tId => {
+                const ter = territories.find(t => t.id === tId);
+                if (!ter) return null;
+                const terReps = managerReps.filter(r => repTerritories.some(rt => rt.rep_id === r.id && rt.territory_id === tId));
+                const terDealers = dealers.filter(d => d.territory_id === tId);
+                const lastTravel = travelLog
+                  .filter(tl => tl.territory_id === tId && terReps.some(r => r.id === tl.rep_id))
+                  .sort((a, b) => b.travel_date.localeCompare(a.travel_date))[0];
+
+                return (
+                  <tr key={tId} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="p-3 font-medium">{ter.name}</td>
+                    <td className="p-3">{terReps.map(r => r.name).join(", ") || "—"}</td>
+                    <td className="p-3 text-muted-foreground">
+                      {lastTravel ? new Date(lastTravel.travel_date).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="p-3 text-center">{terDealers.length}</td>
+                  </tr>
+                );
+              })}
+              {mgrTerritoryIds.length === 0 && (
+                <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No territories linked yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Dealers detail view (report) ──
+  if (selectedManager && detailView === "dealers") {
+    return (
+      <DealerReport
+        manager={selectedManager}
+        managerReps={managerReps}
+        dealers={mgrDealers}
+        allDealers={dealers}
+        dealerSales={dealerSales}
+        reps={reps}
+        selectedRepIds={selectedRepIds}
+        setSelectedRepIds={setSelectedRepIds}
+        selectedDealerIds={selectedDealerIds}
+        setSelectedDealerIds={setSelectedDealerIds}
+        onBack={handleBack}
+      />
+    );
+  }
+
+  // ── Manager detail (tiles) ──
   if (selectedManager) {
-    const totalRevenue = managerReps.reduce((s, r) => s + (r.revenue ?? 0), 0);
-    const totalQuota = managerReps.reduce((s, r) => s + (r.quota ?? 0), 0);
-    const totalDealers = managerReps.reduce((s, r) => s + dealers.filter(d => d.rep_id === r.id).length, 0);
-    const avgKpi = managerReps.length > 0 ? Math.round(managerReps.reduce((s, r) => s + (r.kpi_score ?? 0), 0) / managerReps.length) : 0;
-
-    // Collect unique territory IDs for this manager's reps
-    const mgrTerritoryIds = [...new Set(managerReps.flatMap(r => repTerritories.filter(rt => rt.rep_id === r.id).map(rt => rt.territory_id)))];
+    const totalDealers = mgrDealers.length;
 
     return (
       <div className="animate-fade-in">
-        <Button variant="ghost" size="sm" className="mb-4 -ml-2 text-muted-foreground" onClick={() => setSelectedManagerId(null)}>
+        <Button variant="ghost" size="sm" className="mb-4 -ml-2 text-muted-foreground" onClick={handleBack}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to Managers
         </Button>
 
@@ -64,115 +155,48 @@ export default function ManagersPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <StatCard title="Sales Reps" value={managerReps.length} icon={Users} trend="neutral" />
-          <StatCard title="Territories" value={mgrTerritoryIds.length} icon={Map} trend="neutral" />
-          <StatCard title="Dealers" value={totalDealers} icon={Store} trend="neutral" />
-          <StatCard title="Avg KPI" value={avgKpi} icon={TrendingUp} trend="neutral" variant={avgKpi >= 70 ? "success" : avgKpi >= 40 ? "warning" : "destructive"} />
-        </div>
-
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="stat-card">
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Total Revenue</p>
-            <p className="text-xl font-semibold mt-1">{formatCurrency(totalRevenue)}</p>
-          </div>
-          <div className="stat-card">
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wide">Quota Attainment</p>
-            <p className="text-xl font-semibold mt-1">{totalQuota > 0 ? `${Math.round(totalRevenue / totalQuota * 100)}%` : "—"}</p>
-          </div>
-        </div>
-
-        {/* Reps table */}
-        <h3 className="text-sm font-semibold mb-3">Sales Reps ({managerReps.length})</h3>
-        <div className="table-container mb-6">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="text-left p-3 font-medium text-muted-foreground">Rep</th>
-                <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Territories</th>
-                <th className="text-center p-3 font-medium text-muted-foreground">Dealers</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">KPI</th>
-                <th className="text-right p-3 font-medium text-muted-foreground hidden lg:table-cell">Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              {managerReps.map(r => {
-                const rTerIds = repTerritories.filter(rt => rt.rep_id === r.id).map(rt => rt.territory_id);
-                const dealerCount = dealers.filter(d => d.rep_id === r.id).length;
-                return (
-                  <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                    <td className="p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-[11px] font-semibold text-primary-foreground shrink-0">
-                          {getInitials(r.name)}
-                        </div>
-                        <div>
-                          <p className="font-medium">{r.name}</p>
-                          <p className="text-xs text-muted-foreground">{r.email || "No email"}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3 hidden md:table-cell">
-                      <div className="flex flex-wrap gap-1">
-                        {rTerIds.length > 0 ? rTerIds.map(tId => (
-                          <span key={tId} className="text-[11px] bg-muted px-2 py-0.5 rounded-full">{getTerritoryName(territories, tId)}</span>
-                        )) : <span className="text-[11px] text-muted-foreground">—</span>}
-                      </div>
-                    </td>
-                    <td className="p-3 text-center">{dealerCount}</td>
-                    <td className="p-3"><StatusBadge status={r.status} /></td>
-                    <td className="p-3"><KpiGauge score={r.kpi_score ?? 0} size="sm" /></td>
-                    <td className="p-3 text-right hidden lg:table-cell font-medium">{formatCurrency(r.revenue)}</td>
-                  </tr>
-                );
-              })}
-              {managerReps.length === 0 && (
-                <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No reps assigned to this manager yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Territories */}
-        <h3 className="text-sm font-semibold mb-3">Territories ({mgrTerritoryIds.length})</h3>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {mgrTerritoryIds.map(tId => {
-            const ter = territories.find(t => t.id === tId);
-            if (!ter) return null;
-            const terDealers = dealers.filter(d => d.territory_id === tId);
-            const terReps = managerReps.filter(r => repTerritories.some(rt => rt.rep_id === r.id && rt.territory_id === tId));
-            return (
-              <div key={tId} className="glass-card p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-sm">{ter.name}</h4>
-                  <StatusBadge status={ter.status} />
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setDetailView("territories")}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Map className="h-5 w-5 text-primary" />
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div>
-                    <p className="text-lg font-semibold">{terReps.length}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Reps</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold">{terDealers.length}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Dealers</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold">{ter.kpi_score ?? 0}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">KPI</p>
-                  </div>
+                <div>
+                  <p className="text-2xl font-semibold">{mgrTerritoryIds.length}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Territories</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">{formatCurrency(ter.revenue)} / {formatCurrency(ter.quota)}</p>
               </div>
-            );
-          })}
-          {mgrTerritoryIds.length === 0 && <p className="text-sm text-muted-foreground col-span-full">No territories linked yet.</p>}
+              <p className="text-xs text-muted-foreground mt-2">Click to view territories, reps, and travel dates</p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => setDetailView("dealers")}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Store className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-semibold">{totalDealers}</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Dealers</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">Click to view bookings & invoices report</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
-  // Manager cards grid
+  // ── Manager cards grid ──
   return (
     <div className="animate-fade-in">
       <div className="page-header">
@@ -184,8 +208,8 @@ export default function ManagersPage() {
         {managers.map(mgr => {
           const mgrReps = reps.filter(r => r.manager_id === mgr.id);
           const mgrRevenue = mgrReps.reduce((s, r) => s + (r.revenue ?? 0), 0);
-          const mgrDealers = mgrReps.reduce((s, r) => s + dealers.filter(d => d.rep_id === r.id).length, 0);
-          const mgrAvgKpi = mgrReps.length > 0 ? Math.round(mgrReps.reduce((s, r) => s + (r.kpi_score ?? 0), 0) / mgrReps.length) : 0;
+          const mgrDealerCount = dealers.filter(d => mgrReps.some(r => r.id === d.rep_id)).length;
+          const mgrTerCount = [...new Set(mgrReps.flatMap(r => repTerritories.filter(rt => rt.rep_id === r.id).map(rt => rt.territory_id)))].length;
 
           return (
             <Card
@@ -207,16 +231,16 @@ export default function ManagersPage() {
               <CardContent>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div>
+                    <p className="text-lg font-semibold">{mgrTerCount}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Territories</p>
+                  </div>
+                  <div>
                     <p className="text-lg font-semibold">{mgrReps.length}</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Reps</p>
                   </div>
                   <div>
-                    <p className="text-lg font-semibold">{mgrDealers}</p>
+                    <p className="text-lg font-semibold">{mgrDealerCount}</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Dealers</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold">{mgrAvgKpi}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Avg KPI</p>
                   </div>
                 </div>
                 <div className="mt-3 pt-3 border-t border-border">
@@ -226,7 +250,188 @@ export default function ManagersPage() {
             </Card>
           );
         })}
-        {managers.length === 0 && <p className="text-sm text-muted-foreground col-span-full py-12 text-center">No managers found. Sync from monday.com to populate.</p>}
+        {managers.length === 0 && <p className="text-sm text-muted-foreground col-span-full py-12 text-center">No managers found.</p>}
+      </div>
+    </div>
+  );
+}
+
+// ── Dealer Report Sub-component ──────────────────────────────────
+
+interface DealerReportProps {
+  manager: { name: string };
+  managerReps: DbSalesRep[];
+  dealers: DbDealer[];
+  allDealers: DbDealer[];
+  dealerSales: DbDealerSale[];
+  reps: DbSalesRep[];
+  selectedRepIds: string[];
+  setSelectedRepIds: (ids: string[]) => void;
+  selectedDealerIds: string[];
+  setSelectedDealerIds: (ids: string[]) => void;
+  onBack: () => void;
+}
+
+function DealerReport({
+  manager, managerReps, dealers, allDealers, dealerSales, reps,
+  selectedRepIds, setSelectedRepIds,
+  selectedDealerIds, setSelectedDealerIds,
+  onBack,
+}: DealerReportProps) {
+  // Filter dealers based on selected reps and/or selected dealers
+  const filteredDealers = useMemo(() => {
+    let result = dealers;
+    if (selectedRepIds.length > 0) {
+      result = result.filter(d => selectedRepIds.includes(d.rep_id ?? ""));
+    }
+    if (selectedDealerIds.length > 0) {
+      result = result.filter(d => selectedDealerIds.includes(d.id));
+    }
+    return result;
+  }, [dealers, selectedRepIds, selectedDealerIds]);
+
+  // Build row data
+  const rows = useMemo(() => {
+    return filteredDealers.map(dealer => {
+      const sales = dealerSales.filter(s => s.dealer_id === dealer.id);
+      const rep = reps.find(r => r.id === dealer.rep_id);
+
+      const bookings2025 = sales.filter(s => s.year === 2025).reduce((s, r) => s + (r.bookings ?? r.revenue ?? 0), 0);
+      const bookings2026 = sales.filter(s => s.year === 2026).reduce((s, r) => s + (r.bookings ?? r.revenue ?? 0), 0);
+      const invoices2025 = sales.filter(s => s.year === 2025).reduce((s, r) => s + (r.invoices ?? 0), 0);
+      const invoices2026 = sales.filter(s => s.year === 2026).reduce((s, r) => s + (r.invoices ?? 0), 0);
+
+      return {
+        id: dealer.id,
+        name: dealer.name,
+        repCode: rep?.acctivate_id || rep?.name || "Unassigned",
+        bookings2025,
+        bookings2026,
+        invoices2025,
+        invoices2026,
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name));
+  }, [filteredDealers, dealerSales, reps]);
+
+  const totals = useMemo(() => ({
+    bookings2025: rows.reduce((s, r) => s + r.bookings2025, 0),
+    bookings2026: rows.reduce((s, r) => s + r.bookings2026, 0),
+    invoices2025: rows.reduce((s, r) => s + r.invoices2025, 0),
+    invoices2026: rows.reduce((s, r) => s + r.invoices2026, 0),
+  }), [rows]);
+
+  const toggleRep = (id: string) => {
+    setSelectedRepIds(
+      selectedRepIds.includes(id) ? selectedRepIds.filter(x => x !== id) : [...selectedRepIds, id]
+    );
+  };
+  const toggleDealer = (id: string) => {
+    setSelectedDealerIds(
+      selectedDealerIds.includes(id) ? selectedDealerIds.filter(x => x !== id) : [...selectedDealerIds, id]
+    );
+  };
+
+  const hasFilters = selectedRepIds.length > 0 || selectedDealerIds.length > 0;
+
+  return (
+    <div className="animate-fade-in">
+      <Button variant="ghost" size="sm" className="mb-4 -ml-2 text-muted-foreground" onClick={onBack}>
+        <ArrowLeft className="h-4 w-4 mr-1" /> Back
+      </Button>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-xl font-semibold">{manager.name} — Dealer Report</h1>
+          <p className="text-sm text-muted-foreground">{rows.length} dealers{hasFilters ? " (filtered)" : ""}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Rep filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <Filter className="h-3.5 w-3.5" />
+                Reps {selectedRepIds.length > 0 && <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">{selectedRepIds.length}</Badge>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" align="end">
+              <ScrollArea className="max-h-64">
+                {managerReps.map(r => (
+                  <label key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                    <Checkbox checked={selectedRepIds.includes(r.id)} onCheckedChange={() => toggleRep(r.id)} />
+                    {r.name}
+                  </label>
+                ))}
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
+
+          {/* Dealer filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1">
+                <Filter className="h-3.5 w-3.5" />
+                Dealers {selectedDealerIds.length > 0 && <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">{selectedDealerIds.length}</Badge>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-2" align="end">
+              <ScrollArea className="max-h-64">
+                {dealers.sort((a, b) => a.name.localeCompare(b.name)).map(d => (
+                  <label key={d.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer text-sm">
+                    <Checkbox checked={selectedDealerIds.includes(d.id)} onCheckedChange={() => toggleDealer(d.id)} />
+                    <span className="truncate">{d.name}</span>
+                  </label>
+                ))}
+              </ScrollArea>
+            </PopoverContent>
+          </Popover>
+
+          {hasFilters && (
+            <Button variant="ghost" size="sm" onClick={() => { setSelectedRepIds([]); setSelectedDealerIds([]); }}>
+              <X className="h-3.5 w-3.5 mr-1" /> Clear
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="table-container">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b bg-muted/30">
+              <th className="text-left p-3 font-medium text-muted-foreground">Dealer Name</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Rep Code</th>
+              <th className="text-right p-3 font-medium text-muted-foreground">2025 Bookings</th>
+              <th className="text-right p-3 font-medium text-muted-foreground">YTD 2026 Bookings</th>
+              <th className="text-right p-3 font-medium text-muted-foreground">2025 Invoices</th>
+              <th className="text-right p-3 font-medium text-muted-foreground">YTD 2026 Invoices</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                <td className="p-3 font-medium">{row.name}</td>
+                <td className="p-3 text-muted-foreground">{row.repCode}</td>
+                <td className="p-3 text-right">{formatCurrency(row.bookings2025)}</td>
+                <td className="p-3 text-right">{formatCurrency(row.bookings2026)}</td>
+                <td className="p-3 text-right">{formatCurrency(row.invoices2025)}</td>
+                <td className="p-3 text-right">{formatCurrency(row.invoices2026)}</td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No dealers match the current filters.</td></tr>
+            )}
+          </tbody>
+          {rows.length > 0 && (
+            <tfoot>
+              <tr className="border-t-2 bg-muted/20 font-semibold">
+                <td className="p-3">Totals</td>
+                <td className="p-3"></td>
+                <td className="p-3 text-right">{formatCurrency(totals.bookings2025)}</td>
+                <td className="p-3 text-right">{formatCurrency(totals.bookings2026)}</td>
+                <td className="p-3 text-right">{formatCurrency(totals.invoices2025)}</td>
+                <td className="p-3 text-right">{formatCurrency(totals.invoices2026)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
       </div>
     </div>
   );

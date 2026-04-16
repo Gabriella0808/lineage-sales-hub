@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Map, Store, ArrowLeft, Filter, X, DollarSign, Target, TrendingUp, TrendingDown, CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Map as MapIcon, Store, ArrowLeft, Filter, X, DollarSign, Target, TrendingUp, TrendingDown, CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -40,17 +40,6 @@ export default function ManagersPage() {
   const [travelDateFrom, setTravelDateFrom] = useState<Date | undefined>();
   const [travelDateTo, setTravelDateTo] = useState<Date | undefined>();
   const isLoading = mgrLoading || repsLoading;
-
-  if (isLoading) {
-    return (
-      <div className="animate-fade-in space-y-4">
-        <Skeleton className="h-10 w-64" />
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
-        </div>
-      </div>
-    );
-  }
 
   const visibleManagers = useMemo(
     () => managers.filter((manager) => {
@@ -121,6 +110,17 @@ export default function ManagersPage() {
   const mgrTerritoryIds = [...new Set(managerReps.flatMap(r => repTerritories.filter(rt => rt.rep_id === r.id).map(rt => rt.territory_id)))];
   const mgrDealers = dealers.filter(d => managerReps.some(r => r.id === d.rep_id));
   const mgrTravelLog = selectedManager ? travelLog.filter(tl => tl.manager_id === selectedManager.id) : [];
+
+  if (isLoading) {
+    return (
+      <div className="animate-fade-in space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
 
   // Back handler
   const handleBack = () => {
@@ -356,7 +356,7 @@ export default function ManagersPage() {
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Map className="h-5 w-5 text-primary" />
+                  <MapIcon className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-2xl font-semibold">{mgrTerritoryIds.length}</p>

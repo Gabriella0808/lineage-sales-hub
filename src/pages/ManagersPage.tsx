@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Map, Store, ArrowLeft, Filter, X, DollarSign, Target, TrendingUp, TrendingDown, CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";

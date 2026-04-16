@@ -1,5 +1,7 @@
 
-import { LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings, UserCog } from "lucide-react";
+import { LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings, UserCog, LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import lineageLogo from "@/assets/lineage-logo.png";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -87,12 +89,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex w-full">
         <SidebarNav />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center border-b px-4 bg-card shrink-0">
-            <SidebarTrigger className="mr-3" />
+          <header className="h-14 flex items-center border-b px-4 bg-card shrink-0 gap-3">
+            <SidebarTrigger className="mr-1" />
             <div className="flex-1" />
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground hidden sm:inline">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             </span>
+            <SignOutButton />
           </header>
           <main className="flex-1 p-6 overflow-auto">
             {children}
@@ -100,5 +103,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </SidebarProvider>
+  );
+}
+
+function SignOutButton() {
+  const { user, signOut } = useAuth();
+  if (!user) return null;
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground hidden md:inline truncate max-w-[180px]">{user.email}</span>
+      <Button variant="ghost" size="sm" onClick={() => signOut()} className="h-8">
+        <LogOut className="h-3.5 w-3.5 mr-1" /> Sign out
+      </Button>
+    </div>
   );
 }

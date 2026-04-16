@@ -317,6 +317,30 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rep_territories: {
         Row: {
           rep_id: string
@@ -414,6 +438,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sign_in_log: {
+        Row: {
+          id: string
+          signed_in_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          signed_in_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          signed_in_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       tasks: {
         Row: {

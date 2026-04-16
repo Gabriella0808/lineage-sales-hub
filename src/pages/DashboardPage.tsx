@@ -1,10 +1,10 @@
-import { Users, Map, Store, AlertTriangle, CheckCircle, Clock, TrendingUp, Mail, Phone, ExternalLink } from "lucide-react";
+import { Users, Map, Store, AlertTriangle, CheckCircle, LogIn } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
-import { StatusBadge } from "@/components/StatusBadge";
-import { KpiGauge } from "@/components/KpiGauge";
-import { useSalesReps, useTerritories, useDealers, useActivities, useRepTerritories, useDealerSales, formatCurrency, getInitials } from "@/hooks/usePortalData";
+import { useSalesReps, useTerritories, useDealers, useDealerSales, formatCurrency } from "@/hooks/usePortalData";
+import { useSignInFeed } from "@/hooks/useSignInFeed";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDistanceToNow } from "date-fns";
 
 const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -12,8 +12,7 @@ export default function DashboardPage() {
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: territories = [], isLoading: terLoading } = useTerritories();
   const { data: dealers = [], isLoading: dlrLoading } = useDealers();
-  const { data: activities = [] } = useActivities();
-  const { data: repTerritories = [] } = useRepTerritories();
+  const { data: signIns = [] } = useSignInFeed(8);
   const { data: dealerSales = [], isLoading: salesLoading } = useDealerSales();
 
   const isLoading = repsLoading || terLoading || dlrLoading || salesLoading;
@@ -56,7 +55,7 @@ export default function DashboardPage() {
     ...dealers.filter(d => d.status === 'at-risk').map(d => ({ label: `${d.name} — at risk`, type: 'dealer' as const })),
   ];
 
-  const activityIcons: Record<string, typeof Phone> = { call: Phone, email: Mail, meeting: Users, task: CheckCircle, alert: AlertTriangle };
+  
 
   if (isLoading) {
     return (
@@ -147,23 +146,27 @@ export default function DashboardPage() {
         </div>
 
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold mb-4">Recent Activity</h3>
-          <div className="space-y-4">
-            {activities.length > 0 ? activities.slice(0, 5).map(a => {
-              const Icon = activityIcons[a.type ?? 'task'] ?? CheckCircle;
-              return (
-                <div key={a.id} className="flex items-start gap-3">
-                  <div className="mt-0.5 h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium truncate">{a.title}</p>
-                    <p className="text-[11px] text-muted-foreground">{new Date(a.timestamp).toLocaleDateString()}</p>
-                  </div>
+          <h3 className="text-sm font-semibold mb-1 flex items-center gap-2">
+            <LogIn className="h-4 w-4 text-muted-foreground" /> Recent Sign-Ins
+          </h3>
+          <p className="text-[11px] text-muted-foreground mb-4">Who has logged into the portal</p>
+          <div className="space-y-3">
+            {signIns.length > 0 ? signIns.map(s => (
+              <div key={s.id} className="flex items-start gap-3">
+                <div className="mt-0.5 h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-semibold text-primary">
+                    {(s.full_name ?? "?").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                  </span>
                 </div>
-              );
-            }) : (
-              <p className="text-sm text-muted-foreground">No activity logged yet.</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium truncate">{s.full_name ?? "Unknown user"}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {formatDistanceToNow(new Date(s.signed_in_at), { addSuffix: true })}
+                  </p>
+                </div>
+              </div>
+            )) : (
+              <p className="text-sm text-muted-foreground">No sign-ins recorded yet.</p>
             )}
           </div>
         </div>

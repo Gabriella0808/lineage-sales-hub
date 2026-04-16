@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Download, Filter, X, ArrowUpDown, ArrowUp, ArrowDown, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
@@ -55,6 +55,15 @@ export default function SalesReport({ metric }: SalesReportProps) {
   const [selectedDealerIds, setSelectedDealerIds] = useState<string[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("value");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  // Reset to page 1 whenever filters or sort change
+  useEffect(() => { setPage(1); }, [
+    year, monthFrom, monthTo, dateFrom, dateTo,
+    selectedManagerIds, selectedRepIds, selectedTerritoryIds, selectedDealerIds,
+    sortKey, sortDir,
+  ]);
 
   const useDateRange = !!(dateFrom && dateTo);
 
@@ -170,6 +179,30 @@ export default function SalesReport({ metric }: SalesReportProps) {
     });
     return sorted;
   }, [rows, sortKey, sortDir]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = useMemo(
+    () => sortedRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [sortedRows, currentPage],
+  );
+  const pageNumbers = useMemo<(number | "…")[]>(() => {
+    const pages: (number | "…")[] = [];
+    const add = (n: number) => pages.push(n);
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) add(i);
+    } else {
+      add(1);
+      if (currentPage > 4) pages.push("…");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) add(i);
+      if (currentPage < totalPages - 3) pages.push("…");
+      add(totalPages);
+    }
+    return pages;
+  }, [totalPages, currentPage]);
 
   // KPIs
   const total = useMemo(() => rows.reduce((s, r) => s + r.value, 0), [rows]);
@@ -497,13 +530,12 @@ export default function SalesReport({ metric }: SalesReportProps) {
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map(row => (
+                {pagedRows.map(row => (
                   <tr key={row.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                     <td className="p-3 font-medium">{row.dealer}</td>
                     <td className="p-3">{row.rep}</td>
                     <td className="p-3 text-muted-foreground">{row.manager}</td>
                     <td className="p-3 text-muted-foreground">{row.territory}</td>
-                    
                     <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(row.value)}</td>
                   </tr>
                 ))}
@@ -514,13 +546,37 @@ export default function SalesReport({ metric }: SalesReportProps) {
               {sortedRows.length > 0 && (
                 <tfoot>
                   <tr className="border-t bg-muted/30 font-semibold">
-                    <td className="p-3" colSpan={4}>Total</td>
+                    <td className="p-3" colSpan={4}>Total (all rows)</td>
                     <td className="p-3 text-right tabular-nums">{formatCurrency(total)}</td>
                   </tr>
                 </tfoot>
               )}
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between gap-2 px-4 py-3 border-t">
+              <p className="text-xs text-muted-foreground">
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sortedRows.length)} of {sortedRows.length}
+              </p>
+              <div className="flex items-center gap-1 flex-wrap justify-end">
+                <Button size="sm" variant="outline" className="h-8 px-2" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Prev</Button>
+                {pageNumbers.map((p, i) => p === "…" ? (
+                  <span key={`e${i}`} className="px-1 text-xs text-muted-foreground">…</span>
+                ) : (
+                  <Button
+                    key={p}
+                    size="sm"
+                    variant={p === currentPage ? "default" : "outline"}
+                    className="h-8 min-w-8 px-2 text-xs"
+                    onClick={() => setPage(p as number)}
+                  >
+                    {p}
+                  </Button>
+                ))}
+                <Button size="sm" variant="outline" className="h-8 px-2" disabled={currentPage === totalPages} onClick={() => setPage(currentPage + 1)}>Next</Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

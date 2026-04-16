@@ -689,6 +689,73 @@ function DealerReport({
         </Card>
       </div>
 
+      {/* Charts */}
+      {(() => {
+        const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#6366f1", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899"];
+
+        // Bar chart: top 8 dealers by 2026 bookings
+        const topDealers = [...rows].sort((a, b) => b.bookings2026 - a.bookings2026).slice(0, 8).map(r => ({
+          name: r.name.length > 18 ? r.name.slice(0, 16) + "…" : r.name,
+          "2025": r.bookings2025,
+          "2026": r.bookings2026,
+        }));
+
+        // Pie chart: bookings by rep
+        const repMap = new Map<string, number>();
+        rows.forEach(r => {
+          const cur = repMap.get(r.repCode) || 0;
+          repMap.set(r.repCode, cur + r.bookings2026);
+        });
+        const pieData = Array.from(repMap.entries())
+          .map(([name, value]) => ({ name, value }))
+          .filter(d => d.value > 0)
+          .sort((a, b) => b.value - a.value);
+
+        return (
+          <div className="grid lg:grid-cols-2 gap-4 mb-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Top Dealers — Bookings Comparison</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={topDealers} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={50} />
+                      <YAxis tick={{ fontSize: 10 }} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} />
+                      <RechartsTooltip formatter={(v: number) => formatCurrency(v)} />
+                      <Bar dataKey="2025" fill="hsl(var(--muted-foreground) / 0.3)" radius={[3, 3, 0, 0]} />
+                      <Bar dataKey="2026" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">YTD 2026 Bookings by Rep</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[240px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={85} innerRadius={45} paddingAngle={2} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} style={{ fontSize: 10 }}>
+                        {pieData.map((_, i) => (
+                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip formatter={(v: number) => formatCurrency(v)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
+
       {/* Filters */}
       <div className="flex items-center justify-end gap-2 mb-3">
         <Popover>

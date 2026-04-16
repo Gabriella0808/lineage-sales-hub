@@ -1,0 +1,1 @@
+UPDATE public.sales_reps SET acctivate_id = NULL WHERE acctivate_id = '';

@@ -305,8 +305,8 @@ export default function SalesReport({ metric }: SalesReportProps) {
 
   return (
     <div className="animate-fade-in">
-      <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2 text-muted-foreground">
-        <Link to="/managers"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Link>
+      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-4 -ml-2 text-muted-foreground">
+        <ArrowLeft className="h-4 w-4 mr-1" /> Back
       </Button>
 
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">

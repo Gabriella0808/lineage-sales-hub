@@ -272,43 +272,6 @@ export default function ManagersPage() {
             </CardContent>
           </Card>
 
-          {/* Dealers Table */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Dealers</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="table-container">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/30">
-                      <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">City</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">State</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                      <th className="text-right p-3 font-medium text-muted-foreground">Revenue</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mgrDealers.map(d => (
-                      <tr key={d.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
-                        <td className="p-3 font-medium">{d.name}</td>
-                        <td className="p-3">{d.city || "—"}</td>
-                        <td className="p-3">{d.state || "—"}</td>
-                        <td className="p-3">
-                          <Badge variant={d.status === "active" ? "default" : "secondary"}>{d.status}</Badge>
-                        </td>
-                        <td className="p-3 text-right">{formatCurrency(d.revenue)}</td>
-                      </tr>
-                    ))}
-                    {mgrDealers.length === 0 && (
-                      <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No dealers assigned.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Trip detail sidebar */}

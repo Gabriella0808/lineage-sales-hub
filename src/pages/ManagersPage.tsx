@@ -71,7 +71,7 @@ export default function ManagersPage() {
           <ArrowLeft className="h-4 w-4 mr-1" /> Back
         </Button>
         <h1 className="text-xl font-semibold mb-1">{selectedManager.name} — Territories</h1>
-        <p className="text-sm text-muted-foreground mb-6">{mgrTerritoryIds.length} territories</p>
+        <p className="text-sm text-muted-foreground mb-6">{mgrTerritoryIds.length} territories • {mgrTravelLog.length} travel entries</p>
 
         <div className="table-container">
           <table className="w-full text-sm">
@@ -97,8 +97,15 @@ export default function ManagersPage() {
                   <tr key={tId} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                     <td className="p-3 font-medium">{ter.name}</td>
                     <td className="p-3">{terReps.map(r => r.name).join(", ") || "—"}</td>
-                    <td className="p-3 text-muted-foreground">
-                      {lastTravel ? new Date(lastTravel.travel_date).toLocaleDateString() : "—"}
+                    <td className="p-3">
+                      {lastTravel ? (
+                        <button
+                          className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+                          onClick={() => setSelectedTrip(lastTravel)}
+                        >
+                          {new Date(lastTravel.travel_date).toLocaleDateString()}
+                        </button>
+                      ) : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="p-3 text-center">{terDealers.length}</td>
                   </tr>
@@ -111,15 +118,14 @@ export default function ManagersPage() {
           </table>
         </div>
 
-        {/* Travel Log */}
-        <h2 className="text-lg font-semibold mt-8 mb-3">Travel Log</h2>
+        {/* All travel entries for this manager */}
+        <h2 className="text-lg font-semibold mt-8 mb-3">All Travel</h2>
         <div className="table-container">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="text-left p-3 font-medium text-muted-foreground">Trip</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Dates</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Purpose</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
               </tr>
             </thead>
@@ -127,13 +133,16 @@ export default function ManagersPage() {
               {mgrTravelLog.length > 0 ? mgrTravelLog
                 .sort((a, b) => b.travel_date.localeCompare(a.travel_date))
                 .map(tl => (
-                <tr key={tl.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                <tr
+                  key={tl.id}
+                  className="border-b last:border-0 hover:bg-muted/20 transition-colors cursor-pointer"
+                  onClick={() => setSelectedTrip(tl)}
+                >
                   <td className="p-3 font-medium">{tl.notes?.split(" — ")[0] || "—"}</td>
                   <td className="p-3 text-muted-foreground">
                     {new Date(tl.travel_date).toLocaleDateString()}
                     {tl.travel_end_date ? ` – ${new Date(tl.travel_end_date).toLocaleDateString()}` : ""}
                   </td>
-                  <td className="p-3">{tl.purpose || "—"}</td>
                   <td className="p-3">
                     {tl.approval_status ? (
                       <Badge variant={tl.approval_status === "Approved" ? "default" : "secondary"}>
@@ -143,11 +152,57 @@ export default function ManagersPage() {
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No travel entries yet.</td></tr>
+                <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">No travel entries yet.</td></tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Trip detail sidebar */}
+        <Sheet open={!!selectedTrip} onOpenChange={(open) => !open && setSelectedTrip(null)}>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>{selectedTrip?.notes?.split(" — ")[0] || "Trip Details"}</SheetTitle>
+            </SheetHeader>
+            {selectedTrip && (
+              <div className="mt-6 space-y-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Dates</p>
+                  <p className="font-medium">
+                    {new Date(selectedTrip.travel_date).toLocaleDateString()}
+                    {selectedTrip.travel_end_date ? ` – ${new Date(selectedTrip.travel_end_date).toLocaleDateString()}` : ""}
+                  </p>
+                </div>
+                {selectedTrip.purpose && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Purpose</p>
+                    <p className="font-medium">{selectedTrip.purpose}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Status</p>
+                  {selectedTrip.approval_status ? (
+                    <Badge variant={selectedTrip.approval_status === "Approved" ? "default" : "secondary"}>
+                      {selectedTrip.approval_status}
+                    </Badge>
+                  ) : <p className="text-muted-foreground">No status</p>}
+                </div>
+                {selectedTrip.notes && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Notes</p>
+                    <p className="text-sm">{selectedTrip.notes.includes(" — ") ? selectedTrip.notes.split(" — ").slice(1).join(" — ") : selectedTrip.notes}</p>
+                  </div>
+                )}
+                {selectedTrip.salesperson_name && (
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Salesperson</p>
+                    <p className="font-medium">{selectedTrip.salesperson_name}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
       </div>
     );
   }

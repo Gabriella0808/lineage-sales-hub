@@ -121,9 +121,26 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fetch managers for matching
+    // Fetch managers + sales reps for matching
     const { data: managers } = await supabase.from("managers").select("id, name");
     const managerList = (managers ?? []) as { id: string; name: string }[];
+
+    const { data: salesReps } = await supabase.from("sales_reps").select("id, acctivate_id");
+    const repCodeMap = new Map<string, string>();
+    for (const r of (salesReps ?? []) as { id: string; acctivate_id: string | null }[]) {
+      if (r.acctivate_id) repCodeMap.set(r.acctivate_id.trim().toLowerCase(), r.id);
+    }
+
+    function findRepIds(repCodeText: string): string[] {
+      if (!repCodeText) return [];
+      const codes = repCodeText.split(",").map(c => c.trim().toLowerCase()).filter(Boolean);
+      const ids = new Set<string>();
+      for (const code of codes) {
+        const id = repCodeMap.get(code);
+        if (id) ids.add(id);
+      }
+      return [...ids];
+    }
 
     // Match a single Monday name to a manager using last name + first name prefix
     function findManager(mondayName: string): { id: string; name: string } | null {

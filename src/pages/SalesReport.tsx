@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, Filter, X, ArrowUpDown, ArrowUp, ArrowDown, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -35,6 +35,7 @@ type SortKey = "dealer" | "rep" | "manager" | "territory" | "value";
 type SortDir = "asc" | "desc";
 
 export default function SalesReport({ metric }: SalesReportProps) {
+  const navigate = useNavigate();
   const { data: reps = [], isLoading: l1 } = useSalesReps();
   const { data: territories = [], isLoading: l2 } = useTerritories();
   const { data: dealers = [], isLoading: l3 } = useDealers();
@@ -305,8 +306,8 @@ export default function SalesReport({ metric }: SalesReportProps) {
 
   return (
     <div className="animate-fade-in">
-      <Button variant="ghost" size="sm" asChild className="mb-4 -ml-2 text-muted-foreground">
-        <Link to="/managers"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Link>
+      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-4 -ml-2 text-muted-foreground">
+        <ArrowLeft className="h-4 w-4 mr-1" /> Back
       </Button>
 
       <div className="flex flex-wrap items-end justify-between gap-3 mb-6">

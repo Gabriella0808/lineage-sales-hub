@@ -55,7 +55,7 @@ export default function DashboardPage() {
     ...dealers.filter(d => d.status === 'at-risk').map(d => ({ label: `${d.name} — at risk`, type: 'dealer' as const })),
   ];
 
-  const activityIcons: Record<string, typeof Phone> = { call: Phone, email: Mail, meeting: Users, task: CheckCircle, alert: AlertTriangle };
+  
 
   if (isLoading) {
     return (

@@ -109,7 +109,7 @@ export default function ManagersPage() {
                       const b26 = dummy(180000);
                       const i26 = dummy(140000);
 
-                      const repCode = rep.acctivate_id || rep.monday_id || rep.name.split(" ").map(n => n[0]).join("").toUpperCase();
+                      const repCode = rep.acctivate_id || rep.name.split(" ").map(n => n[0]).join("").toUpperCase();
                       const repTerritoryNames = repTerritories
                         .filter(rt => rt.rep_id === rep.id)
                         .map(rt => getTerritoryName(territories, rt.territory_id))

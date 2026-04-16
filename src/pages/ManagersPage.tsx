@@ -727,14 +727,14 @@ function DealerReport({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-64 p-2" align="end">
-            <ScrollArea className="max-h-64">
+            <div className="h-64 overflow-y-auto overscroll-contain pr-1">
               {managerReps.map(r => (
                 <label key={r.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer text-sm">
                   <Checkbox checked={selectedRepIds.includes(r.id)} onCheckedChange={() => toggleRep(r.id)} />
                   {r.name}
                 </label>
               ))}
-            </ScrollArea>
+            </div>
           </PopoverContent>
         </Popover>
 

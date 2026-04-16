@@ -87,8 +87,8 @@ export default function ManagersPage() {
                 if (!ter) return null;
                 const terReps = managerReps.filter(r => repTerritories.some(rt => rt.rep_id === r.id && rt.territory_id === tId));
                 const terDealers = dealers.filter(d => d.territory_id === tId);
-                const lastTravel = travelLog
-                  .filter(tl => tl.territory_id === tId && terReps.some(r => r.id === tl.rep_id))
+                const lastTravel = mgrTravelLog
+                  .filter(tl => tl.territory_id === tId || terReps.some(r => r.id === tl.rep_id))
                   .sort((a, b) => b.travel_date.localeCompare(a.travel_date))[0];
 
                 return (

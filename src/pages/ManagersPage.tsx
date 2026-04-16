@@ -394,10 +394,7 @@ export default function ManagersPage() {
           </Card>
 
           {/* Tile 3: YTD Bookings Actual */}
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setDetailView("ytd-bookings")}
-          >
+          <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
@@ -412,10 +409,7 @@ export default function ManagersPage() {
           </Card>
 
           {/* Tile 4: YTD Bookings Goal */}
-          <Card
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setDetailView("ytd-goal")}
-          >
+          <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">

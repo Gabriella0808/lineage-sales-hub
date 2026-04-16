@@ -230,6 +230,20 @@ export function useRepTerritories() {
   });
 }
 
+export function useTravelLog() {
+  return useQuery({
+    queryKey: ["travel_log"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("travel_log")
+        .select("*")
+        .order("travel_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as DbTravelLog[];
+    },
+  });
+}
+
 // ── Display helpers ───────────────────────────────────────────────
 
 export function getRepName(reps: DbSalesRep[], id: string | null): string {

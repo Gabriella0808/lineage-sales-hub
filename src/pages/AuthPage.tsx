@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import lineageLogo from "@/assets/lineage-logo.png";
 
 const signInSchema = z.object({
   email: z.string().trim().email("Invalid email").max(255),
@@ -75,8 +76,8 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl">Lineage Sales Portal</CardTitle>
+        <CardHeader className="items-center text-center space-y-4">
+          <img src={lineageLogo} alt="Lineage Collections" className="h-16 w-auto" />
           <CardDescription>{mode === "signin" ? "Sign in to your account" : "Create your account"}</CardDescription>
         </CardHeader>
         <CardContent>

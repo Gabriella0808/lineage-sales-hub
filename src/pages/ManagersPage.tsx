@@ -48,6 +48,7 @@ export default function ManagersPage() {
   const managerReps = selectedManager ? reps.filter(r => r.manager_id === selectedManager.id) : [];
   const mgrTerritoryIds = [...new Set(managerReps.flatMap(r => repTerritories.filter(rt => rt.rep_id === r.id).map(rt => rt.territory_id)))];
   const mgrDealers = dealers.filter(d => managerReps.some(r => r.id === d.rep_id));
+  const mgrTravelLog = selectedManager ? travelLog.filter(tl => tl.manager_id === selectedManager.id) : [];
 
   // Back handler
   const handleBack = () => {

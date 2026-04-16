@@ -277,7 +277,9 @@ export default function SalesReport({ metric }: SalesReportProps) {
         <div>
           <h1 className="text-2xl font-semibold">{title}</h1>
           <p className="text-sm text-muted-foreground">
-            {dealerCount} active dealers • {MONTHS[monthFrom]}–{MONTHS[monthTo]} {year}
+            {dealerCount} active dealers • {useDateRange && dateFrom && dateTo
+              ? `${format(dateFrom, "MMM d, yyyy")} – ${format(dateTo, "MMM d, yyyy")}`
+              : `${MONTHS[monthFrom]}–${MONTHS[monthTo]} ${year}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -286,9 +288,9 @@ export default function SalesReport({ metric }: SalesReportProps) {
               <Button size="sm" variant="outline" className="gap-2">
                 <Filter className="h-4 w-4" />
                 Filters
-                {(hasFilters || year !== 2026 || monthFrom !== 0 || monthTo !== 11) && (
+                {(hasFilters || useDateRange || year !== 2026 || monthFrom !== 0 || monthTo !== 11) && (
                   <Badge variant="secondary" className="ml-1 px-1.5 text-[10px]">
-                    {selectedManagerIds.length + selectedRepIds.length + selectedTerritoryIds.length + selectedDealerIds.length + selectedStates.length + 1}
+                    {selectedManagerIds.length + selectedRepIds.length + selectedTerritoryIds.length + selectedDealerIds.length + 1}
                   </Badge>
                 )}
               </Button>
@@ -301,8 +303,51 @@ export default function SalesReport({ metric }: SalesReportProps) {
 
               <div className="mt-6 space-y-5">
                 <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs uppercase tracking-wide text-muted-foreground">Date range</label>
+                    {useDateRange && (
+                      <button
+                        type="button"
+                        onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={cn("h-9 flex-1 justify-start font-normal", !dateFrom && "text-muted-foreground")}>
+                          <CalendarIcon className="h-3.5 w-3.5 mr-2" />
+                          {dateFrom ? format(dateFrom, "MMM d, yyyy") : "From"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                    <span className="text-xs text-muted-foreground">to</span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className={cn("h-9 flex-1 justify-start font-normal", !dateTo && "text-muted-foreground")}>
+                          <CalendarIcon className="h-3.5 w-3.5 mr-2" />
+                          {dateTo ? format(dateTo, "MMM d, yyyy") : "To"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  {useDateRange && (
+                    <p className="text-[11px] text-muted-foreground mt-1.5">Date range overrides Year and Month selections.</p>
+                  )}
+                </div>
+
+                <div className={cn(useDateRange && "opacity-50 pointer-events-none")}>
                   <label className="text-xs uppercase tracking-wide text-muted-foreground mb-2 block">Year</label>
-                  <Select value={String(year)} onValueChange={(v) => setYear(Number(v))}>
+                  <Select value={String(year)} onValueChange={(v) => setYear(Number(v))} disabled={useDateRange}>
                     <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
@@ -310,17 +355,17 @@ export default function SalesReport({ metric }: SalesReportProps) {
                   </Select>
                 </div>
 
-                <div>
+                <div className={cn(useDateRange && "opacity-50 pointer-events-none")}>
                   <label className="text-xs uppercase tracking-wide text-muted-foreground mb-2 block">Month range</label>
                   <div className="flex items-center gap-2">
-                    <Select value={String(monthFrom)} onValueChange={(v) => setMonthFrom(Number(v))}>
+                    <Select value={String(monthFrom)} onValueChange={(v) => setMonthFrom(Number(v))} disabled={useDateRange}>
                       <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {MONTHS.map((m, i) => <SelectItem key={m} value={String(i)}>{m}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     <span className="text-xs text-muted-foreground">to</span>
-                    <Select value={String(monthTo)} onValueChange={(v) => setMonthTo(Number(v))}>
+                    <Select value={String(monthTo)} onValueChange={(v) => setMonthTo(Number(v))} disabled={useDateRange}>
                       <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {MONTHS.map((m, i) => <SelectItem key={m} value={String(i)}>{m}</SelectItem>)}
@@ -354,25 +399,17 @@ export default function SalesReport({ metric }: SalesReportProps) {
                   onClear={() => setSelectedTerritoryIds([])}
                 />
                 <FilterSection
-                  label="Dealers"
+                  label={`Dealers (${dealers.length} synced)`}
                   count={selectedDealerIds.length}
                   items={dealers.map(d => ({ id: d.id, label: d.name }))}
                   selected={selectedDealerIds}
                   onToggle={(id) => toggle(selectedDealerIds, setSelectedDealerIds, id)}
                   onClear={() => setSelectedDealerIds([])}
                 />
-                <FilterSection
-                  label="States"
-                  count={selectedStates.length}
-                  items={availableStates.map(s => ({ id: s, label: s }))}
-                  selected={selectedStates}
-                  onToggle={(id) => toggle(selectedStates, setSelectedStates, id)}
-                  onClear={() => setSelectedStates([])}
-                />
               </div>
 
               <SheetFooter className="mt-6">
-                <Button variant="outline" size="sm" onClick={() => { clearAll(); setYear(2026); setMonthFrom(0); setMonthTo(11); }} className="gap-2">
+                <Button variant="outline" size="sm" onClick={() => { clearAll(); setYear(2026); setMonthFrom(0); setMonthTo(11); setDateFrom(undefined); setDateTo(undefined); }} className="gap-2">
                   <X className="h-4 w-4" /> Reset all
                 </Button>
               </SheetFooter>

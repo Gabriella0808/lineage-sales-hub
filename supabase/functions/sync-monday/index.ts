@@ -11,6 +11,7 @@ const COL = {
   managerEmail: "email_mkzwqj30",
   region: "dropdown_mkzwmtzv",
   status: "color_mkzw4094",
+  repCode: "text_mm2f7tdp",
 };
 
 interface MondayItem {

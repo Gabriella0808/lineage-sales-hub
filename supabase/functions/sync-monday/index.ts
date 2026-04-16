@@ -145,6 +145,7 @@ Deno.serve(async (req: Request) => {
       email: getCol(item, COL.repEmail) || null,
       status: mapStatus(getCol(item, COL.status)),
       manager_id: managerMap.get(getCol(item, COL.managerEmail)) ?? null,
+      acctivate_id: getCol(item, COL.repCode) || null,
     }));
 
     const { error: rErr } = await supabase

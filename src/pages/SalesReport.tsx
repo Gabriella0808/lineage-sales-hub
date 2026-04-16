@@ -522,7 +522,6 @@ export default function SalesReport({ metric }: SalesReportProps) {
                   <th className="text-left p-3 font-medium text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("rep")}>Rep{sortIcon("rep")}</th>
                   <th className="text-left p-3 font-medium text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("manager")}>Manager{sortIcon("manager")}</th>
                   <th className="text-left p-3 font-medium text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("territory")}>Territory{sortIcon("territory")}</th>
-                  <th className="text-left p-3 font-medium text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("state")}>State{sortIcon("state")}</th>
                   <th className="text-right p-3 font-medium text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("value")}>{valueLabel}{sortIcon("value")}</th>
                 </tr>
               </thead>
@@ -533,18 +532,18 @@ export default function SalesReport({ metric }: SalesReportProps) {
                     <td className="p-3">{row.rep}</td>
                     <td className="p-3 text-muted-foreground">{row.manager}</td>
                     <td className="p-3 text-muted-foreground">{row.territory}</td>
-                    <td className="p-3 text-muted-foreground">{row.state || "—"}</td>
+                    
                     <td className="p-3 text-right tabular-nums font-medium">{formatCurrency(row.value)}</td>
                   </tr>
                 ))}
                 {sortedRows.length === 0 && (
-                  <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No data for current filters.</td></tr>
+                  <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No data for current filters.</td></tr>
                 )}
               </tbody>
               {sortedRows.length > 0 && (
                 <tfoot>
                   <tr className="border-t bg-muted/30 font-semibold">
-                    <td className="p-3" colSpan={5}>Total</td>
+                    <td className="p-3" colSpan={4}>Total</td>
                     <td className="p-3 text-right tabular-nums">{formatCurrency(total)}</td>
                   </tr>
                 </tfoot>

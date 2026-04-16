@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { Map as MapIcon, Store, ArrowLeft, Filter, X, DollarSign, Target, TrendingUp, TrendingDown, CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { format } from "date-fns";
@@ -156,10 +157,18 @@ export default function ManagersPage() {
                     <tr className="border-b bg-muted/30">
                       <th className="text-left p-3 font-medium text-muted-foreground">Rep Code</th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Territory</th>
-                      <th className="text-right p-3 font-medium text-muted-foreground">2025 YTD Bookings</th>
-                      <th className="text-right p-3 font-medium text-muted-foreground">2025 YTD Invoicing</th>
-                      <th className="text-right p-3 font-medium text-muted-foreground">2026 YTD Bookings</th>
-                      <th className="text-right p-3 font-medium text-muted-foreground">2026 YTD Invoicing</th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">
+                        <Link to="/reports/bookings" className="hover:text-primary hover:underline transition-colors">2025 YTD Bookings</Link>
+                      </th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">
+                        <Link to="/reports/invoicing" className="hover:text-primary hover:underline transition-colors">2025 YTD Invoicing</Link>
+                      </th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">
+                        <Link to="/reports/bookings" className="hover:text-primary hover:underline transition-colors">2026 YTD Bookings</Link>
+                      </th>
+                      <th className="text-right p-3 font-medium text-muted-foreground">
+                        <Link to="/reports/invoicing" className="hover:text-primary hover:underline transition-colors">2026 YTD Invoicing</Link>
+                      </th>
                       <th className="text-left p-3 font-medium text-muted-foreground">Last Travel Dates</th>
                     </tr>
                   </thead>

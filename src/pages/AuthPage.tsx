@@ -100,13 +100,15 @@ export default function AuthPage() {
               {submitting ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
           </form>
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {mode === "signin" ? "Need an account? Sign up" : "Already have an account? Sign in"}
-          </button>
+          {mode === "signup" && (
+            <button
+              type="button"
+              onClick={() => setMode("signin")}
+              className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Already have an account? Sign in
+            </button>
+          )}
         </CardContent>
       </Card>
     </div>

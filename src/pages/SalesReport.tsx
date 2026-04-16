@@ -173,6 +173,30 @@ export default function SalesReport({ metric }: SalesReportProps) {
     return sorted;
   }, [rows, sortKey, sortDir]);
 
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = useMemo(
+    () => sortedRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [sortedRows, currentPage],
+  );
+  const pageNumbers = useMemo<(number | "…")[]>(() => {
+    const pages: (number | "…")[] = [];
+    const add = (n: number) => pages.push(n);
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) add(i);
+    } else {
+      add(1);
+      if (currentPage > 4) pages.push("…");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) add(i);
+      if (currentPage < totalPages - 3) pages.push("…");
+      add(totalPages);
+    }
+    return pages;
+  }, [totalPages, currentPage]);
+
   // KPIs
   const total = useMemo(() => rows.reduce((s, r) => s + r.value, 0), [rows]);
   const dealerCount = rows.filter(r => r.value > 0).length;

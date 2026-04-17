@@ -1,8 +1,68 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { formatCurrency } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, Pencil } from "lucide-react";
+
+const PROJ_STORAGE_KEY = "kpi_projections_2026_v1";
+
+type ProjOverrides = {
+  monthly?: Record<string, { b26p?: number; i26p?: number }>;
+  line?: Record<string, { luxP?: number; swP?: number; flP?: number }>;
+};
+
+function loadOverrides(): ProjOverrides {
+  try {
+    const raw = localStorage.getItem(PROJ_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Inline editable currency cell. Calls onSave with the new numeric value. */
+function EditableCurrency({ value, onSave }: { value: number; onSave: (v: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(Math.round(value)));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (!editing) setDraft(String(Math.round(value))); }, [value, editing]);
+  useEffect(() => { if (editing) inputRef.current?.select(); }, [editing]);
+
+  const commit = () => {
+    const n = Number(draft.replace(/[^0-9.\-]/g, ""));
+    if (!Number.isNaN(n)) onSave(n);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="number"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") { setDraft(String(Math.round(value))); setEditing(false); }
+        }}
+        className="w-28 h-7 px-1 text-right text-xs border border-primary rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="group inline-flex items-center gap-1 px-1 py-0.5 -mx-1 rounded hover:bg-primary/10 transition-colors"
+      title="Click to edit projection"
+    >
+      <span>{formatCurrency(value)}</span>
+      <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-60 text-primary" />
+    </button>
+  );
+}
 
 // Static seed data mirroring KPI_2026.01.15_Live.xlsx → Summary tab
 // Wire to live aggregates once monthly_projections + bookings_by_line tables exist.

@@ -115,8 +115,8 @@ export function LiveKpiReport() {
   })), [repShare]);
 
   const monthly = useMemo(
-    () => monthFilter === "All" ? MONTHLY : MONTHLY.filter((r) => r.m === monthFilter),
-    [monthFilter]
+    () => monthFilter === "All" ? scaledMonthly : scaledMonthly.filter((r) => r.m === monthFilter),
+    [monthFilter, scaledMonthly]
   );
 
   const sum = (arr: typeof MONTHLY, k: keyof typeof MONTHLY[number]) =>

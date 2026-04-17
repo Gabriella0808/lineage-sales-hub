@@ -16,6 +16,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import BookingsReportPage from "@/pages/BookingsReportPage";
 import InvoicingReportPage from "@/pages/InvoicingReportPage";
 import MondayBoardsPage from "@/pages/MondayBoardsPage";
+import TasksPage from "@/pages/TasksPage";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "@/pages/NotFound";
 
@@ -45,6 +46,7 @@ const App = () => (
                       <Route path="/reports/bookings" element={<BookingsReportPage />} />
                       <Route path="/reports/invoicing" element={<InvoicingReportPage />} />
                       <Route path="/monday-boards" element={<MondayBoardsPage />} />
+                      <Route path="/tasks" element={<TasksPage />} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

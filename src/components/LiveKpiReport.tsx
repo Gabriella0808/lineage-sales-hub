@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/hooks/usePortalData";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 // Static seed data mirroring KPI_2026.01.15_Live.xlsx → Summary tab
 // Wire to live aggregates once monthly_projections + bookings_by_line tables exist.
@@ -167,35 +168,60 @@ export function LiveKpiReport() {
       {/* Rep Bookings */}
       <div className="glass-card p-5">
         <h3 className="text-base font-semibold mb-1">Rep Bookings — Current Month</h3>
-        <p className="text-xs text-muted-foreground mb-4">January 2026 bookings and % of monthly goal by rep</p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b bg-muted/30">
-                <th className="text-left p-2 font-medium text-muted-foreground">Rep</th>
-                <th className="text-right p-2 font-medium text-muted-foreground">Jan Booking</th>
-                <th className="text-right p-2 font-medium text-muted-foreground">% Goal</th>
-                <th className="text-left p-2 font-medium text-muted-foreground w-1/3">Pace</th>
-              </tr>
-            </thead>
-            <tbody>
-              {REP_BOOK.map((r) => (
-                <tr key={r.name} className="border-b last:border-0 hover:bg-muted/20">
-                  <td className="p-2 font-medium">{r.name}</td>
-                  <td className="p-2 text-right">{formatCurrency(r.book)}</td>
-                  <td className={`p-2 text-right font-medium ${r.pct >= 1 ? "text-success" : r.pct >= 0.5 ? "" : "text-muted-foreground"}`}>{fmtPct(r.pct)}</td>
-                  <td className="p-2">
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${r.pct >= 1 ? "bg-success" : r.pct >= 0.5 ? "bg-primary" : "bg-warning"}`}
-                        style={{ width: `${Math.min(r.pct * 100, 100)}%` }}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <p className="text-xs text-muted-foreground mb-4">January 2026 bookings by rep — bar color reflects % of monthly goal</p>
+        <div style={{ height: Math.max(REP_BOOK.length * 28, 280) }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={[...REP_BOOK].sort((a, b) => b.book - a.book)}
+              layout="vertical"
+              margin={{ top: 8, right: 60, left: 8, bottom: 8 }}
+              barSize={16}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+              <XAxis
+                type="number"
+                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                tickFormatter={(v) => v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`}
+              />
+              <YAxis
+                dataKey="name"
+                type="category"
+                width={90}
+                tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }}
+              />
+              <Tooltip
+                cursor={{ fill: "hsl(var(--muted) / 0.4)" }}
+                contentStyle={{
+                  background: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                formatter={(_v, _n, p: any) => [
+                  `${formatCurrency(p?.payload?.book ?? 0)} · ${fmtPct(p?.payload?.pct ?? 0)}`,
+                  "Booking",
+                ]}
+              />
+              <Bar dataKey="book" radius={[0, 4, 4, 0]} label={{
+                position: "right",
+                fontSize: 10,
+                fill: "hsl(var(--muted-foreground))",
+                formatter: (v: number) => v > 0 ? formatCurrency(v) : "",
+              }}>
+                {[...REP_BOOK].sort((a, b) => b.book - a.book).map((r, i) => (
+                  <Cell
+                    key={i}
+                    fill={r.pct >= 1 ? "hsl(var(--success))" : r.pct >= 0.5 ? "hsl(var(--primary))" : "hsl(var(--warning))"}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex flex-wrap gap-4 mt-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-success" /> ≥ 100% goal</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-primary" /> 50–99% goal</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-warning" /> &lt; 50% goal</span>
         </div>
       </div>
 

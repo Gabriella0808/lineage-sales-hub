@@ -133,54 +133,48 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="glass-card p-5">
+        <div className="glass-card p-5 flex flex-col">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-warning" /> Attention Needed
+            <Trophy className="h-4 w-4 text-accent" /> Sales Leaderboard
           </h3>
-          <div className="space-y-3">
-            {attentionItems.map((item, i) => (
-              <div key={i} className="flex items-start gap-3 text-sm">
-                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
-                <span className="text-muted-foreground">{item.label}</span>
-              </div>
-            ))}
-            {attentionItems.length === 0 && <p className="text-sm text-muted-foreground">All clear — no items need attention.</p>}
-          </div>
+          {leaderboard.length > 0 ? (
+            <ol className="space-y-1 flex-1">
+              {leaderboard.map((rep, idx) => {
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+                return (
+                  <li key={rep.id} className="flex items-center gap-2 py-1.5 border-b border-border/40 last:border-0">
+                    <span className={`w-6 text-center shrink-0 ${idx <= 2 ? 'text-base' : 'text-[10px] font-semibold text-muted-foreground'}`}>{medal}</span>
+                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <span className="text-[10px] font-semibold text-primary">{getInitials(rep.name)}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold truncate">{rep.name}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{rep.territory}</p>
+                    </div>
+                    <p className="text-xs font-bold tabular-nums shrink-0">{formatCurrency(rep.revenue)}</p>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            <p className="text-sm text-muted-foreground">No rep revenue data yet.</p>
+          )}
         </div>
       </div>
 
       <div className="glass-card p-5 mb-6">
         <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-          <Trophy className="h-4 w-4 text-accent" /> Sales Leaderboard
-          <span className="text-[11px] font-normal text-muted-foreground ml-1">— top reps by {currentYear} revenue</span>
+          <AlertTriangle className="h-4 w-4 text-warning" /> Attention Needed
         </h3>
-        {leaderboard.length > 0 ? (
-          <ol className="space-y-2">
-            {leaderboard.map((rep, idx) => {
-              const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
-              return (
-                <li key={rep.id} className="flex items-center gap-4 py-2 border-b border-border/40 last:border-0">
-                  <span className={`w-10 text-center ${idx <= 2 ? 'text-lg' : 'text-xs font-semibold text-muted-foreground'}`}>{medal}</span>
-                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-                    <span className="text-xs font-semibold text-primary">{getInitials(rep.name)}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{rep.name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{rep.territory}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold tabular-nums">{formatCurrency(rep.revenue)}</p>
-                    <p className="text-[11px] text-success flex items-center justify-end gap-1">
-                      <TrendingUp className="h-3 w-3" /> Tracking
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        ) : (
-          <p className="text-sm text-muted-foreground">No rep revenue data available yet.</p>
-        )}
+        <div className="space-y-3">
+          {attentionItems.map((item, i) => (
+            <div key={i} className="flex items-start gap-3 text-sm">
+              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
+              <span className="text-muted-foreground">{item.label}</span>
+            </div>
+          ))}
+          {attentionItems.length === 0 && <p className="text-sm text-muted-foreground">All clear — no items need attention.</p>}
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">

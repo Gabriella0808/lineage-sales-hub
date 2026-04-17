@@ -366,7 +366,11 @@ export function LiveKpiReport() {
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
                     {showB && <>
                       <td className="p-2 text-right border-l">{formatCurrency(r.b25)}</td>
-                      <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
+                      <td className="p-2 text-right">
+                        {canEdit ? (
+                          <EditableCurrency value={r.b26p} onSave={(v) => updateMonthly(r.m, "b26p", v)} />
+                        ) : formatCurrency(r.b26p)}
+                      </td>
                       <td className="p-2 text-right">{fmtPct(growth(r.b26p, r.b25))}</td>
                       <td className="p-2 text-right">
                         <span className="font-medium">{formatCurrency(r.ytdB)}</span>

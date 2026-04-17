@@ -87,6 +87,7 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
 }
 
 export function LiveKpiReport() {
+  const [repFilter, setRepFilter] = useState<string>("all");
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("All");
   const [metricFilter, setMetricFilter] = useState<MetricFilter>("both");
   const [repSearch, setRepSearch] = useState("");
@@ -94,6 +95,24 @@ export function LiveKpiReport() {
   const [goalFilter, setGoalFilter] = useState<GoalFilter>("all");
   const [lineFilter, setLineFilter] = useState<LineFilter>("all");
   const [lineMonthFilter, setLineMonthFilter] = useState<MonthFilter>("All");
+
+  // Per-rep slicing: scale aggregate monthly + line totals by selected rep's share of all bookings.
+  const totalRepBook = REP_BOOK.reduce((s, r) => s + r.book, 0);
+  const selectedRep = repFilter === "all" ? null : REP_BOOK.find((r) => r.name === repFilter) ?? null;
+  const repShare = selectedRep ? (totalRepBook > 0 ? selectedRep.book / totalRepBook : 0) : 1;
+
+  const scaledMonthly = useMemo(() => MONTHLY.map((r) => ({
+    ...r,
+    b25: r.b25 * repShare, b26p: r.b26p * repShare, ytdB: r.ytdB * repShare,
+    i25: r.i25 * repShare, i26p: r.i26p * repShare, ytdI: r.ytdI * repShare,
+  })), [repShare]);
+
+  const scaledLine = useMemo(() => LINE_BOOK.map((r) => ({
+    ...r,
+    luxP: r.luxP * repShare, luxA: r.luxA * repShare,
+    swP: r.swP * repShare,   swA: r.swA * repShare,
+    flP: r.flP * repShare,   flA: r.flA * repShare,
+  })), [repShare]);
 
   const monthly = useMemo(
     () => monthFilter === "All" ? MONTHLY : MONTHLY.filter((r) => r.m === monthFilter),

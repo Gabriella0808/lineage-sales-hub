@@ -281,6 +281,42 @@ export type Database = {
           },
         ]
       }
+      manager_tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          status: Database["public"]["Enums"]["manager_task_status"]
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["manager_task_status"]
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["manager_task_status"]
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       managers: {
         Row: {
           acctivate_id: string | null
@@ -624,7 +660,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      manager_task_status: "todo" | "in_progress" | "blocked" | "done"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -751,6 +787,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      manager_task_status: ["todo", "in_progress", "blocked", "done"],
+    },
   },
 } as const

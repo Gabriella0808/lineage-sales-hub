@@ -162,21 +162,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="glass-card p-5 mb-6">
-        <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-warning" /> Attention Needed
-        </h3>
-        <div className="space-y-3">
-          {attentionItems.map((item, i) => (
-            <div key={i} className="flex items-start gap-3 text-sm">
-              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
-              <span className="text-muted-foreground">{item.label}</span>
-            </div>
-          ))}
-          {attentionItems.length === 0 && <p className="text-sm text-muted-foreground">All clear — no items need attention.</p>}
-        </div>
-      </div>
-
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="glass-card p-5 lg:col-span-2">
           <h3 className="text-sm font-semibold mb-4">Top Dealers by Revenue ($K) — {currentYear}</h3>

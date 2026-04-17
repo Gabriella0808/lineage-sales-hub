@@ -150,8 +150,8 @@ export function LiveKpiReport() {
   }, [repSearch, repSort, goalFilter]);
 
   const lineRows = useMemo(
-    () => lineMonthFilter === "All" ? LINE_BOOK : LINE_BOOK.filter((r) => r.m === lineMonthFilter),
-    [lineMonthFilter]
+    () => lineMonthFilter === "All" ? scaledLine : scaledLine.filter((r) => r.m === lineMonthFilter),
+    [lineMonthFilter, scaledLine]
   );
 
   const luxP = lineRows.reduce((s, r) => s + r.luxP, 0);

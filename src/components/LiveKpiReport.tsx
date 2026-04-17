@@ -192,7 +192,16 @@ export function LiveKpiReport() {
   const totalRepBook = REP_BOOK.reduce((s, r) => s + r.book, 0);
   const selectedRep = repFilter === "all" ? null : REP_BOOK.find((r) => r.name === repFilter) ?? null;
   const repShare = selectedRep ? (totalRepBook > 0 ? selectedRep.book / totalRepBook : 0) : 1;
-  const canEdit = !selectedRep;
+  // When viewing a single rep, displayed projection = base * repShare.
+  // To save the user-entered display value back to the canonical base, divide by repShare.
+  const saveMonthly = (month: string, key: "b26p" | "i26p", displayedVal: number) => {
+    const base = repShare > 0 ? displayedVal / repShare : displayedVal;
+    updateMonthly(month, key, base);
+  };
+  const saveLine = (month: string, key: "luxP" | "swP" | "flP", displayedVal: number) => {
+    const base = repShare > 0 ? displayedVal / repShare : displayedVal;
+    updateLine(month, key, base);
+  };
 
   const scaledMonthly = useMemo(() => baseMonthly.map((r) => ({
     ...r,
@@ -314,7 +323,7 @@ export function LiveKpiReport() {
         <p className="text-xs text-muted-foreground mb-4">
           Bookings & Invoiced — 2025 actual vs 2026 projection vs YTD ·{" "}
           <span className="text-primary">Click any 2026 P value to edit</span>
-          {!canEdit && <span className="ml-1 text-warning">(disabled while a rep filter is active)</span>}
+          {selectedRep && <span className="ml-1 text-muted-foreground">· edits scale to the team total</span>}
         </p>
 
         {/* Filter bar */}

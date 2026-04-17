@@ -92,7 +92,7 @@ export default function DirectoryPage() {
         searchValue={search}
         onSearchChange={setSearch}
         filters={[
-          { label: "Role", value: roleFilter, onChange: setRoleFilter, options: [{ label: 'Dealer', value: 'dealer' }, { label: 'Rep', value: 'rep' }, { label: 'Manager', value: 'manager' }, { label: 'Other', value: 'other' }] },
+          { label: "Role", value: roleFilter, onChange: setRoleFilter, options: [{ label: 'Dealer', value: 'dealer' }, { label: 'Rep', value: 'rep' }] },
         ]}
       />
 

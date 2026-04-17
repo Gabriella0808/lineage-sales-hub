@@ -132,22 +132,32 @@ export default function DashboardPage() {
 
       <div className="grid lg:grid-cols-2 gap-5 mb-6">
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold mb-4">Monthly Revenue ($K) — {currentYear} vs {currentYear - 1}</h3>
+          <h3 className="text-sm font-semibold mb-1">Monthly Rep Performance ($K) — {currentYear}</h3>
+          <p className="text-[11px] text-muted-foreground mb-3">Top 5 reps by sales per month</p>
           <div className="h-[240px]">
-            {monthlyData.some(d => (d[String(currentYear)] as number) > 0 || (d[String(currentYear - 1)] as number) > 0) ? (
+            {topRepNames.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData} barGap={2}>
+                <BarChart data={repPerformanceData} barGap={1}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 90%)" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v: number) => `$${v}K`} />
-                  <Bar dataKey={String(currentYear)} fill="hsl(220 35% 22%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey={String(currentYear - 1)} fill="hsl(38 75% 50%)" radius={[4, 4, 0, 0]} opacity={0.5} />
+                  {topRepNames.map((name, i) => (
+                    <Bar key={name} dataKey={name} fill={REP_COLORS[i]} radius={[3, 3, 0, 0]} />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <p className="text-sm text-muted-foreground text-center pt-20">No revenue data synced yet.</p>
+              <p className="text-sm text-muted-foreground text-center pt-20">No rep sales data synced yet.</p>
             )}
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+            {topRepNames.map((name, i) => (
+              <div key={name} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="h-2 w-2 rounded-sm shrink-0" style={{ background: REP_COLORS[i] }} />
+                <span className="truncate">{name}</span>
+              </div>
+            ))}
           </div>
         </div>
 

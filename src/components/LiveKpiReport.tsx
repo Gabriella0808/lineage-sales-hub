@@ -239,7 +239,7 @@ export function LiveKpiReport() {
             </thead>
             <tbody>
               {monthly.map((r) => {
-                const idx = MONTHLY.indexOf(r);
+                const idx = MONTHLY.findIndex((m) => m.m === r.m);
                 return (
                   <tr key={r.m} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>

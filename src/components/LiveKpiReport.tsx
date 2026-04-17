@@ -446,7 +446,7 @@ export function LiveKpiReport() {
             </thead>
             <tbody>
               {lineRows.map((r) => {
-                const idx = LINE_BOOK.indexOf(r);
+                const idx = LINE_BOOK.findIndex((l) => l.m === r.m);
                 return (
                   <tr key={r.m} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>

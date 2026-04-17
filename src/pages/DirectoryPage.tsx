@@ -45,9 +45,10 @@ export default function DirectoryPage() {
     email: c.email || '',
     website: c.website || '',
     territory: c.territory || '',
+    address: REP_ADDRESSES[(c.email || '').toLowerCase()] || '',
   })) : [
-    ...reps.map(r => ({ id: `rep-${r.id}`, name: r.name, company: 'Lineage Collections', role: 'rep', title: 'Sales Representative', phone: r.phone || '', cell: '', email: r.email || '', website: '', territory: '' })),
-    ...dealers.slice(0, 200).map(d => ({ id: `dlr-${d.id}`, name: d.name, company: d.name, role: 'dealer', title: 'Dealer', phone: d.phone || '', cell: '', email: d.email || '', website: d.website || '', territory: '' })),
+    ...reps.map(r => ({ id: `rep-${r.id}`, name: r.name, company: 'Lineage Collections', role: 'rep', title: 'Sales Representative', phone: r.phone || '', cell: '', email: r.email || '', website: '', territory: '', address: REP_ADDRESSES[(r.email || '').toLowerCase()] || '' })),
+    ...dealers.slice(0, 200).map(d => ({ id: `dlr-${d.id}`, name: d.name, company: d.name, role: 'dealer', title: 'Dealer', phone: d.phone || '', cell: '', email: d.email || '', website: d.website || '', territory: '', address: '' })),
   ];
 
   const filtered = contacts.filter(c => {

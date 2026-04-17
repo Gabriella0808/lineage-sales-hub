@@ -197,8 +197,8 @@ export function LiveKpiReport() {
                   borderRadius: 8,
                   fontSize: 12,
                 }}
-                formatter={(_v: number, _n, p: { payload: { book: number; pct: number } }) => [
-                  `${formatCurrency(p.payload.book)} · ${fmtPct(p.payload.pct)}`,
+                formatter={(_v, _n, p: any) => [
+                  `${formatCurrency(p?.payload?.book ?? 0)} · ${fmtPct(p?.payload?.pct ?? 0)}`,
                   "Booking",
                 ]}
               />

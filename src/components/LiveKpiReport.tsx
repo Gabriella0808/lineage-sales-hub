@@ -1,8 +1,68 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { formatCurrency } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, Pencil } from "lucide-react";
+
+const PROJ_STORAGE_KEY = "kpi_projections_2026_v1";
+
+type ProjOverrides = {
+  monthly?: Record<string, { b26p?: number; i26p?: number }>;
+  line?: Record<string, { luxP?: number; swP?: number; flP?: number }>;
+};
+
+function loadOverrides(): ProjOverrides {
+  try {
+    const raw = localStorage.getItem(PROJ_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Inline editable currency cell. Calls onSave with the new numeric value. */
+function EditableCurrency({ value, onSave }: { value: number; onSave: (v: number) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(String(Math.round(value)));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (!editing) setDraft(String(Math.round(value))); }, [value, editing]);
+  useEffect(() => { if (editing) inputRef.current?.select(); }, [editing]);
+
+  const commit = () => {
+    const n = Number(draft.replace(/[^0-9.\-]/g, ""));
+    if (!Number.isNaN(n)) onSave(n);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        type="number"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") { setDraft(String(Math.round(value))); setEditing(false); }
+        }}
+        className="w-28 h-7 px-1 text-right text-xs border border-primary rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="group inline-flex items-center gap-1 px-1 py-0.5 -mx-1 rounded hover:bg-primary/10 transition-colors"
+      title="Click to edit projection"
+    >
+      <span>{formatCurrency(value)}</span>
+      <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-60 text-primary" />
+    </button>
+  );
+}
 
 // Static seed data mirroring KPI_2026.01.15_Live.xlsx → Summary tab
 // Wire to live aggregates once monthly_projections + bookings_by_line tables exist.
@@ -95,24 +155,57 @@ export function LiveKpiReport() {
   const [goalFilter, setGoalFilter] = useState<GoalFilter>("all");
   const [lineFilter, setLineFilter] = useState<LineFilter>("all");
   const [lineMonthFilter, setLineMonthFilter] = useState<MonthFilter>("All");
+  const [overrides, setOverrides] = useState<ProjOverrides>(() => loadOverrides());
+
+  useEffect(() => {
+    try { localStorage.setItem(PROJ_STORAGE_KEY, JSON.stringify(overrides)); } catch { /* ignore */ }
+  }, [overrides]);
+
+  const updateMonthly = (month: string, key: "b26p" | "i26p", val: number) => {
+    setOverrides((prev) => ({
+      ...prev,
+      monthly: { ...(prev.monthly ?? {}), [month]: { ...(prev.monthly?.[month] ?? {}), [key]: val } },
+    }));
+  };
+  const updateLine = (month: string, key: "luxP" | "swP" | "flP", val: number) => {
+    setOverrides((prev) => ({
+      ...prev,
+      line: { ...(prev.line ?? {}), [month]: { ...(prev.line?.[month] ?? {}), [key]: val } },
+    }));
+  };
+
+  // Apply user-entered projection overrides to base data
+  const baseMonthly = useMemo(() => MONTHLY.map((r) => ({
+    ...r,
+    b26p: overrides.monthly?.[r.m]?.b26p ?? r.b26p,
+    i26p: overrides.monthly?.[r.m]?.i26p ?? r.i26p,
+  })), [overrides]);
+
+  const baseLine = useMemo(() => LINE_BOOK.map((r) => ({
+    ...r,
+    luxP: overrides.line?.[r.m]?.luxP ?? r.luxP,
+    swP: overrides.line?.[r.m]?.swP ?? r.swP,
+    flP: overrides.line?.[r.m]?.flP ?? r.flP,
+  })), [overrides]);
 
   // Per-rep slicing: scale aggregate monthly + line totals by selected rep's share of all bookings.
   const totalRepBook = REP_BOOK.reduce((s, r) => s + r.book, 0);
   const selectedRep = repFilter === "all" ? null : REP_BOOK.find((r) => r.name === repFilter) ?? null;
   const repShare = selectedRep ? (totalRepBook > 0 ? selectedRep.book / totalRepBook : 0) : 1;
+  const canEdit = !selectedRep;
 
-  const scaledMonthly = useMemo(() => MONTHLY.map((r) => ({
+  const scaledMonthly = useMemo(() => baseMonthly.map((r) => ({
     ...r,
     b25: r.b25 * repShare, b26p: r.b26p * repShare, ytdB: r.ytdB * repShare,
     i25: r.i25 * repShare, i26p: r.i26p * repShare, ytdI: r.ytdI * repShare,
-  })), [repShare]);
+  })), [repShare, baseMonthly]);
 
-  const scaledLine = useMemo(() => LINE_BOOK.map((r) => ({
+  const scaledLine = useMemo(() => baseLine.map((r) => ({
     ...r,
     luxP: r.luxP * repShare, luxA: r.luxA * repShare,
     swP: r.swP * repShare,   swA: r.swA * repShare,
     flP: r.flP * repShare,   flA: r.flA * repShare,
-  })), [repShare]);
+  })), [repShare, baseLine]);
 
   const monthly = useMemo(
     () => monthFilter === "All" ? scaledMonthly : scaledMonthly.filter((r) => r.m === monthFilter),
@@ -218,7 +311,11 @@ export function LiveKpiReport() {
       {/* Monthly Results */}
       <div className="glass-card p-5">
         <h3 className="text-base font-semibold mb-1">Monthly Results</h3>
-        <p className="text-xs text-muted-foreground mb-4">Bookings & Invoiced — 2025 actual vs 2026 projection vs YTD</p>
+        <p className="text-xs text-muted-foreground mb-4">
+          Bookings & Invoiced — 2025 actual vs 2026 projection vs YTD ·{" "}
+          <span className="text-primary">Click any 2026 P value to edit</span>
+          {!canEdit && <span className="ml-1 text-warning">(disabled while a rep filter is active)</span>}
+        </p>
 
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b">
@@ -273,7 +370,11 @@ export function LiveKpiReport() {
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
                     {showB && <>
                       <td className="p-2 text-right border-l">{formatCurrency(r.b25)}</td>
-                      <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
+                      <td className="p-2 text-right">
+                        {canEdit ? (
+                          <EditableCurrency value={r.b26p} onSave={(v) => updateMonthly(r.m, "b26p", v)} />
+                        ) : formatCurrency(r.b26p)}
+                      </td>
                       <td className="p-2 text-right">{fmtPct(growth(r.b26p, r.b25))}</td>
                       <td className="p-2 text-right">
                         <span className="font-medium">{formatCurrency(r.ytdB)}</span>
@@ -282,7 +383,11 @@ export function LiveKpiReport() {
                     </>}
                     {showI && <>
                       <td className="p-2 text-right border-l">{formatCurrency(r.i25)}</td>
-                      <td className="p-2 text-right">{formatCurrency(r.i26p)}</td>
+                      <td className="p-2 text-right">
+                        {canEdit ? (
+                          <EditableCurrency value={r.i26p} onSave={(v) => updateMonthly(r.m, "i26p", v)} />
+                        ) : formatCurrency(r.i26p)}
+                      </td>
                       <td className="p-2 text-right">{formatCurrency(r.ytdI)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
                     </>}
@@ -478,17 +583,29 @@ export function LiveKpiReport() {
                   <tr key={r.m} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
                     {showLux && <>
-                      <td className="p-2 text-right border-l">{formatCurrency(r.luxP)}</td>
+                      <td className="p-2 text-right border-l">
+                        {canEdit ? (
+                          <EditableCurrency value={r.luxP} onSave={(v) => updateLine(r.m, "luxP", v)} />
+                        ) : formatCurrency(r.luxP)}
+                      </td>
                       <td className="p-2 text-right">{formatCurrency(r.luxA)}</td>
                       <td className="p-2 text-right">{fmtPct(r.luxA / r.luxP)}</td>
                     </>}
                     {showSW && <>
-                      <td className="p-2 text-right border-l">{formatCurrency(r.swP)}</td>
+                      <td className="p-2 text-right border-l">
+                        {canEdit ? (
+                          <EditableCurrency value={r.swP} onSave={(v) => updateLine(r.m, "swP", v)} />
+                        ) : formatCurrency(r.swP)}
+                      </td>
                       <td className="p-2 text-right">{formatCurrency(r.swA)}</td>
                       <td className="p-2 text-right">{fmtPct(r.swA / r.swP)}</td>
                     </>}
                     {showFL && <>
-                      <td className="p-2 text-right border-l">{formatCurrency(r.flP)}</td>
+                      <td className="p-2 text-right border-l">
+                        {canEdit ? (
+                          <EditableCurrency value={r.flP} onSave={(v) => updateLine(r.m, "flP", v)} />
+                        ) : formatCurrency(r.flP)}
+                      </td>
                       <td className="p-2 text-right">{formatCurrency(r.flA)}</td>
                       <td className="p-2 text-right">{fmtPct(r.flA / r.flP)}</td>
                     </>}

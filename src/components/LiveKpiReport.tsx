@@ -118,9 +118,9 @@ const LINE_BOOK = [
   { m: "December",  luxP: 80400,  luxA: 0, swP: 669500, swA: 0, flP: 257175, flA: 0 },
 ];
 
-const TODAY = new Date(2026, 0, 15);
-const END = new Date(2026, 11, 31);
-const DAYS_REMAINING = Math.round((END.getTime() - TODAY.getTime()) / 86400000);
+const TODAY = new Date();
+const END = new Date(TODAY.getFullYear(), 11, 31);
+const DAYS_REMAINING = Math.max(0, Math.ceil((END.getTime() - TODAY.getTime()) / 86400000));
 
 const fmtPct = (n: number) => n === 0 ? "—" : `${(n * 100).toFixed(1)}%`;
 const growth = (p: number, a: number) => a === 0 ? 0 : (p - a) / a;

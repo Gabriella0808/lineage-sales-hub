@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set listener BEFORE getSession (per Lovable best practices)
+    // Set listener BEFORE getSession to avoid missing the initial auth event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
       setSession(sess);
       setLoading(false);

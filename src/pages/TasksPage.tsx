@@ -53,6 +53,7 @@ export default function TasksPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -61,19 +62,25 @@ export default function TasksPage() {
     description: string;
     status: Status;
     due_date: string;
-  }>({ title: "", description: "", status: "todo", due_date: "" });
+    assigned_manager_id: string;
+  }>({ title: "", description: "", status: "todo", due_date: "", assigned_manager_id: "" });
 
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from("manager_tasks")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) {
-      toast({ title: "Failed to load tasks", description: error.message, variant: "destructive" });
+    const [tasksRes, managersRes] = await Promise.all([
+      supabase.from("manager_tasks").select("*").order("created_at", { ascending: false }),
+      supabase.from("managers").select("id, name").order("name"),
+    ]);
+    if (tasksRes.error) {
+      toast({ title: "Failed to load tasks", description: tasksRes.error.message, variant: "destructive" });
     } else {
-      setTasks((data ?? []) as Task[]);
+      setTasks((tasksRes.data ?? []) as Task[]);
+    }
+    if (managersRes.error) {
+      toast({ title: "Failed to load managers", description: managersRes.error.message, variant: "destructive" });
+    } else {
+      setManagers((managersRes.data ?? []) as Manager[]);
     }
     setLoading(false);
   };

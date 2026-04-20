@@ -147,9 +147,6 @@ export function LiveKpiReport() {
   const [repFilter, setRepFilter] = useState<string>("all");
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("All");
   const [metricFilter, setMetricFilter] = useState<MetricFilter>("both");
-  const [repSearch, setRepSearch] = useState("");
-  const [repSort, setRepSort] = useState<RepSort>("book-desc");
-  const [goalFilter, setGoalFilter] = useState<GoalFilter>("all");
   const [lineFilter, setLineFilter] = useState<LineFilter>("all");
   const [lineMonthFilter, setLineMonthFilter] = useState<MonthFilter>("All");
   const [overrides, setOverrides] = useState<ProjOverrides>(() => loadOverrides());

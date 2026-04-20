@@ -183,26 +183,30 @@ export function LiveKpiReport() {
     flP: overrides.line?.[r.m]?.flP ?? r.flP,
   })), [overrides]);
 
-  // Per-rep slicing: scale aggregate monthly + line totals by selected rep's share of all bookings.
+  // Per-rep slicing: when a rep is selected, use that rep's actual monthly figures
+  // from the spreadsheet (REP_MONTHLY). Otherwise use the team Summary totals.
   const totalRepBook = REP_BOOK.reduce((s, r) => s + r.book, 0);
   const selectedRep = repFilter === "all" ? null : REP_BOOK.find((r) => r.name === repFilter) ?? null;
   const repShare = selectedRep ? (totalRepBook > 0 ? selectedRep.book / totalRepBook : 0) : 1;
-  // When viewing a single rep, displayed projection = base * repShare.
-  // To save the user-entered display value back to the canonical base, divide by repShare.
+
+  // Edits to per-rep projections aren't persisted back to the team total (real per-rep
+  // numbers come from the spreadsheet). For "All" view we still write through to MONTHLY.
   const saveMonthly = (month: string, key: "b26p" | "i26p", displayedVal: number) => {
-    const base = repShare > 0 ? displayedVal / repShare : displayedVal;
-    updateMonthly(month, key, base);
+    if (selectedRep) return; // editing disabled when viewing a single rep
+    updateMonthly(month, key, displayedVal);
   };
   const saveLine = (month: string, key: "luxP" | "swP" | "flP", displayedVal: number) => {
     const base = repShare > 0 ? displayedVal / repShare : displayedVal;
     updateLine(month, key, base);
   };
 
-  const scaledMonthly = useMemo(() => baseMonthly.map((r) => ({
-    ...r,
-    b25: r.b25 * repShare, b26p: r.b26p * repShare, ytdB: r.ytdB * repShare,
-    i25: r.i25 * repShare, i26p: r.i26p * repShare, ytdI: r.ytdI * repShare,
-  })), [repShare, baseMonthly]);
+  const scaledMonthly = useMemo(() => {
+    if (selectedRep && REP_MONTHLY[selectedRep.name]) {
+      // Real per-rep monthly bookings & invoiced from the spreadsheet
+      return REP_MONTHLY[selectedRep.name];
+    }
+    return baseMonthly;
+  }, [selectedRep, baseMonthly]);
 
   const scaledLine = useMemo(() => baseLine.map((r) => ({
     ...r,

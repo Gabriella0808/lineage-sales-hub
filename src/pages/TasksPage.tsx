@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Pencil, Calendar } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, User } from "lucide-react";
 import { format } from "date-fns";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";

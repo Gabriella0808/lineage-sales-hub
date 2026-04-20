@@ -26,6 +26,11 @@ import { format } from "date-fns";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
 
+interface Manager {
+  id: string;
+  name: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -34,6 +39,7 @@ interface Task {
   due_date: string | null;
   completed_at: string | null;
   created_at: string;
+  assigned_manager_id: string | null;
 }
 
 const COLUMNS: { key: Status; label: string; tone: string }[] = [

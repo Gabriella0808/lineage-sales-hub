@@ -229,7 +229,7 @@ export function LiveKpiReport() {
   const sumI25 = sum(monthly, "i25");
   const sumI26P = sum(monthly, "i26p");
   const sumYtdI = sum(monthly, "ytdI");
-  const dayOfYear = Math.floor((TODAY.getTime() - new Date(2026, 0, 1).getTime()) / 86400000) + 1;
+  const dayOfYear = Math.floor((TODAY.getTime() - new Date(TODAY.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
   const annualB = sumYtdB / dayOfYear * 365;
   const annualI = sumYtdI / dayOfYear * 365;
 

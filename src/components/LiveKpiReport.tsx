@@ -352,9 +352,10 @@ export function LiveKpiReport() {
       <div className="glass-card p-5">
         <h3 className="text-base font-semibold mb-1">Monthly Results</h3>
         <p className="text-xs text-muted-foreground mb-4">
-          Bookings & Invoiced — 2025 actual vs 2026 projection vs YTD ·{" "}
-          <span className="text-primary">Click any 2026 P value to edit</span>
-          {selectedRep && <span className="ml-1 text-muted-foreground">· edits scale to the team total</span>}
+          Bookings & Invoiced — 2025 actual vs 2026 projection vs YTD
+          {selectedRep
+            ? <span className="ml-1">· live data from <span className="font-medium text-foreground">{selectedRep.name}</span> tab</span>
+            : <> · <span className="text-primary">Click any 2026 P value to edit</span></>}
         </p>
 
         {/* Filter bar */}

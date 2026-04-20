@@ -129,7 +129,6 @@ type MonthFilter = typeof MONTHS[number];
 
 type MetricFilter = "both" | "bookings" | "invoiced";
 type LineFilter = "all" | "lux" | "sw" | "fl";
-type LineFilter = "all" | "lux" | "sw" | "fl";
 
 function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (

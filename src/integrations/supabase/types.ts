@@ -356,6 +356,66 @@ export type Database = {
         }
         Relationships: []
       }
+      monday_boards: {
+        Row: {
+          created_at: string
+          id: string
+          monday_board_id: string
+          name: string
+          workspace_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          monday_board_id: string
+          name: string
+          workspace_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          monday_board_id?: string
+          name?: string
+          workspace_name?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          link: string | null
+          read_at: string | null
+          related_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          related_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          link?: string | null
+          read_at?: string | null
+          related_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -661,6 +721,7 @@ export type Database = {
     }
     Functions: {
       is_assigned_manager: { Args: { _manager_id: string }; Returns: boolean }
+      user_id_for_manager: { Args: { _manager_id: string }; Returns: string }
     }
     Enums: {
       manager_task_status: "todo" | "in_progress" | "blocked" | "done"

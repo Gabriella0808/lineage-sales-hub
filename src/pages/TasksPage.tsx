@@ -21,10 +21,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Pencil, Calendar } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, User } from "lucide-react";
 import { format } from "date-fns";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
+
+interface Manager {
+  id: string;
+  name: string;
+}
 
 interface Task {
   id: string;
@@ -34,6 +39,7 @@ interface Task {
   due_date: string | null;
   completed_at: string | null;
   created_at: string;
+  assigned_manager_id: string | null;
 }
 
 const COLUMNS: { key: Status; label: string; tone: string }[] = [
@@ -47,6 +53,7 @@ export default function TasksPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -55,19 +62,25 @@ export default function TasksPage() {
     description: string;
     status: Status;
     due_date: string;
-  }>({ title: "", description: "", status: "todo", due_date: "" });
+    assigned_manager_id: string;
+  }>({ title: "", description: "", status: "todo", due_date: "", assigned_manager_id: "" });
 
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const { data, error } = await supabase
-      .from("manager_tasks")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) {
-      toast({ title: "Failed to load tasks", description: error.message, variant: "destructive" });
+    const [tasksRes, managersRes] = await Promise.all([
+      supabase.from("manager_tasks").select("*").order("created_at", { ascending: false }),
+      supabase.from("managers").select("id, name").order("name"),
+    ]);
+    if (tasksRes.error) {
+      toast({ title: "Failed to load tasks", description: tasksRes.error.message, variant: "destructive" });
     } else {
-      setTasks((data ?? []) as Task[]);
+      setTasks((tasksRes.data ?? []) as Task[]);
+    }
+    if (managersRes.error) {
+      toast({ title: "Failed to load managers", description: managersRes.error.message, variant: "destructive" });
+    } else {
+      setManagers((managersRes.data ?? []) as Manager[]);
     }
     setLoading(false);
   };
@@ -79,7 +92,7 @@ export default function TasksPage() {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ title: "", description: "", status: "todo", due_date: "" });
+    setForm({ title: "", description: "", status: "todo", due_date: "", assigned_manager_id: "" });
   };
 
   const openNew = () => {
@@ -94,6 +107,7 @@ export default function TasksPage() {
       description: t.description ?? "",
       status: t.status,
       due_date: t.due_date ?? "",
+      assigned_manager_id: t.assigned_manager_id ?? "",
     });
     setOpen(true);
   };
@@ -109,7 +123,8 @@ export default function TasksPage() {
       description: form.description.trim() || null,
       status: form.status,
       due_date: form.due_date || null,
-    };
+      assigned_manager_id: form.assigned_manager_id || null,
+    } as any;
     if (editing) {
       const { error } = await supabase
         .from("manager_tasks")
@@ -197,6 +212,18 @@ export default function TasksPage() {
                   onChange={(e) => setForm({ ...form, due_date: e.target.value })}
                 />
               </div>
+              <Select
+                value={form.assigned_manager_id || "unassigned"}
+                onValueChange={(v) => setForm({ ...form, assigned_manager_id: v === "unassigned" ? "" : v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Assign to manager" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {managers.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
@@ -235,6 +262,12 @@ export default function TasksPage() {
                             <p className="text-[11px] text-muted-foreground mt-2 inline-flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
                               {format(new Date(t.due_date), "MMM d")}
+                            </p>
+                          )}
+                          {t.assigned_manager_id && (
+                            <p className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1 ml-2">
+                              <User className="h-3 w-3" />
+                              {managers.find((m) => m.id === t.assigned_manager_id)?.name ?? "Unknown"}
                             </p>
                           )}
                         </div>

@@ -283,6 +283,7 @@ export type Database = {
       }
       manager_tasks: {
         Row: {
+          assigned_manager_id: string | null
           completed_at: string | null
           created_at: string
           description: string | null
@@ -294,6 +295,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          assigned_manager_id?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
@@ -305,6 +307,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          assigned_manager_id?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null

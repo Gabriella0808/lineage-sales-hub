@@ -1,0 +1,1 @@
+ALTER TABLE public.manager_tasks ADD COLUMN assigned_manager_id uuid NULL;

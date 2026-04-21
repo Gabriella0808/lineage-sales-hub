@@ -388,12 +388,16 @@ export function LiveKpiReport() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground">Line:</span>
-            <div className="flex gap-1">
-              <FilterChip active={monthlyLineFilter === "all"} onClick={() => setMonthlyLineFilter("all")}>All Lines</FilterChip>
-              <FilterChip active={monthlyLineFilter === "sw"} onClick={() => setMonthlyLineFilter("sw")}>Sea Winds</FilterChip>
-              <FilterChip active={monthlyLineFilter === "fl"} onClick={() => setMonthlyLineFilter("fl")}>Finn &amp; Louise</FilterChip>
-              <FilterChip active={monthlyLineFilter === "lux"} onClick={() => setMonthlyLineFilter("lux")}>Lux Lighting</FilterChip>
-            </div>
+            <select
+              value={monthlyLineFilter}
+              onChange={(e) => setMonthlyLineFilter(e.target.value as LineFilter)}
+              className="h-8 px-2 rounded-md border bg-background text-xs"
+            >
+              <option value="all">All Lines</option>
+              <option value="sw">Sea Winds</option>
+              <option value="fl">Finn &amp; Louise</option>
+              <option value="lux">Lux Lighting</option>
+            </select>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground">Month:</span>

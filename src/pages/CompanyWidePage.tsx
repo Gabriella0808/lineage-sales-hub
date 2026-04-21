@@ -96,7 +96,6 @@ export default function CompanyWidePage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <h1 className="page-title">Company-Wide</h1>
-        <p className="page-subtitle">All reports in one place — filter by manager when needed</p>
       </div>
 
       <div

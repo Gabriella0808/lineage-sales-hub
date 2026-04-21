@@ -385,21 +385,25 @@ export function LiveKpiReport() {
             <thead>
               <tr className="border-b">
                 <th rowSpan={2} className="text-left p-2 font-medium text-muted-foreground align-bottom">Month</th>
-                {showB && <th colSpan={4} className="text-center p-2 font-semibold border-l bg-muted/30">Bookings</th>}
-                {showI && <th colSpan={4} className="text-center p-2 font-semibold border-l bg-muted/30">Invoiced</th>}
+                {showB && <th colSpan={6} className="text-center p-2 font-semibold border-l bg-muted/30">Bookings</th>}
+                {showI && <th colSpan={6} className="text-center p-2 font-semibold border-l bg-muted/30">Invoiced</th>}
               </tr>
               <tr className="border-b text-muted-foreground">
                 {showB && <>
-                  <th className="text-right p-2 font-medium border-l">2025</th>
-                  <th className="text-right p-2 font-medium">2026 P</th>
-                  <th className="text-right p-2 font-medium">Proj Growth %</th>
-                  <th className="text-right p-2 font-medium">YTD 2026 / % Goal</th>
+                  <th className="text-right p-2 font-medium border-l">26 Act</th>
+                  <th className="text-right p-2 font-medium">26 Proj</th>
+                  <th className="text-right p-2 font-medium">% Goal</th>
+                  <th className="text-right p-2 font-medium">25 Act</th>
+                  <th className="text-right p-2 font-medium">Container</th>
+                  <th className="text-right p-2 font-medium">Warehouse</th>
                 </>}
                 {showI && <>
-                  <th className="text-right p-2 font-medium border-l">2025</th>
-                  <th className="text-right p-2 font-medium">2026 P</th>
-                  <th className="text-right p-2 font-medium">YTD 2026</th>
+                  <th className="text-right p-2 font-medium border-l">26 Act</th>
+                  <th className="text-right p-2 font-medium">26 Proj</th>
                   <th className="text-right p-2 font-medium">% Goal</th>
+                  <th className="text-right p-2 font-medium">25 Act</th>
+                  <th className="text-right p-2 font-medium">Container</th>
+                  <th className="text-right p-2 font-medium">Warehouse</th>
                 </>}
               </tr>
             </thead>
@@ -410,27 +414,28 @@ export function LiveKpiReport() {
                   <tr key={r.m} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
                     {showB && <>
-                      <td className="p-2 text-right border-l">{formatCurrency(r.b25)}</td>
+                      <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdB)}</td>
                       <td className="p-2 text-right">
                         {selectedRep
                           ? formatCurrency(r.b26p)
                           : <EditableCurrency value={r.b26p} onSave={(v) => saveMonthly(r.m, "b26p", v)} />}
                       </td>
-                      <td className="p-2 text-right">{fmtPct(growth(r.b26p, r.b25))}</td>
-                      <td className="p-2 text-right">
-                        <span className="font-medium">{formatCurrency(r.ytdB)}</span>
-                        <span className="text-muted-foreground ml-1">/ {fmtPct(r.ytdB / r.b26p)}</span>
-                      </td>
+                      <td className="p-2 text-right">{fmtPct(r.ytdB / r.b26p)}</td>
+                      <td className="p-2 text-right">{formatCurrency(r.b25)}</td>
+                      <td className="p-2 text-right text-muted-foreground">—</td>
+                      <td className="p-2 text-right text-muted-foreground">—</td>
                     </>}
                     {showI && <>
-                      <td className="p-2 text-right border-l">{formatCurrency(r.i25)}</td>
+                      <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
                       <td className="p-2 text-right">
                         {selectedRep
                           ? formatCurrency(r.i26p)
                           : <EditableCurrency value={r.i26p} onSave={(v) => saveMonthly(r.m, "i26p", v)} />}
                       </td>
-                      <td className="p-2 text-right">{formatCurrency(r.ytdI)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
+                      <td className="p-2 text-right">{formatCurrency(r.i25)}</td>
+                      <td className="p-2 text-right text-muted-foreground">—</td>
+                      <td className="p-2 text-right text-muted-foreground">—</td>
                     </>}
                   </tr>
                 );
@@ -438,23 +443,27 @@ export function LiveKpiReport() {
               <tr className="border-t-2 font-semibold bg-muted/20">
                 <td className="p-2">TOTAL</td>
                 {showB && <>
-                  <td className="p-2 text-right border-l">{formatCurrency(sumB25)}</td>
+                  <td className="p-2 text-right border-l">{formatCurrency(sumYtdB)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumB26P)}</td>
-                  <td className="p-2 text-right">{fmtPct(growth(sumB26P, sumB25))}</td>
-                  <td className="p-2 text-right">{formatCurrency(sumYtdB)} / {fmtPct(sumYtdB / sumB26P)}</td>
+                  <td className="p-2 text-right">{fmtPct(sumYtdB / sumB26P)}</td>
+                  <td className="p-2 text-right">{formatCurrency(sumB25)}</td>
+                  <td className="p-2 text-right text-muted-foreground">—</td>
+                  <td className="p-2 text-right text-muted-foreground">—</td>
                 </>}
                 {showI && <>
-                  <td className="p-2 text-right border-l">{formatCurrency(sumI25)}</td>
+                  <td className="p-2 text-right border-l">{formatCurrency(sumYtdI)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumI26P)}</td>
-                  <td className="p-2 text-right">{formatCurrency(sumYtdI)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdI / sumI26P)}</td>
+                  <td className="p-2 text-right">{formatCurrency(sumI25)}</td>
+                  <td className="p-2 text-right text-muted-foreground">—</td>
+                  <td className="p-2 text-right text-muted-foreground">—</td>
                 </>}
               </tr>
               {monthFilter === "All" && (
                 <tr className="bg-accent/5 text-accent-foreground/80">
                   <td className="p-2 font-medium">ANNUALIZED</td>
-                  {showB && <td colSpan={4} className="p-2 text-right border-l font-medium">{formatCurrency(annualB)}</td>}
-                  {showI && <td colSpan={4} className="p-2 text-right border-l font-medium">{formatCurrency(annualI)}</td>}
+                  {showB && <td colSpan={6} className="p-2 text-right border-l font-medium">{formatCurrency(annualB)}</td>}
+                  {showI && <td colSpan={6} className="p-2 text-right border-l font-medium">{formatCurrency(annualI)}</td>}
                 </tr>
               )}
             </tbody>

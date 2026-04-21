@@ -147,8 +147,8 @@ function sumRepMonthly(keys: string[]): RepMonthRow[] | null {
 const MANAGER_TO_REPS: Record<string, string[]> = {
   "sergio":            ["Hospitality"],
   "chris de lisa":     ["Skip Camillo", "House"],
-  "will grisack":      ["Will G", "Jordan Shindell", "Barbara J", "Stewart Hunt", "Bruce Quillen", "Mike Durham", "Gary Fryer", "TN/KY"],
-  "mateo de lisa":     ["Mateo", "Dave Ervin", "Kerry", "Brad Robertson", "Peter Avella", "Jastal", "WI/IL"],
+  "will grisack":      ["Jordan Shindell", "Barbara J", "Stewart Hunt", "Bruce Quillen", "Mike Durham", "Gary Fryer", "TN/KY"],
+  "mateo de lisa":     ["Dave Ervin", "Kerry", "Brad Robertson", "Peter Avella", "Jastal", "WI/IL"],
   "justin jeangerard": ["House"],
 };
 

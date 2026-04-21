@@ -83,25 +83,25 @@ const MONTHLY = [
 ];
 
 const REP_BOOK = [
-  { name: "Internet",        book: 58406.18,  pct: 0.5186 },
-  { name: "Hospitality",     book: 154754.19, pct: 5.9521 },
-  { name: "House",           book: 66352.00,  pct: 1.4362 },
-  { name: "Skip Camillo",    book: 3578.00,   pct: 0.0409 },
-  { name: "Jordan Shindell", book: 71202.12,  pct: 0.9005 },
-  { name: "Brent H",         book: 0,         pct: 0 },
-  { name: "S Hunt",          book: 57005.00,  pct: 2.7145 },
-  { name: "Bruce Q",         book: 39227.50,  pct: 0.4264 },
-  { name: "Mike D",          book: 0,         pct: 0 },
-  { name: "Gary Fryer",      book: 0,         pct: 0 },
-  { name: "TN/KY",           book: 0,         pct: 0 },
-  { name: "MS/LA",           book: 0,         pct: 0 },
-  { name: "Steven Busk",     book: 0,         pct: 0 },
-  { name: "Dave Ervin",      book: 114013.26, pct: 0.5832 },
-  { name: "Brad R",          book: 5080.00,   pct: 0.2073 },
-  { name: "Peter Avella",    book: 2144.00,   pct: 0.0613 },
-  { name: "MI (open)",       book: 0,         pct: 0 },
-  { name: "Indiana (open)",  book: 0,         pct: 0 },
-  { name: "Justin",          book: 0,         pct: 0 },
+  { name: "Internet",         book: 58406.18,  pct: 0.5186 },
+  { name: "Hospitality",      book: 154754.19, pct: 5.9521 },
+  { name: "House",            book: 66352.00,  pct: 1.4362 },
+  { name: "Skip Camillo",     book: 3578.00,   pct: 0.0409 },
+  { name: "Jordan Shindell",  book: 71202.12,  pct: 0.9005 },
+  { name: "Brent Holbrook",   book: 0,         pct: 0 },
+  { name: "Stewart Hunt",     book: 57005.00,  pct: 2.7145 },
+  { name: "Bruce Quillen",    book: 39227.50,  pct: 0.4264 },
+  { name: "Mike Durham",      book: 138486.80, pct: 0.9051 },
+  { name: "Gary Fryer",       book: 0,         pct: 0 },
+  { name: "TN/KY",            book: 0,         pct: 0 },
+  { name: "MS/LA",            book: 0,         pct: 0 },
+  { name: "Steven Busk",      book: 0,         pct: 0 },
+  { name: "Dave Ervin",       book: 114013.26, pct: 0.5832 },
+  { name: "Brad Robertson",   book: 5080.00,   pct: 0.2073 },
+  { name: "Peter Avella",     book: 2144.00,   pct: 0.0613 },
+  { name: "MI (open)",        book: 0,         pct: 0 },
+  { name: "Indiana (open)",   book: 0,         pct: 0 },
+  { name: "Justin",           book: 0,         pct: 0 },
 ];
 
 // Maps each manager (lowercased) to the REP_BOOK rep names they oversee.
@@ -109,8 +109,8 @@ const REP_BOOK = [
 const MANAGER_TO_REPS: Record<string, string[]> = {
   "sergio":            ["Hospitality"],
   "chris de lisa":     ["Skip Camillo", "House"],
-  "will grisack":      ["Jordan Shindell", "Brent H", "S Hunt", "Bruce Q", "Mike D", "Gary Fryer", "TN/KY", "MS/LA"],
-  "mateo de lisa":     ["Steven Busk", "Dave Ervin", "Brad R", "Peter Avella", "MI (open)", "Indiana (open)"],
+  "will grisack":      ["Jordan Shindell", "Brent Holbrook", "Stewart Hunt", "Bruce Quillen", "Mike Durham", "Gary Fryer", "TN/KY", "MS/LA"],
+  "mateo de lisa":     ["Steven Busk", "Dave Ervin", "Brad Robertson", "Peter Avella", "MI (open)", "Indiana (open)"],
   "justin jeangerard": ["House", "Justin"],
 };
 

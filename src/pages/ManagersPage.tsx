@@ -571,8 +571,8 @@ export default function ManagersPage() {
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-2xl font-semibold">{formatCurrency(placeholder)}</p>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+                        <p className="text-2xl font-semibold">{label}</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{formatCurrency(placeholder)}</p>
                       </div>
                     </div>
                   </CardContent>

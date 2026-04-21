@@ -16,6 +16,12 @@ const BatchPayloadSchema = z.object({
   batches: z.array(SyncPayloadSchema).min(1).max(20),
 });
 
+const PrunePayloadSchema = z.object({
+  action: z.literal("prune"),
+  table: z.enum(["inventory"]),
+  keep_acctivate_ids: z.array(z.string()).max(50000),
+});
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -39,6 +45,37 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const supabase = createClient(supabaseUrl, supabaseKey);
     const results: Record<string, { synced: number; error?: string }> = {};
+
+    // Prune mode: delete rows whose acctivate_id is not in keep list
+    if (body.action === "prune") {
+      const { table, keep_acctivate_ids } = PrunePayloadSchema.parse(body);
+      const keepSet = new Set(keep_acctivate_ids);
+
+      const { data: existing, error: fetchErr } = await supabase
+        .from(table)
+        .select("id, acctivate_id")
+        .limit(50000);
+
+      if (fetchErr) throw fetchErr;
+
+      const toDeleteIds = (existing ?? [])
+        .filter((r: { id: string; acctivate_id: string | null }) => r.acctivate_id && !keepSet.has(r.acctivate_id))
+        .map((r: { id: string }) => r.id);
+
+      let deleted = 0;
+      const batchSize = 200;
+      for (let i = 0; i < toDeleteIds.length; i += batchSize) {
+        const batch = toDeleteIds.slice(i, i + batchSize);
+        const { error: delErr } = await supabase.from(table).delete().in("id", batch);
+        if (delErr) console.error("Delete batch error:", delErr.message);
+        else deleted += batch.length;
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, pruned: deleted, total_existing: existing?.length ?? 0 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
 
     // Support single table or batch mode
     const batches = body.batches ? BatchPayloadSchema.parse(body).batches : [SyncPayloadSchema.parse(body)];

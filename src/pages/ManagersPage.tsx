@@ -49,6 +49,7 @@ export default function ManagersPage() {
   const [travelPage, setTravelPage] = useState(0);
   const [travelDateFrom, setTravelDateFrom] = useState<Date | undefined>();
   const [travelDateTo, setTravelDateTo] = useState<Date | undefined>();
+  const [selectedLine, setSelectedLine] = useState<LineKey | null>(null);
   const isLoading = mgrLoading || repsLoading;
 
   const visibleManagers = useMemo(

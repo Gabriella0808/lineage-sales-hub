@@ -290,7 +290,7 @@ export function LiveKpiReport() {
           {selectedRep && (
             <>
               <span className="text-xs text-muted-foreground">
-                Showing <span className="font-semibold text-foreground">{selectedRep.name}</span> · live numbers from rep tab
+                Showing <span className="font-semibold text-foreground">{selectedRep.name}</span>
               </span>
               <button
                 onClick={() => setRepFilter("all")}

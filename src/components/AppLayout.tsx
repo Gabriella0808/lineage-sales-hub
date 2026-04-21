@@ -1,5 +1,5 @@
 
-import { LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings, UserCog, LogOut, LayoutGrid, CheckSquare } from "lucide-react";
+import { LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings, UserCog, LogOut, LayoutGrid, CheckSquare, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import lineageLogo from "@/assets/lineage-logo-white.png";
@@ -28,6 +28,7 @@ const navItems = [
   { title: "Directory", url: "/directory", icon: BookOpen },
   { title: "Company-wide", url: "/company-wide", icon: BarChart3 },
   { title: "Monday Boards", url: "/monday-boards", icon: LayoutGrid },
+  { title: "Inventory", url: "/inventory", icon: Package },
   { title: "My Tasks", url: "/tasks", icon: CheckSquare },
   { title: "Settings", url: "/settings", icon: Settings },
 ];

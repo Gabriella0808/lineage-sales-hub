@@ -18,6 +18,7 @@ import InvoicingReportPage from "@/pages/InvoicingReportPage";
 import CompanyWidePage from "@/pages/CompanyWidePage";
 import MondayBoardsPage from "@/pages/MondayBoardsPage";
 import TasksPage from "@/pages/TasksPage";
+import InventoryPage from "@/pages/InventoryPage";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "@/pages/NotFound";
 
@@ -49,6 +50,7 @@ const App = () => (
                       <Route path="/reports/invoicing" element={<CompanyWidePage />} />
                       <Route path="/monday-boards" element={<MondayBoardsPage />} />
                       <Route path="/tasks" element={<TasksPage />} />
+                      <Route path="/inventory" element={<InventoryPage />} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

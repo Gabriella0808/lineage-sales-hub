@@ -96,9 +96,9 @@ export default function CompanyWidePage() {
         <p className="page-subtitle">All reports in one place — filter by manager when needed</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+      <div className="grid gap-4 md:grid-cols-[200px_minmax(0,1fr)]">
         {/* Left rail — report list */}
-        <aside className="lg:sticky lg:top-4 lg:self-start">
+        <aside className="md:sticky md:top-4 md:self-start">
           <Card className="overflow-hidden">
             <CardContent className="p-0">
               {REPORT_GROUPS.map((group, gi) => (

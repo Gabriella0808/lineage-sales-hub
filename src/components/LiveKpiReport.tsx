@@ -103,6 +103,16 @@ const REP_BOOK = [
   { name: "WI/IL",       book: 0,         pct: 0 },
 ];
 
+// Maps each manager (lowercased) to the REP_BOOK rep names they oversee.
+// Drives the "Filter by Rep" dropdown when a manager is selected at the page level.
+const MANAGER_TO_REPS: Record<string, string[]> = {
+  "sergio":            ["Sergio"],
+  "chris de lisa":     ["Skip", "House"],
+  "will grisack":      ["Durham", "Quillen", "Shindell 1", "Shindell 2", "Stewart H", "Fryer", "TN/KY", "Barbara J"],
+  "mateo de lisa":     ["Ervin", "Avella", "Robertson"],
+  "justin jeangerard": ["House"],
+};
+
 const LINE_BOOK = [
   { m: "January",   luxP: 95650,  luxA: 209875, swP: 814550, swA: 389727, flP: 271875, flA: 196815 },
   { m: "February",  luxP: 94125,  luxA: 0, swP: 806800, swA: 0, flP: 276200, flA: 0 },

@@ -79,6 +79,7 @@ export default function InventoryPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
+  const [collectionFilter, setCollectionFilter] = useState<Set<string> | null>(null); // null = all
   const { items, loading, refreshing, lastSyncedAt, lastFetchedAt, usingMock, refresh } = useInventory();
 
   const counts = useMemo(() => {

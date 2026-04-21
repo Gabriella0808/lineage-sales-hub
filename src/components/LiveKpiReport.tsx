@@ -88,7 +88,7 @@ const REP_BOOK = [
   { name: "Hospitality",      book: 154754.19, pct: 5.9521 },
   { name: "House",            book: 66352.00,  pct: 1.4362 },
   { name: "Skip Camillo",     book: 3578.00,   pct: 0.0409 },
-  { name: "Will G",           book: 0,         pct: 0 },
+  
   { name: "Barbara J",        book: 108997.12, pct: 0.4137 },
   { name: "Mike Durham",      book: 138486.80, pct: 0.9051 },
   { name: "Bruce Quillen",    book: 39227.50,  pct: 0.4264 },

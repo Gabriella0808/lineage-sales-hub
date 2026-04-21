@@ -26,7 +26,7 @@ const navItems = [
   { title: "Sales Reps", url: "/reps", icon: Users },
   { title: "Dealers", url: "/dealers", icon: Store },
   { title: "Directory", url: "/directory", icon: BookOpen },
-  { title: "Company-wide", url: "/kpi", icon: BarChart3 },
+  { title: "Company-wide", url: "/company-wide", icon: BarChart3 },
   { title: "Monday Boards", url: "/monday-boards", icon: LayoutGrid },
   { title: "My Tasks", url: "/tasks", icon: CheckSquare },
   { title: "Settings", url: "/settings", icon: Settings },

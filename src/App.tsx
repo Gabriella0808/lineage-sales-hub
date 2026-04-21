@@ -15,6 +15,7 @@ import ManagersPage from "@/pages/ManagersPage";
 import SettingsPage from "@/pages/SettingsPage";
 import BookingsReportPage from "@/pages/BookingsReportPage";
 import InvoicingReportPage from "@/pages/InvoicingReportPage";
+import CompanyWidePage from "@/pages/CompanyWidePage";
 import MondayBoardsPage from "@/pages/MondayBoardsPage";
 import TasksPage from "@/pages/TasksPage";
 import AuthPage from "@/pages/AuthPage";
@@ -42,9 +43,10 @@ const App = () => (
                       
                       <Route path="/dealers" element={<DealersPage />} />
                       <Route path="/directory" element={<DirectoryPage />} />
-                      <Route path="/kpi" element={<KpiPage />} />
-                      <Route path="/reports/bookings" element={<BookingsReportPage />} />
-                      <Route path="/reports/invoicing" element={<InvoicingReportPage />} />
+                      <Route path="/kpi" element={<CompanyWidePage />} />
+                      <Route path="/company-wide" element={<CompanyWidePage />} />
+                      <Route path="/reports/bookings" element={<CompanyWidePage />} />
+                      <Route path="/reports/invoicing" element={<CompanyWidePage />} />
                       <Route path="/monday-boards" element={<MondayBoardsPage />} />
                       <Route path="/tasks" element={<TasksPage />} />
                       <Route path="/settings" element={<SettingsPage />} />

@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
 import {
   BarChart3, BookOpen, Receipt, Map as MapIcon, Store,
   Lightbulb, Wind, Leaf, Package, Warehouse, ChevronRight,
+  PanelLeftClose, PanelLeftOpen,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,6 +55,7 @@ export default function CompanyWidePage() {
   const location = useLocation();
   const reportParam = params.get("report") as ReportKey | null;
   const managerParam = params.get("manager") ?? "all";
+  const [collapsed, setCollapsed] = useState(false);
 
   // Deep-link old routes
   const pathDefault: ReportKey | null =
@@ -96,34 +99,65 @@ export default function CompanyWidePage() {
         <p className="page-subtitle">All reports in one place — filter by manager when needed</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-[200px_minmax(0,1fr)]">
+      <div
+        className={cn(
+          "grid gap-4 transition-[grid-template-columns] duration-300",
+          collapsed
+            ? "md:grid-cols-[44px_minmax(0,1fr)]"
+            : "md:grid-cols-[200px_minmax(0,1fr)]",
+        )}
+      >
         {/* Left rail — report list */}
         <aside className="md:sticky md:top-4 md:self-start">
           <Card className="overflow-hidden">
             <CardContent className="p-0">
+              <div className="flex items-center justify-between px-2 py-2 border-b border-border">
+                {!collapsed && (
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground pl-2">
+                    Reports
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 ml-auto"
+                  onClick={() => setCollapsed((c) => !c)}
+                  title={collapsed ? "Expand reports" : "Collapse reports"}
+                >
+                  {collapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                </Button>
+              </div>
               {REPORT_GROUPS.map((group, gi) => (
                 <div key={group.label} className={gi > 0 ? "border-t border-border" : ""}>
-                  <div className="px-4 pt-4 pb-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                      {group.label}
-                    </p>
-                  </div>
-                  <nav className="pb-2">
+                  {!collapsed && (
+                    <div className="px-4 pt-4 pb-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        {group.label}
+                      </p>
+                    </div>
+                  )}
+                  <nav className={cn("pb-2", collapsed && "pt-2")}>
                     {group.items.map(({ key, label, icon: Icon }) => {
                       const isActive = key === activeReport;
                       return (
                         <button
                           key={key}
                           onClick={() => setReport(key)}
+                          title={collapsed ? label : undefined}
                           className={cn(
-                            "w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors group",
+                            "w-full flex items-center gap-3 text-sm text-left transition-colors group",
                             "hover:bg-muted/50",
+                            collapsed ? "px-3 py-2.5 justify-center" : "px-4 py-2.5",
                             isActive && "bg-primary/10 text-primary font-medium border-l-2 border-primary -ml-px",
                           )}
                         >
                           <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
-                          <span className="flex-1 truncate">{label}</span>
-                          {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary" />}
+                          {!collapsed && (
+                            <>
+                              <span className="flex-1 truncate">{label}</span>
+                              {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary" />}
+                            </>
+                          )}
                         </button>
                       );
                     })}
@@ -164,6 +198,7 @@ export default function CompanyWidePage() {
     </div>
   );
 }
+
 
 /* ───────────────────────── Report renderer ───────────────────────── */
 

@@ -43,7 +43,7 @@ const REPORT_GROUPS: ReportGroup[] = [
       { key: "sw26",     label: "SW 26",     icon: Wind,      description: "Sea Winds line — YTD performance" },
       { key: "fl26",     label: "FL 26",     icon: Leaf,      description: "Finn & Louise line — YTD performance" },
       { key: "dc-total", label: "DC Total",  icon: Package,   description: "Direct container shipments" },
-      { key: "wc-total", label: "WC Total",  icon: Warehouse, description: "Warehouse / domestic shipments" },
+      { key: "wc-total", label: "WC Total",  icon: Warehouse, description: "Warehouse Container shipments" },
     ],
   },
 ];

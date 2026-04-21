@@ -82,26 +82,27 @@ const MONTHLY = [
   { m: "December",  b25: 1064722.83, b26p: 1007075, ytdB: 0,         i25: 718460.78,  i26p: 1007075, ytdI: 0 },
 ];
 
+// Sourced from Summary tab of KPI_2026.01.15_Live-3.xlsx (one entry per rep tab in the workbook)
 const REP_BOOK = [
   { name: "Internet",         book: 58406.18,  pct: 0.5186 },
   { name: "Hospitality",      book: 154754.19, pct: 5.9521 },
   { name: "House",            book: 66352.00,  pct: 1.4362 },
   { name: "Skip Camillo",     book: 3578.00,   pct: 0.0409 },
-  { name: "Jordan Shindell",  book: 71202.12,  pct: 0.9005 },
-  { name: "Brent Holbrook",   book: 0,         pct: 0 },
-  { name: "Stewart Hunt",     book: 57005.00,  pct: 2.7145 },
-  { name: "Bruce Quillen",    book: 39227.50,  pct: 0.4264 },
+  { name: "Will G",           book: 0,         pct: 0 },
+  { name: "Barbara J",        book: 108997.12, pct: 0.4137 },
   { name: "Mike Durham",      book: 138486.80, pct: 0.9051 },
+  { name: "Bruce Quillen",    book: 39227.50,  pct: 0.4264 },
+  { name: "Jordan Shindell",  book: 71202.12,  pct: 0.9005 },
+  { name: "Stewart Hunt",     book: 57005.00,  pct: 2.7145 },
   { name: "Gary Fryer",       book: 0,         pct: 0 },
   { name: "TN/KY",            book: 0,         pct: 0 },
-  { name: "MS/LA",            book: 0,         pct: 0 },
-  { name: "Steven Busk",      book: 0,         pct: 0 },
+  { name: "Mateo",            book: 0,         pct: 0 },
   { name: "Dave Ervin",       book: 114013.26, pct: 0.5832 },
-  { name: "Brad Robertson",   book: 5080.00,   pct: 0.2073 },
+  { name: "Kerry",            book: 4075.00,   pct: 0.1663 },
   { name: "Peter Avella",     book: 2144.00,   pct: 0.0613 },
-  { name: "MI (open)",        book: 0,         pct: 0 },
-  { name: "Indiana (open)",   book: 0,         pct: 0 },
-  { name: "Justin",           book: 0,         pct: 0 },
+  { name: "Brad Robertson",   book: 5080.00,   pct: 0.2073 },
+  { name: "Jastal",           book: 2373.00,   pct: 0.2373 },
+  { name: "WI/IL",            book: 0,         pct: 0 },
 ];
 
 // Maps display rep names (REP_BOOK) → keys in REP_MONTHLY (spreadsheet tabs).
@@ -111,16 +112,21 @@ const REP_NAME_TO_MONTHLY_KEYS: Record<string, string[]> = {
   "Hospitality":      ["Sergio"],
   "House":            ["House"],
   "Skip Camillo":     ["Skip"],
+  "Will G":           ["Will G"],
+  "Barbara J":        ["Barbara J"],
+  "Mike Durham":      ["Durham"],
+  "Bruce Quillen":    ["Quillen"],
   "Jordan Shindell":  ["Shindell 1", "Shindell 2"],
   "Stewart Hunt":     ["Stewart H"],
-  "Bruce Quillen":    ["Quillen"],
-  "Mike Durham":      ["Durham"],
   "Gary Fryer":       ["Fryer"],
   "TN/KY":            ["TN/KY"],
+  "Mateo":            ["Mateo"],
   "Dave Ervin":       ["Ervin"],
-  "Brad Robertson":   ["Robertson"],
+  "Kerry":            ["Kerry"],
   "Peter Avella":     ["Avella"],
-  // No spreadsheet data for: Brent Holbrook, MS/LA, Steven Busk, MI (open), Indiana (open), Justin
+  "Brad Robertson":   ["Robertson"],
+  "Jastal":           ["Jastal"],
+  "WI/IL":            ["WI/IL"],
 };
 
 function sumRepMonthly(keys: string[]): RepMonthRow[] | null {

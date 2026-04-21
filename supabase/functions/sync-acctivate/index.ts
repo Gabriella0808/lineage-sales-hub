@@ -51,12 +51,21 @@ Deno.serve(async (req: Request) => {
       const { table, keep_acctivate_ids } = PrunePayloadSchema.parse(body);
       const keepSet = new Set(keep_acctivate_ids);
 
-      const { data: existing, error: fetchErr } = await supabase
-        .from(table)
-        .select("id, acctivate_id")
-        .limit(50000);
-
-      if (fetchErr) throw fetchErr;
+      // Paginate through all rows (Supabase caps each request at 1000)
+      const existing: { id: string; acctivate_id: string | null }[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error: fetchErr } = await supabase
+          .from(table)
+          .select("id, acctivate_id")
+          .range(from, from + pageSize - 1);
+        if (fetchErr) throw fetchErr;
+        if (!data || data.length === 0) break;
+        existing.push(...(data as { id: string; acctivate_id: string | null }[]));
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
 
       const toDeleteIds = (existing ?? [])
         .filter((r: { id: string; acctivate_id: string | null }) => r.acctivate_id && !keepSet.has(r.acctivate_id))

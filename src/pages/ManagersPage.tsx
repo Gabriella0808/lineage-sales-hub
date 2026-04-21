@@ -147,6 +147,100 @@ export default function ManagersPage() {
     }
   };
 
+  // ── Line / channel report (placeholder) ──
+  if (selectedManager && detailView === "line-report" && selectedLine) {
+    const tile = LINE_TILES.find(t => t.key === selectedLine)!;
+    const Icon = tile.icon;
+    // Deterministic placeholder data
+    const seed = (selectedManager.id.charCodeAt(0) + tile.label.length * 7) % 9;
+    const ytdActual = (seed + 2) * 125000;
+    const ytdGoal = (seed + 3) * 130000;
+    const variancePct = ((ytdActual - ytdGoal) / ytdGoal) * 100;
+    const positive = variancePct >= 0;
+
+    return (
+      <div className="animate-fade-in">
+        <Button variant="ghost" size="sm" className="mb-4 -ml-2 text-muted-foreground" onClick={handleBack}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back
+        </Button>
+        <div className="flex items-center gap-3 mb-6">
+          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${tile.tone}`}>
+            <Icon className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold">{selectedManager.name} — {tile.label}</h1>
+            <p className="text-sm text-muted-foreground">Performance & dealer breakdown for this line</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">YTD Actual</p>
+              <p className="text-2xl font-semibold">{formatCurrency(ytdActual)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">YTD Goal</p>
+              <p className="text-2xl font-semibold">{formatCurrency(ytdGoal)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Variance</p>
+              <p className={`text-2xl font-semibold ${positive ? "text-green-600" : "text-destructive"}`}>
+                {positive ? "+" : ""}{variancePct.toFixed(1)}%
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Dealers in Line</p>
+              <p className="text-2xl font-semibold">{Math.max(3, mgrDealers.length - seed)}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Top Dealers — {tile.label}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="text-left p-3 font-medium text-muted-foreground">Dealer</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Rep</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">YTD Bookings</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">YTD Invoiced</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mgrDealers.slice(0, 8).map((d, i) => {
+                  const repName = managerReps.find(r => r.id === d.rep_id)?.name || "—";
+                  const b = ((seed + i + 1) * 41000);
+                  const inv = ((seed + i + 1) * 33000);
+                  return (
+                    <tr key={d.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                      <td className="p-3 font-medium">{d.name}</td>
+                      <td className="p-3 text-muted-foreground">{repName}</td>
+                      <td className="p-3 text-right tabular-nums">{formatCurrency(b)}</td>
+                      <td className="p-3 text-right tabular-nums">{formatCurrency(inv)}</td>
+                    </tr>
+                  );
+                })}
+                {mgrDealers.length === 0 && (
+                  <tr><td colSpan={4} className="p-8 text-center text-muted-foreground">No dealers found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // ── Territories detail view ──
   if (selectedManager && detailView === "territories") {
     return (

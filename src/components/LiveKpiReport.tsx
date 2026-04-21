@@ -427,6 +427,8 @@ export function LiveKpiReport() {
                   <th className="text-right p-2 font-medium">25 Act</th>
                   <th className="text-right p-2 font-medium">% Container</th>
                   <th className="text-right p-2 font-medium">% Warehouse</th>
+                </>}
+                {showI && <>
                   <th className="text-right p-2 font-medium border-l">26 Act</th>
                   <th className="text-right p-2 font-medium">26 Proj</th>
                   <th className="text-right p-2 font-medium">% Goal</th>

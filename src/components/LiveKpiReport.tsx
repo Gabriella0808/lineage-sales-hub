@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { formatCurrency } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Pencil } from "lucide-react";
-import { REP_MONTHLY } from "@/data/repMonthly";
+import { REP_MONTHLY, type RepMonthRow } from "@/data/repMonthly";
 
 const PROJ_STORAGE_KEY = "kpi_projections_2026_v1";
 

@@ -145,16 +145,23 @@ export default function InventoryPage() {
     return Array.from(counts.entries()).map(([name, value]) => ({ name, value }));
   }, [items]);
 
+  const allCollections = useMemo(() => {
+    const s = new Set<string>();
+    for (const it of items) s.add(it.collection);
+    return Array.from(s).sort();
+  }, [items]);
+
   const collectionsHealth = useMemo(() => {
     const map = new Map<string, { critical: number; healthy: number }>();
     for (const it of items) {
+      if (collectionFilter && !collectionFilter.has(it.collection)) continue;
       const entry = map.get(it.collection) ?? { critical: 0, healthy: 0 };
       if (["critical", "out-of-stock", "reorder-soon", "stockout-risk"].includes(it.status)) entry.critical++;
       else entry.healthy++;
       map.set(it.collection, entry);
     }
     return Array.from(map.entries()).map(([collection, v]) => ({ collection, ...v }));
-  }, [items]);
+  }, [items, collectionFilter]);
 
   return (
     <div className="space-y-6">

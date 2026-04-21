@@ -551,35 +551,41 @@ export default function ManagersPage() {
           </Card>
         </div>
 
-        {/* Line / channel tiles */}
-        <div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Lines & Channels</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            {LINE_TILES.map(({ key, label, icon: Icon, tone }) => {
-              // Deterministic placeholder revenue per manager × line
-              const seed = (selectedManager.id.charCodeAt(0) + key.length * 17) % 9;
-              const placeholder = (seed + 2) * 125000;
-              return (
-                <Card
-                  key={key}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => { setSelectedLine(key); setDetailView("line-report"); }}
-                >
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tone}`}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-2xl font-semibold">{label}</p>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{formatCurrency(placeholder)}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+        {/* Lines & Channels — segmented strip */}
+        <div className="mb-6">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-[0.14em]">Lines & Channels</h2>
+            <span className="text-[11px] text-muted-foreground">Click any line for details</span>
           </div>
+          <Card className="overflow-hidden">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-border">
+              {LINE_TILES.map(({ key, label, icon: Icon, tone }) => {
+                const seed = (selectedManager.id.charCodeAt(0) + key.length * 17) % 9;
+                const placeholder = (seed + 2) * 125000;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => { setSelectedLine(key); setDetailView("line-report"); }}
+                    className="group relative text-left p-5 hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className={`w-7 h-7 rounded-md flex items-center justify-center ${tone}`}>
+                        <Icon className="h-3.5 w-3.5" />
+                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {label}
+                      </span>
+                    </div>
+                    <p className="font-serif text-2xl tracking-tight text-foreground tabular-nums">
+                      {formatCurrency(placeholder)}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1">YTD revenue</p>
+                    <ChevronRight className="absolute top-5 right-4 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
         </div>
       </div>
     );

@@ -385,11 +385,6 @@ export default function InventoryPage() {
                     <td className={cn("px-4 py-3 text-right tabular-nums font-semibold", lowQty && "text-destructive")}>{it.available}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{it.avgMonthlySales}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{it.monthsSupply == null ? "—" : it.monthsSupply.toFixed(1)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button size="icon" variant="ghost" className="h-7 w-7">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Button>
-                    </td>
                   </tr>
                 );
               })}

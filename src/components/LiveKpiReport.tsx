@@ -154,8 +154,29 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
   );
 }
 
-export function LiveKpiReport() {
+export function LiveKpiReport({ managerName }: { managerName?: string } = {}) {
+  const allowedRepNames = useMemo(() => {
+    if (!managerName) return null; // null = all reps
+    const list = MANAGER_TO_REPS[managerName.trim().toLowerCase()];
+    return list ?? [];
+  }, [managerName]);
+
+  const visibleReps = useMemo(
+    () => allowedRepNames === null
+      ? REP_BOOK
+      : REP_BOOK.filter((r) => allowedRepNames.includes(r.name)),
+    [allowedRepNames],
+  );
+
   const [repFilter, setRepFilter] = useState<string>("all");
+
+  // Reset rep filter when manager scope changes and current rep isn't in scope.
+  useEffect(() => {
+    if (allowedRepNames && repFilter !== "all" && !allowedRepNames.includes(repFilter)) {
+      setRepFilter("all");
+    }
+  }, [allowedRepNames, repFilter]);
+
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("All");
   const [metricFilter, setMetricFilter] = useState<MetricFilter>("both");
   const [monthlyLineFilter, setMonthlyLineFilter] = useState<LineFilter>("all");

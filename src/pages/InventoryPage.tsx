@@ -74,7 +74,7 @@ function StatTile({ label, value, icon: Icon, accent, hint }: { label: string; v
 export default function InventoryPage() {
   const [filter, setFilter] = useState<"all" | InventoryStatus>("all");
   const [query, setQuery] = useState("");
-  const { items, loading, lastSyncedAt, usingMock } = useInventory();
+  const { items, loading, refreshing, lastSyncedAt, lastFetchedAt, usingMock, refresh } = useInventory();
 
   const counts = useMemo(() => {
     const c = { total: items.length, critical: 0, outOfStock: 0, reorder: 0, fast: 0 };

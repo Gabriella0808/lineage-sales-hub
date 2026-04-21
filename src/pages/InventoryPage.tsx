@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { inventoryItems, type InventoryStatus } from "@/data/inventoryMock";
+import { type InventoryStatus } from "@/data/inventoryMock";
+import { useInventory } from "@/hooks/useInventory";
 import { cn } from "@/lib/utils";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip,

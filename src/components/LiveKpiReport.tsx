@@ -147,13 +147,13 @@ function sumRepMonthly(keys: string[]): RepMonthRow[] | null {
 }
 
 // Maps each manager (lowercased) to the REP_BOOK rep names they oversee.
-// Drives the "Filter by Rep" dropdown when a manager is selected at the page level.
+// Only includes reps that exist as tabs in the KPI workbook.
 const MANAGER_TO_REPS: Record<string, string[]> = {
   "sergio":            ["Hospitality"],
   "chris de lisa":     ["Skip Camillo", "House"],
-  "will grisack":      ["Jordan Shindell", "Brent Holbrook", "Stewart Hunt", "Bruce Quillen", "Mike Durham", "Gary Fryer", "TN/KY", "MS/LA"],
-  "mateo de lisa":     ["Steven Busk", "Dave Ervin", "Brad Robertson", "Peter Avella", "MI (open)", "Indiana (open)"],
-  "justin jeangerard": ["House", "Justin"],
+  "will grisack":      ["Will G", "Jordan Shindell", "Barbara J", "Stewart Hunt", "Bruce Quillen", "Mike Durham", "Gary Fryer", "TN/KY"],
+  "mateo de lisa":     ["Mateo", "Dave Ervin", "Kerry", "Brad Robertson", "Peter Avella", "Jastal", "WI/IL"],
+  "justin jeangerard": ["House"],
 };
 
 const LINE_BOOK = [

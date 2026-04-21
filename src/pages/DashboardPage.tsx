@@ -1,8 +1,8 @@
-import { Users, Map, Store, AlertTriangle, CheckCircle, LogIn, Trophy, TrendingUp } from "lucide-react";
+import { Users, Map, Store, LogIn, Trophy, TrendingUp, ArrowUp } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
-import { useSalesReps, useTerritories, useDealers, useDealerSales, useRepTerritories, formatCurrency, getInitials } from "@/hooks/usePortalData";
+import { useSalesReps, useTerritories, useDealers, useDealerSales, useRepTerritories, useManagers, formatCurrency, getInitials } from "@/hooks/usePortalData";
 import { useSignInFeed } from "@/hooks/useSignInFeed";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 

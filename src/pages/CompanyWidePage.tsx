@@ -37,7 +37,7 @@ const REPORT_GROUPS: ReportGroup[] = [
     ],
   },
   {
-    label: "Lines & Channels",
+    label: "Dealers",
     items: [
       { key: "lux26",    label: "Lux 26",    icon: Lightbulb, description: "Lux line — YTD performance" },
       { key: "sw26",     label: "SW 26",     icon: Wind,      description: "Sea Winds line — YTD performance" },

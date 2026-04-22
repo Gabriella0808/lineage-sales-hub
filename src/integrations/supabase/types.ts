@@ -338,6 +338,7 @@ export type Database = {
       manager_tasks: {
         Row: {
           assigned_manager_id: string | null
+          assigned_user_id: string | null
           completed_at: string | null
           created_at: string
           description: string | null
@@ -350,6 +351,7 @@ export type Database = {
         }
         Insert: {
           assigned_manager_id?: string | null
+          assigned_user_id?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
@@ -362,6 +364,7 @@ export type Database = {
         }
         Update: {
           assigned_manager_id?: string | null
+          assigned_user_id?: string | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
@@ -847,6 +850,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assignable_users: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string
+          role: string
+          user_id: string
+        }[]
+      }
       current_manager_id: { Args: never; Returns: string }
       current_manager_rep_ids: { Args: never; Returns: string[] }
       current_rep_id: { Args: never; Returns: string }

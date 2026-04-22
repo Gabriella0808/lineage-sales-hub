@@ -16,7 +16,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -26,9 +28,11 @@ import { format } from "date-fns";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
 
-interface Manager {
-  id: string;
-  name: string;
+interface AssignableUser {
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  role: "admin" | "manager" | "rep";
 }
 
 interface Profile {
@@ -45,6 +49,7 @@ interface Task {
   completed_at: string | null;
   created_at: string;
   assigned_manager_id: string | null;
+  assigned_user_id: string | null;
   user_id: string;
 }
 
@@ -55,11 +60,17 @@ const COLUMNS: { key: Status; label: string; tone: string }[] = [
   { key: "done", label: "Done", tone: "border-success/40" },
 ];
 
+const ROLE_LABEL: Record<AssignableUser["role"], string> = {
+  admin: "Admins",
+  manager: "Sales Managers",
+  rep: "Sales Reps",
+};
+
 export default function TasksPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [managers, setManagers] = useState<Manager[]>([]);
+  const [assignees, setAssignees] = useState<AssignableUser[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const readKey = user ? `tasks_read_${user.id}` : "";
@@ -99,15 +110,15 @@ export default function TasksPage() {
     description: string;
     status: Status;
     due_date: string;
-    assigned_manager_id: string;
-  }>({ title: "", description: "", status: "todo", due_date: "", assigned_manager_id: "" });
+    assigned_user_id: string;
+  }>({ title: "", description: "", status: "todo", due_date: "", assigned_user_id: "" });
 
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const [tasksRes, managersRes, profilesRes] = await Promise.all([
+    const [tasksRes, assigneesRes, profilesRes] = await Promise.all([
       supabase.from("manager_tasks").select("*").order("created_at", { ascending: false }),
-      supabase.from("managers").select("id, name").order("name"),
+      supabase.rpc("assignable_users"),
       supabase.from("profiles").select("user_id, full_name"),
     ]);
     if (tasksRes.error) {
@@ -115,10 +126,10 @@ export default function TasksPage() {
     } else {
       setTasks((tasksRes.data ?? []) as Task[]);
     }
-    if (managersRes.error) {
-      toast({ title: "Failed to load managers", description: managersRes.error.message, variant: "destructive" });
+    if (assigneesRes.error) {
+      toast({ title: "Failed to load assignees", description: assigneesRes.error.message, variant: "destructive" });
     } else {
-      setManagers((managersRes.data ?? []) as Manager[]);
+      setAssignees((assigneesRes.data ?? []) as AssignableUser[]);
     }
     if (!profilesRes.error) {
       setProfiles((profilesRes.data ?? []) as Profile[]);
@@ -133,7 +144,7 @@ export default function TasksPage() {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ title: "", description: "", status: "todo", due_date: "", assigned_manager_id: "" });
+    setForm({ title: "", description: "", status: "todo", due_date: "", assigned_user_id: "" });
   };
 
   const openNew = () => {
@@ -148,7 +159,7 @@ export default function TasksPage() {
       description: t.description ?? "",
       status: t.status,
       due_date: t.due_date ?? "",
-      assigned_manager_id: t.assigned_manager_id ?? "",
+      assigned_user_id: t.assigned_user_id ?? "",
     });
     setOpen(true);
   };
@@ -164,7 +175,7 @@ export default function TasksPage() {
       description: form.description.trim() || null,
       status: form.status,
       due_date: form.due_date || null,
-      assigned_manager_id: form.assigned_manager_id || null,
+      assigned_user_id: form.assigned_user_id || null,
     } as any;
     if (editing) {
       const { error } = await supabase
@@ -207,6 +218,22 @@ export default function TasksPage() {
       setTasks((ts) => ts.filter((t) => t.id !== id));
     }
   };
+
+  const assigneeName = (userId: string | null) => {
+    if (!userId) return null;
+    const a = assignees.find((x) => x.user_id === userId);
+    if (a) return a.full_name?.trim() || a.email || "Unknown";
+    const p = profiles.find((x) => x.user_id === userId);
+    return p?.full_name?.trim() || "Unknown";
+  };
+
+  const groupedAssignees = (["admin", "manager", "rep"] as const).map((role) => ({
+    role,
+    label: ROLE_LABEL[role],
+    items: assignees
+      .filter((a) => a.role === role)
+      .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? "")),
+  }));
 
   return (
     <div className="space-y-6">
@@ -254,15 +281,24 @@ export default function TasksPage() {
                 />
               </div>
               <Select
-                value={form.assigned_manager_id || "unassigned"}
-                onValueChange={(v) => setForm({ ...form, assigned_manager_id: v === "unassigned" ? "" : v })}
+                value={form.assigned_user_id || "unassigned"}
+                onValueChange={(v) => setForm({ ...form, assigned_user_id: v === "unassigned" ? "" : v })}
               >
-                <SelectTrigger><SelectValue placeholder="Assign to manager" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Assign to..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {managers.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                  ))}
+                  {groupedAssignees.map((g) =>
+                    g.items.length > 0 ? (
+                      <SelectGroup key={g.role}>
+                        <SelectLabel>{g.label}</SelectLabel>
+                        {g.items.map((a) => (
+                          <SelectItem key={a.user_id} value={a.user_id}>
+                            {a.full_name?.trim() || a.email || "Unknown"}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ) : null,
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -276,7 +312,7 @@ export default function TasksPage() {
 
       {!loading && user && (() => {
         const assignedToMe = tasks.filter(
-          (t) => t.user_id !== user.id && t.assigned_manager_id && t.status !== "done",
+          (t) => t.user_id !== user.id && t.assigned_user_id === user.id && t.status !== "done",
         );
         const unread = assignedToMe.filter((t) => !readIds.has(t.id));
         if (unread.length === 0) return null;
@@ -358,13 +394,13 @@ export default function TasksPage() {
                               {format(new Date(t.due_date), "MMM d")}
                             </p>
                           )}
-                          {t.assigned_manager_id && (
+                          {t.assigned_user_id && (
                             <p className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1 ml-2">
                               <User className="h-3 w-3" />
-                              {managers.find((m) => m.id === t.assigned_manager_id)?.name ?? "Unknown"}
+                              {assigneeName(t.assigned_user_id)}
                             </p>
                           )}
-                          {user && t.user_id !== user.id && (
+                          {user && t.user_id !== user.id && t.assigned_user_id === user.id && (
                             <p className="text-[11px] text-primary mt-1 font-medium">Assigned to you</p>
                           )}
                         </div>

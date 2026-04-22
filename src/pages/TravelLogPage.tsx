@@ -504,7 +504,7 @@ export default function TravelLogPage() {
                           />
                           <div className="flex-1 px-3 py-2 min-w-0">
                             <p className="text-xs font-semibold truncate">
-                              {t.purpose || "Trip"}
+                              {t.notes || t.purpose || "Trip"}
                             </p>
                             <p className="text-[11px] text-muted-foreground truncate">
                               {t.salesperson_name ?? "Unknown"}
@@ -563,7 +563,7 @@ export default function TravelLogPage() {
               const end = t.travel_end_date ? parseISO(t.travel_end_date) : start;
               const isMulti = !isSameDay(start, end);
               const color = colorFor(t.salesperson_name);
-              const title = t.purpose || "Trip";
+              const title = t.notes || t.purpose || "Trip";
               return (
                 <button
                   key={t.id}
@@ -683,9 +683,11 @@ export default function TravelLogPage() {
                       className="h-3 w-3 rounded-full"
                       style={{ backgroundColor: colorFor(detailTrip.salesperson_name) }}
                     />
-                    {detailTrip.salesperson_name ?? "Unknown"}
+                    {detailTrip.notes || detailTrip.purpose || "Trip"}
                   </DialogTitle>
-                  <DialogDescription>Travel details</DialogDescription>
+                  <DialogDescription>
+                    {detailTrip.salesperson_name ?? "Unknown salesperson"}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3 py-2">
                   <div>
@@ -705,14 +707,6 @@ export default function TravelLogPage() {
                         <MapPin className="h-3 w-3" /> Purpose
                       </p>
                       <p className="text-sm">{detailTrip.purpose}</p>
-                    </div>
-                  )}
-                  {detailTrip.notes && (
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1 mb-1">
-                        <FileText className="h-3 w-3" /> Notes
-                      </p>
-                      <p className="text-sm whitespace-pre-wrap text-muted-foreground">{detailTrip.notes}</p>
                     </div>
                   )}
                   {detailTrip.approval_status && (

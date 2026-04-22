@@ -16,6 +16,7 @@ import {
   useManagers, useSalesReps, useDealers, useTerritories,
   useRepTerritories, useDealerSales, formatCurrency, getTerritoryName,
 } from "@/hooks/usePortalData";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type ReportKey =
   | "live-kpi" | "bookings" | "invoicing"

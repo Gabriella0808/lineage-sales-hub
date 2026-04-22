@@ -233,6 +233,18 @@ export default function TravelLogPage() {
     return `${Math.floor(d / 365)}y ago`;
   };
 
+  // Upcoming trips (today or future), sorted by start date
+  const upcomingTrips = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return travel
+      .filter((t) => {
+        const end = t.travel_end_date ? parseISO(t.travel_end_date) : parseISO(t.travel_date);
+        return end >= today;
+      })
+      .sort((a, b) => (a.travel_date < b.travel_date ? -1 : 1));
+  }, [travel]);
+
   // Salesperson list for legend
   const peopleInMonth = useMemo(() => {
     const set = new Map<string, string>(); // name -> color

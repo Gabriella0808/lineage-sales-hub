@@ -504,7 +504,7 @@ export default function TravelLogPage() {
                           />
                           <div className="flex-1 px-3 py-2 min-w-0">
                             <p className="text-xs font-semibold truncate">
-                              {t.purpose || "Trip"}
+                              {t.notes || t.purpose || "Trip"}
                             </p>
                             <p className="text-[11px] text-muted-foreground truncate">
                               {t.salesperson_name ?? "Unknown"}
@@ -563,7 +563,7 @@ export default function TravelLogPage() {
               const end = t.travel_end_date ? parseISO(t.travel_end_date) : start;
               const isMulti = !isSameDay(start, end);
               const color = colorFor(t.salesperson_name);
-              const title = t.purpose || "Trip";
+              const title = t.notes || t.purpose || "Trip";
               return (
                 <button
                   key={t.id}

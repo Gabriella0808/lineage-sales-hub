@@ -192,12 +192,12 @@ export default function CompanyWidePage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground hidden sm:inline">Manager</span>
-              <Select value={managerParam} onValueChange={setManager}>
+              <Select value={effectiveManagerId} onValueChange={setManager} disabled={isRep}>
                 <SelectTrigger className="w-[220px] h-9">
                   <SelectValue placeholder="All managers" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All managers</SelectItem>
+                  {!isRep && <SelectItem value="all">All managers</SelectItem>}
                   {visibleManagers.map((m) => (
                     <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                   ))}
@@ -208,12 +208,13 @@ export default function CompanyWidePage() {
 
           <ReportPane
             reportKey={activeReport}
-            managerId={managerParam}
+            managerId={effectiveManagerId}
             managerName={
-              managerParam === "all"
+              effectiveManagerId === "all"
                 ? undefined
-                : visibleManagers.find((m) => m.id === managerParam)?.name
+                : visibleManagers.find((m) => m.id === effectiveManagerId)?.name
             }
+            lockedRepName={isRep ? currentRep?.name ?? null : null}
           />
         </section>
       </div>

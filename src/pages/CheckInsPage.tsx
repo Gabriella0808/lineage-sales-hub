@@ -686,6 +686,23 @@ export default function CheckInsPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {form.outcome === "follow_up" && (
+                      <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-1.5">
+                        <Label htmlFor="follow-up-date" className="text-xs font-medium">
+                          Follow-up date
+                        </Label>
+                        <Input
+                          id="follow-up-date"
+                          type="date"
+                          min={format(new Date(), "yyyy-MM-dd")}
+                          value={form.follow_up_date}
+                          onChange={(e) => setForm({ ...form, follow_up_date: e.target.value })}
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          A task will be added to "My Tasks" and you'll get a notification.
+                        </p>
+                      </div>
+                    )}
                     <Textarea
                       placeholder="Notes from this visit..."
                       value={form.notes}

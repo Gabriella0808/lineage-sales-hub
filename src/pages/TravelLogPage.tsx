@@ -268,7 +268,7 @@ export default function TravelLogPage() {
             <CalendarDays className="h-5 w-5 text-primary" /> Sales Calendar
           </h1>
           <p className="text-sm text-muted-foreground">
-            Track travel schedules for your sales team. Synced with monday.com.
+            Track travel schedules for your sales team.
           </p>
         </div>
         <div className="flex items-center gap-2">

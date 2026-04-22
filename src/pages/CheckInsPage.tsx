@@ -395,6 +395,95 @@ export default function CheckInsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="h-9">
+                <Plus className="h-4 w-4" /> Add dealer
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add a dealer account</DialogTitle>
+                <DialogDescription>
+                  Create a new dealer. Coordinates are auto-filled from city/state.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="d-name">Dealer name *</Label>
+                  <Input
+                    id="d-name"
+                    value={newDealer.name}
+                    onChange={(e) => setNewDealer({ ...newDealer, name: e.target.value })}
+                    maxLength={200}
+                    placeholder="Acme Furniture Co."
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2 space-y-1.5">
+                    <Label htmlFor="d-city">City</Label>
+                    <Input
+                      id="d-city"
+                      value={newDealer.city}
+                      onChange={(e) => setNewDealer({ ...newDealer, city: e.target.value })}
+                      maxLength={100}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="d-state">State</Label>
+                    <Input
+                      id="d-state"
+                      value={newDealer.state}
+                      onChange={(e) => setNewDealer({ ...newDealer, state: e.target.value })}
+                      maxLength={2}
+                      placeholder="UT"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="d-phone">Phone</Label>
+                    <Input
+                      id="d-phone"
+                      type="tel"
+                      value={newDealer.phone}
+                      onChange={(e) => setNewDealer({ ...newDealer, phone: e.target.value })}
+                      maxLength={30}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="d-email">Email</Label>
+                    <Input
+                      id="d-email"
+                      type="email"
+                      value={newDealer.email}
+                      onChange={(e) => setNewDealer({ ...newDealer, email: e.target.value })}
+                      maxLength={255}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="d-website">Website</Label>
+                  <Input
+                    id="d-website"
+                    type="url"
+                    value={newDealer.website}
+                    onChange={(e) => setNewDealer({ ...newDealer, website: e.target.value })}
+                    maxLength={255}
+                    placeholder="https://"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddOpen(false)} disabled={addSaving}>
+                  Cancel
+                </Button>
+                <Button onClick={addDealer} disabled={addSaving || !newDealer.name.trim()}>
+                  {addSaving ? "Saving..." : "Add dealer"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             {geocoding && (
               <span className="inline-flex items-center gap-1">

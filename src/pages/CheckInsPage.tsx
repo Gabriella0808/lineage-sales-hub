@@ -154,7 +154,7 @@ export default function CheckInsPage() {
   // Load dealers + check-ins
   const load = async () => {
     setLoading(true);
-    const [dealersRes, checkInsRes, travelRes] = await Promise.all([
+    const [dealersRes, checkInsRes] = await Promise.all([
       supabase
         .from("dealers")
         .select("id, name, city, state, status, rep_id, lat, lng")
@@ -163,11 +163,6 @@ export default function CheckInsPage() {
         .from("dealer_check_ins")
         .select("*")
         .order("visit_date", { ascending: false }),
-      supabase
-        .from("travel_log")
-        .select("id, rep_id, salesperson_name, travel_date, travel_end_date, purpose, approval_status, monday_id")
-        .order("travel_date", { ascending: false })
-        .limit(50),
     ]);
     if (dealersRes.error) {
       toast({ title: "Failed to load dealers", description: dealersRes.error.message, variant: "destructive" });
@@ -178,9 +173,6 @@ export default function CheckInsPage() {
       toast({ title: "Failed to load check-ins", description: checkInsRes.error.message, variant: "destructive" });
     } else {
       setCheckIns((checkInsRes.data ?? []) as CheckIn[]);
-    }
-    if (!travelRes.error) {
-      setTravel((travelRes.data ?? []) as TravelEntry[]);
     }
     setLoading(false);
   };

@@ -10,6 +10,8 @@ import { formatDistanceToNow } from "date-fns";
 const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function DashboardPage() {
+  const { data: roleInfo } = useUserRole();
+  const role = roleInfo?.role ?? "rep";
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: territories = [], isLoading: terLoading } = useTerritories();
   const { data: dealers = [], isLoading: dlrLoading } = useDealers();

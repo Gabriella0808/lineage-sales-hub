@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Company-wide",    url: "/company-wide",  icon: BarChart3,       roles: ["admin"] },
   { title: "Team Performance",url: "/company-wide",  icon: BarChart3,       roles: ["manager"] },
   { title: "My Performance",  url: "/company-wide",  icon: BarChart3,       roles: ["rep"] },
-  { title: "Monday Boards",   url: "/monday-boards", icon: LayoutGrid,      roles: ["admin", "manager", "rep"] },
+  { title: "Monday Boards",   url: "/monday-boards", icon: LayoutGrid,      roles: ["admin", "manager"] },
   { title: "Check-Ins",       url: "/check-ins",     icon: MapPinned,       roles: ["manager"] },
   { title: "Travel Log",      url: "/travel-log",    icon: Plane,           roles: ["admin", "manager"] },
   { title: "Inventory",       url: "/inventory",     icon: Package,         roles: ["admin"] },

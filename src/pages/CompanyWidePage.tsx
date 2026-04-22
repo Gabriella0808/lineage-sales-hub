@@ -16,6 +16,7 @@ import {
   useManagers, useSalesReps, useDealers, useTerritories,
   useRepTerritories, useDealerSales, formatCurrency, getTerritoryName,
 } from "@/hooks/usePortalData";
+import { useUserRole } from "@/hooks/useUserRole";
 
 type ReportKey =
   | "live-kpi" | "bookings" | "invoicing"
@@ -68,16 +69,30 @@ export default function CompanyWidePage() {
     : (pathDefault ?? "live-kpi");
 
   const { data: managers = [] } = useManagers();
+  const { data: reps = [] } = useSalesReps();
+  const { data: roleInfo } = useUserRole();
+  const isRep = !!roleInfo?.isRep;
+  const currentRep = useMemo(
+    () => (roleInfo?.repId ? reps.find((r) => r.id === roleInfo.repId) ?? null : null),
+    [reps, roleInfo?.repId],
+  );
+  const repManagerId = currentRep?.manager_id ?? null;
+
   const visibleManagers = useMemo(
     () => managers.filter((m) => {
+      // For sales reps, only show their own manager.
+      if (isRep) return repManagerId ? m.id === repManagerId : false;
       const n = m.name.trim().toLowerCase();
       const e = m.email?.trim().toLowerCase();
       if (n === "sales" || e === "sales@lineage-collections.com") return false;
       if (n === "scott grisack") return false;
       return true;
     }),
-    [managers],
+    [managers, isRep, repManagerId],
   );
+
+  // Force the manager filter to the rep's manager when logged in as a rep.
+  const effectiveManagerId = isRep && repManagerId ? repManagerId : managerParam;
 
   const setReport = (key: ReportKey) => {
     const next = new URLSearchParams(params);
@@ -177,12 +192,12 @@ export default function CompanyWidePage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground hidden sm:inline">Manager</span>
-              <Select value={managerParam} onValueChange={setManager}>
+              <Select value={effectiveManagerId} onValueChange={setManager} disabled={isRep}>
                 <SelectTrigger className="w-[220px] h-9">
                   <SelectValue placeholder="All managers" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All managers</SelectItem>
+                  {!isRep && <SelectItem value="all">All managers</SelectItem>}
                   {visibleManagers.map((m) => (
                     <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                   ))}
@@ -193,12 +208,13 @@ export default function CompanyWidePage() {
 
           <ReportPane
             reportKey={activeReport}
-            managerId={managerParam}
+            managerId={effectiveManagerId}
             managerName={
-              managerParam === "all"
+              effectiveManagerId === "all"
                 ? undefined
-                : visibleManagers.find((m) => m.id === managerParam)?.name
+                : visibleManagers.find((m) => m.id === effectiveManagerId)?.name
             }
+            lockedRepName={isRep ? currentRep?.name ?? null : null}
           />
         </section>
       </div>
@@ -209,11 +225,11 @@ export default function CompanyWidePage() {
 
 /* ───────────────────────── Report renderer ───────────────────────── */
 
-function ReportPane({ reportKey, managerId, managerName }: { reportKey: ReportKey; managerId: string; managerName?: string }) {
+function ReportPane({ reportKey, managerId, managerName, lockedRepName }: { reportKey: ReportKey; managerId: string; managerName?: string; lockedRepName?: string | null }) {
   if (reportKey === "live-kpi") {
     return (
       <div>
-        <LiveKpiReport managerName={managerName} />
+        <LiveKpiReport managerName={managerName} lockedRepName={lockedRepName} />
       </div>
     );
   }

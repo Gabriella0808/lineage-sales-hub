@@ -193,12 +193,13 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
   );
 }
 
-export function LiveKpiReport({ managerName }: { managerName?: string } = {}) {
+export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: string; lockedRepName?: string | null } = {}) {
   const allowedRepNames = useMemo(() => {
+    if (lockedRepName) return [lockedRepName];
     if (!managerName) return null; // null = all reps
     const list = MANAGER_TO_REPS[managerName.trim().toLowerCase()];
     return list ?? [];
-  }, [managerName]);
+  }, [managerName, lockedRepName]);
 
   const visibleReps = useMemo(
     () => allowedRepNames === null
@@ -207,14 +208,18 @@ export function LiveKpiReport({ managerName }: { managerName?: string } = {}) {
     [allowedRepNames],
   );
 
-  const [repFilter, setRepFilter] = useState<string>("all");
+  const [repFilter, setRepFilter] = useState<string>(lockedRepName ?? "all");
 
   // Reset rep filter when manager scope changes and current rep isn't in scope.
   useEffect(() => {
+    if (lockedRepName) {
+      if (repFilter !== lockedRepName) setRepFilter(lockedRepName);
+      return;
+    }
     if (allowedRepNames && repFilter !== "all" && !allowedRepNames.includes(repFilter)) {
       setRepFilter("all");
     }
-  }, [allowedRepNames, repFilter]);
+  }, [allowedRepNames, repFilter, lockedRepName]);
 
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("All");
   const [metricFilter, setMetricFilter] = useState<MetricFilter>("both");
@@ -372,16 +377,19 @@ export function LiveKpiReport({ managerName }: { managerName?: string } = {}) {
           <select
             value={repFilter}
             onChange={(e) => setRepFilter(e.target.value)}
-            className="h-9 px-3 rounded-md border bg-background text-sm font-medium min-w-[200px]"
+            disabled={!!lockedRepName}
+            className="h-9 px-3 rounded-md border bg-background text-sm font-medium min-w-[200px] disabled:opacity-70 disabled:cursor-not-allowed"
           >
-            <option value="all">
-              {allowedRepNames === null ? "All Reps (Combined)" : `All ${managerName}'s Reps (Combined)`}
-            </option>
+            {!lockedRepName && (
+              <option value="all">
+                {allowedRepNames === null ? "All Reps (Combined)" : `All ${managerName}'s Reps (Combined)`}
+              </option>
+            )}
             {[...visibleReps].sort((a, b) => a.name.localeCompare(b.name)).map((r) => (
               <option key={r.name} value={r.name}>{r.name}</option>
             ))}
           </select>
-          {allowedRepNames !== null && visibleReps.length === 0 && (
+          {!lockedRepName && allowedRepNames !== null && visibleReps.length === 0 && (
             <span className="text-xs text-muted-foreground">No reps mapped for this manager yet.</span>
           )}
           {selectedRep && (
@@ -389,12 +397,14 @@ export function LiveKpiReport({ managerName }: { managerName?: string } = {}) {
               <span className="text-xs text-muted-foreground">
                 Showing <span className="font-semibold text-foreground">{selectedRep.name}</span>
               </span>
-              <button
-                onClick={() => setRepFilter("all")}
-                className="ml-auto text-xs text-primary hover:underline"
-              >
-                Clear filter
-              </button>
+              {!lockedRepName && (
+                <button
+                  onClick={() => setRepFilter("all")}
+                  className="ml-auto text-xs text-primary hover:underline"
+                >
+                  Clear filter
+                </button>
+              )}
             </>
           )}
         </div>

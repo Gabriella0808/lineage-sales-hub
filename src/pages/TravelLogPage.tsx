@@ -233,6 +233,18 @@ export default function TravelLogPage() {
     return `${Math.floor(d / 365)}y ago`;
   };
 
+  // Upcoming trips (today or future), sorted by start date
+  const upcomingTrips = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return travel
+      .filter((t) => {
+        const end = t.travel_end_date ? parseISO(t.travel_end_date) : parseISO(t.travel_date);
+        return end >= today;
+      })
+      .sort((a, b) => (a.travel_date < b.travel_date ? -1 : 1));
+  }, [travel]);
+
   // Salesperson list for legend
   const peopleInMonth = useMemo(() => {
     const set = new Map<string, string>(); // name -> color
@@ -466,6 +478,76 @@ export default function TravelLogPage() {
                 {name}
               </span>
             ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Upcoming Trips */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-primary" /> Upcoming Trips
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {upcomingTrips.length} scheduled {upcomingTrips.length === 1 ? "trip" : "trips"}
+            </p>
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : upcomingTrips.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">No upcoming trips scheduled.</p>
+        ) : (
+          <div className="space-y-2">
+            {upcomingTrips.map((t) => {
+              const start = parseISO(t.travel_date);
+              const end = t.travel_end_date ? parseISO(t.travel_end_date) : start;
+              const isMulti = !isSameDay(start, end);
+              const color = colorFor(t.salesperson_name);
+              const title = t.purpose || "Trip";
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setDetailTrip(t)}
+                  className="w-full text-left rounded-lg border bg-muted/20 hover:bg-accent/40 hover:border-primary transition-colors flex items-stretch overflow-hidden group"
+                >
+                  <span
+                    className="w-1.5 shrink-0"
+                    style={{ backgroundColor: color }}
+                    aria-hidden
+                  />
+                  <div className="flex-1 flex items-center justify-between gap-3 px-4 py-3 min-w-0">
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate group-hover:text-primary">
+                        {title}
+                      </p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                        <span
+                          className="h-1.5 w-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: color }}
+                        />
+                        {t.salesperson_name ?? "Unknown"}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {t.approval_status && (
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                          {t.approval_status}
+                        </p>
+                      )}
+                      <p className="text-xs font-medium">
+                        {isMulti
+                          ? `${format(start, "MMM d")} – ${format(end, "MMM d")}`
+                          : format(start, "MMM d, yyyy")}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </Card>

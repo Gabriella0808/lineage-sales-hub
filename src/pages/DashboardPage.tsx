@@ -152,8 +152,16 @@ export default function DashboardPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <h1 className="page-title">Sales Overview</h1>
-        <p className="page-subtitle">{reps.length} reps • {territories.length} territories • {dealers.length} dealers</p>
+        <h1 className="page-title">
+          {role === "admin" && "Sales Overview"}
+          {role === "manager" && "Team Overview"}
+          {role === "rep" && "My Overview"}
+        </h1>
+        <p className="page-subtitle">
+          {role === "rep"
+            ? `${dealers.length} dealers • ${territories.length} territories assigned to you`
+            : `${reps.length} reps • ${territories.length} territories • ${dealers.length} dealers`}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">

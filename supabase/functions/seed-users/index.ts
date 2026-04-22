@@ -13,6 +13,7 @@ const USERS = [
   "justin@lineage-collections.com",
   "scott@lineage-collections.com",
   "sergio@lineage-collections.com",
+  "brent@lineage-collections.com",
 ];
 
 const PASSWORD = "Lineage2026!";

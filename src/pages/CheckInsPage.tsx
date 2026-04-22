@@ -90,6 +90,7 @@ export default function CheckInsPage() {
     visit_date: format(new Date(), "yyyy-MM-dd"),
     outcome: "positive",
     notes: "",
+    follow_up_date: "",
   });
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -312,6 +313,10 @@ export default function CheckInsPage() {
 
   const saveCheckIn = async () => {
     if (!user || !selected) return;
+    if (form.outcome === "follow_up" && !form.follow_up_date) {
+      toast({ title: "Follow-up date required", description: "Pick a date for the follow-up task.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
     const { data, error } = await supabase
       .from("dealer_check_ins")
@@ -324,8 +329,8 @@ export default function CheckInsPage() {
       })
       .select()
       .single();
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast({ title: "Failed to save check-in", description: error.message, variant: "destructive" });
       return;
     }
@@ -333,8 +338,45 @@ export default function CheckInsPage() {
     if (data) {
       setCheckIns((prev) => [data as CheckIn, ...prev]);
     }
-    setForm({ visit_date: format(new Date(), "yyyy-MM-dd"), outcome: "positive", notes: "" });
-    toast({ title: "Check-in logged" });
+
+    // If follow-up, create a task + notification
+    if (form.outcome === "follow_up" && form.follow_up_date) {
+      const taskTitle = `Follow up with ${selected.name}`;
+      const taskDesc = form.notes.trim()
+        ? `From check-in on ${form.visit_date}: ${form.notes.trim()}`
+        : `From check-in on ${form.visit_date}`;
+      const { data: taskRow, error: taskErr } = await supabase
+        .from("manager_tasks")
+        .insert({
+          user_id: user.id,
+          assigned_user_id: user.id,
+          title: taskTitle,
+          description: taskDesc,
+          due_date: form.follow_up_date,
+          status: "todo",
+        })
+        .select("id")
+        .single();
+      if (taskErr) {
+        toast({ title: "Check-in saved, task failed", description: taskErr.message, variant: "destructive" });
+      } else {
+        // Self-notification confirming the follow-up was scheduled
+        await supabase.from("notifications").insert({
+          user_id: user.id,
+          type: "follow_up_scheduled",
+          title: "Follow-up scheduled",
+          body: `${taskTitle} — due ${format(new Date(form.follow_up_date), "MMM d, yyyy")}`,
+          link: "/tasks",
+          related_id: taskRow?.id ?? null,
+        });
+        toast({ title: "Follow-up task created", description: `Due ${format(new Date(form.follow_up_date), "MMM d, yyyy")}` });
+      }
+    } else {
+      toast({ title: "Check-in logged" });
+    }
+
+    setSaving(false);
+    setForm({ visit_date: format(new Date(), "yyyy-MM-dd"), outcome: "positive", notes: "", follow_up_date: "" });
   };
 
   const addDealer = async () => {
@@ -644,6 +686,23 @@ export default function CheckInsPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {form.outcome === "follow_up" && (
+                      <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-1.5">
+                        <Label htmlFor="follow-up-date" className="text-xs font-medium">
+                          Follow-up date
+                        </Label>
+                        <Input
+                          id="follow-up-date"
+                          type="date"
+                          min={format(new Date(), "yyyy-MM-dd")}
+                          value={form.follow_up_date}
+                          onChange={(e) => setForm({ ...form, follow_up_date: e.target.value })}
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          A task will be added to "My Tasks" and you'll get a notification.
+                        </p>
+                      </div>
+                    )}
                     <Textarea
                       placeholder="Notes from this visit..."
                       value={form.notes}

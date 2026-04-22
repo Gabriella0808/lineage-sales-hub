@@ -397,12 +397,14 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
               <span className="text-xs text-muted-foreground">
                 Showing <span className="font-semibold text-foreground">{selectedRep.name}</span>
               </span>
-              <button
-                onClick={() => setRepFilter("all")}
-                className="ml-auto text-xs text-primary hover:underline"
-              >
-                Clear filter
-              </button>
+              {!lockedRepName && (
+                <button
+                  onClick={() => setRepFilter("all")}
+                  className="ml-auto text-xs text-primary hover:underline"
+                >
+                  Clear filter
+                </button>
+              )}
             </>
           )}
         </div>

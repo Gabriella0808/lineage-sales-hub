@@ -426,13 +426,13 @@ export default function TravelLogPage() {
             const inMonth = isSameMonth(d, cursor);
             const isSel = isSameDay(d, selectedDate);
             const isToday = isSameDay(d, new Date());
-            return (
+            const dayBtn = (
               <button
                 key={key}
                 type="button"
                 onClick={() => setSelectedDate(d)}
                 className={[
-                  "relative min-h-[88px] border-b border-r p-2 text-left transition-colors",
+                  "relative min-h-[88px] w-full border-b border-r p-2 text-left transition-colors",
                   inMonth ? "bg-card" : "bg-muted/20",
                   isSel ? "ring-2 ring-primary ring-inset z-10" : "",
                   "hover:bg-accent/40",
@@ -459,7 +459,6 @@ export default function TravelLogPage() {
                   {trips.slice(0, 6).map((t, idx) => (
                     <span
                       key={`${t.id}-${idx}`}
-                      title={t.salesperson_name ?? ""}
                       className="h-1.5 w-1.5 rounded-full"
                       style={{ backgroundColor: colorFor(t.salesperson_name) }}
                     />
@@ -469,6 +468,62 @@ export default function TravelLogPage() {
                   )}
                 </div>
               </button>
+            );
+
+            if (trips.length === 0) return <div key={key}>{dayBtn}</div>;
+
+            return (
+              <HoverCard key={key} openDelay={120} closeDelay={80}>
+                <HoverCardTrigger asChild>{dayBtn}</HoverCardTrigger>
+                <HoverCardContent
+                  side="top"
+                  align="center"
+                  className="w-72 p-0 overflow-hidden"
+                >
+                  <div className="px-3 py-2 border-b bg-muted/30">
+                    <p className="text-xs font-semibold">{format(d, "MMMM d")}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {trips.length} {trips.length === 1 ? "trip" : "trips"}
+                    </p>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {trips.map((t) => {
+                      const ts = parseISO(t.travel_date);
+                      const te = t.travel_end_date ? parseISO(t.travel_end_date) : ts;
+                      const multi = !isSameDay(ts, te);
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDetailTrip(t);
+                          }}
+                          className="w-full text-left flex items-stretch border-b last:border-b-0 hover:bg-accent/40 transition-colors"
+                        >
+                          <span
+                            className="w-1 shrink-0"
+                            style={{ backgroundColor: colorFor(t.salesperson_name) }}
+                          />
+                          <div className="flex-1 px-3 py-2 min-w-0">
+                            <p className="text-xs font-semibold truncate">
+                              {t.purpose || "Trip"}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground truncate">
+                              {t.salesperson_name ?? "Unknown"}
+                            </p>
+                            {multi && (
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                {format(ts, "MMM d")} → {format(te, "MMM d")}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
             );
           })}
         </div>

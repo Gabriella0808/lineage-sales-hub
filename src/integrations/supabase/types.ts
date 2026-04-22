@@ -106,6 +106,47 @@ export type Database = {
         }
         Relationships: []
       }
+      dealer_check_ins: {
+        Row: {
+          created_at: string
+          dealer_id: string
+          id: string
+          notes: string | null
+          outcome: string | null
+          updated_at: string
+          user_id: string
+          visit_date: string
+        }
+        Insert: {
+          created_at?: string
+          dealer_id: string
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          updated_at?: string
+          user_id: string
+          visit_date?: string
+        }
+        Update: {
+          created_at?: string
+          dealer_id?: string
+          id?: string
+          notes?: string | null
+          outcome?: string | null
+          updated_at?: string
+          user_id?: string
+          visit_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealer_check_ins_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dealer_sales: {
         Row: {
           booking_count: number | null
@@ -168,6 +209,8 @@ export type Database = {
           engagement: string | null
           id: string
           last_contact: string | null
+          lat: number | null
+          lng: number | null
           name: string
           phone: string | null
           rep_id: string | null
@@ -186,6 +229,8 @@ export type Database = {
           engagement?: string | null
           id?: string
           last_contact?: string | null
+          lat?: number | null
+          lng?: number | null
           name: string
           phone?: string | null
           rep_id?: string | null
@@ -204,6 +249,8 @@ export type Database = {
           engagement?: string | null
           id?: string
           last_contact?: string | null
+          lat?: number | null
+          lng?: number | null
           name?: string
           phone?: string | null
           rep_id?: string | null

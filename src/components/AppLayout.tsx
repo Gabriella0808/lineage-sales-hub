@@ -1,7 +1,7 @@
 
 import {
   LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings,
-  UserCog, LogOut, LayoutGrid, CheckSquare, Package,
+  UserCog, LogOut, LayoutGrid, CheckSquare, Package, MapPinned,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Team Performance",url: "/company-wide",  icon: BarChart3,       roles: ["manager"] },
   { title: "My Performance",  url: "/company-wide",  icon: BarChart3,       roles: ["rep"] },
   { title: "Monday Boards",   url: "/monday-boards", icon: LayoutGrid,      roles: ["admin", "manager", "rep"] },
+  { title: "Check-Ins",       url: "/check-ins",     icon: MapPinned,       roles: ["manager"] },
   { title: "Inventory",       url: "/inventory",     icon: Package,         roles: ["admin"] },
   { title: "My Tasks",        url: "/tasks",         icon: CheckSquare,     roles: ["admin", "manager", "rep"] },
   { title: "Settings",        url: "/settings",      icon: Settings,        roles: ["admin", "manager", "rep"] },

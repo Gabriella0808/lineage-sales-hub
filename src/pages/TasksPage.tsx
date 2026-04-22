@@ -287,7 +287,9 @@ export default function TasksPage() {
                 <SelectTrigger><SelectValue placeholder="Assign to..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {[...assignees]
+                  {Array.from(
+                    new Map(assignees.map((a) => [a.user_id, a])).values(),
+                  )
                     .sort((a, b) =>
                       (a.full_name?.trim() || a.email || "").localeCompare(
                         b.full_name?.trim() || b.email || "",

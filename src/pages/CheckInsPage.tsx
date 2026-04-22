@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
-import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Plus } from "lucide-react";
+import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Plus, Plane } from "lucide-react";
 
 interface Dealer {
   id: string;
@@ -55,6 +55,17 @@ interface CheckIn {
   notes: string | null;
   outcome: string | null;
   created_at: string;
+}
+
+interface TravelEntry {
+  id: string;
+  rep_id: string | null;
+  salesperson_name: string | null;
+  travel_date: string;
+  travel_end_date: string | null;
+  purpose: string | null;
+  approval_status: string | null;
+  monday_id: string | null;
 }
 
 const OUTCOMES = [
@@ -82,6 +93,7 @@ export default function CheckInsPage() {
   const [token, setToken] = useState<string | null>(null);
   const [dealers, setDealers] = useState<Dealer[]>([]);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  const [travel, setTravel] = useState<TravelEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [geocoding, setGeocoding] = useState(false);
   const [search, setSearch] = useState("");
@@ -154,7 +166,7 @@ export default function CheckInsPage() {
   // Load dealers + check-ins
   const load = async () => {
     setLoading(true);
-    const [dealersRes, checkInsRes] = await Promise.all([
+    const [dealersRes, checkInsRes, travelRes] = await Promise.all([
       supabase
         .from("dealers")
         .select("id, name, city, state, status, rep_id, lat, lng")
@@ -163,6 +175,11 @@ export default function CheckInsPage() {
         .from("dealer_check_ins")
         .select("*")
         .order("visit_date", { ascending: false }),
+      supabase
+        .from("travel_log")
+        .select("id, rep_id, salesperson_name, travel_date, travel_end_date, purpose, approval_status, monday_id")
+        .order("travel_date", { ascending: false })
+        .limit(50),
     ]);
     if (dealersRes.error) {
       toast({ title: "Failed to load dealers", description: dealersRes.error.message, variant: "destructive" });
@@ -173,6 +190,9 @@ export default function CheckInsPage() {
       toast({ title: "Failed to load check-ins", description: checkInsRes.error.message, variant: "destructive" });
     } else {
       setCheckIns((checkInsRes.data ?? []) as CheckIn[]);
+    }
+    if (!travelRes.error) {
+      setTravel((travelRes.data ?? []) as TravelEntry[]);
     }
     setLoading(false);
   };
@@ -570,60 +590,124 @@ export default function CheckInsPage() {
         )}
       </Card>
 
-      {/* Recent activity strip */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold">Recent check-ins</h2>
-          <span className="text-xs text-muted-foreground">{checkIns.length} total</span>
-        </div>
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : checkIns.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">
-            No check-ins yet. Click any dealer pin to log your first visit.
-          </p>
-        ) : (
-          <ul className="divide-y">
-            {checkIns.slice(0, 8).map((c) => {
-              const d = dealers.find((x) => x.id === c.dealer_id);
-              const canDelete = c.user_id === user?.id;
-              return (
-                <li key={c.id} className="py-2 flex items-start justify-between gap-3 text-sm">
-                  <div className="min-w-0">
-                    <p className="font-medium truncate">{d?.name ?? "Unknown dealer"}</p>
-                    {c.notes && (
-                      <p className="text-xs text-muted-foreground line-clamp-1">{c.notes}</p>
-                    )}
-                  </div>
-                  <div className="flex items-start gap-2 shrink-0">
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(c.visit_date), "MMM d, yyyy")}
-                      </p>
-                      {c.outcome && (
-                        <Badge variant="secondary" className="text-[10px] mt-0.5">
-                          {OUTCOMES.find((o) => o.value === c.outcome)?.label ?? c.outcome}
-                        </Badge>
+      {/* Recent activity + Travel log */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="p-4 md:col-span-2">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold">Recent check-ins</h2>
+            <span className="text-xs text-muted-foreground">{checkIns.length} total</span>
+          </div>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : checkIns.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">
+              No check-ins yet. Click any dealer pin to log your first visit.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {checkIns.slice(0, 8).map((c) => {
+                const d = dealers.find((x) => x.id === c.dealer_id);
+                const canDelete = c.user_id === user?.id;
+                return (
+                  <li key={c.id} className="py-2 flex items-start justify-between gap-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium truncate">{d?.name ?? "Unknown dealer"}</p>
+                      {c.notes && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">{c.notes}</p>
                       )}
                     </div>
-                    {canDelete && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() => deleteCheckIn(c.id)}
-                        aria-label="Delete check-in"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
+                    <div className="flex items-start gap-2 shrink-0">
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(c.visit_date), "MMM d, yyyy")}
+                        </p>
+                        {c.outcome && (
+                          <Badge variant="secondary" className="text-[10px] mt-0.5">
+                            {OUTCOMES.find((o) => o.value === c.outcome)?.label ?? c.outcome}
+                          </Badge>
+                        )}
+                      </div>
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteCheckIn(c.id)}
+                          aria-label="Delete check-in"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        {/* Travel log sidebar — synced from monday.com */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold flex items-center gap-1.5">
+              <Plane className="h-3.5 w-3.5 text-primary" /> Travel log
+            </h2>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+              monday.com
+            </span>
+          </div>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : travel.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">
+              No travel records synced yet.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {(() => {
+                const byPerson = new Map<string, TravelEntry>();
+                for (const t of travel) {
+                  const key = t.salesperson_name || t.rep_id || t.id;
+                  const cur = byPerson.get(key);
+                  if (!cur || cur.travel_date < t.travel_date) byPerson.set(key, t);
+                }
+                return Array.from(byPerson.values())
+                  .sort((a, b) => (a.travel_date < b.travel_date ? 1 : -1))
+                  .slice(0, 8)
+                  .map((t) => {
+                    const days = Math.floor(
+                      (Date.now() - new Date(t.travel_date).getTime()) / 86400000,
+                    );
+                    return (
+                      <li key={t.id} className="py-2 text-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">
+                              {t.salesperson_name ?? "Unknown rep"}
+                            </p>
+                            {t.purpose && (
+                              <p className="text-xs text-muted-foreground line-clamp-1">
+                                {t.purpose}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs font-medium">
+                              {format(new Date(t.travel_date), "MMM d")}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {days === 0 ? "today" : `${days}d ago`}
+                            </p>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  });
+              })()}
+            </ul>
+          )}
+        </Card>
+      </div>
 
       {/* Dealer detail / log check-in sheet */}
       <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>

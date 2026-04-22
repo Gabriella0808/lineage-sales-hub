@@ -39,18 +39,17 @@ const App = () => (
                   <AppLayout>
                     <Routes>
                       <Route path="/" element={<DashboardPage />} />
-                      <Route path="/managers" element={<ManagersPage />} />
-                      <Route path="/reps" element={<SalesRepsPage />} />
-                      
+                      <Route path="/managers" element={<ProtectedRoute allow={["admin"]}><ManagersPage /></ProtectedRoute>} />
+                      <Route path="/reps" element={<ProtectedRoute allow={["admin", "manager"]}><SalesRepsPage /></ProtectedRoute>} />
                       <Route path="/dealers" element={<DealersPage />} />
-                      <Route path="/directory" element={<DirectoryPage />} />
+                      <Route path="/directory" element={<ProtectedRoute allow={["admin", "manager"]}><DirectoryPage /></ProtectedRoute>} />
                       <Route path="/kpi" element={<CompanyWidePage />} />
                       <Route path="/company-wide" element={<CompanyWidePage />} />
                       <Route path="/reports/bookings" element={<CompanyWidePage />} />
                       <Route path="/reports/invoicing" element={<CompanyWidePage />} />
                       <Route path="/monday-boards" element={<MondayBoardsPage />} />
                       <Route path="/tasks" element={<TasksPage />} />
-                      <Route path="/inventory" element={<InventoryPage />} />
+                      <Route path="/inventory" element={<ProtectedRoute allow={["admin", "manager"]}><InventoryPage /></ProtectedRoute>} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

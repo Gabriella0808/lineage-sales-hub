@@ -769,15 +769,100 @@ export type Database = {
           },
         ]
       }
+      user_managers: {
+        Row: {
+          created_at: string
+          manager_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          manager_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          manager_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_managers_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_reps: {
+        Row: {
+          created_at: string
+          rep_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          rep_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          rep_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_reps_rep_id_fkey"
+            columns: ["rep_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      current_manager_id: { Args: never; Returns: string }
+      current_manager_rep_ids: { Args: never; Returns: string[] }
+      current_rep_id: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
       is_assigned_manager: { Args: { _manager_id: string }; Returns: boolean }
       user_id_for_manager: { Args: { _manager_id: string }; Returns: string }
     }
     Enums: {
+      app_role: "admin" | "manager" | "rep"
       manager_task_status: "todo" | "in_progress" | "blocked" | "done"
     }
     CompositeTypes: {
@@ -906,6 +991,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "manager", "rep"],
       manager_task_status: ["todo", "in_progress", "blocked", "done"],
     },
   },

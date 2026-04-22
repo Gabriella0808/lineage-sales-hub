@@ -1,41 +1,51 @@
 
-import { LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings, UserCog, LogOut, LayoutGrid, CheckSquare, Package } from "lucide-react";
+import {
+  LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings,
+  UserCog, LogOut, LayoutGrid, CheckSquare, Package,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole, type AppRole } from "@/hooks/useUserRole";
 import lineageLogo from "@/assets/lineage-logo-white.png";
 import { NavLink } from "@/components/NavLink";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter,
+  SidebarHeader, SidebarProvider, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar";
 
-const navItems = [
-  { title: "Overview", url: "/", icon: LayoutDashboard },
-  { title: "Sales Managers", url: "/managers", icon: UserCog },
-  { title: "Sales Reps", url: "/reps", icon: Users },
-  { title: "Dealers", url: "/dealers", icon: Store },
-  { title: "Directory", url: "/directory", icon: BookOpen },
-  { title: "Company-wide", url: "/company-wide", icon: BarChart3 },
-  { title: "Monday Boards", url: "/monday-boards", icon: LayoutGrid },
-  { title: "Inventory", url: "/inventory", icon: Package },
-  { title: "My Tasks", url: "/tasks", icon: CheckSquare },
-  { title: "Settings", url: "/settings", icon: Settings },
+type NavItem = {
+  title: string;
+  url: string;
+  icon: typeof LayoutDashboard;
+  roles: AppRole[]; // who can see this item
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { title: "Overview",        url: "/",              icon: LayoutDashboard, roles: ["admin", "manager", "rep"] },
+  { title: "Sales Managers",  url: "/managers",      icon: UserCog,         roles: ["admin"] },
+  { title: "Sales Reps",      url: "/reps",          icon: Users,           roles: ["admin", "manager"] },
+  { title: "My Dealers",      url: "/dealers",       icon: Store,           roles: ["rep"] },
+  { title: "Dealers",         url: "/dealers",       icon: Store,           roles: ["admin", "manager"] },
+  { title: "Directory",       url: "/directory",     icon: BookOpen,        roles: ["admin", "manager"] },
+  { title: "Company-wide",    url: "/company-wide",  icon: BarChart3,       roles: ["admin"] },
+  { title: "Team Performance",url: "/company-wide",  icon: BarChart3,       roles: ["manager"] },
+  { title: "My Performance",  url: "/company-wide",  icon: BarChart3,       roles: ["rep"] },
+  { title: "Monday Boards",   url: "/monday-boards", icon: LayoutGrid,      roles: ["admin", "manager", "rep"] },
+  { title: "Inventory",       url: "/inventory",     icon: Package,         roles: ["admin", "manager"] },
+  { title: "My Tasks",        url: "/tasks",         icon: CheckSquare,     roles: ["admin", "manager", "rep"] },
+  { title: "Settings",        url: "/settings",      icon: Settings,        roles: ["admin", "manager", "rep"] },
 ];
 
 function SidebarNav() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { data: roleInfo } = useUserRole();
+  const role = roleInfo?.role ?? "rep";
+
+  // de-dupe by url+title in case two role-specific labels collide
+  const items = NAV_ITEMS.filter((i) => i.roles.includes(role));
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -49,7 +59,7 @@ function SidebarNav() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild size="default">
                     <NavLink
@@ -77,7 +87,7 @@ function SidebarNav() {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-sidebar-accent-foreground truncate">Lineage Collections</p>
-              <p className="text-[11px] text-sidebar-muted truncate">Sales Portal</p>
+              <p className="text-[11px] text-sidebar-muted truncate capitalize">{role} portal</p>
             </div>
           )}
         </div>
@@ -111,10 +121,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
 function SignOutButton() {
   const { user, signOut } = useAuth();
+  const { data: roleInfo } = useUserRole();
   if (!user) return null;
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground hidden md:inline truncate max-w-[180px]">{user.email}</span>
+      <div className="hidden md:flex flex-col items-end leading-tight">
+        <span className="text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</span>
+        {roleInfo && (
+          <span className="text-[10px] uppercase tracking-wide text-primary font-semibold">
+            {roleInfo.role}
+          </span>
+        )}
+      </div>
       <NotificationsBell />
       <Button variant="ghost" size="sm" onClick={() => signOut()} className="h-8">
         <LogOut className="h-3.5 w-3.5 mr-1" /> Sign out

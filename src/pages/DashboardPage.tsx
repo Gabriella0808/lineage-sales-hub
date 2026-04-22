@@ -2,6 +2,7 @@ import { Users, Map, Store, LogIn, Trophy, TrendingUp, ArrowUp } from "lucide-re
 import { StatCard } from "@/components/StatCard";
 import { useSalesReps, useTerritories, useDealers, useDealerSales, useRepTerritories, useManagers, formatCurrency, getInitials } from "@/hooks/usePortalData";
 import { useSignInFeed } from "@/hooks/useSignInFeed";
+import { useUserRole } from "@/hooks/useUserRole";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
@@ -9,6 +10,8 @@ import { formatDistanceToNow } from "date-fns";
 const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export default function DashboardPage() {
+  const { data: roleInfo } = useUserRole();
+  const role = roleInfo?.role ?? "rep";
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: territories = [], isLoading: terLoading } = useTerritories();
   const { data: dealers = [], isLoading: dlrLoading } = useDealers();
@@ -149,17 +152,26 @@ export default function DashboardPage() {
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <h1 className="page-title">Sales Overview</h1>
-        <p className="page-subtitle">{reps.length} reps • {territories.length} territories • {dealers.length} dealers</p>
+        <h1 className="page-title">
+          {role === "admin" && "Sales Overview"}
+          {role === "manager" && "Team Overview"}
+          {role === "rep" && "My Overview"}
+        </h1>
+        <p className="page-subtitle">
+          {role === "rep"
+            ? `${dealers.length} dealers • ${territories.length} territories assigned to you`
+            : `${reps.length} reps • ${territories.length} territories • ${dealers.length} dealers`}
+        </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        <StatCard title="Sales Reps" value={reps.length} icon={Users} trend="neutral" subtitle="assigned" />
+        {role !== "rep" && (
+          <StatCard title={role === "manager" ? "My Reps" : "Sales Reps"} value={reps.length} icon={Users} trend="neutral" subtitle="assigned" />
+        )}
         <StatCard title="Territories" value={territories.length} icon={Map} trend="neutral" subtitle="active" />
-        <StatCard title="Dealers" value={dealers.length} icon={Store} trend="neutral" subtitle="total" />
+        <StatCard title={role === "rep" ? "My Dealers" : "Dealers"} value={dealers.length} icon={Store} trend="neutral" subtitle="total" />
         <StatCard title={`${currentYear} Revenue`} value={formatCurrency(totalRevenue)} trend="neutral" variant="accent" />
         <StatCard title="Orders" value={totalOrders.toLocaleString()} trend="neutral" subtitle={String(currentYear)} variant="success" />
-        
       </div>
 
       {/* Sales Leaderboard — full width */}
@@ -277,8 +289,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Row: Monthly Rep Performance + Recent Sign-Ins */}
-      <div className="grid lg:grid-cols-3 gap-5">
-        <div className="glass-card p-5 lg:col-span-2">
+      <div className={role === "admin" ? "grid lg:grid-cols-3 gap-5" : "grid lg:grid-cols-1 gap-5"}>
+        <div className={role === "admin" ? "glass-card p-5 lg:col-span-2" : "glass-card p-5"}>
           <h3 className="text-sm font-semibold mb-1">Monthly Rep Performance ($K) — {currentYear}</h3>
           <p className="text-[11px] text-muted-foreground mb-3">Top 5 reps by sales per month</p>
           <div className="h-[240px]">
@@ -308,31 +320,33 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold mb-1 flex items-center gap-2">
-            <LogIn className="h-4 w-4 text-muted-foreground" /> Recent Sign-Ins
-          </h3>
-          <p className="text-[11px] text-muted-foreground mb-4">Who has logged into the portal</p>
-          <div className="space-y-3">
-            {signIns.length > 0 ? signIns.map(s => (
-              <div key={s.id} className="flex items-start gap-3">
-                <div className="mt-0.5 h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-semibold text-primary">
-                    {(s.full_name ?? "?").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                  </span>
+        {role === "admin" && (
+          <div className="glass-card p-5">
+            <h3 className="text-sm font-semibold mb-1 flex items-center gap-2">
+              <LogIn className="h-4 w-4 text-muted-foreground" /> Recent Sign-Ins
+            </h3>
+            <p className="text-[11px] text-muted-foreground mb-4">Who has logged into the portal</p>
+            <div className="space-y-3">
+              {signIns.length > 0 ? signIns.map(s => (
+                <div key={s.id} className="flex items-start gap-3">
+                  <div className="mt-0.5 h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-[10px] font-semibold text-primary">
+                      {(s.full_name ?? "?").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium truncate">{s.full_name ?? "Unknown user"}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {formatDistanceToNow(new Date(s.signed_in_at), { addSuffix: true })}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">{s.full_name ?? "Unknown user"}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {formatDistanceToNow(new Date(s.signed_in_at), { addSuffix: true })}
-                  </p>
-                </div>
-              </div>
-            )) : (
-              <p className="text-sm text-muted-foreground">No sign-ins recorded yet.</p>
-            )}
+              )) : (
+                <p className="text-sm text-muted-foreground">No sign-ins recorded yet.</p>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

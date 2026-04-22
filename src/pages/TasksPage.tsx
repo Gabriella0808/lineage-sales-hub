@@ -287,18 +287,17 @@ export default function TasksPage() {
                 <SelectTrigger><SelectValue placeholder="Assign to..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {groupedAssignees.map((g) =>
-                    g.items.length > 0 ? (
-                      <SelectGroup key={g.role}>
-                        <SelectLabel>{g.label}</SelectLabel>
-                        {g.items.map((a) => (
-                          <SelectItem key={a.user_id} value={a.user_id}>
-                            {a.full_name?.trim() || a.email || "Unknown"}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    ) : null,
-                  )}
+                  {[...assignees]
+                    .sort((a, b) =>
+                      (a.full_name?.trim() || a.email || "").localeCompare(
+                        b.full_name?.trim() || b.email || "",
+                      ),
+                    )
+                    .map((a) => (
+                      <SelectItem key={a.user_id} value={a.user_id}>
+                        {a.full_name?.trim() || a.email || "Unknown"}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

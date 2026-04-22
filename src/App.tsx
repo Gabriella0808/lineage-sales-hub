@@ -49,7 +49,7 @@ const App = () => (
                       <Route path="/reports/invoicing" element={<CompanyWidePage />} />
                       <Route path="/monday-boards" element={<MondayBoardsPage />} />
                       <Route path="/tasks" element={<TasksPage />} />
-                      <Route path="/inventory" element={<ProtectedRoute allow={["admin", "manager"]}><InventoryPage /></ProtectedRoute>} />
+                      <Route path="/inventory" element={<ProtectedRoute allow={["admin"]}><InventoryPage /></ProtectedRoute>} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

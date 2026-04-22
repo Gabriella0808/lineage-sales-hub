@@ -33,7 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Team Performance",url: "/company-wide",  icon: BarChart3,       roles: ["manager"] },
   { title: "My Performance",  url: "/company-wide",  icon: BarChart3,       roles: ["rep"] },
   { title: "Monday Boards",   url: "/monday-boards", icon: LayoutGrid,      roles: ["admin", "manager", "rep"] },
-  { title: "Inventory",       url: "/inventory",     icon: Package,         roles: ["admin", "manager"] },
+  { title: "Inventory",       url: "/inventory",     icon: Package,         roles: ["admin"] },
   { title: "My Tasks",        url: "/tasks",         icon: CheckSquare,     roles: ["admin", "manager", "rep"] },
   { title: "Settings",        url: "/settings",      icon: Settings,        roles: ["admin", "manager", "rep"] },
 ];

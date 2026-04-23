@@ -200,7 +200,7 @@ export default function CheckInsPage() {
       for (const d of missing) {
         if (cancelled) break;
         const q = encodeURIComponent(
-          [d.city, d.state, "USA"].filter(Boolean).join(", "),
+          [d.street_address, d.city, d.state, "USA"].filter(Boolean).join(", "),
         );
         try {
           const res = await fetch(

@@ -298,6 +298,28 @@ export default function CheckInsPage() {
       .sort((a, b) => (a.visit_date < b.visit_date ? 1 : -1));
   }, [selected, checkIns]);
 
+  const deleteDealer = async (dealer: Dealer) => {
+    if (!confirm(`Delete ${dealer.name}? This removes the pin and all its check-ins.`)) return;
+    // Delete child check-ins first (no cascade)
+    const { error: ciErr } = await supabase
+      .from("dealer_check_ins")
+      .delete()
+      .eq("dealer_id", dealer.id);
+    if (ciErr) {
+      toast({ title: "Failed to delete check-ins", description: ciErr.message, variant: "destructive" });
+      return;
+    }
+    const { error } = await supabase.from("dealers").delete().eq("id", dealer.id);
+    if (error) {
+      toast({ title: "Failed to delete dealer", description: error.message, variant: "destructive" });
+      return;
+    }
+    setDealers((prev) => prev.filter((d) => d.id !== dealer.id));
+    setCheckIns((prev) => prev.filter((c) => c.dealer_id !== dealer.id));
+    setSelected(null);
+    toast({ title: "Dealer deleted" });
+  };
+
   const deleteCheckIn = async (id: string) => {
     if (!confirm("Delete this check-in?")) return;
     const prev = checkIns;
@@ -657,6 +679,17 @@ export default function CheckInsPage() {
                       </p>
                     );
                   })()}
+                </div>
+
+                <div className="border-t pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => deleteDealer(selected)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Delete this pin
+                  </Button>
                 </div>
 
                 <div className="border-t pt-4">

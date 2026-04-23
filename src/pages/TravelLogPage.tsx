@@ -86,6 +86,7 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function TravelLogPage() {
   const { user } = useAuth();
+  const { data: roleInfo } = useUserRole();
   const { toast } = useToast();
   const [travel, setTravel] = useState<TravelEntry[]>([]);
   const [loading, setLoading] = useState(true);

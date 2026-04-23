@@ -73,8 +73,8 @@ const PLACEMENT_OPTIONS = [
 
 const BRAND_OPTIONS = [
   { value: "sea_winds", label: "Sea Winds" },
-  { value: "finn", label: "Finn" },
-  { value: "lux", label: "Lux" },
+  { value: "finn_and_louise", label: "Finn & Louise" },
+  { value: "lux_lighting", label: "Lux Lighting" },
 ];
 
 // Kept for backwards compatibility with existing records that used the old "outcome" field

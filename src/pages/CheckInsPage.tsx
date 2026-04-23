@@ -490,7 +490,7 @@ export default function CheckInsPage() {
               <DialogHeader>
                 <DialogTitle>Add a dealer account</DialogTitle>
                 <DialogDescription>
-                  Create a new dealer. Coordinates are auto-filled from city/state.
+                  Create a new dealer. Coordinates are auto-filled from the address.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
@@ -504,9 +504,19 @@ export default function CheckInsPage() {
                     placeholder="Acme Furniture Co."
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="d-street">Street address *</Label>
+                  <Input
+                    id="d-street"
+                    value={newDealer.street_address}
+                    onChange={(e) => setNewDealer({ ...newDealer, street_address: e.target.value })}
+                    maxLength={200}
+                    placeholder="123 Main St"
+                  />
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="col-span-2 space-y-1.5">
-                    <Label htmlFor="d-city">City</Label>
+                    <Label htmlFor="d-city">City *</Label>
                     <Input
                       id="d-city"
                       value={newDealer.city}
@@ -515,7 +525,7 @@ export default function CheckInsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="d-state">State</Label>
+                    <Label htmlFor="d-state">State *</Label>
                     <Input
                       id="d-state"
                       value={newDealer.state}

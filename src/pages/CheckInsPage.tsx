@@ -109,7 +109,9 @@ export default function CheckInsPage() {
   const [selected, setSelected] = useState<Dealer | null>(null);
   const [form, setForm] = useState({
     visit_date: format(new Date(), "yyyy-MM-dd"),
-    outcome: "positive",
+    log_type: "",
+    new_placement: "",
+    brand: "",
     notes: "",
     follow_up_date: "",
   });

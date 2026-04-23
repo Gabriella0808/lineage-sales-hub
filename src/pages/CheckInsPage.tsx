@@ -701,7 +701,9 @@ export default function CheckInsPage() {
                   {selected.name}
                 </SheetTitle>
                 <SheetDescription>
-                  {[selected.city, selected.state].filter(Boolean).join(", ") || "Location unknown"}
+                  {[selected.street_address, selected.city, selected.state]
+                    .filter(Boolean)
+                    .join(", ") || "Location unknown"}
                 </SheetDescription>
               </SheetHeader>
 

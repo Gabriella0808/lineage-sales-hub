@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,11 +48,13 @@ import {
   MapPin,
   User,
   FileText,
+  Trash2,
 } from "lucide-react";
 
 interface TravelEntry {
   id: string;
   rep_id: string | null;
+  manager_id: string | null;
   salesperson_name: string | null;
   travel_date: string;
   travel_end_date: string | null;
@@ -83,6 +86,7 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function TravelLogPage() {
   const { user } = useAuth();
+  const { data: roleInfo } = useUserRole();
   const { toast } = useToast();
   const [travel, setTravel] = useState<TravelEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,7 +108,7 @@ export default function TravelLogPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("travel_log")
-      .select("id, rep_id, salesperson_name, travel_date, travel_end_date, purpose, approval_status, notes, monday_id")
+      .select("id, rep_id, manager_id, salesperson_name, travel_date, travel_end_date, purpose, approval_status, notes, monday_id")
       .order("travel_date", { ascending: false })
       .limit(1000);
     if (error) {
@@ -154,6 +158,7 @@ export default function TravelLogPage() {
         travel_end_date: form.travel_end_date || null,
         purpose: purposeText || null,
         notes: form.notes.trim() || null,
+        manager_id: roleInfo?.managerId ?? null,
       })
       .select()
       .single();
@@ -226,6 +231,27 @@ export default function TravelLogPage() {
   }, [travel]);
 
   const [detailTrip, setDetailTrip] = useState<TravelEntry | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const canDeleteTrip = (t: TravelEntry | null) => {
+    if (!t || !roleInfo) return false;
+    if (roleInfo.isAdmin) return true;
+    return !!roleInfo.managerId && t.manager_id === roleInfo.managerId;
+  };
+
+  const deleteTrip = async (t: TravelEntry) => {
+    if (!confirm("Delete this trip? This cannot be undone.")) return;
+    setDeleting(true);
+    const { error } = await supabase.from("travel_log").delete().eq("id", t.id);
+    setDeleting(false);
+    if (error) {
+      toast({ title: "Failed to delete trip", description: error.message, variant: "destructive" });
+      return;
+    }
+    setTravel((p) => p.filter((x) => x.id !== t.id));
+    setDetailTrip(null);
+    toast({ title: "Trip deleted" });
+  };
 
   const daysAgo = (iso: string) => {
     const ms = Date.now() - parseISO(iso).getTime();
@@ -720,7 +746,18 @@ export default function TravelLogPage() {
                     </p>
                   )}
                 </div>
-                <DialogFooter>
+                <DialogFooter className="gap-2 sm:gap-2">
+                  {canDeleteTrip(detailTrip) && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => deleteTrip(detailTrip)}
+                      disabled={deleting}
+                      className="sm:mr-auto"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {deleting ? "Deleting…" : "Delete trip"}
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={() => setDetailTrip(null)}>Close</Button>
                   <Button
                     onClick={() => {

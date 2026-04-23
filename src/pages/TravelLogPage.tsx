@@ -746,7 +746,18 @@ export default function TravelLogPage() {
                     </p>
                   )}
                 </div>
-                <DialogFooter>
+                <DialogFooter className="gap-2 sm:gap-2">
+                  {canDeleteTrip(detailTrip) && (
+                    <Button
+                      variant="destructive"
+                      onClick={() => deleteTrip(detailTrip)}
+                      disabled={deleting}
+                      className="sm:mr-auto"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {deleting ? "Deleting…" : "Delete trip"}
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={() => setDetailTrip(null)}>Close</Button>
                   <Button
                     onClick={() => {

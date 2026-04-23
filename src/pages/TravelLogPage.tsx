@@ -48,11 +48,13 @@ import {
   MapPin,
   User,
   FileText,
+  Trash2,
 } from "lucide-react";
 
 interface TravelEntry {
   id: string;
   rep_id: string | null;
+  manager_id: string | null;
   salesperson_name: string | null;
   travel_date: string;
   travel_end_date: string | null;

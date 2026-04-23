@@ -244,8 +244,17 @@ export default function CheckInsPage() {
       style: "mapbox://styles/mapbox/light-v11",
       center: [-96, 39],
       zoom: 3.4,
+      projection: { name: "mercator" } as never,
     });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    map.on("style.load", () => {
+      try {
+        map.setProjection("mercator" as never);
+        map.setFog(null as never);
+      } catch {
+        // ignore if unsupported
+      }
+    });
     mapRef.current = map;
     return () => {
       map.remove();

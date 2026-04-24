@@ -671,8 +671,9 @@ export default function CheckInsPage() {
         email: newDealer.email.trim() || null,
         website: newDealer.website.trim() || null,
         status: "active",
+        rep_owner: repOwner === "all" ? "will" : repOwner,
       })
-      .select("id, name, street_address, city, state, status, rep_id, lat, lng")
+      .select("id, name, street_address, city, state, status, rep_id, rep_owner, lat, lng")
       .single();
     setAddSaving(false);
     if (error) {

@@ -217,10 +217,15 @@ export default function TravelLogPage() {
     return tripsByDay.get(key) ?? [];
   }, [selectedDate, tripsByDay]);
 
-  // Last traveled per salesperson (most recent trip overall)
+  // Last traveled per salesperson (most recent past trip — start date before today)
   const lastTraveled = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = format(today, "yyyy-MM-dd");
     const m = new Map<string, TravelEntry>();
     for (const t of travel) {
+      // Only include trips that have already started (start date is before today)
+      if (t.travel_date >= todayKey) continue;
       const key = t.salesperson_name || t.rep_id || t.id;
       const cur = m.get(key);
       if (!cur || cur.travel_date < t.travel_date) m.set(key, t);

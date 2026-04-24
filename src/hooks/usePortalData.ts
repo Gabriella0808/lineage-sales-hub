@@ -156,12 +156,22 @@ export function useDealers() {
   return useQuery({
     queryKey: ["dealers"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("dealers")
-        .select("*")
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as DbDealer[];
+      const PAGE = 1000;
+      let from = 0;
+      const all: DbDealer[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealers")
+          .select("*")
+          .order("name")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as DbDealer[];
+        all.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
     },
   });
 }

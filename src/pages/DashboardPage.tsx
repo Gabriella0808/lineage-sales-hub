@@ -288,9 +288,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Row: Monthly Rep Performance + Recent Sign-Ins */}
-      <div className={role === "admin" ? "grid lg:grid-cols-3 gap-5" : "grid lg:grid-cols-1 gap-5"}>
-        <div className={role === "admin" ? "glass-card p-5 lg:col-span-2" : "glass-card p-5"}>
+      {/* Row: Monthly Rep Performance */}
+      <div className="grid lg:grid-cols-1 gap-5">
+        <div className="glass-card p-5">
           <h3 className="text-sm font-semibold mb-1">Monthly Rep Performance ($K) — {currentYear}</h3>
           <p className="text-[11px] text-muted-foreground mb-3">Top 5 reps by sales per month</p>
           <div className="h-[240px]">
@@ -319,34 +319,6 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-
-        {role === "admin" && (
-          <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold mb-1 flex items-center gap-2">
-              <LogIn className="h-4 w-4 text-muted-foreground" /> Recent Sign-Ins
-            </h3>
-            <p className="text-[11px] text-muted-foreground mb-4">Who has logged into the portal</p>
-            <div className="space-y-3">
-              {signIns.length > 0 ? signIns.map(s => (
-                <div key={s.id} className="flex items-start gap-3">
-                  <div className="mt-0.5 h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="text-[10px] font-semibold text-primary">
-                      {(s.full_name ?? "?").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium truncate">{s.full_name ?? "Unknown user"}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {formatDistanceToNow(new Date(s.signed_in_at), { addSuffix: true })}
-                    </p>
-                  </div>
-                </div>
-              )) : (
-                <p className="text-sm text-muted-foreground">No sign-ins recorded yet.</p>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

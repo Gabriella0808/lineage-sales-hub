@@ -931,6 +931,9 @@ export default function CheckInsPage() {
                               </Badge>
                             )}
                           </div>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Logged by {userNames[c.user_id] ?? (c.user_id === user?.id ? "You" : "Unknown")}
+                          </p>
                           {c.notes && (
                             <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
                               {c.notes}

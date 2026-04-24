@@ -876,35 +876,47 @@ export default function CheckInsPage() {
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1.5 block">Brand</Label>
-                      <div className="rounded-md border border-input bg-background p-2 space-y-1.5">
-                        {BRAND_OPTIONS.map((o) => {
-                          const checked = form.brands.includes(o.value);
-                          return (
-                            <label
-                              key={o.value}
-                              className="flex items-center gap-2 cursor-pointer rounded px-1.5 py-1 hover:bg-accent/50"
-                            >
-                              <Checkbox
-                                checked={checked}
-                                onCheckedChange={(v) => {
-                                  setForm((prev) => ({
-                                    ...prev,
-                                    brands: v
-                                      ? [...prev.brands, o.value]
-                                      : prev.brands.filter((b) => b !== o.value),
-                                  }));
-                                }}
-                              />
-                              <span className="text-sm">{o.label}</span>
-                            </label>
-                          );
-                        })}
-                        {form.brands.length === 0 && (
-                          <p className="text-[11px] text-muted-foreground px-1.5">
-                            Select one or more brands
-                          </p>
-                        )}
-                      </div>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                          >
+                            <span className={form.brands.length ? "" : "text-muted-foreground"}>
+                              {form.brands.length
+                                ? BRAND_OPTIONS.filter((o) => form.brands.includes(o.value))
+                                    .map((o) => o.label)
+                                    .join(", ")
+                                : "Select brand(s)"}
+                            </span>
+                            <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-1" align="start">
+                          {BRAND_OPTIONS.map((o) => {
+                            const checked = form.brands.includes(o.value);
+                            return (
+                              <label
+                                key={o.value}
+                                className="flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-accent"
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(v) => {
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      brands: v
+                                        ? [...prev.brands, o.value]
+                                        : prev.brands.filter((b) => b !== o.value),
+                                    }));
+                                  }}
+                                />
+                                <span className="text-sm">{o.label}</span>
+                              </label>
+                            );
+                          })}
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     {form.log_type === "follow_up" && (
                       <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-1.5">

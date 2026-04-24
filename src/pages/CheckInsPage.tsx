@@ -203,7 +203,7 @@ export default function CheckInsPage() {
     const [dealersRes, checkInsRes] = await Promise.all([
       supabase
         .from("dealers")
-        .select("id, name, street_address, city, state, status, rep_id, lat, lng")
+        .select("id, name, street_address, city, state, status, rep_id, rep_owner, lat, lng")
         .order("name"),
       supabase
         .from("dealer_check_ins")

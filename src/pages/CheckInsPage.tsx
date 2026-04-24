@@ -487,15 +487,15 @@ export default function CheckInsPage() {
           paint: {
             "circle-radius": [
               "interpolate", ["linear"], ["zoom"],
-              3, 3,
-              6, 5,
-              10, 7,
-              14, 9,
+              3, 6,
+              6, 8,
+              10, 11,
+              14, 14,
             ],
             "circle-color": ["get", "color"],
             "circle-stroke-color": "#ffffff",
-            "circle-stroke-width": 1.5,
-            "circle-opacity": 0.95,
+            "circle-stroke-width": 2,
+            "circle-opacity": 1,
           },
         });
 

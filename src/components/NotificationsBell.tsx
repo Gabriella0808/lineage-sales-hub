@@ -69,8 +69,25 @@ export function NotificationsBell() {
   };
 
   const remove = async (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    await supabase.from("notifications").delete().eq("id", id);
+    const prev = items;
+    setItems((p) => p.filter((i) => i.id !== id));
+    const { error } = await supabase.from("notifications").delete().eq("id", id);
+    if (error) {
+      setItems(prev);
+      console.error("Failed to delete notification", error);
+    }
+  };
+
+  const clearAll = async () => {
+    if (!user) return;
+    if (!confirm("Delete all notifications?")) return;
+    const prev = items;
+    setItems([]);
+    const { error } = await supabase.from("notifications").delete().eq("user_id", user.id);
+    if (error) {
+      setItems(prev);
+      console.error("Failed to clear notifications", error);
+    }
   };
 
   if (!user) return null;
@@ -88,13 +105,20 @@ export function NotificationsBell() {
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-96 p-0">
-        <div className="flex items-center justify-between px-3 py-2 border-b">
+        <div className="flex items-center justify-between px-3 py-2 border-b gap-2">
           <h3 className="text-sm font-semibold">Notifications</h3>
-          {unreadCount > 0 && (
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={markAllRead}>
-              <CheckCheck className="h-3.5 w-3.5" /> Mark all read
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={markAllRead}>
+                <CheckCheck className="h-3.5 w-3.5" /> Mark all read
+              </Button>
+            )}
+            {items.length > 0 && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive" onClick={clearAll}>
+                <Trash2 className="h-3.5 w-3.5" /> Clear all
+              </Button>
+            )}
+          </div>
         </div>
         <ScrollArea className="h-[420px]">
           {items.length === 0 ? (

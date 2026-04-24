@@ -38,6 +38,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
 import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Plus } from "lucide-react";
+import { STATE_TO_TERRITORY, colorForTerritory } from "@/lib/territoryMap";
 
 interface Dealer {
   id: string;
@@ -291,16 +292,115 @@ export default function CheckInsPage() {
       renderWorldCopies: false,
     });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
-    map.on("style.load", () => {
+
+    const hoverPopup = new mapboxgl.Popup({
+      closeButton: false,
+      closeOnClick: false,
+      offset: 8,
+    });
+
+    map.on("style.load", async () => {
       try {
         map.setProjection("mercator" as never);
         map.setFog(null as never);
       } catch {
         // ignore if unsupported
       }
+
+      // Load US states boundaries and color by territory
+      try {
+        const res = await fetch(
+          "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json",
+        );
+        const geo = await res.json();
+        // Tag each feature with its territory
+        for (const f of geo.features ?? []) {
+          // Feature 'id' is the FIPS code; we need the 2-letter state code.
+          // The GeoJSON uses `properties.name` (full state name) — convert.
+          const code = STATE_NAME_TO_CODE[f.properties?.name] ?? null;
+          const territory = code ? STATE_TO_TERRITORY[code] ?? null : null;
+          f.properties.territory = territory;
+          f.properties.fillColor = territory ? colorForTerritory(territory) : "#00000000";
+        }
+
+        if (!map.getSource("us-states")) {
+          map.addSource("us-states", { type: "geojson", data: geo });
+        }
+        if (!map.getLayer("us-states-fill")) {
+          map.addLayer(
+            {
+              id: "us-states-fill",
+              type: "fill",
+              source: "us-states",
+              paint: {
+                "fill-color": ["get", "fillColor"],
+                "fill-opacity": [
+                  "case",
+                  ["==", ["get", "territory"], null], 0,
+                  ["boolean", ["feature-state", "hover"], false], 0.55,
+                  0.35,
+                ],
+              },
+            },
+            // Insert beneath labels so place names stay visible
+            map.getStyle().layers?.find((l) => l.type === "symbol")?.id,
+          );
+        }
+        if (!map.getLayer("us-states-outline")) {
+          map.addLayer({
+            id: "us-states-outline",
+            type: "line",
+            source: "us-states",
+            paint: {
+              "line-color": ["get", "fillColor"],
+              "line-width": 1,
+              "line-opacity": [
+                "case",
+                ["==", ["get", "territory"], null], 0,
+                0.8,
+              ],
+            },
+          });
+        }
+
+        let hoveredId: number | string | null = null;
+        map.on("mousemove", "us-states-fill", (e) => {
+          const f = e.features?.[0];
+          if (!f || !f.properties?.territory) return;
+          map.getCanvas().style.cursor = "pointer";
+          if (hoveredId !== null) {
+            map.setFeatureState({ source: "us-states", id: hoveredId }, { hover: false });
+          }
+          hoveredId = (f.id as number | string | undefined) ?? null;
+          if (hoveredId !== null) {
+            map.setFeatureState({ source: "us-states", id: hoveredId }, { hover: true });
+          }
+          hoverPopup
+            .setLngLat(e.lngLat)
+            .setHTML(
+              `<div style="font-family: inherit; font-size: 12px; padding: 2px 4px;">
+                <div style="font-weight: 600;">${String(f.properties.territory).replace(/</g, "&lt;")}</div>
+                <div style="color:#64748b; font-size: 11px;">${String(f.properties.name ?? "").replace(/</g, "&lt;")}</div>
+              </div>`,
+            )
+            .addTo(map);
+        });
+        map.on("mouseleave", "us-states-fill", () => {
+          map.getCanvas().style.cursor = "";
+          if (hoveredId !== null) {
+            map.setFeatureState({ source: "us-states", id: hoveredId }, { hover: false });
+          }
+          hoveredId = null;
+          hoverPopup.remove();
+        });
+      } catch {
+        // territory layer is best-effort; ignore failures
+      }
     });
+
     mapRef.current = map;
     return () => {
+      hoverPopup.remove();
       map.remove();
       mapRef.current = null;
     };

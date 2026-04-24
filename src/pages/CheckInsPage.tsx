@@ -129,6 +129,7 @@ export default function CheckInsPage() {
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addSaving, setAddSaving] = useState(false);
+  const [territoriesOnly, setTerritoriesOnly] = useState(false);
   const [newDealer, setNewDealer] = useState({
     name: "",
     street_address: "",
@@ -423,6 +424,8 @@ export default function CheckInsPage() {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
+    if (territoriesOnly) return;
+
     const bounds = new mapboxgl.LngLatBounds();
     let added = 0;
     for (const d of filteredDealers) {
@@ -477,7 +480,24 @@ export default function CheckInsPage() {
       map.fitBounds(bounds, { padding: 60, maxZoom: 9, duration: 600 });
       didFitRef.current = true;
     }
-  }, [filteredDealers]);
+  }, [filteredDealers, territoriesOnly]);
+
+  // Bump territory fill opacity when in "territories only" mode
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (!map.getLayer("us-states-fill")) return;
+      map.setPaintProperty("us-states-fill", "fill-opacity", [
+        "case",
+        ["==", ["get", "territory"], null], 0,
+        ["boolean", ["feature-state", "hover"], false], territoriesOnly ? 0.75 : 0.55,
+        territoriesOnly ? 0.6 : 0.35,
+      ] as never);
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("idle", apply);
+  }, [territoriesOnly, token]);
 
   const dealerCheckIns = useMemo(() => {
     if (!selected) return [];
@@ -827,6 +847,15 @@ export default function CheckInsPage() {
             {x.l}
           </span>
         ))}
+        <Button
+          type="button"
+          size="sm"
+          variant={territoriesOnly ? "default" : "outline"}
+          className="ml-auto h-7 text-xs"
+          onClick={() => setTerritoriesOnly((v) => !v)}
+        >
+          {territoriesOnly ? "Show pins" : "View territories only"}
+        </Button>
       </div>
 
       <Card className="overflow-hidden">

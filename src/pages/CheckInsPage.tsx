@@ -699,6 +699,32 @@ export default function CheckInsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <div className="inline-flex rounded-md border bg-card p-0.5 shadow-sm">
+            {REP_OWNERS.map((r) => {
+              const count =
+                r.value === "all"
+                  ? dealers.length
+                  : dealers.filter((d) => (d.rep_owner ?? "").toLowerCase() === r.value).length;
+              const active = repOwner === r.value;
+              return (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => setRepOwner(r.value)}
+                  className={`px-3 h-8 text-xs font-medium rounded transition-colors ${
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
+                >
+                  {r.label}
+                  <span className={`ml-1.5 text-[10px] ${active ? "opacity-80" : "opacity-60"}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           <div className="relative">
             <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input

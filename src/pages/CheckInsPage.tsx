@@ -456,6 +456,23 @@ export default function CheckInsPage() {
     didFitRef.current = false;
   }, [repOwner]);
 
+  // Toggle dealer pin layer visibility
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      if (map.getLayer("dealers-circle")) {
+        map.setLayoutProperty(
+          "dealers-circle",
+          "visibility",
+          pinsVisible ? "visible" : "none",
+        );
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("load", apply);
+  }, [pinsVisible]);
+
   // Render dealer pins as a GPU-rendered Mapbox source/layer (scales to thousands)
   useEffect(() => {
     const map = mapRef.current;

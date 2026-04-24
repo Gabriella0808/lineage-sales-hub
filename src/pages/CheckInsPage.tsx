@@ -300,6 +300,7 @@ export default function CheckInsPage() {
       closeOnClick: false,
       offset: 8,
     });
+    territoryPopupRef.current = hoverPopup;
 
     map.on("style.load", async () => {
       try {
@@ -369,6 +370,11 @@ export default function CheckInsPage() {
         map.on("mousemove", "us-states-fill", (e) => {
           const f = e.features?.[0];
           if (!f || !f.properties?.territory) return;
+          if (dealerHoverRef.current) {
+            // Suppress territory hover while pointer is over a dealer pin
+            hoverPopup.remove();
+            return;
+          }
           map.getCanvas().style.cursor = "pointer";
           if (hoveredId !== null) {
             map.setFeatureState({ source: "us-states", id: hoveredId }, { hover: false });
@@ -453,8 +459,13 @@ export default function CheckInsPage() {
         .setLngLat([d.lng, d.lat])
         .setPopup(popup)
         .addTo(map);
-      el.addEventListener("mouseenter", () => marker.togglePopup());
+      el.addEventListener("mouseenter", () => {
+        dealerHoverRef.current = true;
+        territoryPopupRef.current?.remove();
+        marker.togglePopup();
+      });
       el.addEventListener("mouseleave", () => {
+        dealerHoverRef.current = false;
         if (popup.isOpen()) popup.remove();
       });
       markersRef.current.push(marker);

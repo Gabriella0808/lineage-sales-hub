@@ -964,8 +964,12 @@ export default function CheckInsPage() {
                         <li key={c.id}>
                           <button
                             type="button"
-                            onClick={() => setDetailCheckIn(c)}
-                            className="w-full text-left rounded border p-2 text-sm hover:bg-accent/50 hover:border-primary/40 transition-colors"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setDetailCheckIn(c);
+                            }}
+                            className="w-full text-left rounded border p-2 text-sm hover:bg-accent/50 hover:border-primary/40 transition-colors cursor-pointer"
                           >
                             <div className="flex items-center justify-between">
                               <span className="font-medium">

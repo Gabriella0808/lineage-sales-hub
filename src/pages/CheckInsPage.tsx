@@ -187,14 +187,21 @@ export default function CheckInsPage() {
 
   const filteredDealers = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return dealersWithMeta;
-    return dealersWithMeta.filter(
-      (d) =>
+    const team = teamFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === teamFilter);
+    const stateSet = team ? new Set(team.states) : null;
+    return dealersWithMeta.filter((d) => {
+      if (stateSet) {
+        const code = (d.state ?? "").trim().toUpperCase();
+        if (!code || !stateSet.has(code)) return false;
+      }
+      if (!q) return true;
+      return (
         d.name.toLowerCase().includes(q) ||
         (d.city ?? "").toLowerCase().includes(q) ||
-        (d.state ?? "").toLowerCase().includes(q),
-    );
-  }, [dealersWithMeta, search]);
+        (d.state ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [dealersWithMeta, search, teamFilter]);
 
   // Fetch token
   useEffect(() => {

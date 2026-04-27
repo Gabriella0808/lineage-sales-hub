@@ -1172,6 +1172,12 @@ export default function CheckInsPage() {
                         })()}
                       </dd>
                     </div>
+                    {selected.notes && (
+                      <div className="px-3 py-2">
+                        <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Notes</dt>
+                        <dd className="mt-0.5 whitespace-pre-wrap text-sm">{selected.notes}</dd>
+                      </div>
+                    )}
                   </dl>
                 </div>
 

@@ -85,6 +85,9 @@ interface Dealer {
   status: string;
   rep_id: string | null;
   rep_owner?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
   lat: number | null;
   lng: number | null;
 }

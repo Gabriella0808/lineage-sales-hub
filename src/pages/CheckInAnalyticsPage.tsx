@@ -323,7 +323,7 @@ export default function CheckInAnalyticsPage() {
         <Card className="border-border/60">
           <CardHeader>
             <CardTitle className="font-display text-xl">This Week</CardTitle>
-            <CardDescription>Check-ins and placements by rep this week.</CardDescription>
+            <CardDescription>Check-ins and placements by manager this week.</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px] w-full">
@@ -343,7 +343,7 @@ export default function CheckInAnalyticsPage() {
         <Card className="border-border/60">
           <CardHeader>
             <CardTitle className="font-display text-xl">{new Date().getFullYear()} Year-to-Date</CardTitle>
-            <CardDescription>Total check-ins and placements by rep.</CardDescription>
+            <CardDescription>Total check-ins and placements by manager.</CardDescription>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px] w-full">

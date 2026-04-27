@@ -167,14 +167,19 @@ export default function TasksPage() {
   type AssigneeFilter = "all" | "mine" | "created";
   type DueFilter = "any" | "overdue" | "today" | "this_week" | "next_7" | "none";
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>("all");
+  const [assigneeUserId, setAssigneeUserId] = useState<string>("any");
   const [dueFilter, setDueFilter] = useState<DueFilter>("any");
   const [contextQuery, setContextQuery] = useState("");
 
   const filtersActive =
-    assigneeFilter !== "all" || dueFilter !== "any" || contextQuery.trim() !== "";
+    assigneeFilter !== "all" ||
+    assigneeUserId !== "any" ||
+    dueFilter !== "any" ||
+    contextQuery.trim() !== "";
 
   const clearFilters = () => {
     setAssigneeFilter("all");
+    setAssigneeUserId("any");
     setDueFilter("any");
     setContextQuery("");
   };
@@ -219,8 +224,13 @@ export default function TasksPage() {
     return hay.includes(q);
   };
 
+  const matchesAssigneeUser = (t: Task): boolean => {
+    if (assigneeUserId === "any") return true;
+    return getAssigneeIds(t).includes(assigneeUserId);
+  };
+
   const filteredTasks = tasks.filter(
-    (t) => matchesAssignee(t) && matchesDue(t) && matchesContext(t),
+    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t),
   );
 
   const load = async () => {
@@ -531,6 +541,29 @@ export default function TasksPage() {
                   <SelectItem value="this_week" className="text-xs">This week</SelectItem>
                   <SelectItem value="next_7" className="text-xs">Next 7 days</SelectItem>
                   <SelectItem value="none" className="text-xs">No due date</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Assigned-to user select */}
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <Select value={assigneeUserId} onValueChange={(v) => setAssigneeUserId(v)}>
+                <SelectTrigger className="h-8 w-[200px] text-xs">
+                  <SelectValue placeholder="Assigned to" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any" className="text-xs">Anyone</SelectItem>
+                  {visibleAssignees
+                    .slice()
+                    .sort((a, b) =>
+                      (a.full_name || a.email || "").localeCompare(b.full_name || b.email || ""),
+                    )
+                    .map((a) => (
+                      <SelectItem key={a.user_id} value={a.user_id} className="text-xs">
+                        {a.full_name || a.email}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

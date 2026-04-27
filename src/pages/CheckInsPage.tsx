@@ -167,6 +167,10 @@ export default function CheckInsPage() {
     notes: "",
     follow_up_date: "",
   });
+  const [recentRange, setRecentRange] = useState<{ from: string; to: string }>({
+    from: "",
+    to: "",
+  });
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addSaving, setAddSaving] = useState(false);
@@ -1004,64 +1008,117 @@ export default function CheckInsPage() {
 
       {/* Recent activity strip */}
       <Card className="p-4">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <h2 className="text-sm font-semibold">Recent check-ins</h2>
-          <span className="text-xs text-muted-foreground">{checkIns.length} total</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="recent-from" className="text-xs text-muted-foreground">From</Label>
+              <Input
+                id="recent-from"
+                type="date"
+                value={recentRange.from}
+                onChange={(e) => setRecentRange((r) => ({ ...r, from: e.target.value }))}
+                className="h-8 w-[140px] text-xs"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="recent-to" className="text-xs text-muted-foreground">To</Label>
+              <Input
+                id="recent-to"
+                type="date"
+                value={recentRange.to}
+                onChange={(e) => setRecentRange((r) => ({ ...r, to: e.target.value }))}
+                className="h-8 w-[140px] text-xs"
+              />
+            </div>
+            {(recentRange.from || recentRange.to) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => setRecentRange({ from: "", to: "" })}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : checkIns.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">
-            No check-ins yet. Click any dealer pin to log your first visit.
-          </p>
-        ) : (
-          <ul className="divide-y">
-            {checkIns.slice(0, 8).map((c) => {
-              const d = dealers.find((x) => x.id === c.dealer_id);
-              const canDelete = c.user_id === user?.id;
-              return (
-                <li key={c.id} className="py-2 flex items-stretch justify-between gap-3 text-sm">
-                  <button
-                    type="button"
-                    onClick={() => setDetailCheckIn(c)}
-                    className="flex-1 min-w-0 flex items-start justify-between gap-3 text-left rounded-md px-2 -mx-2 py-1 hover:bg-accent/50 transition-colors cursor-pointer"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{d?.name ?? "Unknown dealer"}</p>
-                      {c.notes && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">{c.notes}</p>
-                      )}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(c.visit_date), "MMM d, yyyy")}
-                      </p>
-                      {c.outcome && (
-                        <Badge variant="secondary" className="text-[10px] mt-0.5">
-                          {OUTCOMES.find((o) => o.value === c.outcome)?.label ?? c.outcome}
-                        </Badge>
-                      )}
-                    </div>
-                  </button>
-                  {canDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 self-center"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteCheckIn(c.id);
-                      }}
-                      aria-label="Delete check-in"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        {(() => {
+          const filtered = checkIns.filter((c) => {
+            const d = c.visit_date.slice(0, 10);
+            if (recentRange.from && d < recentRange.from) return false;
+            if (recentRange.to && d > recentRange.to) return false;
+            return true;
+          });
+          const hasRange = !!(recentRange.from || recentRange.to);
+          return (
+            <>
+              <div className="flex items-center justify-end -mt-1 mb-2">
+                <span className="text-xs text-muted-foreground">
+                  {hasRange
+                    ? `${filtered.length} in range • ${checkIns.length} total`
+                    : `${checkIns.length} total`}
+                </span>
+              </div>
+              {loading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : filtered.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic">
+                  {checkIns.length === 0
+                    ? "No check-ins yet. Click any dealer pin to log your first visit."
+                    : "No check-ins in the selected date range."}
+                </p>
+              ) : (
+                <ul className="divide-y">
+                  {(hasRange ? filtered : filtered.slice(0, 8)).map((c) => {
+                    const d = dealers.find((x) => x.id === c.dealer_id);
+                    const canDelete = c.user_id === user?.id;
+                    return (
+                      <li key={c.id} className="py-2 flex items-stretch justify-between gap-3 text-sm">
+                        <button
+                          type="button"
+                          onClick={() => setDetailCheckIn(c)}
+                          className="flex-1 min-w-0 flex items-start justify-between gap-3 text-left rounded-md px-2 -mx-2 py-1 hover:bg-accent/50 transition-colors cursor-pointer"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{d?.name ?? "Unknown dealer"}</p>
+                            {c.notes && (
+                              <p className="text-xs text-muted-foreground line-clamp-1">{c.notes}</p>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(c.visit_date), "MMM d, yyyy")}
+                            </p>
+                            {c.outcome && (
+                              <Badge variant="secondary" className="text-[10px] mt-0.5">
+                                {OUTCOMES.find((o) => o.value === c.outcome)?.label ?? c.outcome}
+                              </Badge>
+                            )}
+                          </div>
+                        </button>
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0 self-center"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteCheckIn(c.id);
+                            }}
+                            aria-label="Delete check-in"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </>
+          );
+        })()}
       </Card>
 
       {/* Dealer detail / log check-in sheet */}

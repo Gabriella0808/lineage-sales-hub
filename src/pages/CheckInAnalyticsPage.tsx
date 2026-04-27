@@ -185,29 +185,36 @@ export default function CheckInAnalyticsPage() {
       });
     });
 
-    // Manual override for Chris De Lisa per provided stats
-    result.chris = {
-      lastWeek: { checkIns: 0, placements: 0 },
-      thisWeek: { checkIns: 0, placements: 0 },
-      lastMonth: { checkIns: 0, placements: 0 },
-      ytd: { checkIns: 1, placements: 0 },
+    // Historical baselines (check-ins logged outside this system).
+    // Live check-ins from the database are added on top, so any new
+    // check-in logged in the Check-Ins section automatically updates these totals.
+    const baselines: Record<TeamId, Record<string, { checkIns: number; placements: number }>> = {
+      chris: {
+        lastWeek: { checkIns: 0, placements: 0 },
+        thisWeek: { checkIns: 0, placements: 0 },
+        lastMonth: { checkIns: 0, placements: 0 },
+        ytd: { checkIns: 1, placements: 0 },
+      },
+      mateo: {
+        lastWeek: { checkIns: 0, placements: 0 },
+        thisWeek: { checkIns: 0, placements: 0 },
+        lastMonth: { checkIns: 28, placements: 0 },
+        ytd: { checkIns: 97, placements: 4 },
+      },
+      will: {
+        lastWeek: { checkIns: 0, placements: 0 },
+        thisWeek: { checkIns: 0, placements: 0 },
+        lastMonth: { checkIns: 41, placements: 6 },
+        ytd: { checkIns: 110, placements: 14 },
+      },
     };
 
-    // Manual override for Mateo De Lisa per provided stats
-    result.mateo = {
-      lastWeek: { checkIns: 0, placements: 0 },
-      thisWeek: { checkIns: 0, placements: 0 },
-      lastMonth: { checkIns: 28, placements: 0 },
-      ytd: { checkIns: 97, placements: 4 },
-    };
-
-    // Manual override for Will Grisack per provided stats
-    result.will = {
-      lastWeek: { checkIns: 0, placements: 0 },
-      thisWeek: { checkIns: 0, placements: 0 },
-      lastMonth: { checkIns: 41, placements: 6 },
-      ytd: { checkIns: 110, placements: 14 },
-    };
+    (Object.keys(baselines) as TeamId[]).forEach((teamId) => {
+      Object.keys(baselines[teamId]).forEach((periodKey) => {
+        result[teamId][periodKey].checkIns += baselines[teamId][periodKey].checkIns;
+        result[teamId][periodKey].placements += baselines[teamId][periodKey].placements;
+      });
+    });
 
     return result;
   }, [checkIns, userToTeam, periods]);

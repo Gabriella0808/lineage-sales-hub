@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, UserCog, Users } from "lucide-react";
+import { Loader2, ShieldCheck, UserCog, Users, KeyRound } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface UserRow {
   user_id: string;
@@ -44,6 +46,8 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      <ChangePasswordPanel />
+
       {isAdmin && <RoleAdminPanel />}
 
       <Card className="mb-5">
@@ -64,6 +68,83 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function ChangePasswordPanel() {
+  const { toast } = useToast();
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      toast({ title: "Password too short", description: "Use at least 6 characters.", variant: "destructive" });
+      return;
+    }
+    if (newPassword.length > 72) {
+      toast({ title: "Password too long", description: "Use 72 characters or fewer.", variant: "destructive" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Passwords don't match", description: "Please re-enter your new password.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setSubmitting(false);
+    if (error) {
+      toast({ title: "Couldn't update password", description: error.message, variant: "destructive" });
+      return;
+    }
+    setNewPassword("");
+    setConfirmPassword("");
+    toast({ title: "Password updated", description: "Your password has been changed." });
+  };
+
+  return (
+    <Card className="mb-5">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <KeyRound className="h-4 w-4 text-primary" /> Change password
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">Update the password used to sign in to your account.</p>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4 max-w-sm">
+          <div className="space-y-2">
+            <Label htmlFor="newPassword">New password</Label>
+            <Input
+              id="newPassword"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={6}
+              maxLength={72}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm new password</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={6}
+              maxLength={72}
+              required
+            />
+          </div>
+          <Button type="submit" disabled={submitting} size="sm">
+            {submitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Updating…</>) : "Update password"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
 

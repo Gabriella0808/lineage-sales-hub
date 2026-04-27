@@ -859,24 +859,7 @@ export default function TasksPage() {
                               )}
                             </div>
 
-                            {/* Custom column cells (md+) */}
-                            {customColumns.map((cc) => (
-                              <div
-                                key={cc.id}
-                                className="hidden md:flex items-center px-2 py-2 text-xs"
-                              >
-                                <CustomCell
-                                  column={cc}
-                                  value={getCellValue(t.id, cc.id)}
-                                  onChange={(v) => setCellValue(t.id, cc.id, v)}
-                                  assignees={assignees}
-                                />
-                              </div>
-                            ))}
-
-                            {/* Spacer under "+" header column */}
-                            {customColumns.length > 0 && <div className="hidden md:block" />}
-                            {customColumns.length === 0 && <div className="hidden md:block" />}
+                            {/* Actions (md+) */}
 
                             {/* Actions (md+) */}
                             <div className="hidden md:flex items-center justify-end gap-1 px-3 py-2">

@@ -263,7 +263,7 @@ export default function CheckInAnalyticsPage() {
         />
         <KpiCard
           icon={<Users className="h-4 w-4" />}
-          label="Active Reps"
+          label="Active Managers"
           value={`${totals.activeReps} / ${TEAM.length}`}
           accent="muted"
         />

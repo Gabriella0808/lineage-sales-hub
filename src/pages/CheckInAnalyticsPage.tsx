@@ -193,6 +193,14 @@ export default function CheckInAnalyticsPage() {
       ytd: { checkIns: 1, placements: 0 },
     };
 
+    // Manual override for Mateo De Lisa per provided stats
+    result.mateo = {
+      lastWeek: { checkIns: 0, placements: 0 },
+      thisWeek: { checkIns: 0, placements: 0 },
+      lastMonth: { checkIns: 28, placements: 0 },
+      ytd: { checkIns: 97, placements: 4 },
+    };
+
     return result;
   }, [checkIns, userToTeam, periods]);
 

@@ -894,6 +894,54 @@ export default function CheckInsPage() {
         </Button>
       </div>
 
+      {/* My Team — filter dealers on the map by team member */}
+      <Card className="p-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Users className="h-3.5 w-3.5" /> My Team
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button
+              type="button"
+              size="sm"
+              variant={teamFilter === "all" ? "default" : "outline"}
+              className="h-7 text-xs"
+              onClick={() => setTeamFilter("all")}
+            >
+              All
+            </Button>
+            {TEAM_MEMBERS.map((m) => {
+              const active = teamFilter === m.id;
+              const count = dealersWithMeta.filter((d) => {
+                const code = (d.state ?? "").trim().toUpperCase();
+                return code && m.states.includes(code);
+              }).length;
+              return (
+                <Button
+                  key={m.id}
+                  type="button"
+                  size="sm"
+                  variant={active ? "default" : "outline"}
+                  className="h-7 text-xs"
+                  onClick={() => setTeamFilter(m.id)}
+                >
+                  {m.name}
+                  <span className={`ml-1.5 rounded-full px-1.5 text-[10px] ${active ? "bg-primary-foreground/20" : "bg-muted"}`}>
+                    {count}
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
+          {teamFilter !== "all" && (
+            <span className="text-xs text-muted-foreground ml-auto">
+              Showing {filteredDealers.length} dealer{filteredDealers.length === 1 ? "" : "s"} for{" "}
+              {TEAM_MEMBERS.find((m) => m.id === teamFilter)?.name}
+            </span>
+          )}
+        </div>
+      </Card>
+
       <Card className="overflow-hidden">
         <div
           ref={mapContainer}

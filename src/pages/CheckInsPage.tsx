@@ -448,6 +448,7 @@ export default function CheckInsPage() {
   }, [token]);
 
   const didFitRef = useRef(false);
+  const lastFitTeamRef = useRef<TeamMemberId | "all">("all");
 
   // Render markers
   useEffect(() => {

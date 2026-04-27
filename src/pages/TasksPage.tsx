@@ -748,8 +748,8 @@ export default function TasksPage() {
                         return (
                           <li
                             key={t.id}
-                            className="grid grid-cols-[8px_minmax(0,1fr)] md:!grid items-center gap-0 hover:bg-muted/30 transition-colors"
-                            style={{ gridTemplateColumns: rowGrid }}
+                            className="grid grid-cols-[8px_minmax(0,1fr)] md:[grid-template-columns:var(--row-grid)] items-center gap-0 hover:bg-muted/30 transition-colors"
+                            style={{ ["--row-grid" as any]: rowGrid }}
                           >
                             {/* Colored left accent bar */}
                             <div className={`self-stretch ${col.accent}`} />

@@ -424,7 +424,7 @@ export default function TasksPage() {
                 />
               </div>
               <AssigneeMultiPicker
-                assignees={assignees}
+                assignees={visibleAssignees}
                 selectedIds={form.assigned_user_ids}
                 onChange={(ids) => setForm({ ...form, assigned_user_ids: ids })}
               />

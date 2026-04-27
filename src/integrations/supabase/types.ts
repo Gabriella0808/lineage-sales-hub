@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      _dealer_owner_staging: {
+        Row: {
+          dealer_id: string
+          owner: string
+        }
+        Insert: {
+          dealer_id: string
+          owner: string
+        }
+        Update: {
+          dealer_id?: string
+          owner?: string
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           created_at: string

@@ -417,28 +417,11 @@ export default function TasksPage() {
                   onChange={(e) => setForm({ ...form, due_date: e.target.value })}
                 />
               </div>
-              <Select
-                value={form.assigned_user_id || "unassigned"}
-                onValueChange={(v) => setForm({ ...form, assigned_user_id: v === "unassigned" ? "" : v })}
-              >
-                <SelectTrigger><SelectValue placeholder="Assign to..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {Array.from(
-                    new Map(assignees.map((a) => [a.user_id, a])).values(),
-                  )
-                    .sort((a, b) =>
-                      (a.full_name?.trim() || a.email || "").localeCompare(
-                        b.full_name?.trim() || b.email || "",
-                      ),
-                    )
-                    .map((a) => (
-                      <SelectItem key={a.user_id} value={a.user_id}>
-                        {a.full_name?.trim() || a.email || "Unknown"}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <AssigneeMultiPicker
+                assignees={assignees}
+                selectedIds={form.assigned_user_ids}
+                onChange={(ids) => setForm({ ...form, assigned_user_ids: ids })}
+              />
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>

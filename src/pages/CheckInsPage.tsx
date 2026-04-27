@@ -238,11 +238,28 @@ export default function CheckInsPage() {
   // Load dealers + check-ins
   const load = async () => {
     setLoading(true);
+    // Fetch all dealers in pages of 1000 (Supabase default cap per request)
+    const fetchAllDealers = async (): Promise<{ data: Dealer[] | null; error: any }> => {
+      const PAGE = 1000;
+      let from = 0;
+      const all: Dealer[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealers")
+          .select("id, name, street_address, city, state, status, rep_id, rep_owner, lat, lng")
+          .order("name")
+          .range(from, from + PAGE - 1);
+        if (error) return { data: null, error };
+        const batch = (data ?? []) as Dealer[];
+        all.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
+      return { data: all, error: null };
+    };
+
     const [dealersRes, checkInsRes] = await Promise.all([
-      supabase
-        .from("dealers")
-        .select("id, name, street_address, city, state, status, rep_id, rep_owner, lat, lng")
-        .order("name"),
+      fetchAllDealers(),
       supabase
         .from("dealer_check_ins")
         .select("*")

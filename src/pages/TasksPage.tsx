@@ -578,13 +578,13 @@ export default function TasksPage() {
               </Select>
             </div>
 
-            {/* Context search (territory / dealer) */}
+            {/* Task search */}
             <div className="relative flex-1 min-w-[180px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={contextQuery}
                 onChange={(e) => setContextQuery(e.target.value)}
-                placeholder="Search territory or dealer (matches title & description)"
+                placeholder="Search tasks (title & description)"
                 className="h-8 pl-8 text-xs"
               />
               {contextQuery && (

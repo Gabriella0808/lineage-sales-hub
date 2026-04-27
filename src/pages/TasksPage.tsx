@@ -247,7 +247,7 @@ export default function TasksPage() {
     }
     if (!taRes.error) {
       const map: Record<string, string[]> = {};
-      ((taRes.data ?? []) as { task_id: string; user_id: string }[]).forEach((row) => {
+      ((taRes.data ?? []) as unknown as { task_id: string; user_id: string }[]).forEach((row) => {
         if (!map[row.task_id]) map[row.task_id] = [];
         map[row.task_id].push(row.user_id);
       });

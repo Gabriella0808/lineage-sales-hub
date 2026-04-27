@@ -49,6 +49,9 @@ const TEAM_MEMBERS: {
   name: string;
   repOwners: string[]; // matched case-insensitively against dealers.rep_owner
   states: string[];
+  // When true, ONLY rep_owner matches are counted (used once a teammate's
+  // dealer list has been fully imported and tagged from their spreadsheet).
+  ownerOnly?: boolean;
 }[] = [
   {
     id: "will",
@@ -62,8 +65,10 @@ const TEAM_MEMBERS: {
     id: "mateo",
     name: "Mateo De Lisa",
     repOwners: ["mateo"],
-    // VA/WV + NC/SC + Indiana + MI + NY/NJ + IL/WI
-    states: ["VA", "WV", "NC", "SC", "IN", "MI", "NY", "NJ", "IL", "WI"],
+    // Mateo's full dealer list has been imported and tagged via rep_owner,
+    // so we restrict to owner matches to avoid pulling in other reps' accounts.
+    states: [],
+    ownerOnly: true,
   },
   {
     id: "chris",
@@ -207,8 +212,13 @@ export default function CheckInsPage() {
         const code = (d.state ?? "").trim().toUpperCase();
         const ownerMatch = owner && ownerSet.has(owner);
         const stateMatch = code && stateSet.has(code);
-        // Match if EITHER signal points to this teammate.
-        if (!ownerMatch && !stateMatch) return false;
+        if (team.ownerOnly) {
+          // Restrict strictly to rep_owner matches (e.g. Mateo, fully tagged).
+          if (!ownerMatch) return false;
+        } else if (!ownerMatch && !stateMatch) {
+          // Match if EITHER signal points to this teammate.
+          return false;
+        }
       }
       if (!q) return true;
       return (
@@ -950,7 +960,9 @@ export default function CheckInsPage() {
               const count = dealersWithMeta.filter((d) => {
                 const owner = (d.rep_owner ?? "").trim().toLowerCase();
                 const code = (d.state ?? "").trim().toUpperCase();
-                return (owner && owners.has(owner)) || (code && states.has(code));
+                const ownerMatch = owner && owners.has(owner);
+                const stateMatch = code && states.has(code);
+                return m.ownerOnly ? ownerMatch : ownerMatch || stateMatch;
               }).length;
               return (
                 <Button

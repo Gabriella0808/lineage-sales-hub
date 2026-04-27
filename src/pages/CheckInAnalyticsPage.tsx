@@ -185,6 +185,14 @@ export default function CheckInAnalyticsPage() {
       });
     });
 
+    // Manual override for Chris De Lisa per provided stats
+    result.chris = {
+      lastWeek: { checkIns: 0, placements: 0 },
+      thisWeek: { checkIns: 0, placements: 0 },
+      lastMonth: { checkIns: 0, placements: 0 },
+      ytd: { checkIns: 1, placements: 0 },
+    };
+
     return result;
   }, [checkIns, userToTeam, periods]);
 

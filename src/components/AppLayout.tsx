@@ -54,9 +54,28 @@ function SidebarNav() {
   const collapsed = state === "collapsed";
   const { data: roleInfo } = useUserRole();
   const role = roleInfo?.role ?? "rep";
+  const location = useLocation();
 
   // de-dupe by url+title in case two role-specific labels collide
   const items = NAV_ITEMS.filter((i) => i.roles.includes(role));
+
+  // Track open state of dropdown groups (default open if current route is inside)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    items.forEach((item) => {
+      if (item.children) {
+        const isInside =
+          location.pathname === item.url ||
+          location.pathname.startsWith(item.url + "/") ||
+          item.children.some((c) => location.pathname === c.url);
+        initial[item.title] = isInside;
+      }
+    });
+    return initial;
+  });
+
+  const toggleGroup = (title: string) =>
+    setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
@@ -70,33 +89,56 @@ function SidebarNav() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild size="default">
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    >
-                      <item.icon className="h-4 w-4 mr-3 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                  {!collapsed && item.children && item.children.filter((c) => c.roles.includes(role)).map((child) => (
-                    <SidebarMenuButton key={child.url} asChild size="sm" className="ml-6 w-auto">
-                      <NavLink
-                        to={child.url}
-                        className="text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-[13px]"
-                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                      >
-                        <child.icon className="h-3.5 w-3.5 mr-2 shrink-0" />
-                        <span>{child.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  ))}
-                </SidebarMenuItem>
-              ))}
+              {items.map((item) => {
+                const hasChildren = !!item.children?.length;
+                const isOpen = openGroups[item.title] ?? false;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <div className="flex items-center w-full">
+                      <SidebarMenuButton asChild size="default" className="flex-1">
+                        <NavLink
+                          to={item.url}
+                          end={item.url === "/"}
+                          className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                        >
+                          <item.icon className="h-4 w-4 mr-3 shrink-0" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                      {!collapsed && hasChildren && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleGroup(item.title);
+                          }}
+                          aria-label={`Toggle ${item.title}`}
+                          aria-expanded={isOpen}
+                          className="p-1 mr-1 rounded text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                        >
+                          <ChevronDown
+                            className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                          />
+                        </button>
+                      )}
+                    </div>
+                    {!collapsed && hasChildren && isOpen && item.children!.filter((c) => c.roles.includes(role)).map((child) => (
+                      <SidebarMenuButton key={child.url} asChild size="sm" className="ml-6 w-auto">
+                        <NavLink
+                          to={child.url}
+                          className="text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-[13px]"
+                          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                        >
+                          <child.icon className="h-3.5 w-3.5 mr-2 shrink-0" />
+                          <span>{child.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    ))}
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -433,7 +433,7 @@ export default function TasksPage() {
 
       {!loading && user && (() => {
         const assignedToMe = tasks.filter(
-          (t) => t.user_id !== user.id && t.assigned_user_id === user.id && t.status !== "done",
+          (t) => t.user_id !== user.id && getAssigneeIds(t).includes(user.id) && t.status !== "done",
         );
         const unread = assignedToMe.filter((t) => !readIds.has(t.id));
         if (unread.length === 0) return null;

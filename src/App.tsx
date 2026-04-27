@@ -20,6 +20,7 @@ import MondayBoardsPage from "@/pages/MondayBoardsPage";
 import TasksPage from "@/pages/TasksPage";
 import InventoryPage from "@/pages/InventoryPage";
 import CheckInsPage from "@/pages/CheckInsPage";
+import CheckInAnalyticsPage from "@/pages/CheckInAnalyticsPage";
 import TravelLogPage from "@/pages/TravelLogPage";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "@/pages/NotFound";
@@ -53,6 +54,7 @@ const App = () => (
                       <Route path="/tasks" element={<TasksPage />} />
                       <Route path="/inventory" element={<ProtectedRoute allow={["admin"]}><InventoryPage /></ProtectedRoute>} />
                       <Route path="/check-ins" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInsPage /></ProtectedRoute>} />
+                      <Route path="/check-ins/analytics" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInAnalyticsPage /></ProtectedRoute>} />
                       <Route path="/travel-log" element={<ProtectedRoute allow={["admin", "manager"]}><TravelLogPage /></ProtectedRoute>} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="*" element={<NotFound />} />

@@ -1,7 +1,7 @@
 
 import {
   LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings,
-  UserCog, LogOut, LayoutGrid, CheckSquare, Package, MapPinned, Plane,
+  UserCog, LogOut, LayoutGrid, CheckSquare, Package, MapPinned, Plane, PieChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +20,7 @@ type NavItem = {
   url: string;
   icon: typeof LayoutDashboard;
   roles: AppRole[]; // who can see this item
+  children?: { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] }[];
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -33,7 +34,12 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Team Performance",url: "/company-wide",  icon: BarChart3,       roles: ["manager"] },
   { title: "My Performance",  url: "/company-wide",  icon: BarChart3,       roles: ["rep"] },
   { title: "Monday Boards",   url: "/monday-boards", icon: LayoutGrid,      roles: ["admin", "manager"] },
-  { title: "Check-Ins",       url: "/check-ins",     icon: MapPinned,       roles: ["admin", "manager"] },
+  {
+    title: "Check-Ins", url: "/check-ins", icon: MapPinned, roles: ["admin", "manager"],
+    children: [
+      { title: "Check-In Analytics", url: "/check-ins/analytics", icon: PieChart, roles: ["admin", "manager"] },
+    ],
+  },
   { title: "Travel Log",      url: "/travel-log",    icon: Plane,           roles: ["admin", "manager"] },
   { title: "Inventory",       url: "/inventory",     icon: Package,         roles: ["admin"] },
   { title: "My Tasks",        url: "/tasks",         icon: CheckSquare,     roles: ["admin", "manager", "rep"] },
@@ -74,6 +80,18 @@ function SidebarNav() {
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
+                  {!collapsed && item.children && item.children.filter((c) => c.roles.includes(role)).map((child) => (
+                    <SidebarMenuButton key={child.url} asChild size="sm" className="ml-6 w-auto">
+                      <NavLink
+                        to={child.url}
+                        className="text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-[13px]"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                      >
+                        <child.icon className="h-3.5 w-3.5 mr-2 shrink-0" />
+                        <span>{child.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  ))}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

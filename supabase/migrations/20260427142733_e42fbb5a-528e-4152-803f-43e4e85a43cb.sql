@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.tag_dealers_by_name_coord(text, jsonb);

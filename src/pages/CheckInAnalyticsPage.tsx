@@ -274,7 +274,8 @@ export default function CheckInAnalyticsPage() {
     });
 
     checkIns.forEach((c) => {
-      const team = userToTeam[c.user_id];
+      // Attribute by dealer ownership first (rep -> manager), then by who logged it.
+      const team = (c.dealer_id && dealerToTeam[c.dealer_id]) || userToTeam[c.user_id];
       if (!team) return;
       periods.forEach((p) => {
         if (inRange(c.visit_date, p.start, p.end)) {

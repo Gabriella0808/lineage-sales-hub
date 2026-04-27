@@ -224,8 +224,13 @@ export default function TasksPage() {
     return hay.includes(q);
   };
 
+  const matchesAssigneeUser = (t: Task): boolean => {
+    if (assigneeUserId === "any") return true;
+    return getAssigneeIds(t).includes(assigneeUserId);
+  };
+
   const filteredTasks = tasks.filter(
-    (t) => matchesAssignee(t) && matchesDue(t) && matchesContext(t),
+    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t),
   );
 
   const load = async () => {

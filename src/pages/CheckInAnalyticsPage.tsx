@@ -39,6 +39,7 @@ const TEAM: { id: TeamId; name: string; emails: string[] }[] = [
 interface CheckInRow {
   id: string;
   user_id: string;
+  dealer_id: string | null;
   visit_date: string;
   new_placement: string | null;
 }
@@ -52,6 +53,16 @@ interface ManagerRow {
   id: string;
   email: string | null;
   name: string;
+}
+
+interface DealerRow {
+  id: string;
+  rep_id: string | null;
+}
+
+interface SalesRepRow {
+  id: string;
+  manager_id: string | null;
 }
 
 type Period = {

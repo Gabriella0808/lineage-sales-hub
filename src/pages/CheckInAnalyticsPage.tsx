@@ -237,7 +237,7 @@ export default function CheckInAnalyticsPage() {
           Check-In Analytics
         </h1>
         <p className="text-muted-foreground text-base">
-          Individual rep performance breakdown across check-ins and new placements.
+          Individual manager performance breakdown across check-ins and new placements.
         </p>
       </header>
 

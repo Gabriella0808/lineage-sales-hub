@@ -88,6 +88,7 @@ interface Dealer {
   phone?: string | null;
   email?: string | null;
   website?: string | null;
+  notes?: string | null;
   lat: number | null;
   lng: number | null;
 }

@@ -480,7 +480,7 @@ export default function TasksPage() {
 
           <div className="divide-y">
             {COLUMNS.map((col) => {
-              const items = tasks.filter((t) => t.status === col.key);
+              const items = filteredTasks.filter((t) => t.status === col.key);
               return (
                 <div key={col.key} className="">
                   {/* Group header */}

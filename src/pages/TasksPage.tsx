@@ -194,10 +194,16 @@ export default function TasksPage() {
     return true;
   };
 
+  const getAssigneeIds = (t: Task): string[] => {
+    const ids = new Set<string>(taskAssignees[t.id] ?? []);
+    if (t.assigned_user_id) ids.add(t.assigned_user_id);
+    return [...ids];
+  };
+
   const matchesAssignee = (t: Task): boolean => {
     if (!user) return true;
     if (assigneeFilter === "all") return true;
-    if (assigneeFilter === "mine") return t.assigned_user_id === user.id;
+    if (assigneeFilter === "mine") return getAssigneeIds(t).includes(user.id);
     if (assigneeFilter === "created") return t.user_id === user.id;
     return true;
   };
@@ -216,10 +222,11 @@ export default function TasksPage() {
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const [tasksRes, assigneesRes, profilesRes] = await Promise.all([
+    const [tasksRes, assigneesRes, profilesRes, taRes] = await Promise.all([
       supabase.from("manager_tasks").select("*").order("created_at", { ascending: false }),
       supabase.rpc("assignable_users"),
       supabase.from("profiles").select("user_id, full_name"),
+      supabase.from("manager_task_assignees" as any).select("task_id, user_id"),
     ]);
     if (tasksRes.error) {
       toast({ title: "Failed to load tasks", description: tasksRes.error.message, variant: "destructive" });
@@ -238,6 +245,14 @@ export default function TasksPage() {
     if (!profilesRes.error) {
       setProfiles((profilesRes.data ?? []) as Profile[]);
     }
+    if (!taRes.error) {
+      const map: Record<string, string[]> = {};
+      ((taRes.data ?? []) as { task_id: string; user_id: string }[]).forEach((row) => {
+        if (!map[row.task_id]) map[row.task_id] = [];
+        map[row.task_id].push(row.user_id);
+      });
+      setTaskAssignees(map);
+    }
     setLoading(false);
   };
 
@@ -248,7 +263,7 @@ export default function TasksPage() {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ title: "", description: "", status: "todo", due_date: "", assigned_user_id: "" });
+    setForm({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [] });
   };
 
   const openNew = () => {
@@ -263,9 +278,21 @@ export default function TasksPage() {
       description: t.description ?? "",
       status: t.status,
       due_date: t.due_date ?? "",
-      assigned_user_id: t.assigned_user_id ?? "",
+      assigned_user_ids: getAssigneeIds(t),
     });
     setOpen(true);
+  };
+
+  const syncAssignees = async (taskId: string, ids: string[]) => {
+    // Replace assignees: delete all then insert chosen set
+    await supabase.from("manager_task_assignees" as any).delete().eq("task_id", taskId);
+    if (ids.length > 0) {
+      const rows = ids.map((uid) => ({ task_id: taskId, user_id: uid }));
+      const { error } = await supabase.from("manager_task_assignees" as any).insert(rows);
+      if (error) {
+        toast({ title: "Couldn't save assignees", description: error.message, variant: "destructive" });
+      }
+    }
   };
 
   const save = async () => {
@@ -274,12 +301,14 @@ export default function TasksPage() {
       toast({ title: "Title is required", variant: "destructive" });
       return;
     }
+    const ids = form.assigned_user_ids;
+    const primary = ids[0] ?? null; // keep legacy field in sync with first assignee
     const payload = {
       title: form.title.trim(),
       description: form.description.trim() || null,
       status: form.status,
       due_date: form.due_date || null,
-      assigned_user_id: form.assigned_user_id || null,
+      assigned_user_id: primary,
     } as any;
     if (editing) {
       const { error } = await supabase
@@ -290,14 +319,18 @@ export default function TasksPage() {
         toast({ title: "Update failed", description: error.message, variant: "destructive" });
         return;
       }
+      await syncAssignees(editing.id, ids);
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("manager_tasks")
-        .insert({ ...payload, user_id: user.id });
-      if (error) {
-        toast({ title: "Create failed", description: error.message, variant: "destructive" });
+        .insert({ ...payload, user_id: user.id })
+        .select("id")
+        .single();
+      if (error || !data) {
+        toast({ title: "Create failed", description: error?.message ?? "Unknown error", variant: "destructive" });
         return;
       }
+      await syncAssignees(data.id, ids);
     }
     setOpen(false);
     resetForm();

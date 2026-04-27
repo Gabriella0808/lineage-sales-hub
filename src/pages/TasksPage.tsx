@@ -53,11 +53,53 @@ interface Task {
   user_id: string;
 }
 
-const COLUMNS: { key: Status; label: string; tone: string }[] = [
-  { key: "todo", label: "Todo", tone: "border-muted-foreground/30" },
-  { key: "in_progress", label: "In Progress", tone: "border-primary/40" },
-  { key: "blocked", label: "Blocked", tone: "border-destructive/40" },
-  { key: "done", label: "Done", tone: "border-success/40" },
+const COLUMNS: {
+  key: Status;
+  label: string;
+  tone: string;
+  // Monday-style group accent (left bar + group header tint)
+  accent: string;
+  headerBg: string;
+  // Status pill colors
+  pillBg: string;
+  pillText: string;
+}[] = [
+  {
+    key: "todo",
+    label: "Not Started",
+    tone: "border-muted-foreground/30",
+    accent: "bg-muted-foreground/60",
+    headerBg: "bg-muted/40",
+    pillBg: "bg-muted-foreground/80",
+    pillText: "text-background",
+  },
+  {
+    key: "in_progress",
+    label: "Working on it",
+    tone: "border-primary/40",
+    accent: "bg-[hsl(38_92%_50%)]",
+    headerBg: "bg-[hsl(38_92%_50%/0.08)]",
+    pillBg: "bg-[hsl(38_92%_50%)]",
+    pillText: "text-white",
+  },
+  {
+    key: "blocked",
+    label: "Stuck",
+    tone: "border-destructive/40",
+    accent: "bg-destructive",
+    headerBg: "bg-destructive/10",
+    pillBg: "bg-destructive",
+    pillText: "text-destructive-foreground",
+  },
+  {
+    key: "done",
+    label: "Done",
+    tone: "border-success/40",
+    accent: "bg-[hsl(142_71%_45%)]",
+    headerBg: "bg-[hsl(142_71%_45%/0.08)]",
+    pillBg: "bg-[hsl(142_71%_45%)]",
+    pillText: "text-white",
+  },
 ];
 
 const ROLE_LABEL: Record<AssignableUser["role"], string> = {
@@ -371,77 +413,224 @@ export default function TasksPage() {
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          {COLUMNS.map((col) => {
-            const items = tasks.filter((t) => t.status === col.key);
-            return (
-              <div key={col.key} className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    {col.label}
-                  </h2>
-                  <span className="text-xs text-muted-foreground">{items.length}</span>
-                </div>
-                <div className="space-y-2 min-h-[60px]">
-                  {items.map((t) => (
-                    <Card key={t.id} className={`p-3 border-l-4 ${col.tone}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm leading-snug break-words">{t.title}</p>
-                          {t.description && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
-                              {t.description}
-                            </p>
-                          )}
-                          {t.due_date && (
-                            <p className="text-[11px] text-muted-foreground mt-2 inline-flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(t.due_date), "MMM d")}
-                            </p>
-                          )}
-                          {t.assigned_user_id && (
-                            <p className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1 ml-2">
-                              <User className="h-3 w-3" />
-                              {assigneeName(t.assigned_user_id)}
-                            </p>
-                          )}
-                          {user && t.user_id !== user.id && t.assigned_user_id === user.id && (
-                            <p className="text-[11px] text-primary mt-1 font-medium">Assigned to you</p>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-1 shrink-0">
-                          {user && t.user_id === user.id && (
-                            <>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(t)}>
-                                <Pencil className="h-3 w-3" />
-                              </Button>
-                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => remove(t.id)}>
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <Select value={t.status} onValueChange={(v: Status) => updateStatus(t.id, v)}>
-                        <SelectTrigger className="h-7 text-xs mt-2">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {COLUMNS.map((c) => (
-                            <SelectItem key={c.key} value={c.key} className="text-xs">{c.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Card>
-                  ))}
-                  {items.length === 0 && (
-                    <p className="text-xs text-muted-foreground italic px-1">No tasks</p>
+        <Card className="overflow-hidden p-0">
+          {/* Board column header (Monday-style) */}
+          <div className="hidden md:grid grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_80px] items-center gap-0 border-b bg-muted/30 px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div />
+            <div className="px-3">Task</div>
+            <div className="px-3">Owner</div>
+            <div className="px-3">Status</div>
+            <div className="px-3">Due date</div>
+            <div className="px-3 text-right">Actions</div>
+          </div>
+
+          <div className="divide-y">
+            {COLUMNS.map((col) => {
+              const items = tasks.filter((t) => t.status === col.key);
+              return (
+                <div key={col.key} className="">
+                  {/* Group header */}
+                  <div
+                    className={`flex items-center gap-2 px-3 py-2 ${col.headerBg} border-b`}
+                  >
+                    <span className={`inline-block h-3 w-1 rounded-sm ${col.accent}`} />
+                    <h2 className="text-sm font-semibold">{col.label}</h2>
+                    <span className="text-xs text-muted-foreground">{items.length}</span>
+                  </div>
+
+                  {/* Group rows */}
+                  {items.length === 0 ? (
+                    <div className="px-3 py-3 pl-6 text-xs italic text-muted-foreground">
+                      No tasks
+                    </div>
+                  ) : (
+                    <ul className="divide-y">
+                      {items.map((t) => {
+                        const ownerName = assigneeName(t.assigned_user_id);
+                        const initials = (ownerName ?? "?")
+                          .split(/\s+/)
+                          .map((p) => p[0])
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .join("")
+                          .toUpperCase();
+                        const isMine = !!user && t.user_id === user.id;
+                        const assignedToMe =
+                          !!user && t.user_id !== user.id && t.assigned_user_id === user.id;
+                        return (
+                          <li
+                            key={t.id}
+                            className="grid grid-cols-[8px_minmax(0,1fr)] md:grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_80px] items-center gap-0 hover:bg-muted/30 transition-colors"
+                          >
+                            {/* Colored left accent bar */}
+                            <div className={`self-stretch ${col.accent}`} />
+
+                            {/* Task title + description */}
+                            <div className="px-3 py-2 min-w-0">
+                              <p className="text-sm font-medium leading-snug break-words">
+                                {t.title}
+                              </p>
+                              {t.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                  {t.description}
+                                </p>
+                              )}
+                              {assignedToMe && (
+                                <p className="text-[11px] text-primary mt-1 font-medium">
+                                  Assigned to you
+                                </p>
+                              )}
+                              {/* Mobile-only inline meta */}
+                              <div className="md:hidden mt-2 flex flex-wrap items-center gap-2">
+                                {ownerName && (
+                                  <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+                                      {initials}
+                                    </span>
+                                    {ownerName}
+                                  </span>
+                                )}
+                                <Select
+                                  value={t.status}
+                                  onValueChange={(v: Status) => updateStatus(t.id, v)}
+                                >
+                                  <SelectTrigger
+                                    className={`h-6 px-2 text-[11px] font-semibold border-0 ${col.pillBg} ${col.pillText} rounded-full w-auto gap-1`}
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {COLUMNS.map((c) => (
+                                      <SelectItem
+                                        key={c.key}
+                                        value={c.key}
+                                        className="text-xs"
+                                      >
+                                        {c.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {t.due_date && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(t.due_date), "MMM d")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Owner column (md+) */}
+                            <div className="hidden md:flex items-center gap-2 px-3 py-2 min-w-0">
+                              {ownerName ? (
+                                <>
+                                  <span
+                                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary"
+                                    title={ownerName}
+                                  >
+                                    {initials}
+                                  </span>
+                                  <span className="truncate text-sm">{ownerName}</span>
+                                </>
+                              ) : (
+                                <span className="text-xs italic text-muted-foreground">
+                                  Unassigned
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Status pill (md+) */}
+                            <div className="hidden md:flex items-center px-3 py-2">
+                              <Select
+                                value={t.status}
+                                onValueChange={(v: Status) => updateStatus(t.id, v)}
+                              >
+                                <SelectTrigger
+                                  className={`h-7 px-3 text-xs font-semibold border-0 ${col.pillBg} ${col.pillText} rounded-md w-full justify-center gap-1 shadow-sm`}
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {COLUMNS.map((c) => (
+                                    <SelectItem
+                                      key={c.key}
+                                      value={c.key}
+                                      className="text-xs"
+                                    >
+                                      {c.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Due date (md+) */}
+                            <div className="hidden md:flex items-center px-3 py-2 text-xs text-muted-foreground">
+                              {t.due_date ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {format(new Date(t.due_date), "MMM d, yyyy")}
+                                </span>
+                              ) : (
+                                <span className="italic">—</span>
+                              )}
+                            </div>
+
+                            {/* Actions (md+) */}
+                            <div className="hidden md:flex items-center justify-end gap-1 px-3 py-2">
+                              {isMine && (
+                                <>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    onClick={() => openEdit(t)}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    onClick={() => remove(t.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Mobile actions */}
+                            {isMine && (
+                              <div className="md:hidden col-start-2 flex items-center gap-1 px-3 pb-2 -mt-1">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => openEdit(t)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => remove(t.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
                   )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </Card>
       )}
     </div>
   );

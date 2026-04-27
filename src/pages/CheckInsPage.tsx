@@ -928,9 +928,12 @@ export default function CheckInsPage() {
             </Button>
             {TEAM_MEMBERS.map((m) => {
               const active = teamFilter === m.id;
+              const owners = new Set(m.repOwners.map((s) => s.toLowerCase()));
+              const states = new Set(m.states);
               const count = dealersWithMeta.filter((d) => {
+                const owner = (d.rep_owner ?? "").trim().toLowerCase();
                 const code = (d.state ?? "").trim().toUpperCase();
-                return code && m.states.includes(code);
+                return (owner && owners.has(owner)) || (code && states.has(code));
               }).length;
               return (
                 <Button

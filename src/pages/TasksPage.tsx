@@ -25,9 +25,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Pencil, Calendar, User, Bell, Check, CheckCheck, Search, X, Users } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, isWithinInterval, parseISO } from "date-fns";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
@@ -395,7 +393,7 @@ export default function TasksPage() {
               <Plus className="h-4 w-4" /> New Task
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editing ? "Edit Task" : "New Task"}</DialogTitle>
             </DialogHeader>
@@ -878,23 +876,23 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange }: AssigneeMulti
 
   return (
     <div className="space-y-2">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full justify-between font-normal"
-          >
-            <span className="inline-flex items-center gap-2 truncate">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              {triggerLabel}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {selectedUsers.length > 0 ? `${selectedUsers.length} selected` : ""}
-            </span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full justify-between font-normal"
+        onClick={() => setOpen((next) => !next)}
+        aria-expanded={open}
+      >
+        <span className="inline-flex min-w-0 items-center gap-2 truncate">
+          <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="truncate">{triggerLabel}</span>
+        </span>
+        <span className="shrink-0 text-xs text-muted-foreground">
+          {selectedUsers.length > 0 ? `${selectedUsers.length} selected` : ""}
+        </span>
+      </Button>
+      {open && (
+        <div className="rounded-md border bg-popover text-popover-foreground shadow-md">
           <div className="p-2 border-b">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -906,7 +904,7 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange }: AssigneeMulti
               />
             </div>
           </div>
-          <div className="max-h-72 overflow-y-auto overscroll-contain">
+          <div className="h-64 overflow-y-scroll overscroll-contain touch-pan-y">
             <div className="p-1">
               {filtered.map((a) => {
                 const checked = selectedIds.includes(a.user_id);
@@ -949,8 +947,8 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange }: AssigneeMulti
               </Button>
             </div>
           )}
-        </PopoverContent>
-      </Popover>
+        </div>
+      )}
 
       {selectedUsers.length > 0 && (
         <div className="flex flex-wrap gap-1">

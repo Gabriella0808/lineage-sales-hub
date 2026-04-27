@@ -155,6 +155,60 @@ export default function TasksPage() {
     assigned_user_id: string;
   }>({ title: "", description: "", status: "todo", due_date: "", assigned_user_id: "" });
 
+  // ---- Filters ----
+  type AssigneeFilter = "all" | "mine" | "created";
+  type DueFilter = "any" | "overdue" | "today" | "this_week" | "next_7" | "none";
+  const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>("all");
+  const [dueFilter, setDueFilter] = useState<DueFilter>("any");
+  const [contextQuery, setContextQuery] = useState("");
+
+  const filtersActive =
+    assigneeFilter !== "all" || dueFilter !== "any" || contextQuery.trim() !== "";
+
+  const clearFilters = () => {
+    setAssigneeFilter("all");
+    setDueFilter("any");
+    setContextQuery("");
+  };
+
+  const matchesDue = (t: Task): boolean => {
+    if (dueFilter === "any") return true;
+    if (dueFilter === "none") return !t.due_date;
+    if (!t.due_date) return false;
+    const d = parseISO(t.due_date);
+    const now = new Date();
+    if (dueFilter === "overdue") return d < startOfDay(now) && t.status !== "done";
+    if (dueFilter === "today")
+      return isWithinInterval(d, { start: startOfDay(now), end: endOfDay(now) });
+    if (dueFilter === "this_week")
+      return isWithinInterval(d, {
+        start: startOfWeek(now, { weekStartsOn: 1 }),
+        end: endOfWeek(now, { weekStartsOn: 1 }),
+      });
+    if (dueFilter === "next_7")
+      return isWithinInterval(d, { start: startOfDay(now), end: endOfDay(addDays(now, 7)) });
+    return true;
+  };
+
+  const matchesAssignee = (t: Task): boolean => {
+    if (!user) return true;
+    if (assigneeFilter === "all") return true;
+    if (assigneeFilter === "mine") return t.assigned_user_id === user.id;
+    if (assigneeFilter === "created") return t.user_id === user.id;
+    return true;
+  };
+
+  const matchesContext = (t: Task): boolean => {
+    const q = contextQuery.trim().toLowerCase();
+    if (!q) return true;
+    const hay = `${t.title} ${t.description ?? ""}`.toLowerCase();
+    return hay.includes(q);
+  };
+
+  const filteredTasks = tasks.filter(
+    (t) => matchesAssignee(t) && matchesDue(t) && matchesContext(t),
+  );
+
   const load = async () => {
     if (!user) return;
     setLoading(true);

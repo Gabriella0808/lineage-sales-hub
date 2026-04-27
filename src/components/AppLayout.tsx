@@ -1,8 +1,11 @@
 
+import { useState } from "react";
 import {
   LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, LayoutGrid, CheckSquare, Package, MapPinned, Plane, PieChart,
+  ChevronDown,
 } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";

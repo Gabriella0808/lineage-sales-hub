@@ -142,6 +142,36 @@ export default function CheckInAnalyticsPage() {
     new URLSearchParams(window.location.search).get("debug") === "1";
 
   useEffect(() => {
+    const triggerRefresh = () => setRefreshTick((t) => t + 1);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) triggerRefresh();
+    };
+
+    const channel = supabase
+      .channel("check-in-analytics-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dealer_check_ins" },
+        triggerRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dealers" },
+        triggerRefresh,
+      )
+      .subscribe();
+
+    window.addEventListener("focus", triggerRefresh);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("focus", triggerRefresh);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);

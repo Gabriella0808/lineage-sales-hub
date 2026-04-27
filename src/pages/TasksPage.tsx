@@ -904,30 +904,21 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange }: AssigneeMulti
           </div>
           <ScrollArea className="max-h-72">
             <div className="p-1">
-              {grouped.map((g) =>
-                g.items.length === 0 ? null : (
-                  <div key={g.role} className="py-1">
-                    <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {g.label}
-                    </p>
-                    {g.items.map((a) => {
-                      const checked = selectedIds.includes(a.user_id);
-                      const name = a.full_name?.trim() || a.email || "Unknown";
-                      return (
-                        <button
-                          key={a.user_id}
-                          type="button"
-                          onClick={() => toggle(a.user_id)}
-                          className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
-                        >
-                          <Checkbox checked={checked} className="pointer-events-none" />
-                          <span className="truncate">{name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ),
-              )}
+              {filtered.map((a) => {
+                const checked = selectedIds.includes(a.user_id);
+                const name = a.full_name?.trim() || a.email || "Unknown";
+                return (
+                  <button
+                    key={a.user_id}
+                    type="button"
+                    onClick={() => toggle(a.user_id)}
+                    className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                  >
+                    <Checkbox checked={checked} className="pointer-events-none" />
+                    <span className="truncate">{name}</span>
+                  </button>
+                );
+              })}
               {filtered.length === 0 && (
                 <p className="px-3 py-4 text-xs text-muted-foreground">No people found.</p>
               )}

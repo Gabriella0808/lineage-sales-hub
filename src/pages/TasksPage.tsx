@@ -167,14 +167,19 @@ export default function TasksPage() {
   type AssigneeFilter = "all" | "mine" | "created";
   type DueFilter = "any" | "overdue" | "today" | "this_week" | "next_7" | "none";
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>("all");
+  const [assigneeUserId, setAssigneeUserId] = useState<string>("any");
   const [dueFilter, setDueFilter] = useState<DueFilter>("any");
   const [contextQuery, setContextQuery] = useState("");
 
   const filtersActive =
-    assigneeFilter !== "all" || dueFilter !== "any" || contextQuery.trim() !== "";
+    assigneeFilter !== "all" ||
+    assigneeUserId !== "any" ||
+    dueFilter !== "any" ||
+    contextQuery.trim() !== "";
 
   const clearFilters = () => {
     setAssigneeFilter("all");
+    setAssigneeUserId("any");
     setDueFilter("any");
     setContextQuery("");
   };

@@ -29,12 +29,11 @@ import {
   format,
 } from "date-fns";
 
-type TeamId = "will" | "mateo" | "chris";
-const TEAM: { id: TeamId; name: string; emails: string[] }[] = [
-  { id: "will", name: "Will Grisack", emails: ["will@lineage-collections.com"] },
-  { id: "mateo", name: "Mateo De Lisa", emails: ["mateo@lineage-collections.com"] },
-  { id: "chris", name: "Chris De Lisa", emails: ["chris@lineage-collections.com"] },
-];
+interface TeamMember {
+  id: string; // manager id
+  name: string;
+  email: string | null;
+}
 
 interface CheckInRow {
   id: string;
@@ -117,7 +116,8 @@ function inRange(dateStr: string, start: Date, end: Date) {
 export default function CheckInAnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [checkIns, setCheckIns] = useState<CheckInRow[]>([]);
-  const [userToTeam, setUserToTeam] = useState<Record<string, TeamId>>({});
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [userToManager, setUserToManager] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -125,7 +125,7 @@ export default function CheckInAnalyticsPage() {
       setLoading(true);
 
       const [{ data: managers }, { data: ums }, { data: cis }] = await Promise.all([
-        supabase.from("managers").select("id,email,name") as unknown as Promise<{ data: ManagerRow[] | null }>,
+        supabase.from("managers").select("id,email,name").order("name") as unknown as Promise<{ data: ManagerRow[] | null }>,
         supabase.from("user_managers").select("user_id,manager_id") as unknown as Promise<{ data: UserManagerRow[] | null }>,
         supabase
           .from("dealer_check_ins")
@@ -135,21 +135,19 @@ export default function CheckInAnalyticsPage() {
 
       if (cancelled) return;
 
-      // map manager_id -> teamId via email
-      const managerToTeam: Record<string, TeamId> = {};
-      (managers ?? []).forEach((m) => {
-        const email = (m.email ?? "").toLowerCase();
-        const member = TEAM.find((t) => t.emails.includes(email));
-        if (member) managerToTeam[m.id] = member.id;
-      });
+      const teamList: TeamMember[] = (managers ?? []).map((m) => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+      }));
 
-      const uMap: Record<string, TeamId> = {};
+      const uMap: Record<string, string> = {};
       (ums ?? []).forEach((u) => {
-        const teamId = managerToTeam[u.manager_id];
-        if (teamId) uMap[u.user_id] = teamId;
+        uMap[u.user_id] = u.manager_id;
       });
 
-      setUserToTeam(uMap);
+      setTeam(teamList);
+      setUserToManager(uMap);
       setCheckIns(cis ?? []);
       setLoading(false);
     })();
@@ -161,55 +159,58 @@ export default function CheckInAnalyticsPage() {
   const periods = useMemo(() => buildPeriods(new Date()), []);
 
   const stats = useMemo(() => {
-    const result: Record<TeamId, Record<string, { checkIns: number; placements: number }>> = {
-      will: {},
-      mateo: {},
-      chris: {},
-    };
-    TEAM.forEach((t) => {
+    const result: Record<string, Record<string, { checkIns: number; placements: number }>> = {};
+    team.forEach((t) => {
+      result[t.id] = {};
       periods.forEach((p) => {
         result[t.id][p.key] = { checkIns: 0, placements: 0 };
       });
     });
 
     checkIns.forEach((c) => {
-      const team = userToTeam[c.user_id];
-      if (!team) return;
+      const managerId = userToManager[c.user_id];
+      if (!managerId || !result[managerId]) return;
       periods.forEach((p) => {
         if (inRange(c.visit_date, p.start, p.end)) {
-          result[team][p.key].checkIns += 1;
+          result[managerId][p.key].checkIns += 1;
           if ((c.new_placement ?? "").toLowerCase() === "yes") {
-            result[team][p.key].placements += 1;
+            result[managerId][p.key].placements += 1;
           }
         }
       });
     });
 
     return result;
-  }, [checkIns, userToTeam, periods]);
+  }, [checkIns, userToManager, periods, team]);
 
   const ytdKey = "ytd";
   const thisWeekKey = "thisWeek";
 
-  const ytdChartData = TEAM.map((t) => ({
+  // Only show managers who have any YTD activity in the charts to keep them readable
+  const activeTeam = useMemo(
+    () => team.filter((t) => stats[t.id]?.[ytdKey].checkIns > 0),
+    [team, stats]
+  );
+
+  const ytdChartData = activeTeam.map((t) => ({
     name: t.name.split(" ")[0],
     checkIns: stats[t.id][ytdKey].checkIns,
     placements: stats[t.id][ytdKey].placements,
   }));
 
-  const weekChartData = TEAM.map((t) => ({
+  const weekChartData = activeTeam.map((t) => ({
     name: t.name.split(" ")[0],
     checkIns: stats[t.id][thisWeekKey].checkIns,
     placements: stats[t.id][thisWeekKey].placements,
   }));
 
   const totals = useMemo(() => {
-    const totalCheckIns = TEAM.reduce((sum, t) => sum + stats[t.id][ytdKey].checkIns, 0);
-    const totalPlacements = TEAM.reduce((sum, t) => sum + stats[t.id][ytdKey].placements, 0);
-    const activeReps = TEAM.filter((t) => stats[t.id][ytdKey].checkIns > 0).length;
+    const totalCheckIns = team.reduce((sum, t) => sum + (stats[t.id]?.[ytdKey].checkIns ?? 0), 0);
+    const totalPlacements = team.reduce((sum, t) => sum + (stats[t.id]?.[ytdKey].placements ?? 0), 0);
+    const activeReps = team.filter((t) => (stats[t.id]?.[ytdKey].checkIns ?? 0) > 0).length;
     const conversion = totalCheckIns > 0 ? Math.round((totalPlacements / totalCheckIns) * 100) : 0;
     return { totalCheckIns, totalPlacements, activeReps, conversion };
-  }, [stats]);
+  }, [stats, team]);
 
   const chartConfig = {
     checkIns: { label: "Check-Ins", color: "hsl(var(--chart-1))" },
@@ -264,7 +265,7 @@ export default function CheckInAnalyticsPage() {
         <KpiCard
           icon={<Users className="h-4 w-4" />}
           label="Active Managers"
-          value={`${totals.activeReps} / ${TEAM.length}`}
+          value={`${totals.activeReps} / ${team.length}`}
           accent="muted"
         />
       </section>
@@ -282,7 +283,7 @@ export default function CheckInAnalyticsPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {TEAM.map((member, idx) => (
+          {team.map((member, idx) => (
             <RepCard
               key={member.id}
               name={member.name}

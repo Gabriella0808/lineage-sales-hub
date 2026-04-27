@@ -30,10 +30,10 @@ import {
 } from "date-fns";
 
 type TeamId = "will" | "mateo" | "chris";
-const TEAM: { id: TeamId; name: string; emails: string[] }[] = [
-  { id: "will", name: "Will Grisack", emails: ["will@lineage-collections.com"] },
-  { id: "mateo", name: "Mateo De Lisa", emails: ["mateo@lineage-collections.com"] },
-  { id: "chris", name: "Chris De Lisa", emails: ["chris@lineage-collections.com"] },
+const TEAM: { id: TeamId; name: string; emails: string[]; repOwners: string[] }[] = [
+  { id: "will", name: "Will Grisack", emails: ["will@lineage-collections.com"], repOwners: ["will"] },
+  { id: "mateo", name: "Mateo De Lisa", emails: ["mateo@lineage-collections.com"], repOwners: ["mateo"] },
+  { id: "chris", name: "Chris De Lisa", emails: ["chris@lineage-collections.com"], repOwners: ["chris"] },
 ];
 
 interface CheckInRow {
@@ -58,6 +58,7 @@ interface ManagerRow {
 interface DealerRow {
   id: string;
   rep_id: string | null;
+  rep_owner: string | null;
 }
 
 interface SalesRepRow {
@@ -159,7 +160,7 @@ export default function CheckInAnalyticsPage() {
           .from("dealer_check_ins")
           .select("id,user_id,dealer_id,visit_date,new_placement")
           .order("visit_date", { ascending: false }) as unknown as Promise<{ data: CheckInRow[] | null }>,
-        supabase.from("dealers").select("id,rep_id") as unknown as Promise<{ data: DealerRow[] | null }>,
+        supabase.from("dealers").select("id,rep_id,rep_owner") as unknown as Promise<{ data: DealerRow[] | null }>,
         supabase.from("sales_reps").select("id,manager_id") as unknown as Promise<{ data: SalesRepRow[] | null }>,
         supabase.auth.getUser() as unknown as Promise<{ data: { user: { id: string } | null } }>,
       ]);
@@ -179,7 +180,14 @@ export default function CheckInAnalyticsPage() {
         if (teamId) uMap[u.user_id] = teamId;
       });
 
-      // Build dealer -> team via rep -> manager
+      // Build dealer -> team using the same ownership tag used on the Check-Ins page,
+      // then fall back to rep -> manager for records that do not have rep_owner set.
+      const ownerToTeam: Record<string, TeamId> = {};
+      TEAM.forEach((t) => {
+        t.repOwners.forEach((owner) => {
+          ownerToTeam[owner.toLowerCase()] = t.id;
+        });
+      });
       const repToTeam: Record<string, TeamId> = {};
       (reps ?? []).forEach((r) => {
         if (r.manager_id && managerToTeam[r.manager_id]) {
@@ -188,7 +196,10 @@ export default function CheckInAnalyticsPage() {
       });
       const dMap: Record<string, TeamId> = {};
       (dealers ?? []).forEach((d) => {
-        if (d.rep_id && repToTeam[d.rep_id]) {
+        const owner = (d.rep_owner ?? "").trim().toLowerCase();
+        if (owner && ownerToTeam[owner]) {
+          dMap[d.id] = ownerToTeam[owner];
+        } else if (d.rep_id && repToTeam[d.rep_id]) {
           dMap[d.id] = repToTeam[d.rep_id];
         }
       });

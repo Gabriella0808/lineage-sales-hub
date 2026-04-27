@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Pencil, Calendar, User, Bell, Check, CheckCheck, Search, X, Users, Type, Hash, ChevronDown, ListChecks, Trash } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, User, Bell, Check, CheckCheck, Search, X, Users } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -56,33 +56,7 @@ interface Task {
   user_id: string;
 }
 
-type CustomColumnType = "text" | "number" | "date" | "status" | "dropdown" | "people";
 
-interface CustomColumn {
-  id: string;
-  type: CustomColumnType;
-  label: string;
-  options?: { value: string; color: string }[]; // for status/dropdown
-}
-
-const COLUMN_TYPE_META: Record<
-  CustomColumnType,
-  { label: string; icon: typeof Type; iconBg: string; iconText: string; width: number }
-> = {
-  status: { label: "Status", icon: ListChecks, iconBg: "bg-emerald-500", iconText: "text-white", width: 140 },
-  dropdown: { label: "Dropdown", icon: ChevronDown, iconBg: "bg-emerald-600", iconText: "text-white", width: 140 },
-  text: { label: "Text", icon: Type, iconBg: "bg-amber-400", iconText: "text-white", width: 160 },
-  date: { label: "Date", icon: Calendar, iconBg: "bg-violet-500", iconText: "text-white", width: 130 },
-  people: { label: "People", icon: User, iconBg: "bg-sky-400", iconText: "text-white", width: 160 },
-  number: { label: "Numbers", icon: Hash, iconBg: "bg-amber-500", iconText: "text-white", width: 110 },
-};
-
-const DEFAULT_STATUS_OPTIONS: { value: string; color: string }[] = [
-  { value: "Not Started", color: "bg-muted-foreground/70 text-background" },
-  { value: "Working on it", color: "bg-[hsl(38_92%_50%)] text-white" },
-  { value: "Stuck", color: "bg-destructive text-destructive-foreground" },
-  { value: "Done", color: "bg-[hsl(142_71%_45%)] text-white" },
-];
 
 const COLUMNS: {
   key: Status;
@@ -177,80 +151,7 @@ export default function TasksPage() {
     persistRead(next);
   };
 
-  // ---- Custom columns (per-user, persisted in localStorage) ----
-  const colsKey = user ? `tasks_custom_columns_${user.id}` : "";
-  const valsKey = user ? `tasks_custom_values_${user.id}` : "";
-  const [customColumns, setCustomColumns] = useState<CustomColumn[]>([]);
-  // values[taskId][colId] = string | string[] (people = user_ids)
-  const [customValues, setCustomValues] = useState<Record<string, Record<string, any>>>({});
-  const [columnPickerOpen, setColumnPickerOpen] = useState(false);
 
-  useEffect(() => {
-    if (!colsKey) return;
-    try {
-      setCustomColumns(JSON.parse(localStorage.getItem(colsKey) || "[]"));
-    } catch {
-      setCustomColumns([]);
-    }
-    try {
-      setCustomValues(JSON.parse(localStorage.getItem(valsKey) || "{}"));
-    } catch {
-      setCustomValues({});
-    }
-  }, [colsKey, valsKey]);
-
-  const persistColumns = (next: CustomColumn[]) => {
-    setCustomColumns(next);
-    if (colsKey) localStorage.setItem(colsKey, JSON.stringify(next));
-  };
-
-  const persistValues = (next: Record<string, Record<string, any>>) => {
-    setCustomValues(next);
-    if (valsKey) localStorage.setItem(valsKey, JSON.stringify(next));
-  };
-
-  const addCustomColumn = (type: CustomColumnType) => {
-    const meta = COLUMN_TYPE_META[type];
-    const id = `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-    const col: CustomColumn = {
-      id,
-      type,
-      label: meta.label,
-      options:
-        type === "status"
-          ? DEFAULT_STATUS_OPTIONS
-          : type === "dropdown"
-            ? [
-                { value: "Option 1", color: "bg-primary/15 text-primary" },
-                { value: "Option 2", color: "bg-muted text-foreground" },
-              ]
-            : undefined,
-    };
-    persistColumns([...customColumns, col]);
-    setColumnPickerOpen(false);
-  };
-
-  const removeCustomColumn = (id: string) => {
-    persistColumns(customColumns.filter((c) => c.id !== id));
-    const next: Record<string, Record<string, any>> = {};
-    Object.entries(customValues).forEach(([tid, row]) => {
-      const { [id]: _, ...rest } = row;
-      next[tid] = rest;
-    });
-    persistValues(next);
-  };
-
-  const renameCustomColumn = (id: string, label: string) => {
-    persistColumns(customColumns.map((c) => (c.id === id ? { ...c, label } : c)));
-  };
-
-  const setCellValue = (taskId: string, colId: string, value: any) => {
-    const row = { ...(customValues[taskId] ?? {}), [colId]: value };
-    persistValues({ ...customValues, [taskId]: row });
-  };
-
-  const getCellValue = (taskId: string, colId: string): any =>
-    customValues[taskId]?.[colId];
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -669,40 +570,15 @@ export default function TasksPage() {
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (
         <Card className="overflow-hidden p-0">
-          {(() => {
-            const customWidths = customColumns
-              .map((c) => `${COLUMN_TYPE_META[c.type].width}px`)
-              .join(" ");
-            const headerGrid = `8px minmax(0,1fr) 180px 160px 120px ${customWidths ? customWidths + " " : ""}40px 80px`;
-            return (
-              <div
-                className="hidden md:grid items-center gap-0 border-b bg-muted/30 px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
-                style={{ gridTemplateColumns: headerGrid }}
-              >
-                <div />
-                <div className="px-3">Task</div>
-                <div className="px-3">Owner</div>
-                <div className="px-3">Status</div>
-                <div className="px-3">Due date</div>
-                {customColumns.map((c) => (
-                  <CustomColumnHeader
-                    key={c.id}
-                    column={c}
-                    onRename={(label) => renameCustomColumn(c.id, label)}
-                    onRemove={() => removeCustomColumn(c.id)}
-                  />
-                ))}
-                <div className="px-1 flex items-center justify-center">
-                  <AddColumnButton
-                    open={columnPickerOpen}
-                    onOpenChange={setColumnPickerOpen}
-                    onPick={addCustomColumn}
-                  />
-                </div>
-                <div className="px-3 text-right">Actions</div>
-              </div>
-            );
-          })()}
+          {/* Board column header (Monday-style) */}
+          <div className="hidden md:grid grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_80px] items-center gap-0 border-b bg-muted/30 px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <div />
+            <div className="px-3">Task</div>
+            <div className="px-3">Owner</div>
+            <div className="px-3">Status</div>
+            <div className="px-3">Due date</div>
+            <div className="px-3 text-right">Actions</div>
+          </div>
 
           <div className="divide-y">
             {COLUMNS.map((col) => {
@@ -743,15 +619,10 @@ export default function TasksPage() {
                         const isMine = !!user && t.user_id === user.id;
                         const assignedToMe =
                           !!user && t.user_id !== user.id && ownerIds.includes(user.id);
-                        const customWidths = customColumns
-                          .map((c) => `${COLUMN_TYPE_META[c.type].width}px`)
-                          .join(" ");
-                        const rowGrid = `8px minmax(0,1fr) 180px 160px 120px ${customWidths ? customWidths + " " : ""}40px 80px`;
                         return (
                           <li
                             key={t.id}
-                            className="grid grid-cols-[8px_minmax(0,1fr)] md:[grid-template-columns:var(--row-grid)] items-center gap-0 hover:bg-muted/30 transition-colors"
-                            style={{ ["--row-grid" as any]: rowGrid }}
+                            className="grid grid-cols-[8px_minmax(0,1fr)] md:grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_80px] items-center gap-0 hover:bg-muted/30 transition-colors"
                           >
                             {/* Colored left accent bar */}
                             <div className={`self-stretch ${col.accent}`} />
@@ -889,24 +760,7 @@ export default function TasksPage() {
                               )}
                             </div>
 
-                            {/* Custom column cells (md+) */}
-                            {customColumns.map((cc) => (
-                              <div
-                                key={cc.id}
-                                className="hidden md:flex items-center px-2 py-2 text-xs"
-                              >
-                                <CustomCell
-                                  column={cc}
-                                  value={getCellValue(t.id, cc.id)}
-                                  onChange={(v) => setCellValue(t.id, cc.id, v)}
-                                  assignees={assignees}
-                                />
-                              </div>
-                            ))}
-
-                            {/* Spacer under "+" header column */}
-                            {customColumns.length > 0 && <div className="hidden md:block" />}
-                            {customColumns.length === 0 && <div className="hidden md:block" />}
+                            {/* Actions (md+) */}
 
                             {/* Actions (md+) */}
                             <div className="hidden md:flex items-center justify-end gap-1 px-3 py-2">
@@ -966,280 +820,6 @@ export default function TasksPage() {
       )}
     </div>
   );
-}
-
-// ===== Custom column components =====
-
-const COLUMN_TYPE_PICKER: { type: CustomColumnType }[] = [
-  { type: "status" },
-  { type: "dropdown" },
-  { type: "text" },
-  { type: "date" },
-  { type: "people" },
-  { type: "number" },
-];
-
-interface AddColumnButtonProps {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onPick: (type: CustomColumnType) => void;
-}
-
-function AddColumnButton({ open, onOpenChange, onPick }: AddColumnButtonProps) {
-  const [query, setQuery] = useState("");
-  const filtered = COLUMN_TYPE_PICKER.filter((c) =>
-    COLUMN_TYPE_META[c.type].label.toLowerCase().includes(query.toLowerCase()),
-  );
-
-  return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Add column"
-          className="h-7 w-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[380px] p-3" align="end">
-        <div className="relative mb-3">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search or describe your column"
-            className="h-9 pl-8 text-sm"
-            autoFocus
-          />
-        </div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-          Essentials
-        </p>
-        <div className="grid grid-cols-2 gap-1">
-          {filtered.map(({ type }) => {
-            const meta = COLUMN_TYPE_META[type];
-            const Icon = meta.icon;
-            return (
-              <button
-                key={type}
-                type="button"
-                onClick={() => onPick(type)}
-                className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm hover:bg-muted text-left"
-              >
-                <span
-                  className={`inline-flex h-7 w-7 items-center justify-center rounded ${meta.iconBg} ${meta.iconText}`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                </span>
-                {meta.label}
-              </button>
-            );
-          })}
-          {filtered.length === 0 && (
-            <p className="col-span-2 text-xs text-muted-foreground py-2">No matching column types.</p>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-interface CustomColumnHeaderProps {
-  column: CustomColumn;
-  onRename: (label: string) => void;
-  onRemove: () => void;
-}
-
-function CustomColumnHeader({ column, onRename, onRemove }: CustomColumnHeaderProps) {
-  const [open, setOpen] = useState(false);
-  const [label, setLabel] = useState(column.label);
-  const meta = COLUMN_TYPE_META[column.type];
-  const Icon = meta.icon;
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center gap-1.5 px-3 hover:text-foreground text-left truncate"
-          title={`${column.label} (${meta.label})`}
-        >
-          <Icon className="h-3 w-3 shrink-0" />
-          <span className="truncate">{column.label}</span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-56 p-2" align="start">
-        <Input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onBlur={() => label.trim() && onRename(label.trim())}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              if (label.trim()) onRename(label.trim());
-              setOpen(false);
-            }
-          }}
-          className="h-8 text-sm mb-2"
-          autoFocus
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-destructive hover:text-destructive h-8 text-xs"
-          onClick={() => {
-            onRemove();
-            setOpen(false);
-          }}
-        >
-          <Trash className="h-3.5 w-3.5 mr-1.5" /> Delete column
-        </Button>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-interface CustomCellProps {
-  column: CustomColumn;
-  value: any;
-  onChange: (v: any) => void;
-  assignees: AssignableUser[];
-}
-
-function CustomCell({ column, value, onChange, assignees }: CustomCellProps) {
-  if (column.type === "text") {
-    return (
-      <Input
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="—"
-        className="h-7 text-xs border-transparent hover:border-input focus:border-input"
-      />
-    );
-  }
-  if (column.type === "number") {
-    return (
-      <Input
-        type="number"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="—"
-        className="h-7 text-xs border-transparent hover:border-input focus:border-input"
-      />
-    );
-  }
-  if (column.type === "date") {
-    return (
-      <Input
-        type="date"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-7 text-xs border-transparent hover:border-input focus:border-input"
-      />
-    );
-  }
-  if (column.type === "status" || column.type === "dropdown") {
-    const options = column.options ?? [];
-    const selected = options.find((o) => o.value === value);
-    return (
-      <Select value={value ?? "__none__"} onValueChange={(v) => onChange(v === "__none__" ? null : v)}>
-        <SelectTrigger
-          className={`h-7 px-3 text-[11px] font-semibold border-0 rounded-md w-full justify-center gap-1 shadow-sm ${
-            selected ? selected.color : "bg-muted text-muted-foreground"
-          }`}
-        >
-          <SelectValue placeholder="—" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__none__" className="text-xs">—</SelectItem>
-          {options.map((o) => (
-            <SelectItem key={o.value} value={o.value} className="text-xs">
-              {o.value}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    );
-  }
-  if (column.type === "people") {
-    const ids: string[] = Array.isArray(value) ? value : [];
-    const selected = ids
-      .map((id) => assignees.find((a) => a.user_id === id))
-      .filter(Boolean) as AssignableUser[];
-    const initialsOf = (n: string) =>
-      n
-        .split(/\s+/)
-        .map((p) => p[0])
-        .filter(Boolean)
-        .slice(0, 2)
-        .join("")
-        .toUpperCase();
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="flex items-center gap-1 w-full text-left rounded hover:bg-muted px-1 py-1"
-          >
-            {selected.length === 0 ? (
-              <span className="text-xs italic text-muted-foreground">—</span>
-            ) : (
-              <div className="flex -space-x-1.5">
-                {selected.slice(0, 3).map((u) => {
-                  const name = u.full_name?.trim() || u.email || "?";
-                  return (
-                    <span
-                      key={u.user_id}
-                      title={name}
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary ring-2 ring-background"
-                    >
-                      {initialsOf(name)}
-                    </span>
-                  );
-                })}
-                {selected.length > 3 && (
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-background">
-                    +{selected.length - 3}
-                  </span>
-                )}
-              </div>
-            )}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-0" align="start">
-          <ScrollArea className="max-h-64">
-            <div className="p-1">
-              {Array.from(new Map(assignees.map((a) => [a.user_id, a])).values())
-                .sort((a, b) =>
-                  (a.full_name?.trim() || a.email || "").localeCompare(
-                    b.full_name?.trim() || b.email || "",
-                  ),
-                )
-                .map((a) => {
-                  const checked = ids.includes(a.user_id);
-                  const name = a.full_name?.trim() || a.email || "Unknown";
-                  return (
-                    <button
-                      key={a.user_id}
-                      type="button"
-                      onClick={() =>
-                        onChange(checked ? ids.filter((i) => i !== a.user_id) : [...ids, a.user_id])
-                      }
-                      className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
-                    >
-                      <Checkbox checked={checked} className="pointer-events-none" />
-                      <span className="truncate">{name}</span>
-                    </button>
-                  );
-                })}
-            </div>
-          </ScrollArea>
-        </PopoverContent>
-      </Popover>
-    );
-  }
-  return null;
 }
 
 
@@ -1405,4 +985,3 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange }: AssigneeMulti
     </div>
   );
 }
-

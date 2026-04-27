@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      _dealer_info_staging: {
+        Row: {
+          city: string | null
+          email: string | null
+          name: string | null
+          norm_name: string | null
+          notes: string | null
+          phone: string | null
+          state: string | null
+          website: string | null
+        }
+        Insert: {
+          city?: string | null
+          email?: string | null
+          name?: string | null
+          norm_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          state?: string | null
+          website?: string | null
+        }
+        Update: {
+          city?: string | null
+          email?: string | null
+          name?: string | null
+          norm_name?: string | null
+          notes?: string | null
+          phone?: string | null
+          state?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           created_at: string
@@ -221,6 +254,7 @@ export type Database = {
           lat: number | null
           lng: number | null
           name: string
+          notes: string | null
           phone: string | null
           rep_id: string | null
           rep_owner: string | null
@@ -243,6 +277,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           name: string
+          notes?: string | null
           phone?: string | null
           rep_id?: string | null
           rep_owner?: string | null
@@ -265,6 +300,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           name?: string
+          notes?: string | null
           phone?: string | null
           rep_id?: string | null
           rep_owner?: string | null

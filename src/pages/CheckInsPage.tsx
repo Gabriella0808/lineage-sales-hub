@@ -167,6 +167,10 @@ export default function CheckInsPage() {
     notes: "",
     follow_up_date: "",
   });
+  const [recentRange, setRecentRange] = useState<{ from: string; to: string }>({
+    from: "",
+    to: "",
+  });
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addSaving, setAddSaving] = useState(false);

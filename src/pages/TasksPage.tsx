@@ -741,10 +741,15 @@ export default function TasksPage() {
                         const isMine = !!user && t.user_id === user.id;
                         const assignedToMe =
                           !!user && t.user_id !== user.id && ownerIds.includes(user.id);
+                        const customWidths = customColumns
+                          .map((c) => `${COLUMN_TYPE_META[c.type].width}px`)
+                          .join(" ");
+                        const rowGrid = `8px minmax(0,1fr) 180px 160px 120px ${customWidths ? customWidths + " " : ""}40px 80px`;
                         return (
                           <li
                             key={t.id}
-                            className="grid grid-cols-[8px_minmax(0,1fr)] md:grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_80px] items-center gap-0 hover:bg-muted/30 transition-colors"
+                            className="grid grid-cols-[8px_minmax(0,1fr)] md:!grid items-center gap-0 hover:bg-muted/30 transition-colors"
+                            style={{ gridTemplateColumns: rowGrid }}
                           >
                             {/* Colored left accent bar */}
                             <div className={`self-stretch ${col.accent}`} />

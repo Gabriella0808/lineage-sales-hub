@@ -116,6 +116,7 @@ const ROLE_LABEL: Record<AssignableUser["role"], string> = {
 
 export default function TasksPage() {
   const { user } = useAuth();
+  const { data: roleInfo } = useUserRole();
   const { toast } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [assignees, setAssignees] = useState<AssignableUser[]>([]);

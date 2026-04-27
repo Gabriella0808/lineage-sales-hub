@@ -851,11 +851,7 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange }: AssigneeMulti
       ),
     );
 
-  const grouped = (["admin", "manager", "rep"] as const).map((role) => ({
-    role,
-    label: ROLE_LABEL[role],
-    items: filtered.filter((a) => a.role === role),
-  }));
+  // Flat list — no role grouping
 
   const toggle = (uid: string) => {
     if (selectedIds.includes(uid)) {

@@ -906,7 +906,7 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange }: AssigneeMulti
               />
             </div>
           </div>
-          <ScrollArea className="max-h-72">
+          <div className="max-h-72 overflow-y-auto overscroll-contain">
             <div className="p-1">
               {filtered.map((a) => {
                 const checked = selectedIds.includes(a.user_id);

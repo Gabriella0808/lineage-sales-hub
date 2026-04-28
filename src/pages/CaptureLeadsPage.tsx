@@ -70,10 +70,27 @@ export default function CaptureLeadsPage() {
   const load = async () => {
     setLoading(true);
     const [m, l] = await Promise.all([
-      supabase.from("trade_show_markets").select("*").order("year", { ascending: false }).order("name"),
+      supabase.from("trade_show_markets").select("*"),
       supabase.from("trade_show_leads").select("*").order("created_at", { ascending: false }),
     ]);
-    if (m.error) toast.error(m.error.message); else setMarkets(m.data ?? []);
+    if (m.error) toast.error(m.error.message);
+    else {
+      // Sort: most recent first. Use start_date, then infer from name (season + year), then year, then name.
+      const seasonOrder: Record<string, number> = { winter: 1, spring: 2, summer: 3, fall: 4, autumn: 4 };
+      const inferRecency = (mk: Market): number => {
+        if (mk.start_date) return new Date(mk.start_date).getTime();
+        const name = (mk.name || "").toLowerCase();
+        const yearMatch = name.match(/(20\d{2})/);
+        const year = yearMatch ? parseInt(yearMatch[1]) : (mk.year ?? 0);
+        let seasonRank = 0;
+        for (const s of Object.keys(seasonOrder)) {
+          if (name.includes(s)) { seasonRank = seasonOrder[s]; break; }
+        }
+        return year * 10 + seasonRank;
+      };
+      const sorted = [...(m.data ?? [])].sort((a, b) => inferRecency(b) - inferRecency(a) || a.name.localeCompare(b.name));
+      setMarkets(sorted);
+    }
     if (l.error) toast.error(l.error.message); else setLeads((l.data ?? []) as Lead[]);
     setLoading(false);
   };

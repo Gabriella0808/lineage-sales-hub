@@ -261,9 +261,10 @@ export default function CaptureLeadsPage() {
                           <tr>
                             <th className="text-left px-3 py-2 font-medium">Contact</th>
                             <th className="text-left px-3 py-2 font-medium">Dealer</th>
+                            <th className="text-left px-3 py-2 font-medium">Rep</th>
+                            <th className="text-left px-3 py-2 font-medium">Collections</th>
                             <th className="text-left px-3 py-2 font-medium">Email</th>
                             <th className="text-left px-3 py-2 font-medium">Phone</th>
-                            <th className="text-left px-3 py-2 font-medium">Rep</th>
                             <th className="text-left px-3 py-2 font-medium">Status</th>
                             <th className="text-right px-3 py-2 font-medium">Order</th>
                             <th className="px-3 py-2"></th>
@@ -274,9 +275,18 @@ export default function CaptureLeadsPage() {
                             <tr key={l.id} className="border-t hover:bg-muted/30">
                               <td className="px-3 py-2 font-medium">{l.contact_name || "—"}</td>
                               <td className="px-3 py-2 text-muted-foreground">{l.dealer || "—"}</td>
+                              <td className="px-3 py-2">{l.sales_rep || "—"}</td>
+                              <td className="px-3 py-2 text-muted-foreground max-w-[220px]">
+                                {l.product_interest ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {l.product_interest.split(",").map((c, i) => (
+                                      <Badge key={i} variant="outline" className="text-xs font-normal">{c.trim()}</Badge>
+                                    ))}
+                                  </div>
+                                ) : "—"}
+                              </td>
                               <td className="px-3 py-2 text-muted-foreground truncate max-w-[180px]">{l.email || "—"}</td>
                               <td className="px-3 py-2 text-muted-foreground">{l.phone || "—"}</td>
-                              <td className="px-3 py-2">{l.sales_rep || "—"}</td>
                               <td className="px-3 py-2">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "—"}</td>
                               <td className="px-3 py-2 text-right font-medium">{l.order_amount ? fmt(l.order_amount) : "—"}</td>
                               <td className="px-3 py-2">

@@ -9,13 +9,17 @@ const corsHeaders = {
 const MONDAY_API = "https://api.monday.com/v2";
 const BOARD_ID = "18395527308";
 
-function pickColVal(cols: any[], matchers: string[]): string {
+function pickColVal(cols: any[], matchers: string[], opts: { exact?: boolean; exclude?: string[] } = {}): string {
   if (!cols) return "";
   const lower = matchers.map((m) => m.toLowerCase());
+  const excl = (opts.exclude ?? []).map((m) => m.toLowerCase());
   for (const c of cols) {
-    const title = (c.column?.title || c.title || "").toLowerCase();
-    if (lower.some((m) => title.includes(m))) {
-      // Prefer display_value (board_relation/mirror), then dropdown values, then text
+    const title = (c.column?.title || c.title || "").toLowerCase().trim();
+    if (excl.length && excl.some((m) => title.includes(m))) continue;
+    const matches = opts.exact
+      ? lower.some((m) => title === m)
+      : lower.some((m) => title.includes(m));
+    if (matches) {
       let v = (c.display_value ?? "").toString();
       if (!v && Array.isArray(c.values)) v = c.values.map((x: any) => x?.label).filter(Boolean).join(", ");
       if (!v) v = (c.text ?? "").toString();

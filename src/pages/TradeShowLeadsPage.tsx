@@ -125,10 +125,6 @@ export default function TradeShowLeadsPage() {
               {markets.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={sync} disabled={syncing}>
-            <RefreshCw className={`h-3.5 w-3.5 mr-2 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Syncing…" : "Sync from monday.com"}
-          </Button>
         </div>
       </div>
 

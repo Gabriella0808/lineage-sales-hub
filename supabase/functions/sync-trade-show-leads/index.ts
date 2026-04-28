@@ -15,7 +15,11 @@ function pickColVal(cols: any[], matchers: string[]): string {
   for (const c of cols) {
     const title = (c.column?.title || c.title || "").toLowerCase();
     if (lower.some((m) => title.includes(m))) {
-      return (c.text ?? "").toString();
+      // Prefer display_value (board_relation/mirror), then dropdown values, then text
+      let v = (c.display_value ?? "").toString();
+      if (!v && Array.isArray(c.values)) v = c.values.map((x: any) => x?.label).filter(Boolean).join(", ");
+      if (!v) v = (c.text ?? "").toString();
+      if (v) return v;
     }
   }
   return "";
@@ -41,9 +45,10 @@ Deno.serve(async (req: Request) => {
     let cursor: string | null = null;
 
     do {
+      const colFrag = `column_values { id text column { title } ... on BoardRelationValue { display_value } ... on MirrorValue { display_value } ... on DropdownValue { values { label } } }`;
       const query = cursor
-        ? `{ next_items_page(limit: 100, cursor: "${cursor}") { cursor items { id name column_values { id text column { title } } } } }`
-        : `{ boards(ids: ${BOARD_ID}) { items_page(limit: 100) { cursor items { id name column_values { id text column { title } } } } } }`;
+        ? `{ next_items_page(limit: 100, cursor: "${cursor}") { cursor items { id name ${colFrag} } } }`
+        : `{ boards(ids: ${BOARD_ID}) { items_page(limit: 100) { cursor items { id name ${colFrag} } } } }`;
 
       const res = await fetch(MONDAY_API, {
         method: "POST",

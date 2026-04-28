@@ -975,7 +975,8 @@ export default function CheckInsPage() {
                     !newDealer.name.trim() ||
                     !newDealer.street_address.trim() ||
                     !newDealer.city.trim() ||
-                    !newDealer.state.trim()
+                    !newDealer.state.trim() ||
+                    !(newDealer.rep_owner || detectedOwner)
                   }
                 >
                   {addSaving ? "Saving..." : "Add dealer"}

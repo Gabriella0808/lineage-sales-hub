@@ -102,7 +102,7 @@ export function CollectionsMultiSelect({ value, onChange }: Props) {
               }}
             />
           </div>
-          <div className="max-h-60 overflow-y-auto py-1">
+          <div className="max-h-72 overflow-y-auto overscroll-contain py-1">
             {filtered.length === 0 && !canAdd && (
               <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                 No collections found

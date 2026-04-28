@@ -72,10 +72,11 @@ export default function TradeShowLeadsPage() {
   const stats = useMemo(() => {
     const total = filtered.length;
     const orders = filtered.reduce((s, l) => s + (Number(l.order_amount) || 0), 0);
-    const dealers = new Set(filtered.map((l) => l.dealer).filter(Boolean)).size;
+    const ordersWithValue = filtered.filter((l) => (Number(l.order_amount) || 0) > 0).length;
+    const avgOrder = ordersWithValue ? orders / ordersWithValue : 0;
     const qualified = filtered.filter((l) => /qualified|passed|contacted/i.test(l.status || "")).length;
     const conv = total ? Math.round((qualified / total) * 100) : 0;
-    return { total, orders, dealers, conv };
+    return { total, orders, avgOrder, conv };
   }, [filtered]);
 
   const byMarket = useMemo(() => {
@@ -130,7 +131,7 @@ export default function TradeShowLeadsPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard icon={Users} label="Total Leads" value={stats.total.toString()} />
-        <StatCard icon={Building2} label="Unique Dealers" value={stats.dealers.toString()} />
+        <StatCard icon={DollarSign} label="Avg Order Value" value={fmt(stats.avgOrder)} />
         <StatCard icon={DollarSign} label="Total Order Value" value={fmt(stats.orders)} />
         <StatCard icon={TrendingUp} label="Engaged %" value={`${stats.conv}%`} />
       </div>

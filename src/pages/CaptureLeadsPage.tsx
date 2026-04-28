@@ -220,22 +220,9 @@ export default function CaptureLeadsPage() {
               <Field label="Location">
                 <Input value={marketForm.location} onChange={(e) => setMarketForm({ ...marketForm, location: e.target.value })} placeholder="e.g. High Point, NC" />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Season">
-                  <Select value={marketForm.season} onValueChange={(v) => setMarketForm({ ...marketForm, season: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Spring">Spring</SelectItem>
-                      <SelectItem value="Summer">Summer</SelectItem>
-                      <SelectItem value="Fall">Fall</SelectItem>
-                      <SelectItem value="Winter">Winter</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field label="Year">
-                  <Input type="number" value={marketForm.year} onChange={(e) => setMarketForm({ ...marketForm, year: Number(e.target.value) })} />
-                </Field>
-              </div>
+              <Field label="Year">
+                <Input type="number" value={marketForm.year} onChange={(e) => setMarketForm({ ...marketForm, year: Number(e.target.value) })} />
+              </Field>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setMarketDialog(false)}>Cancel</Button>

@@ -47,12 +47,18 @@ type Lead = {
   created_at: string;
 };
 
+type SalesRep = {
+  id: string;
+  name: string;
+  email: string | null;
+};
+
 const fmt = (n: number | null) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);
 
 const emptyLead = {
   contact_name: "", dealer: "", email: "", additional_email: "", phone: "",
-  sales_rep: "", product_interest: "", order_amount: "", status: "New", notes: "",
+  sales_rep: "", sales_rep_id: "", rep_email: "", product_interest: "", order_amount: "", status: "New", notes: "",
 };
 
 const emptyMarket = { name: "", location: "", season: "Spring", year: new Date().getFullYear() };
@@ -61,6 +67,7 @@ export default function CaptureLeadsPage() {
   const { user } = useAuth();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [salesReps, setSalesReps] = useState<SalesRep[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [marketDialog, setMarketDialog] = useState(false);
@@ -71,9 +78,10 @@ export default function CaptureLeadsPage() {
 
   const load = async () => {
     setLoading(true);
-    const [m, l] = await Promise.all([
+    const [m, l, r] = await Promise.all([
       supabase.from("trade_show_markets").select("*"),
       supabase.from("trade_show_leads").select("*").order("created_at", { ascending: false }),
+      supabase.from("sales_reps").select("id,name,email").order("name"),
     ]);
     if (m.error) toast.error(m.error.message);
     else {
@@ -94,6 +102,7 @@ export default function CaptureLeadsPage() {
       setMarkets(sorted);
     }
     if (l.error) toast.error(l.error.message); else setLeads((l.data ?? []) as Lead[]);
+    if (r.error) toast.error(r.error.message); else setSalesReps((r.data ?? []) as SalesRep[]);
     setLoading(false);
   };
 
@@ -147,6 +156,7 @@ export default function CaptureLeadsPage() {
       email: leadForm.email.trim() || null,
       phone: leadForm.phone.trim() || null,
       sales_rep: leadForm.sales_rep.trim() || null,
+      rep_email: leadForm.rep_email.trim() || null,
       product_interest: leadForm.product_interest.trim() || null,
       order_amount: parseFloat(leadForm.order_amount) || 0,
       status: leadForm.status,
@@ -358,7 +368,29 @@ export default function CaptureLeadsPage() {
               </Field>
             </div>
             <Field label="Sales Rep">
-              <Input value={leadForm.sales_rep} onChange={(e) => setLeadForm({ ...leadForm, sales_rep: e.target.value })} placeholder="Assigned rep" />
+              <Select
+                value={leadForm.sales_rep_id}
+                onValueChange={(id) => {
+                  const rep = salesReps.find((r) => r.id === id);
+                  setLeadForm({
+                    ...leadForm,
+                    sales_rep_id: id,
+                    sales_rep: rep?.name ?? "",
+                    rep_email: rep?.email ?? "",
+                  });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a sales rep" />
+                </SelectTrigger>
+                <SelectContent>
+                  {salesReps.map((rep) => (
+                    <SelectItem key={rep.id} value={rep.id}>
+                      {rep.name}{rep.email ? ` — ${rep.email}` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Product of Interest">
               <CollectionsMultiSelect

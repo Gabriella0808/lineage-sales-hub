@@ -157,6 +157,26 @@ export default function CaptureLeadsPage() {
     });
     if (error) return toast.error(error.message);
     toast.success("Lead captured");
+
+    // Sync to Mailchimp ONLY if: (1) dealer email present and (2) market is a High Point market
+    const dealerEmail = leadForm.email.trim();
+    const isHighPoint = market?.name && /high point/i.test(market.name);
+    if (dealerEmail && isHighPoint) {
+      supabase.functions.invoke("sync-mailchimp-lead", {
+        body: {
+          email: dealerEmail,
+          market_name: market!.name,
+          dealer: leadForm.dealer.trim() || null,
+          contact_name: leadForm.contact_name.trim() || null,
+        },
+      }).then(({ data, error: mcErr }) => {
+        if (mcErr) return toast.error(`Mailchimp: ${mcErr.message}`);
+        if (data?.success) toast.success(`Added to Mailchimp (tag: ${data.tag})`);
+        else if (data?.skipped) return;
+        else if (data?.error) toast.error(`Mailchimp: ${data.error}`);
+      });
+    }
+
     setLeadDialog(null);
     setLeadForm(emptyLead);
     load();

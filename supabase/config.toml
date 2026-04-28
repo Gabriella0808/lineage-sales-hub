@@ -1,1 +1,31 @@
 project_id = "tsbrvpgzawbbmuloxlkz"
+
+[functions.sync-monday]
+verify_jwt = false
+
+[functions.sync-acctivate]
+verify_jwt = false
+
+[functions.list-monday-boards]
+verify_jwt = false
+
+[functions.get-mapbox-token]
+verify_jwt = false
+
+[functions.seed-users]
+verify_jwt = false
+
+[functions.seed-rep-users]
+verify_jwt = false
+
+[functions.sync-travel-log]
+verify_jwt = false
+
+[functions.sync-trade-show-leads]
+verify_jwt = false
+
+[functions.probe-monday-columns]
+verify_jwt = false
+
+[functions.sync-mailchimp-lead]
+verify_jwt = false

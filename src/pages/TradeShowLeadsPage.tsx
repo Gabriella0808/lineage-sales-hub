@@ -178,11 +178,11 @@ export default function TradeShowLeadsPage() {
           </Card>
 
           <Card className="p-5">
-            <h3 className="font-serif text-lg mb-4">Lead Status Distribution</h3>
+            <h3 className="font-serif text-lg mb-4">Leads by Collection</h3>
             <ResponsiveContainer width="100%" height={300}>
               <RPieChart>
-                <Pie data={byStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                  {byStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <Pie data={byCollection} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                  {byCollection.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip />
                 <Legend />

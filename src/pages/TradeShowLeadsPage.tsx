@@ -159,15 +159,15 @@ export default function TradeShowLeadsPage() {
           </Card>
 
           <Card className="p-5">
-            <h3 className="font-serif text-lg mb-4">Order Value by Market</h3>
+            <h3 className="font-serif text-lg mb-4">Lead Status Distribution</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={byMarket} margin={{ left: 0, right: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={70} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${Math.round(v / 1000)}k`} />
-                <Tooltip formatter={(v: number) => fmt(v)} />
-                <Bar dataKey="value" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-              </BarChart>
+              <RPieChart>
+                <Pie data={byStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                  {byStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </RPieChart>
             </ResponsiveContainer>
           </Card>
 
@@ -185,15 +185,15 @@ export default function TradeShowLeadsPage() {
           </Card>
 
           <Card className="p-5">
-            <h3 className="font-serif text-lg mb-4">Lead Status Distribution</h3>
+            <h3 className="font-serif text-lg mb-4">Order Value by Market</h3>
             <ResponsiveContainer width="100%" height={300}>
-              <RPieChart>
-                <Pie data={byStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                  {byStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </RPieChart>
+              <BarChart data={byMarket} margin={{ left: 0, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={70} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${Math.round(v / 1000)}k`} />
+                <Tooltip formatter={(v: number) => fmt(v)} />
+                <Bar dataKey="value" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </Card>
         </div>

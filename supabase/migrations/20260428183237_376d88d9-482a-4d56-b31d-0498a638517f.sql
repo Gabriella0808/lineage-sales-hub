@@ -1,0 +1,1 @@
+ALTER TABLE public.trade_show_leads ADD COLUMN IF NOT EXISTS rep_email text;

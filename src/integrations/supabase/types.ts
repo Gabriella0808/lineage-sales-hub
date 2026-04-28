@@ -810,6 +810,7 @@ export type Database = {
           phone: string | null
           product_interest: string | null
           raw: Json | null
+          rep_email: string | null
           sales_rep: string | null
           status: string | null
           trade_show: string | null
@@ -831,6 +832,7 @@ export type Database = {
           phone?: string | null
           product_interest?: string | null
           raw?: Json | null
+          rep_email?: string | null
           sales_rep?: string | null
           status?: string | null
           trade_show?: string | null
@@ -852,6 +854,7 @@ export type Database = {
           phone?: string | null
           product_interest?: string | null
           raw?: Json | null
+          rep_email?: string | null
           sales_rep?: string | null
           status?: string | null
           trade_show?: string | null

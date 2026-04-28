@@ -35,6 +35,7 @@ type Lead = {
   contact_name: string | null;
   dealer: string | null;
   email: string | null;
+  rep_email: string | null;
   phone: string | null;
   trade_show: string | null;
   sales_rep: string | null;
@@ -263,6 +264,7 @@ export default function CaptureLeadsPage() {
                             <th className="text-left px-3 py-2 font-medium">Dealer</th>
                             <th className="text-left px-3 py-2 font-medium">Dealer Email</th>
                             <th className="text-left px-3 py-2 font-medium">Rep</th>
+                            <th className="text-left px-3 py-2 font-medium">Rep Email</th>
                             <th className="text-left px-3 py-2 font-medium">Collections</th>
                             <th className="text-left px-3 py-2 font-medium">Phone</th>
                             <th className="text-left px-3 py-2 font-medium">Status</th>
@@ -279,6 +281,9 @@ export default function CaptureLeadsPage() {
                                 {l.email ? <a href={`mailto:${l.email}`} className="hover:underline">{l.email}</a> : "—"}
                               </td>
                               <td className="px-3 py-2">{l.sales_rep || "—"}</td>
+                              <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px]">
+                                {l.rep_email ? <a href={`mailto:${l.rep_email}`} className="hover:underline">{l.rep_email}</a> : "—"}
+                              </td>
                               <td className="px-3 py-2 text-muted-foreground max-w-[220px]">
                                 {l.product_interest ? (
                                   <div className="flex flex-wrap gap-1">

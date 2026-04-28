@@ -803,6 +803,7 @@ export type Database = {
           email: string | null
           id: string
           lead_date: string | null
+          market_id: string | null
           monday_item_id: string | null
           notes: string | null
           order_amount: number | null
@@ -823,6 +824,7 @@ export type Database = {
           email?: string | null
           id?: string
           lead_date?: string | null
+          market_id?: string | null
           monday_item_id?: string | null
           notes?: string | null
           order_amount?: number | null
@@ -843,6 +845,7 @@ export type Database = {
           email?: string | null
           id?: string
           lead_date?: string | null
+          market_id?: string | null
           monday_item_id?: string | null
           notes?: string | null
           order_amount?: number | null
@@ -853,6 +856,56 @@ export type Database = {
           status?: string | null
           trade_show?: string | null
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_show_leads_market_id_fkey"
+            columns: ["market_id"]
+            isOneToOne: false
+            referencedRelation: "trade_show_markets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trade_show_markets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean
+          location: string | null
+          name: string
+          season: string | null
+          start_date: string | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          name: string
+          season?: string | null
+          start_date?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          name?: string
+          season?: string | null
+          start_date?: string | null
+          updated_at?: string
+          year?: number | null
         }
         Relationships: []
       }

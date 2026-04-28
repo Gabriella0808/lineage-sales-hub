@@ -1128,7 +1128,17 @@ export default function CheckInsPage() {
           </div>
         </div>
         {(() => {
-          const filtered = checkIns.filter((c) => {
+          // Filter by selected teammate via the dealer's rep_owner.
+          const team = teamFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === teamFilter);
+          const ownerSet = team ? new Set(team.repOwners.map((s) => s.toLowerCase())) : null;
+          const dealerById = new Map(dealers.map((d) => [d.id, d]));
+          const teamScoped = checkIns.filter((c) => {
+            if (!team || !ownerSet) return true;
+            const d = dealerById.get(c.dealer_id);
+            const owner = (d?.rep_owner ?? "").trim().toLowerCase();
+            return !!owner && ownerSet.has(owner);
+          });
+          const filtered = teamScoped.filter((c) => {
             const d = c.visit_date.slice(0, 10);
             if (recentRange.from && d < recentRange.from) return false;
             if (recentRange.to && d > recentRange.to) return false;
@@ -1140,16 +1150,18 @@ export default function CheckInsPage() {
               <div className="flex items-center justify-end -mt-1 mb-2">
                 <span className="text-xs text-muted-foreground">
                   {hasRange
-                    ? `${filtered.length} in range • ${checkIns.length} total`
-                    : `${checkIns.length} total`}
+                    ? `${filtered.length} in range • ${teamScoped.length} total`
+                    : `${teamScoped.length} total`}
                 </span>
               </div>
               {loading ? (
                 <p className="text-sm text-muted-foreground">Loading…</p>
               ) : filtered.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">
-                  {checkIns.length === 0
-                    ? "No check-ins yet. Click any dealer pin to log your first visit."
+                  {teamScoped.length === 0
+                    ? team
+                      ? `No check-ins yet for ${team.name}.`
+                      : "No check-ins yet. Click any dealer pin to log your first visit."
                     : "No check-ins in the selected date range."}
                 </p>
               ) : (

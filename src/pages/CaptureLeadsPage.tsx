@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/accordion";
 import { Loader2, Plus, MapPin, Calendar, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
 
 type Market = {
   id: string;
@@ -360,7 +361,10 @@ export default function CaptureLeadsPage() {
               <Input value={leadForm.sales_rep} onChange={(e) => setLeadForm({ ...leadForm, sales_rep: e.target.value })} placeholder="Assigned rep" />
             </Field>
             <Field label="Product of Interest">
-              <Input value={leadForm.product_interest} onChange={(e) => setLeadForm({ ...leadForm, product_interest: e.target.value })} placeholder="Products" />
+              <CollectionsMultiSelect
+                value={leadForm.product_interest ? leadForm.product_interest.split(",").map((s) => s.trim()).filter(Boolean) : []}
+                onChange={(arr) => setLeadForm({ ...leadForm, product_interest: arr.join(", ") })}
+              />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Order Amount">

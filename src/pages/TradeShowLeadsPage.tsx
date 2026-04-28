@@ -179,13 +179,13 @@ export default function TradeShowLeadsPage() {
 
           <Card className="p-5">
             <h3 className="font-serif text-lg mb-4">Leads by Collection</h3>
-            <ResponsiveContainer width="100%" height={Math.max(300, byCollection.length * 24)}>
-              <BarChart data={byCollection} layout="vertical" margin={{ left: 20, right: 16 }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={byCollection} margin={{ left: 0, right: 16 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                <XAxis type="number" tick={{ fontSize: 11 }} />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={140} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={70} />
+                <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Bar dataKey="value" fill="hsl(var(--accent))" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="value" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>

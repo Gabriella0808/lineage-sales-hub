@@ -181,11 +181,10 @@ export default function TradeShowLeadsPage() {
             <h3 className="font-serif text-lg mb-4">Leads by Collection</h3>
             <ResponsiveContainer width="100%" height={300}>
               <RPieChart>
-                <Pie data={byCollection} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                <Pie data={byCollection} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={110}>
                   {byCollection.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip />
-                <Legend />
               </RPieChart>
             </ResponsiveContainer>
           </Card>

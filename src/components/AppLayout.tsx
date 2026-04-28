@@ -3,7 +3,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, Users, Map, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, LayoutGrid, CheckSquare, Package, MapPinned, Plane, PieChart,
-  ChevronDown,
+  ChevronDown, Sparkles,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { title: "Travel Log",      url: "/travel-log",    icon: Plane,           roles: ["admin", "manager"] },
+  { title: "Trade Show Leads",url: "/trade-show-leads", icon: Sparkles,     roles: ["admin", "manager"] },
   { title: "Inventory",       url: "/inventory",     icon: Package,         roles: ["admin"] },
   { title: "My Tasks",        url: "/tasks",         icon: CheckSquare,     roles: ["admin", "manager", "rep"] },
   { title: "Settings",        url: "/settings",      icon: Settings,        roles: ["admin", "manager", "rep"] },

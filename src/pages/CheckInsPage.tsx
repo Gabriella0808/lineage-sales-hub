@@ -947,7 +947,7 @@ export default function CheckInsPage() {
                     }
                   >
                     <SelectTrigger id="d-owner">
-                      <SelectValue placeholder="Select teammate" />
+                      <SelectValue placeholder="Select owner" />
                     </SelectTrigger>
                     <SelectContent>
                       {TEAM_MEMBERS.map((t) => (

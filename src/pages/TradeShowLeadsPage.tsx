@@ -1,64 +1,53 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
-} from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, RefreshCw, Users, DollarSign, Building2, Search } from "lucide-react";
+import { Loader2, RefreshCw, Users, DollarSign, Building2, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  PieChart as RPieChart, Pie, Cell, Legend,
+} from "recharts";
 
 type Lead = {
   id: string;
   contact_name: string | null;
   dealer: string | null;
-  email: string | null;
-  additional_email: string | null;
-  phone: string | null;
   trade_show: string | null;
   sales_rep: string | null;
   product_interest: string | null;
   order_amount: number | null;
   status: string | null;
-  notes: string | null;
-  lead_date: string | null;
+  market_id: string | null;
   created_at: string;
 };
 
-const formatCurrency = (n: number | null) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);
+type Market = { id: string; name: string };
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#8b7355", "#c9a96e", "#5d7a8a", "#a86c5f", "#7a8a5d"];
 
 export default function TradeShowLeadsPage() {
-  const { user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [markets, setMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [search, setSearch] = useState("");
   const [marketFilter, setMarketFilter] = useState<string>("all");
-  const [open, setOpen] = useState(false);
-
-  const [form, setForm] = useState({
-    contact_name: "", dealer: "", email: "", additional_email: "", phone: "",
-    trade_show: "", sales_rep: "", product_interest: "", order_amount: "",
-    status: "New", notes: "",
-  });
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("trade_show_leads")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) toast.error(error.message);
-    else setLeads((data ?? []) as Lead[]);
+    const [leadsRes, marketsRes] = await Promise.all([
+      supabase.from("trade_show_leads").select("*").order("created_at", { ascending: false }),
+      supabase.from("trade_show_markets").select("id,name").order("name"),
+    ]);
+    if (leadsRes.error) toast.error(leadsRes.error.message);
+    else setLeads((leadsRes.data ?? []) as Lead[]);
+    if (!marketsRes.error) setMarkets(marketsRes.data ?? []);
     setLoading(false);
   };
 
@@ -74,204 +63,141 @@ export default function TradeShowLeadsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const markets = useMemo(() => {
-    const set = new Set<string>();
-    leads.forEach((l) => l.trade_show && set.add(l.trade_show));
-    return Array.from(set).sort();
-  }, [leads]);
-
   const filtered = useMemo(() => {
-    return leads.filter((l) => {
-      if (marketFilter !== "all" && l.trade_show !== marketFilter) return false;
-      if (search) {
-        const s = search.toLowerCase();
-        const blob = [l.contact_name, l.dealer, l.email, l.sales_rep, l.product_interest]
-          .filter(Boolean).join(" ").toLowerCase();
-        if (!blob.includes(s)) return false;
-      }
-      return true;
-    });
-  }, [leads, marketFilter, search]);
+    if (marketFilter === "all") return leads;
+    const m = markets.find((x) => x.id === marketFilter);
+    return leads.filter((l) => l.market_id === marketFilter || (m && l.trade_show === m.name));
+  }, [leads, markets, marketFilter]);
 
   const stats = useMemo(() => {
-    const totalOrders = filtered.reduce((s, l) => s + (Number(l.order_amount) || 0), 0);
+    const total = filtered.length;
+    const orders = filtered.reduce((s, l) => s + (Number(l.order_amount) || 0), 0);
     const dealers = new Set(filtered.map((l) => l.dealer).filter(Boolean)).size;
-    return { count: filtered.length, totalOrders, dealers };
+    const qualified = filtered.filter((l) => /qualified|passed|contacted/i.test(l.status || "")).length;
+    const conv = total ? Math.round((qualified / total) * 100) : 0;
+    return { total, orders, dealers, conv };
   }, [filtered]);
 
-  const submit = async () => {
-    if (!form.contact_name.trim()) return toast.error("Contact name is required");
-    if (!form.trade_show.trim()) return toast.error("Trade show is required");
-    const payload = {
-      contact_name: form.contact_name.trim(),
-      dealer: form.dealer.trim() || null,
-      email: form.email.trim() || null,
-      additional_email: form.additional_email.trim() || null,
-      phone: form.phone.trim() || null,
-      trade_show: form.trade_show.trim(),
-      sales_rep: form.sales_rep.trim() || null,
-      product_interest: form.product_interest.trim() || null,
-      order_amount: parseFloat(form.order_amount) || 0,
-      status: form.status || "New",
-      notes: form.notes.trim() || null,
-      lead_date: new Date().toISOString().slice(0, 10),
-      created_by: user?.id ?? null,
-    };
-    const { error } = await supabase.from("trade_show_leads").insert(payload);
-    if (error) return toast.error(error.message);
-    toast.success("Lead added");
-    setOpen(false);
-    setForm({
-      contact_name: "", dealer: "", email: "", additional_email: "", phone: "",
-      trade_show: form.trade_show, sales_rep: "", product_interest: "", order_amount: "",
-      status: "New", notes: "",
+  const byMarket = useMemo(() => {
+    const map = new Map<string, { name: string; leads: number; value: number }>();
+    filtered.forEach((l) => {
+      const key = l.trade_show || "Unassigned";
+      const cur = map.get(key) ?? { name: key, leads: 0, value: 0 };
+      cur.leads += 1;
+      cur.value += Number(l.order_amount) || 0;
+      map.set(key, cur);
     });
-    load();
-  };
+    return Array.from(map.values()).sort((a, b) => b.leads - a.leads).slice(0, 12);
+  }, [filtered]);
+
+  const byRep = useMemo(() => {
+    const map = new Map<string, number>();
+    filtered.forEach((l) => {
+      const k = l.sales_rep || "Unassigned";
+      map.set(k, (map.get(k) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([name, leads]) => ({ name, leads }))
+      .sort((a, b) => b.leads - a.leads).slice(0, 15);
+  }, [filtered]);
+
+  const byStatus = useMemo(() => {
+    const map = new Map<string, number>();
+    filtered.forEach((l) => {
+      const k = l.status || "Unknown";
+      map.set(k, (map.get(k) ?? 0) + 1);
+    });
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value }));
+  }, [filtered]);
 
   return (
     <div className="animate-fade-in">
       <div className="page-header flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">Trade Show Leads</h1>
-          <p className="page-subtitle">Capture and manage leads from every market</p>
+          <p className="page-subtitle">Performance dashboard across every market</p>
         </div>
         <div className="flex gap-2">
+          <Select value={marketFilter} onValueChange={setMarketFilter}>
+            <SelectTrigger className="w-[240px]"><SelectValue placeholder="All markets" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All markets</SelectItem>
+              {markets.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" onClick={sync} disabled={syncing}>
             <RefreshCw className={`h-3.5 w-3.5 mr-2 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? "Syncing…" : "Sync from monday.com"}
           </Button>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" /> New Lead</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Capture New Lead</DialogTitle></DialogHeader>
-              <div className="space-y-3">
-                <Field label="Contact First and Last Name" required>
-                  <Input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} placeholder="Enter contact name" />
-                </Field>
-                <Field label="Dealer">
-                  <Input value={form.dealer} onChange={(e) => setForm({ ...form, dealer: e.target.value })} placeholder="Enter dealer name" />
-                </Field>
-                <Field label="Email">
-                  <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="contact@company.com" />
-                </Field>
-                <Field label="Additional Email">
-                  <Input type="email" value={form.additional_email} onChange={(e) => setForm({ ...form, additional_email: e.target.value })} placeholder="alternate@company.com" />
-                </Field>
-                <Field label="Phone">
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1 (555) 123-4567" />
-                </Field>
-                <Field label="Trade Show / Event" required>
-                  <Input value={form.trade_show} onChange={(e) => setForm({ ...form, trade_show: e.target.value })} placeholder="e.g. High Point Spring 2026" list="market-list" />
-                  <datalist id="market-list">{markets.map((m) => <option key={m} value={m} />)}</datalist>
-                </Field>
-                <Field label="Sales Rep">
-                  <Input value={form.sales_rep} onChange={(e) => setForm({ ...form, sales_rep: e.target.value })} placeholder="Assigned rep" />
-                </Field>
-                <Field label="Product of Interest">
-                  <Input value={form.product_interest} onChange={(e) => setForm({ ...form, product_interest: e.target.value })} placeholder="Products" />
-                </Field>
-                <Field label="Order Amount">
-                  <Input type="number" value={form.order_amount} onChange={(e) => setForm({ ...form, order_amount: e.target.value })} placeholder="0" />
-                </Field>
-                <Field label="Status">
-                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="New">New</SelectItem>
-                      <SelectItem value="Contacted">Contacted</SelectItem>
-                      <SelectItem value="Qualified">Qualified</SelectItem>
-                      <SelectItem value="Passed to Rep">Passed to Rep</SelectItem>
-                      <SelectItem value="Disqualified">Disqualified</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field label="Notes">
-                  <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} />
-                </Field>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button onClick={submit}>Create Lead</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <StatCard icon={Users} label="Total Leads" value={stats.count.toString()} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard icon={Users} label="Total Leads" value={stats.total.toString()} />
         <StatCard icon={Building2} label="Unique Dealers" value={stats.dealers.toString()} />
-        <StatCard icon={DollarSign} label="Total Order Value" value={formatCurrency(stats.totalOrders)} />
-      </div>
-
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search leads…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-        </div>
-        <Select value={marketFilter} onValueChange={setMarketFilter}>
-          <SelectTrigger className="w-[260px]"><SelectValue placeholder="Filter by market" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All markets</SelectItem>
-            {markets.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <StatCard icon={DollarSign} label="Total Order Value" value={fmt(stats.orders)} />
+        <StatCard icon={TrendingUp} label="Engaged %" value={`${stats.conv}%`} />
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading leads…
+          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
         </div>
-      ) : filtered.length === 0 ? (
-        <Card className="p-10 text-center text-muted-foreground">
-          No leads yet. Click "Sync from monday.com" to import from your Trade Show Leads board, or add one manually.
-        </Card>
       ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="text-left px-4 py-2.5 font-medium">Contact</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Dealer</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Email</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Phone</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Market</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Sales Rep</th>
-                  <th className="text-left px-4 py-2.5 font-medium">Status</th>
-                  <th className="text-right px-4 py-2.5 font-medium">Order</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((l) => (
-                  <tr key={l.id} className="border-t hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-2.5 font-medium">{l.contact_name || "—"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{l.dealer || "—"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground truncate max-w-[200px]">{l.email || "—"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{l.phone || "—"}</td>
-                    <td className="px-4 py-2.5">{l.trade_show || "—"}</td>
-                    <td className="px-4 py-2.5">{l.sales_rep || "—"}</td>
-                    <td className="px-4 py-2.5">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "—"}</td>
-                    <td className="px-4 py-2.5 text-right font-medium">{l.order_amount ? formatCurrency(l.order_amount) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-    </div>
-  );
-}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="p-5">
+            <h3 className="font-serif text-lg mb-4">Leads by Market</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={byMarket} margin={{ left: 0, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={70} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="leads" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
-      {children}
+          <Card className="p-5">
+            <h3 className="font-serif text-lg mb-4">Order Value by Market</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={byMarket} margin={{ left: 0, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-25} textAnchor="end" height={70} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${Math.round(v / 1000)}k`} />
+                <Tooltip formatter={(v: number) => fmt(v)} />
+                <Bar dataKey="value" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card className="p-5">
+            <h3 className="font-serif text-lg mb-4">Leads by Sales Rep</h3>
+            <ResponsiveContainer width="100%" height={Math.max(300, byRep.length * 24)}>
+              <BarChart data={byRep} layout="vertical" margin={{ left: 20, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={120} />
+                <Tooltip />
+                <Bar dataKey="leads" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card className="p-5">
+            <h3 className="font-serif text-lg mb-4">Lead Status Distribution</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <RPieChart>
+                <Pie data={byStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+                  {byStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </RPieChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

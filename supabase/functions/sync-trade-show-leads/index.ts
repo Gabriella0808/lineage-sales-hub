@@ -90,15 +90,58 @@ Deno.serve(async (req: Request) => {
       };
     });
 
+    // Build market map (existing + auto-create from unique trade_show values)
+    const { data: existingMarkets } = await supabase
+      .from("trade_show_markets")
+      .select("id, name");
+    const marketMap = new Map<string, string>();
+    (existingMarkets || []).forEach((m: any) => marketMap.set(m.name.toLowerCase().trim(), m.id));
+
+    const uniqueShows = Array.from(
+      new Set(
+        rows
+          .map((r) => (r.trade_show || "").trim())
+          .filter((s) => s && !marketMap.has(s.toLowerCase()))
+      )
+    );
+
+    let marketsCreated = 0;
+    for (const showName of uniqueShows) {
+      // Try to detect season + year from name
+      const yearMatch = showName.match(/(20\d{2})/);
+      const year = yearMatch ? parseInt(yearMatch[1]) : null;
+      let season: string | null = null;
+      if (/spring/i.test(showName)) season = "Spring";
+      else if (/fall|autumn/i.test(showName)) season = "Fall";
+      else if (/summer/i.test(showName)) season = "Summer";
+      else if (/winter/i.test(showName)) season = "Winter";
+
+      const { data: created, error: mErr } = await supabase
+        .from("trade_show_markets")
+        .insert({ name: showName, season, year, is_active: true })
+        .select("id, name")
+        .single();
+      if (!mErr && created) {
+        marketMap.set(created.name.toLowerCase().trim(), created.id);
+        marketsCreated++;
+      }
+    }
+
+    // Attach market_id to rows
+    const rowsWithMarket = rows.map((r) => ({
+      ...r,
+      market_id: r.trade_show ? marketMap.get(r.trade_show.toLowerCase().trim()) || null : null,
+    }));
+
     let upserted = 0;
-    for (const row of rows) {
+    for (const row of rowsWithMarket) {
       const { error } = await supabase
         .from("trade_show_leads")
         .upsert(row, { onConflict: "monday_item_id" });
       if (!error) upserted++;
     }
 
-    return new Response(JSON.stringify({ success: true, total: items.length, upserted }), {
+    return new Response(JSON.stringify({ success: true, total: items.length, upserted, marketsCreated }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

@@ -230,27 +230,38 @@ export default function TradeShowLeadsPage() {
           No leads yet. Click "Sync from monday.com" to import from your Trade Show Leads board, or add one manually.
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((l) => (
-            <Card key={l.id} className="p-5 flex flex-col gap-2 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-serif text-lg leading-tight">{l.contact_name || "—"}</h3>
-                {l.status && <Badge variant="secondary">{l.status}</Badge>}
-              </div>
-              {l.dealer && <p className="text-sm text-muted-foreground">{l.dealer}</p>}
-              <div className="text-sm space-y-1 mt-1">
-                {l.email && <div className="truncate">✉ {l.email}</div>}
-                {l.phone && <div>☎ {l.phone}</div>}
-                {l.product_interest && <div className="text-muted-foreground">Product: {l.product_interest}</div>}
-              </div>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {l.trade_show && <Badge variant="outline">{l.trade_show}</Badge>}
-                {l.sales_rep && <Badge variant="outline">Rep: {l.sales_rep}</Badge>}
-                {!!l.order_amount && <Badge>{formatCurrency(l.order_amount)}</Badge>}
-              </div>
-            </Card>
-          ))}
-        </div>
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="text-left px-4 py-2.5 font-medium">Contact</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Dealer</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Email</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Phone</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Market</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Sales Rep</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Status</th>
+                  <th className="text-right px-4 py-2.5 font-medium">Order</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((l) => (
+                  <tr key={l.id} className="border-t hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-2.5 font-medium">{l.contact_name || "—"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{l.dealer || "—"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground truncate max-w-[200px]">{l.email || "—"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{l.phone || "—"}</td>
+                    <td className="px-4 py-2.5">{l.trade_show || "—"}</td>
+                    <td className="px-4 py-2.5">{l.sales_rep || "—"}</td>
+                    <td className="px-4 py-2.5">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "—"}</td>
+                    <td className="px-4 py-2.5 text-right font-medium">{l.order_amount ? formatCurrency(l.order_amount) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </div>
   );

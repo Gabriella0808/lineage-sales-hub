@@ -960,7 +960,7 @@ export default function CheckInsPage() {
                   <p className="text-xs text-muted-foreground">
                     {detectedOwner
                       ? `Auto-set to ${TEAM_MEMBERS.find((t) => t.id === detectedOwner)?.name} based on your login. Change if logging on someone else's behalf.`
-                      : "Pick which teammate this dealer belongs to."}
+                      : "Pick which owner this dealer belongs to."}
                   </p>
                 </div>
               </div>

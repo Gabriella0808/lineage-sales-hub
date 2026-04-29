@@ -869,6 +869,126 @@ export default function TasksPage() {
           </div>
         </Card>
       )}
+
+      {/* Task detail panel */}
+      <Sheet open={!!detailTask} onOpenChange={(o) => !o && setDetailTask(null)}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          {detailTask && (() => {
+            const t = detailTask;
+            const ownerIds = getAssigneeIds(t);
+            const owners = ownerIds.map((uid) => assigneeName(uid) ?? "Unknown");
+            const creator = assigneeName(t.user_id) ?? "Unknown";
+            const col = COLUMNS.find((c) => c.key === t.status)!;
+            const isMine = !!user && t.user_id === user.id;
+            return (
+              <>
+                <SheetHeader className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-block h-3 w-1 rounded-sm ${col.accent}`} />
+                    <Badge className={`${col.pillBg} ${col.pillText} border-0`}>{col.label}</Badge>
+                  </div>
+                  <SheetTitle className="text-xl font-serif leading-tight pr-6 break-words">
+                    {t.title}
+                  </SheetTitle>
+                  <SheetDescription>
+                    Created by {creator} · {formatDistanceToNow(new Date(t.created_at), { addSuffix: true })}
+                  </SheetDescription>
+                </SheetHeader>
+
+                <div className="mt-6 space-y-5 text-sm">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">Status</p>
+                    <Select
+                      value={t.status}
+                      onValueChange={(v: Status) => {
+                        updateStatus(t.id, v);
+                        setDetailTask({ ...t, status: v });
+                      }}
+                    >
+                      <SelectTrigger className={`h-8 px-3 text-xs font-semibold border-0 ${col.pillBg} ${col.pillText} rounded-md w-auto gap-1 shadow-sm`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COLUMNS.map((c) => (
+                          <SelectItem key={c.key} value={c.key} className="text-xs">{c.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> Due date
+                      </p>
+                      <p className="text-sm">
+                        {t.due_date ? format(new Date(t.due_date), "MMM d, yyyy") : <span className="italic text-muted-foreground">—</span>}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1 flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> Completed
+                      </p>
+                      <p className="text-sm">
+                        {t.completed_at ? format(new Date(t.completed_at), "MMM d, yyyy") : <span className="italic text-muted-foreground">—</span>}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <Users className="h-3 w-3" /> Assigned to
+                    </p>
+                    {owners.length === 0 ? (
+                      <p className="text-sm italic text-muted-foreground">Unassigned</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {owners.map((name, i) => (
+                          <Badge key={i} variant="secondary" className="font-normal">{name}</Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Description</p>
+                    {t.description ? (
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed bg-muted/40 rounded-md p-3 border">
+                        {t.description}
+                      </p>
+                    ) : (
+                      <p className="text-sm italic text-muted-foreground">No description</p>
+                    )}
+                  </div>
+
+                  {isMine && (
+                    <div className="flex items-center gap-2 pt-4 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => { setDetailTask(null); openEdit(t); }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" /> Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => {
+                          remove(t.id);
+                          setDetailTask(null);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

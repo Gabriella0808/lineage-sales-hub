@@ -59,6 +59,7 @@ const fmt = (n: number | null) =>
 const emptyLead = {
   contact_name: "", dealer: "", email: "", additional_email: "", phone: "",
   sales_rep: "", sales_rep_id: "", rep_email: "", product_interest: "", order_amount: "", status: "New", notes: "",
+  followup_enabled: false, followup_title: "", followup_description: "", followup_due_date: "",
 };
 
 const emptyMarket = { name: "", location: "", season: "Spring", year: new Date().getFullYear() };

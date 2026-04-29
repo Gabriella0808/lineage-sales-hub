@@ -222,19 +222,24 @@ export default function SalesRepsPage() {
                     )}
                   </td>
 
-                  {/* Manager email */}
-                  <td className="p-3 hidden lg:table-cell">
+                  {/* Manager (name) */}
+                  <td className="p-3">
                     {isEditing ? (
                       <Select value={editForm!.manager_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
-                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Manager" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">— None —</SelectItem>
-                          {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.email || m.name}</SelectItem>)}
+                          {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     ) : (
-                      <span className="text-muted-foreground text-xs">{managerEmail(r.manager_id)}</span>
+                      <span className="text-foreground">{managers.find(m => m.id === r.manager_id)?.name ?? "—"}</span>
                     )}
+                  </td>
+
+                  {/* Manager email */}
+                  <td className="p-3 hidden lg:table-cell">
+                    <span className="text-muted-foreground text-xs">{managerEmail(r.manager_id)}</span>
                   </td>
 
                   {/* Region */}

@@ -1105,6 +1105,11 @@ export type Database = {
       is_assigned_manager: { Args: { _manager_id: string }; Returns: boolean }
       is_manager_task_creator: { Args: { _task_id: string }; Returns: boolean }
       user_id_for_manager: { Args: { _manager_id: string }; Returns: string }
+      user_id_for_rep: { Args: { _rep_id: string }; Returns: string }
+      user_id_for_rep_with_email_fallback: {
+        Args: { _rep_id: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "rep"

@@ -29,7 +29,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { title: "Overview",        url: "/",              icon: LayoutDashboard, roles: ["admin", "manager", "rep"] },
   { title: "Sales Managers",  url: "/managers",      icon: UserCog,         roles: ["admin"] },
-  { title: "Sales Reps",      url: "/reps",          icon: Users,           roles: ["admin", "manager"] },
+  { title: "Sales Rep Database", url: "/reps",          icon: Users,           roles: ["admin", "manager"] },
   { title: "My Dealers",      url: "/dealers",       icon: Store,           roles: ["rep"] },
   { title: "Dealers",         url: "/dealers",       icon: Store,           roles: ["admin", "manager"] },
   { title: "Directory",       url: "/directory",     icon: BookOpen,        roles: ["admin", "manager"] },

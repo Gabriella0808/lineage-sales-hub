@@ -455,9 +455,6 @@ export default function CaptureLeadsPage() {
                       placeholder="Anything specific the rep should do…"
                     />
                   </Field>
-                  <p className="text-[11px] text-muted-foreground">
-                    Will appear in My Tasks for you and {leadForm.sales_rep || "the assigned rep"}. Lead details (dealer, email, collections, order amount) are appended automatically.
-                  </p>
                 </div>
               )}
             </div>

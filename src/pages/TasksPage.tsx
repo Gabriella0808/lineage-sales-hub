@@ -157,6 +157,7 @@ export default function TasksPage() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
+  const [detailTask, setDetailTask] = useState<Task | null>(null);
   const [form, setForm] = useState<{
     title: string;
     description: string;

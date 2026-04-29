@@ -214,7 +214,11 @@ export default function SalesRepsPage() {
                     )}
                   </td>
 
-                  {/* Rep email */}
+                  {/* Territory code */}
+                  <td className="p-3">
+                    <span className="text-muted-foreground">{territoryCode(tid)}</span>
+                  </td>
+
                   <td className="p-3">
                     {isEditing ? (
                       <Input value={editForm!.email} onChange={e => setEditForm({ ...editForm!, email: e.target.value })} className="h-8" />

@@ -59,6 +59,7 @@ const fmt = (n: number | null) =>
 const emptyLead = {
   contact_name: "", dealer: "", email: "", additional_email: "", phone: "",
   sales_rep: "", sales_rep_id: "", rep_email: "", product_interest: "", order_amount: "", status: "New", notes: "",
+  followup_enabled: false, followup_title: "", followup_description: "", followup_due_date: "",
 };
 
 const emptyMarket = { name: "", location: "", season: "Spring", year: new Date().getFullYear() };
@@ -168,6 +169,45 @@ export default function CaptureLeadsPage() {
     });
     if (error) return toast.error(error.message);
     toast.success("Lead captured");
+
+    // Create follow-up task if requested
+    if (leadForm.followup_enabled && user?.id) {
+      const title = leadForm.followup_title.trim() || `Follow up: ${leadForm.contact_name.trim()}${leadForm.dealer.trim() ? ` (${leadForm.dealer.trim()})` : ""}`;
+      const descParts = [
+        leadForm.followup_description.trim(),
+        `— Lead from ${market?.name ?? "Trade Show"}`,
+        leadForm.dealer.trim() ? `Dealer: ${leadForm.dealer.trim()}` : "",
+        leadForm.email.trim() ? `Dealer Email: ${leadForm.email.trim()}` : "",
+        leadForm.product_interest.trim() ? `Collections: ${leadForm.product_interest.trim()}` : "",
+        Number(leadForm.order_amount) > 0 ? `Order Amount: ${fmt(Number(leadForm.order_amount))}` : "",
+      ].filter(Boolean);
+
+      // Look up rep's auth user_id (so it shows up in their portal's My Tasks)
+      let assignedUserId: string | null = null;
+      if (leadForm.sales_rep_id) {
+        const { data: ur } = await supabase
+          .from("user_reps")
+          .select("user_id")
+          .eq("rep_id", leadForm.sales_rep_id)
+          .maybeSingle();
+        assignedUserId = ur?.user_id ?? null;
+      }
+
+      const { error: taskErr } = await supabase.from("manager_tasks").insert({
+        user_id: user.id,
+        assigned_user_id: assignedUserId,
+        title,
+        description: descParts.join("\n"),
+        status: "todo",
+        due_date: leadForm.followup_due_date || null,
+      });
+      if (taskErr) toast.error(`Follow-up task: ${taskErr.message}`);
+      else if (!assignedUserId && leadForm.sales_rep_id) {
+        toast.success("Follow-up task added to My Tasks (rep has no portal account yet)");
+      } else {
+        toast.success("Follow-up task created");
+      }
+    }
 
     // Sync to Mailchimp ONLY if: (1) dealer email present and (2) market is a High Point market
     const dealerEmail = leadForm.email.trim();
@@ -379,6 +419,49 @@ export default function CaptureLeadsPage() {
                 </SelectContent>
               </Select>
             </Field>
+
+            {/* Follow-up task for the assigned rep */}
+            <div className="rounded-lg border border-dashed bg-muted/30 p-3 space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={leadForm.followup_enabled}
+                  onChange={(e) => setLeadForm({ ...leadForm, followup_enabled: e.target.checked })}
+                  className="h-4 w-4 rounded border-input"
+                />
+                <span className="text-sm font-medium">Create follow-up task{leadForm.sales_rep ? ` for ${leadForm.sales_rep}` : ""}</span>
+              </label>
+              {leadForm.followup_enabled && (
+                <div className="space-y-3 pl-6">
+                  <Field label="Task Title">
+                    <Input
+                      value={leadForm.followup_title}
+                      onChange={(e) => setLeadForm({ ...leadForm, followup_title: e.target.value })}
+                      placeholder={`Follow up: ${leadForm.contact_name || "contact"}${leadForm.dealer ? ` (${leadForm.dealer})` : ""}`}
+                    />
+                  </Field>
+                  <Field label="Due Date">
+                    <Input
+                      type="date"
+                      value={leadForm.followup_due_date}
+                      onChange={(e) => setLeadForm({ ...leadForm, followup_due_date: e.target.value })}
+                    />
+                  </Field>
+                  <Field label="Task Notes">
+                    <Textarea
+                      value={leadForm.followup_description}
+                      onChange={(e) => setLeadForm({ ...leadForm, followup_description: e.target.value })}
+                      rows={2}
+                      placeholder="Anything specific the rep should do…"
+                    />
+                  </Field>
+                  <p className="text-[11px] text-muted-foreground">
+                    Will appear in My Tasks for you and {leadForm.sales_rep || "the assigned rep"}. Lead details (dealer, email, collections, order amount) are appended automatically.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <Field label="Product of Interest">
               <CollectionsMultiSelect
                 value={leadForm.product_interest ? leadForm.product_interest.split(",").map((s) => s.trim()).filter(Boolean) : []}

@@ -814,7 +814,7 @@ export default function TasksPage() {
                             {/* Actions (md+) */}
 
                             {/* Actions (md+) */}
-                            <div className="hidden md:flex items-center justify-end gap-1 px-3 py-2">
+                            <div className="hidden md:flex items-center justify-end gap-1 px-3 py-2" onClick={(e) => e.stopPropagation()}>
                               {isMine && (
                                 <>
                                   <Button

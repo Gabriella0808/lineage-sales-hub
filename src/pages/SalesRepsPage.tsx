@@ -262,21 +262,7 @@ export default function SalesRepsPage() {
                     )}
                   </td>
 
-                  {/* Status */}
-                  <td className="p-3">
-                    {isEditing ? (
-                      <Select value={editForm!.status} onValueChange={v => setEditForm({ ...editForm!, status: v })}>
-                        <SelectTrigger className="h-8 w-28"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Badge className={r.status === "active" ? "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15" : r.status === "inactive" ? "bg-rose-500/15 text-rose-700 hover:bg-rose-500/15" : "bg-amber-500/15 text-amber-700 hover:bg-amber-500/15"}>
-                        {STATUS_OPTIONS.find(o => o.value === r.status)?.label ?? r.status}
-                      </Badge>
-                    )}
-                  </td>
+
 
                   {/* Actions */}
                   <td className="p-3">

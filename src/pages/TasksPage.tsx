@@ -227,8 +227,14 @@ export default function TasksPage() {
     return hay.includes(q);
   };
 
+  const isTradeShowTask = (t: Task): boolean => {
+    const desc = t.description ?? "";
+    return /—\s*Lead from\b/i.test(desc) || /\bTrade Show\b/i.test(desc) || /\bTrade Show\b/i.test(t.title);
+  };
+
   const matchesAssigneeUser = (t: Task): boolean => {
     if (assigneeUserId === "any") return true;
+    if (assigneeUserId === "__trade_show__") return isTradeShowTask(t);
     return getAssigneeIds(t).includes(assigneeUserId);
   };
 

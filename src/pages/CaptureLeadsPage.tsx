@@ -16,7 +16,7 @@ import {
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Loader2, Plus, MapPin, Calendar, Trash2 } from "lucide-react";
+import { Loader2, Plus, MapPin, Calendar, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
 
@@ -74,8 +74,9 @@ export default function CaptureLeadsPage() {
   const [marketDialog, setMarketDialog] = useState(false);
   const [marketForm, setMarketForm] = useState(emptyMarket);
 
-  const [leadDialog, setLeadDialog] = useState<string | null>(null); // market id
+  const [leadDialog, setLeadDialog] = useState<string | null>(null); // market id (when creating)
   const [leadForm, setLeadForm] = useState(emptyLead);
+  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -147,10 +148,56 @@ export default function CaptureLeadsPage() {
     load();
   };
 
+  const openEditLead = (l: Lead) => {
+    const matchedRep = salesReps.find(
+      (r) => (l.sales_rep && r.name === l.sales_rep) || (l.rep_email && r.email && r.email.toLowerCase() === l.rep_email.toLowerCase())
+    );
+    setLeadForm({
+      ...emptyLead,
+      contact_name: l.contact_name ?? "",
+      dealer: l.dealer ?? "",
+      email: l.email ?? "",
+      phone: l.phone ?? "",
+      sales_rep: l.sales_rep ?? "",
+      sales_rep_id: matchedRep?.id ?? "",
+      rep_email: l.rep_email ?? "",
+      product_interest: l.product_interest ?? "",
+      order_amount: l.order_amount != null ? String(l.order_amount) : "",
+      status: l.status ?? "New",
+    });
+    setEditingLeadId(l.id);
+    setLeadDialog(l.market_id ?? markets.find((m) => m.name === l.trade_show)?.id ?? null);
+  };
+
   const submitLead = async () => {
     if (!leadDialog) return;
     if (!leadForm.contact_name.trim()) return toast.error("Contact name is required");
     const market = markets.find((m) => m.id === leadDialog);
+
+    if (editingLeadId) {
+      const { error } = await supabase.from("trade_show_leads").update({
+        contact_name: leadForm.contact_name.trim(),
+        dealer: leadForm.dealer.trim() || null,
+        email: leadForm.email.trim() || null,
+        phone: leadForm.phone.trim() || null,
+        sales_rep: leadForm.sales_rep.trim() || null,
+        rep_email: leadForm.rep_email.trim() || null,
+        product_interest: leadForm.product_interest.trim() || null,
+        order_amount: parseFloat(leadForm.order_amount) || 0,
+        status: leadForm.status,
+        notes: leadForm.notes.trim() || null,
+        market_id: leadDialog,
+        trade_show: market?.name ?? null,
+      }).eq("id", editingLeadId);
+      if (error) return toast.error(error.message);
+      toast.success("Lead updated");
+      setLeadDialog(null);
+      setEditingLeadId(null);
+      setLeadForm(emptyLead);
+      load();
+      return;
+    }
+
     const { error } = await supabase.from("trade_show_leads").insert({
       contact_name: leadForm.contact_name.trim(),
       dealer: leadForm.dealer.trim() || null,
@@ -229,6 +276,7 @@ export default function CaptureLeadsPage() {
     }
 
     setLeadDialog(null);
+    setEditingLeadId(null);
     setLeadForm(emptyLead);
     load();
   };
@@ -307,7 +355,7 @@ export default function CaptureLeadsPage() {
                     <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); deleteMarket(m.id); }}>
                       <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Market
                     </Button>
-                    <Button size="sm" onClick={() => { setLeadForm(emptyLead); setLeadDialog(m.id); }}>
+                    <Button size="sm" onClick={() => { setEditingLeadId(null); setLeadForm(emptyLead); setLeadDialog(m.id); }}>
                       <Plus className="h-3.5 w-3.5 mr-1.5" /> Capture Lead
                     </Button>
                   </div>
@@ -355,9 +403,14 @@ export default function CaptureLeadsPage() {
                               <td className="px-3 py-2">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "—"}</td>
                               <td className="px-3 py-2 text-right font-medium">{l.order_amount ? fmt(l.order_amount) : "—"}</td>
                               <td className="px-3 py-2">
-                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteLead(l.id)}>
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit lead">
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteLead(l.id)} aria-label="Delete lead">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -372,11 +425,11 @@ export default function CaptureLeadsPage() {
         </Accordion>
       )}
 
-      <Dialog open={!!leadDialog} onOpenChange={(o) => !o && setLeadDialog(null)}>
+      <Dialog open={!!leadDialog} onOpenChange={(o) => { if (!o) { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); } }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Capture Lead — {markets.find((m) => m.id === leadDialog)?.name}
+              {editingLeadId ? "Edit Lead" : "Capture Lead"} — {markets.find((m) => m.id === leadDialog)?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -487,8 +540,8 @@ export default function CaptureLeadsPage() {
             </Field>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setLeadDialog(null)}>Cancel</Button>
-            <Button onClick={submitLead}>Create Lead</Button>
+            <Button variant="outline" onClick={() => { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); }}>Cancel</Button>
+            <Button onClick={submitLead}>{editingLeadId ? "Save Changes" : "Create Lead"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -425,11 +425,11 @@ export default function CaptureLeadsPage() {
         </Accordion>
       )}
 
-      <Dialog open={!!leadDialog} onOpenChange={(o) => !o && setLeadDialog(null)}>
+      <Dialog open={!!leadDialog} onOpenChange={(o) => { if (!o) { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); } }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Capture Lead — {markets.find((m) => m.id === leadDialog)?.name}
+              {editingLeadId ? "Edit Lead" : "Capture Lead"} — {markets.find((m) => m.id === leadDialog)?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">

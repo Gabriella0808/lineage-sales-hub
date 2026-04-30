@@ -148,10 +148,56 @@ export default function CaptureLeadsPage() {
     load();
   };
 
+  const openEditLead = (l: Lead) => {
+    const matchedRep = salesReps.find(
+      (r) => (l.sales_rep && r.name === l.sales_rep) || (l.rep_email && r.email && r.email.toLowerCase() === l.rep_email.toLowerCase())
+    );
+    setLeadForm({
+      ...emptyLead,
+      contact_name: l.contact_name ?? "",
+      dealer: l.dealer ?? "",
+      email: l.email ?? "",
+      phone: l.phone ?? "",
+      sales_rep: l.sales_rep ?? "",
+      sales_rep_id: matchedRep?.id ?? "",
+      rep_email: l.rep_email ?? "",
+      product_interest: l.product_interest ?? "",
+      order_amount: l.order_amount != null ? String(l.order_amount) : "",
+      status: l.status ?? "New",
+    });
+    setEditingLeadId(l.id);
+    setLeadDialog(l.market_id ?? markets.find((m) => m.name === l.trade_show)?.id ?? null);
+  };
+
   const submitLead = async () => {
     if (!leadDialog) return;
     if (!leadForm.contact_name.trim()) return toast.error("Contact name is required");
     const market = markets.find((m) => m.id === leadDialog);
+
+    if (editingLeadId) {
+      const { error } = await supabase.from("trade_show_leads").update({
+        contact_name: leadForm.contact_name.trim(),
+        dealer: leadForm.dealer.trim() || null,
+        email: leadForm.email.trim() || null,
+        phone: leadForm.phone.trim() || null,
+        sales_rep: leadForm.sales_rep.trim() || null,
+        rep_email: leadForm.rep_email.trim() || null,
+        product_interest: leadForm.product_interest.trim() || null,
+        order_amount: parseFloat(leadForm.order_amount) || 0,
+        status: leadForm.status,
+        notes: leadForm.notes.trim() || null,
+        market_id: leadDialog,
+        trade_show: market?.name ?? null,
+      }).eq("id", editingLeadId);
+      if (error) return toast.error(error.message);
+      toast.success("Lead updated");
+      setLeadDialog(null);
+      setEditingLeadId(null);
+      setLeadForm(emptyLead);
+      load();
+      return;
+    }
+
     const { error } = await supabase.from("trade_show_leads").insert({
       contact_name: leadForm.contact_name.trim(),
       dealer: leadForm.dealer.trim() || null,
@@ -230,6 +276,7 @@ export default function CaptureLeadsPage() {
     }
 
     setLeadDialog(null);
+    setEditingLeadId(null);
     setLeadForm(emptyLead);
     load();
   };

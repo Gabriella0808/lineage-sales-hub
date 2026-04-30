@@ -16,7 +16,7 @@ import {
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Loader2, Plus, MapPin, Calendar, Trash2 } from "lucide-react";
+import { Loader2, Plus, MapPin, Calendar, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
 

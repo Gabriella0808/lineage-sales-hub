@@ -573,6 +573,7 @@ export default function TasksPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="any" className="text-xs">Anyone</SelectItem>
+                  <SelectItem value="__trade_show__" className="text-xs">Trade Show Leads</SelectItem>
                   {visibleAssignees
                     .slice()
                     .sort((a, b) =>

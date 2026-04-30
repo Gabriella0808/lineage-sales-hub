@@ -355,7 +355,7 @@ export default function CaptureLeadsPage() {
                     <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); deleteMarket(m.id); }}>
                       <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Market
                     </Button>
-                    <Button size="sm" onClick={() => { setLeadForm(emptyLead); setLeadDialog(m.id); }}>
+                    <Button size="sm" onClick={() => { setEditingLeadId(null); setLeadForm(emptyLead); setLeadDialog(m.id); }}>
                       <Plus className="h-3.5 w-3.5 mr-1.5" /> Capture Lead
                     </Button>
                   </div>

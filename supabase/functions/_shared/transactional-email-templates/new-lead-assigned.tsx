@@ -4,7 +4,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = 'Lineage Manager Hub'
+const SITE_NAME = 'Lineage Collections'
 
 interface NewLeadAssignedProps {
   repName?: string
@@ -40,10 +40,6 @@ const NewLeadAssignedEmail = ({
           <Row label="Collections" value={collections} />
           <Row label="Order Amount" value={orderAmount} />
         </Section>
-
-        <Text style={text}>
-          Log in to the portal to view full details and start your follow-up.
-        </Text>
 
         <Hr style={hr} />
         <Text style={footer}>— The {SITE_NAME} Team</Text>

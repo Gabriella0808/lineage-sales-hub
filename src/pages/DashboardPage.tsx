@@ -175,8 +175,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Sales Leaderboard — full width */}
-      <div className="glass-card p-6 mb-6">
-        <h3 className="text-base font-semibold mb-5 flex items-center gap-2">
+      <div className="glass-card p-4 sm:p-6 mb-6">
+        <h3 className="text-base font-semibold mb-4 sm:mb-5 flex items-center gap-2">
           <Trophy className="h-5 w-5 text-accent" /> Sales Leaderboard
         </h3>
         {leaderboard.length > 0 ? (
@@ -184,18 +184,18 @@ export default function DashboardPage() {
             {leaderboard.map((rep, idx) => {
               const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
               return (
-                <li key={rep.id} className="flex items-center gap-4 py-3 border-b border-border/40 last:border-0">
-                  <span className={`w-10 text-center shrink-0 ${idx <= 2 ? 'text-2xl' : 'text-sm font-semibold text-muted-foreground'}`}>{medal}</span>
-                  <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center shrink-0">
-                    <span className="text-sm font-bold text-primary">{getInitials(rep.name)}</span>
+                <li key={rep.id} className="flex items-center gap-2 sm:gap-4 py-2.5 sm:py-3 border-b border-border/40 last:border-0">
+                  <span className={`w-7 sm:w-10 text-center shrink-0 ${idx <= 2 ? 'text-xl sm:text-2xl' : 'text-xs sm:text-sm font-semibold text-muted-foreground'}`}>{medal}</span>
+                  <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <span className="text-xs sm:text-sm font-bold text-primary">{getInitials(rep.name)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-base font-bold truncate">{rep.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{rep.territory}</p>
+                    <p className="text-sm sm:text-base font-bold truncate">{rep.name}</p>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{rep.territory}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-lg font-bold tabular-nums">{formatCurrency(rep.revenue)}</p>
-                    <p className="text-[11px] font-medium text-success flex items-center justify-end gap-0.5">
+                    <p className="text-sm sm:text-lg font-bold tabular-nums">{formatCurrency(rep.revenue)}</p>
+                    <p className="text-[10px] sm:text-[11px] font-medium text-success flex items-center justify-end gap-0.5">
                       <ArrowUp className="h-3 w-3" /> Tracking
                     </p>
                   </div>

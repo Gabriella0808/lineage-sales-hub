@@ -362,61 +362,98 @@ export default function CaptureLeadsPage() {
                   {ml.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-6 text-center">No leads captured for this market yet.</p>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                          <tr>
-                            <th className="text-left px-3 py-2 font-medium">Contact</th>
-                            <th className="text-left px-3 py-2 font-medium">Dealer</th>
-                            <th className="text-left px-3 py-2 font-medium">Dealer Email</th>
-                            <th className="text-left px-3 py-2 font-medium">Rep</th>
-                            <th className="text-left px-3 py-2 font-medium">Rep Email</th>
-                            <th className="text-left px-3 py-2 font-medium">Collections</th>
-                            <th className="text-left px-3 py-2 font-medium">Phone</th>
-                            <th className="text-left px-3 py-2 font-medium">Status</th>
-                            <th className="text-right px-3 py-2 font-medium">Order</th>
-                            <th className="px-3 py-2"></th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {ml.map((l) => (
-                            <tr key={l.id} className="border-t hover:bg-muted/30">
-                              <td className="px-3 py-2 font-medium">{l.contact_name || "—"}</td>
-                              <td className="px-3 py-2 text-muted-foreground">{l.dealer || "—"}</td>
-                              <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px]">
-                                {l.email ? <a href={`mailto:${l.email}`} className="hover:underline">{l.email}</a> : "—"}
-                              </td>
-                              <td className="px-3 py-2">{l.sales_rep || "—"}</td>
-                              <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px]">
-                                {l.rep_email ? <a href={`mailto:${l.rep_email}`} className="hover:underline">{l.rep_email}</a> : "—"}
-                              </td>
-                              <td className="px-3 py-2 text-muted-foreground max-w-[220px]">
-                                {l.product_interest ? (
-                                  <div className="flex flex-wrap gap-1">
-                                    {l.product_interest.split(",").map((c, i) => (
-                                      <Badge key={i} variant="outline" className="text-xs font-normal">{c.trim()}</Badge>
-                                    ))}
-                                  </div>
-                                ) : "—"}
-                              </td>
-                              <td className="px-3 py-2 text-muted-foreground">{l.phone || "—"}</td>
-                              <td className="px-3 py-2">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "—"}</td>
-                              <td className="px-3 py-2 text-right font-medium">{l.order_amount ? fmt(l.order_amount) : "—"}</td>
-                              <td className="px-3 py-2">
-                                <div className="flex items-center justify-end gap-1">
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit lead">
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteLead(l.id)} aria-label="Delete lead">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-                              </td>
+                    <>
+                      {/* Mobile card list */}
+                      <div className="sm:hidden space-y-2">
+                        {ml.map((l) => (
+                          <div key={l.id} className="border rounded-lg p-3 bg-background/40">
+                            <div className="flex items-start justify-between gap-2 mb-1.5">
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm">{l.contact_name || "—"}</p>
+                                <p className="text-xs text-muted-foreground truncate">{l.dealer || "—"}</p>
+                              </div>
+                              <div className="flex gap-1 shrink-0">
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteLead(l.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></Button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                              {l.sales_rep && <div><span className="text-muted-foreground">Rep:</span> {l.sales_rep}</div>}
+                              {l.phone && <div><span className="text-muted-foreground">Phone:</span> {l.phone}</div>}
+                              {l.email && <div className="col-span-2 truncate"><span className="text-muted-foreground">Email:</span> <a href={`mailto:${l.email}`} className="hover:underline">{l.email}</a></div>}
+                            </div>
+                            {l.product_interest && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {l.product_interest.split(",").map((c, i) => (
+                                  <Badge key={i} variant="outline" className="text-[10px] font-normal">{c.trim()}</Badge>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t">
+                              {l.status ? <Badge variant="secondary">{l.status}</Badge> : <span className="text-xs text-muted-foreground">—</span>}
+                              <span className="font-medium text-sm">{l.order_amount ? fmt(l.order_amount) : ""}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Tablet/desktop table */}
+                      <div className="overflow-x-auto hidden sm:block">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                            <tr>
+                              <th className="text-left px-3 py-2 font-medium">Contact</th>
+                              <th className="text-left px-3 py-2 font-medium">Dealer</th>
+                              <th className="text-left px-3 py-2 font-medium hidden lg:table-cell">Dealer Email</th>
+                              <th className="text-left px-3 py-2 font-medium">Rep</th>
+                              <th className="text-left px-3 py-2 font-medium hidden lg:table-cell">Rep Email</th>
+                              <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Collections</th>
+                              <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Phone</th>
+                              <th className="text-left px-3 py-2 font-medium">Status</th>
+                              <th className="text-right px-3 py-2 font-medium">Order</th>
+                              <th className="px-3 py-2"></th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {ml.map((l) => (
+                              <tr key={l.id} className="border-t hover:bg-muted/30">
+                                <td className="px-3 py-2 font-medium">{l.contact_name || "—"}</td>
+                                <td className="px-3 py-2 text-muted-foreground">{l.dealer || "—"}</td>
+                                <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">
+                                  {l.email ? <a href={`mailto:${l.email}`} className="hover:underline">{l.email}</a> : "—"}
+                                </td>
+                                <td className="px-3 py-2">{l.sales_rep || "—"}</td>
+                                <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">
+                                  {l.rep_email ? <a href={`mailto:${l.rep_email}`} className="hover:underline">{l.rep_email}</a> : "—"}
+                                </td>
+                                <td className="px-3 py-2 text-muted-foreground max-w-[220px] hidden md:table-cell">
+                                  {l.product_interest ? (
+                                    <div className="flex flex-wrap gap-1">
+                                      {l.product_interest.split(",").map((c, i) => (
+                                        <Badge key={i} variant="outline" className="text-xs font-normal">{c.trim()}</Badge>
+                                      ))}
+                                    </div>
+                                  ) : "—"}
+                                </td>
+                                <td className="px-3 py-2 text-muted-foreground hidden md:table-cell">{l.phone || "—"}</td>
+                                <td className="px-3 py-2">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "—"}</td>
+                                <td className="px-3 py-2 text-right font-medium">{l.order_amount ? fmt(l.order_amount) : "—"}</td>
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit lead">
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteLead(l.id)} aria-label="Delete lead">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
                   )}
                 </AccordionContent>
               </AccordionItem>

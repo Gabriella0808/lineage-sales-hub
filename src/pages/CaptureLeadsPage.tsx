@@ -555,29 +555,53 @@ export default function CaptureLeadsPage() {
               </Field>
             </div>
             <Field label="Sales Rep">
-              <Select
-                value={leadForm.sales_rep_id}
-                onValueChange={(id) => {
-                  const rep = salesReps.find((r) => r.id === id);
-                  setLeadForm({
-                    ...leadForm,
-                    sales_rep_id: id,
-                    sales_rep: rep?.name ?? "",
-                    rep_email: rep?.email ?? "",
-                  });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a sales rep" />
-                </SelectTrigger>
-                <SelectContent>
-                  {salesReps.map((rep) => (
-                    <SelectItem key={rep.id} value={rep.id}>
-                      {rep.name}{rep.email ? ` — ${rep.email}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select
+                  value={leadForm.sales_rep_id}
+                  onValueChange={(id) => {
+                    const rep = salesReps.find((r) => r.id === id);
+                    setLeadForm({
+                      ...leadForm,
+                      sales_rep_id: id,
+                      sales_rep: rep?.name ?? "",
+                      rep_email: rep?.email ?? "",
+                    });
+                  }}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select a sales rep" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {salesReps.map((rep) => (
+                      <SelectItem key={rep.id} value={rep.id}>
+                        {rep.name}{rep.email ? ` — ${rep.email}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {leadForm.sales_rep_id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (editingLeadId) setEditRepCleared(true);
+                      setLeadForm({
+                        ...leadForm,
+                        sales_rep_id: "",
+                        sales_rep: "",
+                        rep_email: "",
+                      });
+                    }}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {editingLeadId && editRepCleared && !leadForm.sales_rep_id && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Re-selecting a rep will send them a new lead notification email.
+                </p>
+              )}
             </Field>
 
             {/* Follow-up task for the assigned rep */}

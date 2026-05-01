@@ -168,8 +168,11 @@ function SidebarNav() {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  // Default the sidebar collapsed below `lg` (1024px) so tablets get full content width.
+  const defaultOpen =
+    typeof window === "undefined" ? true : window.innerWidth >= 1024;
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={defaultOpen}>
       <div className="min-h-screen flex w-full">
         <SidebarNav />
         <div className="flex-1 flex flex-col min-w-0">

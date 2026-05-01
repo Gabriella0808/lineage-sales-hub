@@ -1,6 +1,8 @@
 import * as React from "react";
 
-const MOBILE_BREAKPOINT = 768;
+// Treat tablets as "mobile" for sidebar purposes so the offcanvas Sheet
+// (with full labels) is used on screens below the `lg` breakpoint.
+const MOBILE_BREAKPOINT = 1024;
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);

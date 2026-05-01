@@ -285,18 +285,26 @@ export default function SalesRepsPage() {
                     <span className="text-muted-foreground text-xs">{managerEmail(r.manager_id)}</span>
                   </td>
 
-                  {/* Region */}
+                  {/* Region(s) — derived from selected territories */}
                   <td className="p-3">
                     {isEditing ? (
-                      <Select value={editForm!.territory_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, territory_id: v === "none" ? null : v })}>
-                        <SelectTrigger className="h-8 w-36"><SelectValue placeholder="Region" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">— None —</SelectItem>
-                          {territories.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      <span className="text-xs text-muted-foreground">
+                        {editForm!.territory_ids.length === 0
+                          ? "—"
+                          : editForm!.territory_ids.map(id => territories.find(t => t.id === id)?.name).filter(Boolean).join(", ")}
+                      </span>
                     ) : (
-                      <Badge variant="secondary" className="font-normal">{territoryName(tid)}</Badge>
+                      <div className="flex flex-wrap gap-1">
+                        {tids.length === 0 ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : (
+                          tids.map(id => (
+                            <Badge key={id} variant="secondary" className="font-normal">
+                              {territories.find(t => t.id === id)?.name ?? "—"}
+                            </Badge>
+                          ))
+                        )}
+                      </div>
                     )}
                   </td>
 

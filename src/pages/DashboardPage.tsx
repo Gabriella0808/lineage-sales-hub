@@ -209,18 +209,18 @@ export default function DashboardPage() {
       </div>
 
       {/* Row: Top Reps by Total Sales + Accounts by Sales Manager */}
-      <div className="grid lg:grid-cols-3 gap-5 mb-6">
-        <div className="glass-card p-5 lg:col-span-2">
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
+        <div className="glass-card p-4 sm:p-5 lg:col-span-2">
           <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-accent" /> Top Reps by Total Sales
           </h3>
-          <div className="h-[280px]">
+          <div className="h-[240px] sm:h-[280px]">
             {topRepsBar.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topRepsBar} layout="vertical" barSize={18}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 90%)" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" width={70} tick={{ fontSize: 12 }} />
+                  <YAxis dataKey="name" type="category" width={60} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v: number) => formatCurrency(v)} />
                   <Bar dataKey="revenue" fill="hsl(38 75% 50%)" radius={[0, 4, 4, 0]} />
                 </BarChart>
@@ -231,7 +231,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="glass-card p-5 flex flex-col">
+        <div className="glass-card p-4 sm:p-5 flex flex-col">
           <h3 className="text-sm font-semibold mb-4">Accounts by Sales Manager</h3>
           <div className="flex-1 min-h-[240px]">
             {managerDonut.length > 0 ? (
@@ -243,8 +243,8 @@ export default function DashboardPage() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
+                    innerRadius={50}
+                    outerRadius={80}
                     paddingAngle={2}
                   >
                     {managerDonut.map((_, i) => (
@@ -268,15 +268,15 @@ export default function DashboardPage() {
 
       {/* Row: Top Dealers by Revenue */}
       <div className="mb-6">
-        <div className="glass-card p-5">
+        <div className="glass-card p-4 sm:p-5">
           <h3 className="text-sm font-semibold mb-4">Top Dealers by Revenue ($K) — {currentYear}</h3>
-          <div className="h-[280px]">
+          <div className="h-[260px] sm:h-[280px]">
             {topDealers.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topDealers} layout="vertical" barSize={16}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 90%)" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
                   <Tooltip formatter={(v: number) => `$${v}K`} />
                   <Bar dataKey="revenue" fill="hsl(152 60% 40%)" radius={[0, 4, 4, 0]} />
                 </BarChart>

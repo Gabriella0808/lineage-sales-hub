@@ -353,14 +353,28 @@ export default function SalesRepsPage() {
               </Select>
             </div>
             <div>
-              <Label>Region</Label>
-              <Select value={newRep.territory_id ?? "none"} onValueChange={v => setNewRep({ ...newRep, territory_id: v === "none" ? null : v })}>
-                <SelectTrigger><SelectValue placeholder="Select region" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— None —</SelectItem>
-                  {territories.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label>Territories / Regions</Label>
+              <div className="flex flex-wrap gap-1.5 mt-1.5 p-2 border rounded-md max-h-40 overflow-y-auto">
+                {territories.length === 0 && <span className="text-xs text-muted-foreground">No territories available</span>}
+                {territories.map(t => {
+                  const selected = newRep.territory_ids.includes(t.id);
+                  return (
+                    <button
+                      type="button"
+                      key={t.id}
+                      onClick={() => {
+                        const next = selected
+                          ? newRep.territory_ids.filter(x => x !== t.id)
+                          : [...newRep.territory_ids, t.id];
+                        setNewRep({ ...newRep, territory_ids: next });
+                      }}
+                      className={`text-xs px-2 py-1 rounded border transition-colors ${selected ? "bg-primary text-primary-foreground border-primary" : "bg-background text-muted-foreground border-input hover:bg-muted"}`}
+                    >
+                      {t.acctivate_id ? `${t.acctivate_id} · ${t.name}` : t.name}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div>
               <Label>Status</Label>

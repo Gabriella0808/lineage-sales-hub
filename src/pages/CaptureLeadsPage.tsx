@@ -532,7 +532,7 @@ export default function CaptureLeadsPage() {
         </Accordion>
       )}
 
-      <Dialog open={!!leadDialog} onOpenChange={(o) => { if (!o) { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); } }}>
+      <Dialog open={!!leadDialog} onOpenChange={(o) => { if (!o) { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); } }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -671,7 +671,7 @@ export default function CaptureLeadsPage() {
             </Field>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); }}>Cancel</Button>
             <Button onClick={submitLead}>{editingLeadId ? "Save Changes" : "Create Lead"}</Button>
           </DialogFooter>
         </DialogContent>

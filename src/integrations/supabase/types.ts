@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      _ci_import_stage: {
+        Row: {
+          acct_name: string | null
+          brand: string | null
+          cust_id: string | null
+          log_type: string | null
+          new_placement: string | null
+          notes: string | null
+          outcome: string | null
+          rep_email: string | null
+          visit_date: string | null
+        }
+        Insert: {
+          acct_name?: string | null
+          brand?: string | null
+          cust_id?: string | null
+          log_type?: string | null
+          new_placement?: string | null
+          notes?: string | null
+          outcome?: string | null
+          rep_email?: string | null
+          visit_date?: string | null
+        }
+        Update: {
+          acct_name?: string | null
+          brand?: string | null
+          cust_id?: string | null
+          log_type?: string | null
+          new_placement?: string | null
+          notes?: string | null
+          outcome?: string | null
+          rep_email?: string | null
+          visit_date?: string | null
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           created_at: string

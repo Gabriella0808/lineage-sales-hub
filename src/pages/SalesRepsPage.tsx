@@ -51,8 +51,8 @@ export default function SalesRepsPage() {
     qc.invalidateQueries({ queryKey: ["managers"] });
   };
 
-  const repTerritoryId = (repId: string): string | null => {
-    return repTerritories.find(rt => rt.rep_id === repId)?.territory_id ?? null;
+  const repTerritoryIds = (repId: string): string[] => {
+    return repTerritories.filter(rt => rt.rep_id === repId).map(rt => rt.territory_id);
   };
 
   const startEdit = (repId: string) => {

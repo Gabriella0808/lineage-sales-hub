@@ -45,6 +45,10 @@ function TerritoryMultiSelect({
   placeholder?: string;
   triggerClassName?: string;
 }) {
+  // Hide territories whose code looks like a raw UUID/hex string (letter+number jumble)
+  const UUID_RE = /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
+  const filteredOptions = options.filter(o => !o.acctivate_id || !UUID_RE.test(o.acctivate_id));
+
   const toggle = (id: string) => {
     onChange(value.includes(id) ? value.filter(x => x !== id) : [...value, id]);
   };

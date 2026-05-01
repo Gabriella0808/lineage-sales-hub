@@ -236,12 +236,12 @@ export default function SalesRepsPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header flex items-center justify-between">
+      <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="page-title">Sales Rep Database</h1>
           <p className="page-subtitle">{reps.length} reps • inline edit any field</p>
         </div>
-        <Button onClick={() => setAddOpen(true)} className="gap-2">
+        <Button onClick={() => setAddOpen(true)} className="gap-2 w-full sm:w-auto">
           <Plus className="h-4 w-4" /> Add Rep
         </Button>
       </div>

@@ -256,7 +256,7 @@ export default function SalesRepsPage() {
       />
 
       {/* Mobile cards */}
-      <div className="md:hidden space-y-2">
+      <div className="lg:hidden space-y-2">
         {filtered.map(r => {
           const isEditing = editingId === r.id;
           const tids = repTerritoryIds(r.id);
@@ -331,7 +331,7 @@ export default function SalesRepsPage() {
         {filtered.length === 0 && <p className="text-center text-muted-foreground py-12 text-sm">No reps match your filters.</p>}
       </div>
 
-      <div className="table-container hidden md:block">
+      <div className="table-container hidden lg:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/30">

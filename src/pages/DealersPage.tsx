@@ -58,7 +58,7 @@ export default function DealersPage() {
       />
 
       {/* Mobile card list */}
-      <div className="md:hidden space-y-2">
+      <div className="lg:hidden space-y-2">
         {filtered.slice(0, 100).map(d => (
           <button
             key={d.id}
@@ -92,7 +92,7 @@ export default function DealersPage() {
       </div>
 
       {/* Desktop / tablet table */}
-      <div className="table-container hidden md:block">
+      <div className="table-container hidden lg:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/30">

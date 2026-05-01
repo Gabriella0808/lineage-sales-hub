@@ -124,12 +124,12 @@ export default function SalesRepsPage() {
       status: newRep.status,
     }).select("id").single();
     if (error || !data) { toast.error(error?.message ?? "Failed"); return; }
-    if (newRep.territory_id) {
-      await supabase.from("rep_territories").insert({ rep_id: data.id, territory_id: newRep.territory_id });
+    if (newRep.territory_ids.length > 0) {
+      await supabase.from("rep_territories").insert(newRep.territory_ids.map(tid => ({ rep_id: data.id, territory_id: tid })));
     }
     toast.success("Rep added");
     setAddOpen(false);
-    setNewRep({ name: "", acctivate_id: "", email: "", manager_id: null, territory_id: null, status: "active" });
+    setNewRep({ name: "", acctivate_id: "", email: "", manager_id: null, territory_ids: [], status: "active" });
     invalidate();
   };
 

@@ -187,6 +187,7 @@ export default function CaptureLeadsPage() {
     const market = markets.find((m) => m.id === leadDialog);
 
     if (editingLeadId) {
+      const editingLeadIdSnapshot = editingLeadId;
       const { error } = await supabase.from("trade_show_leads").update({
         contact_name: leadForm.contact_name.trim(),
         dealer: leadForm.dealer.trim() || null,
@@ -200,11 +201,43 @@ export default function CaptureLeadsPage() {
         notes: leadForm.notes.trim() || null,
         market_id: leadDialog,
         trade_show: market?.name ?? null,
-      }).eq("id", editingLeadId);
+      }).eq("id", editingLeadIdSnapshot);
       if (error) return toast.error(error.message);
       toast.success("Lead updated");
+
+      // Trigger rep notification if the rep was (re)assigned during this edit:
+      // - rep was cleared and re-selected (even if same rep), OR
+      // - rep email changed to a different non-empty value
+      const newRepEmail = leadForm.rep_email.trim();
+      const newRepEmailLc = newRepEmail.toLowerCase();
+      const shouldNotify =
+        !!newRepEmail &&
+        (editRepCleared || newRepEmailLc !== editingOriginalRepEmail);
+      if (shouldNotify) {
+        const orderNum = parseFloat(leadForm.order_amount) || 0;
+        supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "new-lead-assigned",
+            recipientEmail: newRepEmail,
+            idempotencyKey: `lead-reassigned-${editingLeadIdSnapshot}-${Date.now()}`,
+            templateData: {
+              repName: leadForm.sales_rep.trim() || undefined,
+              contactName: leadForm.contact_name.trim() || undefined,
+              dealer: leadForm.dealer.trim() || undefined,
+              collections: leadForm.product_interest.trim() || undefined,
+              orderAmount: orderNum > 0 ? fmt(orderNum) : undefined,
+              market: market?.name || undefined,
+            },
+          },
+        }).then(({ error: emailErr }) => {
+          if (emailErr) console.error("Lead reassignment email failed:", emailErr);
+        });
+      }
+
       setLeadDialog(null);
       setEditingLeadId(null);
+      setEditingOriginalRepEmail("");
+      setEditRepCleared(false);
       setLeadForm(emptyLead);
       load();
       return;

@@ -87,10 +87,10 @@ export default function CaptureLeadsPage() {
     ]);
     if (m.error) toast.error(m.error.message);
     else {
-      // Sort: most recent first. Use start_date, then infer from name (season + year), then year, then name.
+      // Sort: newest first. Prefer created_at (so freshly added markets always land on top),
+      // then start_date, then inferred season+year from name.
       const seasonOrder: Record<string, number> = { winter: 1, spring: 2, summer: 3, fall: 4, autumn: 4 };
-      const inferRecency = (mk: Market): number => {
-        if (mk.start_date) return new Date(mk.start_date).getTime();
+      const inferRecency = (mk: Market & { created_at?: string }): number => {
         const name = (mk.name || "").toLowerCase();
         const yearMatch = name.match(/(20\d{2})/);
         const year = yearMatch ? parseInt(yearMatch[1]) : (mk.year ?? 0);
@@ -100,7 +100,15 @@ export default function CaptureLeadsPage() {
         }
         return year * 10 + seasonRank;
       };
-      const sorted = [...(m.data ?? [])].sort((a, b) => inferRecency(b) - inferRecency(a) || a.name.localeCompare(b.name));
+      const sorted = [...(m.data ?? [])].sort((a: any, b: any) => {
+        const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (cb !== ca) return cb - ca;
+        const sa = a.start_date ? new Date(a.start_date).getTime() : 0;
+        const sb = b.start_date ? new Date(b.start_date).getTime() : 0;
+        if (sb !== sa) return sb - sa;
+        return inferRecency(b) - inferRecency(a) || a.name.localeCompare(b.name);
+      });
       setMarkets(sorted);
     }
     if (l.error) toast.error(l.error.message); else setLeads((l.data ?? []) as Lead[]);

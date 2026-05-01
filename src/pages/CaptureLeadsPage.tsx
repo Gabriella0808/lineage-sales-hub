@@ -77,6 +77,8 @@ export default function CaptureLeadsPage() {
   const [leadDialog, setLeadDialog] = useState<string | null>(null); // market id (when creating)
   const [leadForm, setLeadForm] = useState(emptyLead);
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+  const [editingOriginalRepEmail, setEditingOriginalRepEmail] = useState<string>("");
+  const [editRepCleared, setEditRepCleared] = useState<boolean>(false);
 
   const load = async () => {
     setLoading(true);
@@ -174,6 +176,8 @@ export default function CaptureLeadsPage() {
       status: l.status ?? "New",
     });
     setEditingLeadId(l.id);
+    setEditingOriginalRepEmail((l.rep_email ?? "").trim().toLowerCase());
+    setEditRepCleared(false);
     setLeadDialog(l.market_id ?? markets.find((m) => m.name === l.trade_show)?.id ?? null);
   };
 
@@ -183,6 +187,7 @@ export default function CaptureLeadsPage() {
     const market = markets.find((m) => m.id === leadDialog);
 
     if (editingLeadId) {
+      const editingLeadIdSnapshot = editingLeadId;
       const { error } = await supabase.from("trade_show_leads").update({
         contact_name: leadForm.contact_name.trim(),
         dealer: leadForm.dealer.trim() || null,
@@ -196,11 +201,43 @@ export default function CaptureLeadsPage() {
         notes: leadForm.notes.trim() || null,
         market_id: leadDialog,
         trade_show: market?.name ?? null,
-      }).eq("id", editingLeadId);
+      }).eq("id", editingLeadIdSnapshot);
       if (error) return toast.error(error.message);
       toast.success("Lead updated");
+
+      // Trigger rep notification if the rep was (re)assigned during this edit:
+      // - rep was cleared and re-selected (even if same rep), OR
+      // - rep email changed to a different non-empty value
+      const newRepEmail = leadForm.rep_email.trim();
+      const newRepEmailLc = newRepEmail.toLowerCase();
+      const shouldNotify =
+        !!newRepEmail &&
+        (editRepCleared || newRepEmailLc !== editingOriginalRepEmail);
+      if (shouldNotify) {
+        const orderNum = parseFloat(leadForm.order_amount) || 0;
+        supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "new-lead-assigned",
+            recipientEmail: newRepEmail,
+            idempotencyKey: `lead-reassigned-${editingLeadIdSnapshot}-${Date.now()}`,
+            templateData: {
+              repName: leadForm.sales_rep.trim() || undefined,
+              contactName: leadForm.contact_name.trim() || undefined,
+              dealer: leadForm.dealer.trim() || undefined,
+              collections: leadForm.product_interest.trim() || undefined,
+              orderAmount: orderNum > 0 ? fmt(orderNum) : undefined,
+              market: market?.name || undefined,
+            },
+          },
+        }).then(({ error: emailErr }) => {
+          if (emailErr) console.error("Lead reassignment email failed:", emailErr);
+        });
+      }
+
       setLeadDialog(null);
       setEditingLeadId(null);
+      setEditingOriginalRepEmail("");
+      setEditRepCleared(false);
       setLeadForm(emptyLead);
       load();
       return;
@@ -495,7 +532,7 @@ export default function CaptureLeadsPage() {
         </Accordion>
       )}
 
-      <Dialog open={!!leadDialog} onOpenChange={(o) => { if (!o) { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); } }}>
+      <Dialog open={!!leadDialog} onOpenChange={(o) => { if (!o) { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); } }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -518,29 +555,53 @@ export default function CaptureLeadsPage() {
               </Field>
             </div>
             <Field label="Sales Rep">
-              <Select
-                value={leadForm.sales_rep_id}
-                onValueChange={(id) => {
-                  const rep = salesReps.find((r) => r.id === id);
-                  setLeadForm({
-                    ...leadForm,
-                    sales_rep_id: id,
-                    sales_rep: rep?.name ?? "",
-                    rep_email: rep?.email ?? "",
-                  });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a sales rep" />
-                </SelectTrigger>
-                <SelectContent>
-                  {salesReps.map((rep) => (
-                    <SelectItem key={rep.id} value={rep.id}>
-                      {rep.name}{rep.email ? ` — ${rep.email}` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select
+                  value={leadForm.sales_rep_id}
+                  onValueChange={(id) => {
+                    const rep = salesReps.find((r) => r.id === id);
+                    setLeadForm({
+                      ...leadForm,
+                      sales_rep_id: id,
+                      sales_rep: rep?.name ?? "",
+                      rep_email: rep?.email ?? "",
+                    });
+                  }}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select a sales rep" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {salesReps.map((rep) => (
+                      <SelectItem key={rep.id} value={rep.id}>
+                        {rep.name}{rep.email ? ` — ${rep.email}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {leadForm.sales_rep_id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (editingLeadId) setEditRepCleared(true);
+                      setLeadForm({
+                        ...leadForm,
+                        sales_rep_id: "",
+                        sales_rep: "",
+                        rep_email: "",
+                      });
+                    }}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {editingLeadId && editRepCleared && !leadForm.sales_rep_id && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Re-selecting a rep will send them a new lead notification email.
+                </p>
+              )}
             </Field>
 
             {/* Follow-up task for the assigned rep */}
@@ -610,7 +671,7 @@ export default function CaptureLeadsPage() {
             </Field>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); }}>Cancel</Button>
             <Button onClick={submitLead}>{editingLeadId ? "Save Changes" : "Create Lead"}</Button>
           </DialogFooter>
         </DialogContent>

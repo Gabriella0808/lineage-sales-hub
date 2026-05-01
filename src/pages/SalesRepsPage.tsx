@@ -77,7 +77,7 @@ function TerritoryMultiSelect({
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
         <div className="max-h-64 overflow-y-auto py-1">
-          {options.length === 0 && (
+          {filteredOptions.length === 0 && (
             <div className="px-3 py-2 text-xs text-muted-foreground">No territories available</div>
           )}
           {options.map(t => {

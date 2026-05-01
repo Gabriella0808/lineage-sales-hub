@@ -210,13 +210,13 @@ export default function TradeShowLeadsPage() {
 
 function StatCard({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
   return (
-    <Card className="p-5 flex items-center justify-between">
-      <div>
-        <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-serif mt-1">{value}</p>
+    <Card className="p-4 sm:p-5 flex items-center justify-between gap-2">
+      <div className="min-w-0">
+        <p className="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="text-lg sm:text-2xl font-serif mt-1 break-words">{value}</p>
       </div>
-      <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-        <Icon className="h-5 w-5" />
+      <div className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
       </div>
     </Card>
   );

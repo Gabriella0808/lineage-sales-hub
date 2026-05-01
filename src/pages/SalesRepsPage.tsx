@@ -45,6 +45,10 @@ function TerritoryMultiSelect({
   placeholder?: string;
   triggerClassName?: string;
 }) {
+  // Hide territories whose code looks like a raw UUID/hex string (letter+number jumble)
+  const UUID_RE = /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
+  const filteredOptions = options.filter(o => !o.acctivate_id || !UUID_RE.test(o.acctivate_id));
+
   const toggle = (id: string) => {
     onChange(value.includes(id) ? value.filter(x => x !== id) : [...value, id]);
   };
@@ -73,10 +77,10 @@ function TerritoryMultiSelect({
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
         <div className="max-h-64 overflow-y-auto py-1">
-          {options.length === 0 && (
+          {filteredOptions.length === 0 && (
             <div className="px-3 py-2 text-xs text-muted-foreground">No territories available</div>
           )}
-          {options.map(t => {
+          {filteredOptions.map(t => {
             const selected = value.includes(t.id);
             return (
               <button

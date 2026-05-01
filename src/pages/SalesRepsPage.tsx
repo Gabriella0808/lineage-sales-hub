@@ -191,7 +191,7 @@ export default function SalesRepsPage() {
           <tbody>
             {filtered.map(r => {
               const isEditing = editingId === r.id;
-              const tid = repTerritoryId(r.id);
+              const tids = repTerritoryIds(r.id);
               return (
                 <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                   {/* Rep name */}

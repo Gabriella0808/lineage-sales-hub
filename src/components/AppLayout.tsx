@@ -56,8 +56,9 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 function SidebarNav() {
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+  const { state, isMobile } = useSidebar();
+  // On mobile/tablet the sidebar is rendered as a Sheet — always show labels there.
+  const collapsed = !isMobile && state === "collapsed";
   const { data: roleInfo } = useUserRole();
   const role = roleInfo?.role ?? "rep";
   const location = useLocation();

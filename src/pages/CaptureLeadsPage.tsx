@@ -206,7 +206,9 @@ export default function CaptureLeadsPage() {
       return;
     }
 
+    const newLeadId = crypto.randomUUID();
     const { error } = await supabase.from("trade_show_leads").insert({
+      id: newLeadId,
       contact_name: leadForm.contact_name.trim(),
       dealer: leadForm.dealer.trim() || null,
       email: leadForm.email.trim() || null,
@@ -224,6 +226,29 @@ export default function CaptureLeadsPage() {
     });
     if (error) return toast.error(error.message);
     toast.success("Lead captured");
+
+    // Notify the assigned rep by email with the lead summary
+    const repEmailToNotify = leadForm.rep_email.trim();
+    if (repEmailToNotify) {
+      const orderNum = parseFloat(leadForm.order_amount) || 0;
+      supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "new-lead-assigned",
+          recipientEmail: repEmailToNotify,
+          idempotencyKey: `new-lead-${newLeadId}`,
+          templateData: {
+            repName: leadForm.sales_rep.trim() || undefined,
+            contactName: leadForm.contact_name.trim() || undefined,
+            dealer: leadForm.dealer.trim() || undefined,
+            collections: leadForm.product_interest.trim() || undefined,
+            orderAmount: orderNum > 0 ? fmt(orderNum) : undefined,
+            market: market?.name || undefined,
+          },
+        },
+      }).then(({ error: emailErr }) => {
+        if (emailErr) console.error("Lead email notification failed:", emailErr);
+      });
+    }
 
     // Create follow-up task if requested
     if (leadForm.followup_enabled && user?.id) {

@@ -25,6 +25,7 @@ import TravelLogPage from "@/pages/TravelLogPage";
 import TradeShowLeadsPage from "@/pages/TradeShowLeadsPage";
 import CaptureLeadsPage from "@/pages/CaptureLeadsPage";
 import AuthPage from "@/pages/AuthPage";
+import UnsubscribePage from "@/pages/UnsubscribePage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
+            <Route path="/unsubscribe" element={<UnsubscribePage />} />
             <Route
               path="/*"
               element={

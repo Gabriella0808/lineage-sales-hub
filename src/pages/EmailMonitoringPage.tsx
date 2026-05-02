@@ -200,7 +200,7 @@ export default function EmailMonitoringPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-amber-700">{suppressed.length}</div>
+            <div className="text-3xl font-bold text-amber-700">{filteredSuppressed.length}</div>
           </CardContent>
         </Card>
       </div>

@@ -57,6 +57,8 @@ function statusBadge(status: string) {
 }
 
 export default function EmailMonitoringPage() {
+  const { user } = useAuth();
+  const isGabriella = user?.email?.toLowerCase() === "gabriella@lineage-collections.com";
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);

@@ -42,9 +42,18 @@ Deno.serve(async (req) => {
 
   if (!roleRow) return json({ error: 'Forbidden' }, 403)
 
-  // Parse query params
-  const url = new URL(req.url)
-  const days = Math.min(Math.max(parseInt(url.searchParams.get('days') ?? '30', 10) || 30, 1), 365)
+  // Parse days from body (POST) or query (GET fallback)
+  let daysParam = 30
+  try {
+    if (req.method === 'POST') {
+      const body = await req.json().catch(() => ({}))
+      if (body && typeof body.days === 'number') daysParam = body.days
+    } else {
+      const url = new URL(req.url)
+      daysParam = parseInt(url.searchParams.get('days') ?? '30', 10) || 30
+    }
+  } catch (_) { /* ignore */ }
+  const days = Math.min(Math.max(daysParam, 1), 365)
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
 
   // Fetch recent log rows (we'll dedupe by message_id in JS)

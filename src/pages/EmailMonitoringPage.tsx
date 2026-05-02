@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +60,8 @@ export default function EmailMonitoringPage() {
   const [loading, setLoading] = useState(true);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [suppressed, setSuppressed] = useState<Suppressed[]>([]);
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get("recipient") ?? "");
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
@@ -97,17 +99,6 @@ export default function EmailMonitoringPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days]);
 
-  const stats = useMemo(() => {
-    const total = deliveries.length;
-    const delivered = deliveries.filter((d) => d.status === "sent").length;
-    const failed = deliveries.filter((d) =>
-      ["bounced", "complained", "dlq", "failed"].includes(d.status),
-    ).length;
-    const pending = deliveries.filter((d) => d.status === "pending").length;
-    const rate = total > 0 ? Math.round((delivered / total) * 100) : 0;
-    return { total, delivered, failed, pending, rate };
-  }, [deliveries]);
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return deliveries;
@@ -118,6 +109,23 @@ export default function EmailMonitoringPage() {
         (d.error_message ?? "").toLowerCase().includes(q),
     );
   }, [deliveries, search]);
+
+  const filteredSuppressed = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return suppressed;
+    return suppressed.filter((s) => s.email.toLowerCase().includes(q));
+  }, [suppressed, search]);
+
+  const stats = useMemo(() => {
+    const total = filtered.length;
+    const delivered = filtered.filter((d) => d.status === "sent").length;
+    const failed = filtered.filter((d) =>
+      ["bounced", "complained", "dlq", "failed"].includes(d.status),
+    ).length;
+    const pending = filtered.filter((d) => d.status === "pending").length;
+    const rate = total > 0 ? Math.round((delivered / total) * 100) : 0;
+    return { total, delivered, failed, pending, rate };
+  }, [filtered]);
 
   const failedOnly = useMemo(
     () => filtered.filter((d) => ["bounced", "complained", "dlq", "failed"].includes(d.status)),
@@ -194,7 +202,7 @@ export default function EmailMonitoringPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-amber-700">{suppressed.length}</div>
+            <div className="text-3xl font-bold text-amber-700">{filteredSuppressed.length}</div>
           </CardContent>
         </Card>
       </div>
@@ -208,9 +216,22 @@ export default function EmailMonitoringPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
-            <CardTitle>Email log</CardTitle>
+            <div>
+              <CardTitle>Email log</CardTitle>
+              {search.trim() && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Stats and tables filtered by <span className="font-medium">"{search.trim()}"</span>
+                  <button
+                    onClick={() => setSearch("")}
+                    className="ml-2 underline hover:text-foreground"
+                  >
+                    clear
+                  </button>
+                </p>
+              )}
+            </div>
             <Input
-              placeholder="Search by email, template, or error…"
+              placeholder="Filter by email, template, or error…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
@@ -222,7 +243,7 @@ export default function EmailMonitoringPage() {
             <TabsList>
               <TabsTrigger value="all">All ({filtered.length})</TabsTrigger>
               <TabsTrigger value="failed">Not delivered ({failedOnly.length})</TabsTrigger>
-              <TabsTrigger value="suppressed">Suppression list ({suppressed.length})</TabsTrigger>
+              <TabsTrigger value="suppressed">Suppression list ({filteredSuppressed.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="all" className="mt-4">
@@ -232,7 +253,7 @@ export default function EmailMonitoringPage() {
               <DeliveryTable rows={failedOnly} loading={loading} showError />
             </TabsContent>
             <TabsContent value="suppressed" className="mt-4">
-              <SuppressedTable rows={suppressed} loading={loading} />
+              <SuppressedTable rows={filteredSuppressed} loading={loading} />
             </TabsContent>
           </Tabs>
         </CardContent>

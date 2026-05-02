@@ -304,6 +304,7 @@ export type Database = {
           message_id: string | null
           metadata: Json | null
           recipient_email: string
+          resurrect_attempts: number
           status: string
           template_name: string
         }
@@ -314,6 +315,7 @@ export type Database = {
           message_id?: string | null
           metadata?: Json | null
           recipient_email: string
+          resurrect_attempts?: number
           status: string
           template_name: string
         }
@@ -324,6 +326,7 @@ export type Database = {
           message_id?: string | null
           metadata?: Json | null
           recipient_email?: string
+          resurrect_attempts?: number
           status?: string
           template_name?: string
         }

@@ -76,10 +76,15 @@ const Row = ({ label, value }: { label: string; value?: string }) => (
 
 export const template = {
   component: NewLeadAssignedEmail,
-  subject: (data: Record<string, any>) =>
-    data?.contactName
-      ? `New lead assigned: ${data.contactName}${data.dealer ? ` (${data.dealer})` : ''}`
-      : 'New lead assigned to you',
+  subject: (data: Record<string, any>) => {
+    const parts: string[] = []
+    if (data?.contactName) parts.push(data.contactName)
+    if (data?.dealer) parts.push(data.dealer)
+    if (data?.orderAmount) parts.push(data.orderAmount)
+    const ref = data?.leadRef || Math.random().toString(36).slice(2, 8).toUpperCase()
+    const head = parts.length ? parts.join(' · ') : 'New lead assigned'
+    return `New lead: ${head} [${ref}]`
+  },
   displayName: 'New lead assigned',
   previewData: {
     repName: 'Alex',

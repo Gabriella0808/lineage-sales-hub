@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
@@ -79,6 +79,7 @@ export default function CaptureLeadsPage() {
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [editingOriginalRepEmail, setEditingOriginalRepEmail] = useState<string>("");
   const [editRepCleared, setEditRepCleared] = useState<boolean>(false);
+  const editRepClearedRef = useRef(false);
 
   const load = async () => {
     setLoading(true);
@@ -178,6 +179,7 @@ export default function CaptureLeadsPage() {
     setEditingLeadId(l.id);
     setEditingOriginalRepEmail((l.rep_email ?? "").trim().toLowerCase());
     setEditRepCleared(false);
+    editRepClearedRef.current = false;
     setLeadDialog(l.market_id ?? markets.find((m) => m.name === l.trade_show)?.id ?? null);
   };
 
@@ -203,8 +205,6 @@ export default function CaptureLeadsPage() {
         trade_show: market?.name ?? null,
       }).eq("id", editingLeadIdSnapshot);
       if (error) return toast.error(error.message);
-      toast.success("Lead updated");
-
       // Trigger rep notification if the rep was (re)assigned during this edit:
       // - rep was cleared and re-selected (even if same rep), OR
       // - rep email changed to a different non-empty value
@@ -212,10 +212,10 @@ export default function CaptureLeadsPage() {
       const newRepEmailLc = newRepEmail.toLowerCase();
       const shouldNotify =
         !!newRepEmail &&
-        (editRepCleared || newRepEmailLc !== editingOriginalRepEmail);
+        (editRepClearedRef.current || editRepCleared || newRepEmailLc !== editingOriginalRepEmail);
       if (shouldNotify) {
         const orderNum = parseFloat(leadForm.order_amount) || 0;
-        supabase.functions.invoke("send-transactional-email", {
+        const { error: emailErr } = await supabase.functions.invoke("send-transactional-email", {
           body: {
             templateName: "new-lead-assigned",
             recipientEmail: newRepEmail,
@@ -229,15 +229,22 @@ export default function CaptureLeadsPage() {
               market: market?.name || undefined,
             },
           },
-        }).then(({ error: emailErr }) => {
-          if (emailErr) console.error("Lead reassignment email failed:", emailErr);
         });
+        if (emailErr) {
+          console.error("Lead reassignment email failed:", emailErr);
+          toast.error("Lead updated, but the rep email could not be queued");
+        } else {
+          toast.success("Lead updated and rep notification queued");
+        }
+      } else {
+        toast.success("Lead updated");
       }
 
       setLeadDialog(null);
       setEditingLeadId(null);
       setEditingOriginalRepEmail("");
       setEditRepCleared(false);
+      editRepClearedRef.current = false;
       setLeadForm(emptyLead);
       load();
       return;

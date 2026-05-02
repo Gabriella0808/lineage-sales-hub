@@ -1,0 +1,1 @@
+UPDATE public.email_send_state SET per_recipient_throttle_seconds = 0, send_delay_ms = 0 WHERE id = 1;

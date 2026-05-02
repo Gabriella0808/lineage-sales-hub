@@ -13,6 +13,7 @@ interface NewLeadAssignedProps {
   collections?: string
   orderAmount?: string
   market?: string
+  leadRef?: string
 }
 
 const NewLeadAssignedEmail = ({
@@ -22,10 +23,21 @@ const NewLeadAssignedEmail = ({
   collections,
   orderAmount,
   market,
-}: NewLeadAssignedProps) => (
+  leadRef,
+}: NewLeadAssignedProps) => {
+  const ref = leadRef || Math.random().toString(36).slice(2, 10).toUpperCase()
+  const capturedAt = new Date().toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+  return (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>New lead assigned to you{contactName ? `: ${contactName}` : ''}</Preview>
+    <Preview>
+      {contactName ? `${contactName}` : 'New lead'}
+      {dealer ? ` · ${dealer}` : ''}
+      {orderAmount ? ` · ${orderAmount}` : ''} (Ref ${ref})
+    </Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>New Lead Assigned</Heading>
@@ -39,14 +51,17 @@ const NewLeadAssignedEmail = ({
           <Row label="Dealer" value={dealer} />
           <Row label="Collections" value={collections} />
           <Row label="Order Amount" value={orderAmount} />
+          <Row label="Captured" value={capturedAt} />
+          <Row label="Reference" value={ref} />
         </Section>
 
         <Hr style={hr} />
-        <Text style={footer}>— The {SITE_NAME} Team</Text>
+        <Text style={footer}>— The {SITE_NAME} Team · Ref {ref}</Text>
       </Container>
     </Body>
   </Html>
-)
+  )
+}
 
 const Row = ({ label, value }: { label: string; value?: string }) => (
   <table style={rowTable} cellPadding={0} cellSpacing={0}>
@@ -61,10 +76,15 @@ const Row = ({ label, value }: { label: string; value?: string }) => (
 
 export const template = {
   component: NewLeadAssignedEmail,
-  subject: (data: Record<string, any>) =>
-    data?.contactName
-      ? `New lead assigned: ${data.contactName}${data.dealer ? ` (${data.dealer})` : ''}`
-      : 'New lead assigned to you',
+  subject: (data: Record<string, any>) => {
+    const parts: string[] = []
+    if (data?.contactName) parts.push(data.contactName)
+    if (data?.dealer) parts.push(data.dealer)
+    if (data?.orderAmount) parts.push(data.orderAmount)
+    const ref = data?.leadRef || Math.random().toString(36).slice(2, 8).toUpperCase()
+    const head = parts.length ? parts.join(' · ') : 'New lead assigned'
+    return `New lead: ${head} [${ref}]`
+  },
   displayName: 'New lead assigned',
   previewData: {
     repName: 'Alex',

@@ -97,17 +97,6 @@ export default function EmailMonitoringPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days]);
 
-  const stats = useMemo(() => {
-    const total = deliveries.length;
-    const delivered = deliveries.filter((d) => d.status === "sent").length;
-    const failed = deliveries.filter((d) =>
-      ["bounced", "complained", "dlq", "failed"].includes(d.status),
-    ).length;
-    const pending = deliveries.filter((d) => d.status === "pending").length;
-    const rate = total > 0 ? Math.round((delivered / total) * 100) : 0;
-    return { total, delivered, failed, pending, rate };
-  }, [deliveries]);
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return deliveries;
@@ -118,6 +107,23 @@ export default function EmailMonitoringPage() {
         (d.error_message ?? "").toLowerCase().includes(q),
     );
   }, [deliveries, search]);
+
+  const filteredSuppressed = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return suppressed;
+    return suppressed.filter((s) => s.email.toLowerCase().includes(q));
+  }, [suppressed, search]);
+
+  const stats = useMemo(() => {
+    const total = filtered.length;
+    const delivered = filtered.filter((d) => d.status === "sent").length;
+    const failed = filtered.filter((d) =>
+      ["bounced", "complained", "dlq", "failed"].includes(d.status),
+    ).length;
+    const pending = filtered.filter((d) => d.status === "pending").length;
+    const rate = total > 0 ? Math.round((delivered / total) * 100) : 0;
+    return { total, delivered, failed, pending, rate };
+  }, [filtered]);
 
   const failedOnly = useMemo(
     () => filtered.filter((d) => ["bounced", "complained", "dlq", "failed"].includes(d.status)),

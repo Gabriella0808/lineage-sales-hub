@@ -53,6 +53,18 @@ type SalesRep = {
   email: string | null;
 };
 
+type LeadEmailOptions = {
+  leadId: string;
+  repEmail: string;
+  repName?: string;
+  contactName?: string;
+  dealer?: string;
+  collections?: string;
+  orderAmount?: string;
+  market?: string;
+  event: "created" | "reassigned";
+};
+
 const fmt = (n: number | null) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);
 
@@ -136,6 +148,44 @@ export default function CaptureLeadsPage() {
     return map;
   }, [leads, markets]);
 
+  const queueLeadEmail = async ({
+    leadId,
+    repEmail,
+    repName,
+    contactName,
+    dealer,
+    collections,
+    orderAmount,
+    market,
+    event,
+  }: LeadEmailOptions) => {
+    const normalizedRepEmail = repEmail.trim().toLowerCase();
+    if (!normalizedRepEmail) return { queued: false, error: null };
+
+    const { error } = await supabase.functions.invoke("send-transactional-email", {
+      body: {
+        templateName: "new-lead-assigned",
+        recipientEmail: normalizedRepEmail,
+        idempotencyKey: `lead-${event}-${leadId}-${normalizedRepEmail}-${Date.now()}`,
+        templateData: {
+          repName: repName?.trim() || undefined,
+          contactName: contactName?.trim() || undefined,
+          dealer: dealer?.trim() || undefined,
+          collections: collections?.trim() || undefined,
+          orderAmount,
+          market: market?.trim() || undefined,
+        },
+      },
+    });
+
+    if (error) {
+      console.error("Lead notification email failed:", error);
+      return { queued: false, error };
+    }
+
+    return { queued: true, error: null };
+  };
+
   const submitMarket = async () => {
     if (!marketForm.name.trim()) return toast.error("Market name is required");
     const { error } = await supabase.from("trade_show_markets").insert({
@@ -216,27 +266,19 @@ export default function CaptureLeadsPage() {
         (editRepClearedRef.current || editRepCleared || newRepEmailLc !== editingOriginalRepEmail);
       if (shouldNotify) {
         const orderNum = parseFloat(leadForm.order_amount) || 0;
-        const { error: emailErr } = await supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "new-lead-assigned",
-            recipientEmail: newRepEmail,
-            idempotencyKey: `lead-reassigned-${editingLeadIdSnapshot}-${Date.now()}`,
-            templateData: {
-              repName: leadForm.sales_rep.trim() || undefined,
-              contactName: leadForm.contact_name.trim() || undefined,
-              dealer: leadForm.dealer.trim() || undefined,
-              collections: leadForm.product_interest.trim() || undefined,
-              orderAmount: orderNum > 0 ? fmt(orderNum) : undefined,
-              market: market?.name || undefined,
-            },
-          },
+        const { error: emailErr } = await queueLeadEmail({
+          leadId: editingLeadIdSnapshot,
+          repEmail: newRepEmail,
+          repName: leadForm.sales_rep,
+          contactName: leadForm.contact_name,
+          dealer: leadForm.dealer,
+          collections: leadForm.product_interest,
+          orderAmount: orderNum > 0 ? fmt(orderNum) : undefined,
+          market: market?.name,
+          event: "reassigned",
         });
-        if (emailErr) {
-          console.error("Lead reassignment email failed:", emailErr);
-          toast.error("Lead updated, but the rep email could not be queued");
-        } else {
-          toast.success("Lead updated and rep notification queued");
-        }
+        if (emailErr) toast.error("Lead updated, but the rep email could not be queued");
+        else toast.success("Lead updated and rep notification queued");
       } else {
         toast.success("Lead updated");
       }
@@ -270,29 +312,25 @@ export default function CaptureLeadsPage() {
       created_by: user?.id ?? null,
     });
     if (error) return toast.error(error.message);
-    toast.success("Lead captured");
-
     // Notify the assigned rep by email with the lead summary
     const repEmailToNotify = leadForm.rep_email.trim();
     if (repEmailToNotify) {
       const orderNum = parseFloat(leadForm.order_amount) || 0;
-      supabase.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "new-lead-assigned",
-          recipientEmail: repEmailToNotify,
-          idempotencyKey: `new-lead-${newLeadId}`,
-          templateData: {
-            repName: leadForm.sales_rep.trim() || undefined,
-            contactName: leadForm.contact_name.trim() || undefined,
-            dealer: leadForm.dealer.trim() || undefined,
-            collections: leadForm.product_interest.trim() || undefined,
-            orderAmount: orderNum > 0 ? fmt(orderNum) : undefined,
-            market: market?.name || undefined,
-          },
-        },
-      }).then(({ error: emailErr }) => {
-        if (emailErr) console.error("Lead email notification failed:", emailErr);
+      const { error: emailErr } = await queueLeadEmail({
+        leadId: newLeadId,
+        repEmail: repEmailToNotify,
+        repName: leadForm.sales_rep,
+        contactName: leadForm.contact_name,
+        dealer: leadForm.dealer,
+        collections: leadForm.product_interest,
+        orderAmount: orderNum > 0 ? fmt(orderNum) : undefined,
+        market: market?.name,
+        event: "created",
       });
+      if (emailErr) toast.error("Lead captured, but the rep email could not be queued");
+      else toast.success("Lead captured and rep notification queued");
+    } else {
+      toast.success("Lead captured");
     }
 
     // Create follow-up task if requested
@@ -568,6 +606,10 @@ export default function CaptureLeadsPage() {
                   value={leadForm.sales_rep_id}
                   onValueChange={(id) => {
                     const rep = salesReps.find((r) => r.id === id);
+                    if (editingLeadId && !leadForm.sales_rep_id) {
+                      editRepClearedRef.current = true;
+                      setEditRepCleared(true);
+                    }
                     setLeadForm({
                       ...leadForm,
                       sales_rep_id: id,
@@ -682,7 +724,7 @@ export default function CaptureLeadsPage() {
             </Field>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); editRepClearedRef.current = false; }}>Cancel</Button>
             <Button onClick={submitLead}>{editingLeadId ? "Save Changes" : "Create Lead"}</Button>
           </DialogFooter>
         </DialogContent>

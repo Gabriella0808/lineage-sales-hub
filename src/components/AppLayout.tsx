@@ -66,10 +66,15 @@ function SidebarNav() {
   };
   const { data: roleInfo } = useUserRole();
   const role = roleInfo?.role ?? "rep";
+  const { user } = useAuth();
   const location = useLocation();
 
+  const isGabriella = user?.email?.toLowerCase() === "gabriella@lineage-collections.com";
+
   // de-dupe by url+title in case two role-specific labels collide
-  const items = NAV_ITEMS.filter((i) => i.roles.includes(role));
+  const items = NAV_ITEMS
+    .filter((i) => i.roles.includes(role))
+    .filter((i) => i.url !== "/email-monitoring" || isGabriella);
 
   // Track open state of dropdown groups (default open if current route is inside)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {

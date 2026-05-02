@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.handle-email-suppression]
 verify_jwt = false
+
+[functions.resurrect-failed-lead-emails]
+verify_jwt = false

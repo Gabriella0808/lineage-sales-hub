@@ -143,6 +143,28 @@ function sumRepMonthly(keys: string[]): RepMonthRow[] | null {
   });
 }
 
+// Maps REP_BOOK display names → list of territory names they cover.
+// Used by the Territory filter on the Live KPI report.
+const REP_TO_TERRITORIES: Record<string, string[]> = {
+  "Internet":         ["Internet"],
+  "Hospitality":      ["Hospitality"],
+  "House":            ["House"],
+  "Skip Camillo":     ["New England", "Skip Camillo"],
+  "Mike Durham":      ["North Florida"],
+  "Bruce Quillen":    ["Panhandle/GA/AL"],
+  "Jordan Shindell":  ["Mid Atlantic", "OH/WPA"],
+  "Stewart Hunt":     ["TX/OK"],
+  "Gary Fryer":       ["Arkansas"],
+  "TN/KY":            ["TN/KY"],
+  "Dave Ervin":       ["NC/SC"],
+  "Peter Avella":     ["NY/NJ"],
+  "Brad Robertson":   ["VA/WV"],
+  "WI/IL":            ["IL/WI"],
+};
+const ALL_TERRITORIES = Array.from(
+  new Set(Object.values(REP_TO_TERRITORIES).flat()),
+).sort();
+
 // Maps each manager (lowercased) to the REP_BOOK rep names they oversee.
 // Only includes reps that exist as tabs in the KPI workbook.
 const MANAGER_TO_REPS: Record<string, string[]> = {

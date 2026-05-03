@@ -372,7 +372,7 @@ export function SalesReporting({ groupBy, managerScopeRepIds }: Props) {
                 leftHeader={leftHeader}
               />
             ) : (
-              <TotalTable rows={aggregation.rows} leftHeader={leftHeader} display={display} />
+              <TotalTable rows={aggregation.rows} leftHeader={leftHeader} />
             )}
           </div>
         </CardContent>
@@ -382,11 +382,10 @@ export function SalesReporting({ groupBy, managerScopeRepIds }: Props) {
 }
 
 function TotalTable({
-  rows, leftHeader, display,
+  rows, leftHeader,
 }: {
   rows: { key: string; label: string; primary: number; comparative: number }[];
   leftHeader: string;
-  display: Exclude<Display, "monthly">;
 }) {
   const totalP = rows.reduce((s, r) => s + r.primary, 0);
   const totalC = rows.reduce((s, r) => s + r.comparative, 0);

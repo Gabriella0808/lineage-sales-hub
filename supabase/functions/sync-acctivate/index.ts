@@ -27,6 +27,17 @@ const LookupPayloadSchema = z.object({
   table: z.enum(["dealers", "products", "sales_reps", "managers", "territories"]),
 });
 
+const ListNamesPayloadSchema = z.object({
+  action: z.literal("list_names"),
+  table: z.enum(["dealers"]),
+});
+
+const BackfillPayloadSchema = z.object({
+  action: z.literal("backfill_acctivate_id"),
+  table: z.enum(["dealers"]),
+  updates: z.array(z.object({ id: z.string().uuid(), acctivate_id: z.string() })).min(1).max(5000),
+});
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -73,6 +84,44 @@ Deno.serve(async (req: Request) => {
       }
       return new Response(
         JSON.stringify({ success: true, map, count: Object.keys(map).length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    // List names mode: return [{id, name, acctivate_id}] for fuzzy matching client-side
+    if (body.action === "list_names") {
+      const { table } = ListNamesPayloadSchema.parse(body);
+      const out: { id: string; name: string; acctivate_id: string | null }[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from(table)
+          .select("id, name, acctivate_id")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        out.push(...(data as { id: string; name: string; acctivate_id: string | null }[]));
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return new Response(
+        JSON.stringify({ success: true, rows: out, count: out.length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    // Backfill acctivate_id for dealers (one update per row, batched)
+    if (body.action === "backfill_acctivate_id") {
+      const { table, updates } = BackfillPayloadSchema.parse(body);
+      let updated = 0;
+      for (const u of updates) {
+        const { error } = await supabase.from(table).update({ acctivate_id: u.acctivate_id }).eq("id", u.id);
+        if (error) console.error(`Backfill error for ${u.id}:`, error.message);
+        else updated++;
+      }
+      return new Response(
+        JSON.stringify({ success: true, updated, total: updates.length }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }

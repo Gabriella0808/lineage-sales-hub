@@ -246,12 +246,25 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     }));
   };
 
-  // Apply user-entered projection overrides to base data
-  const baseMonthly = useMemo(() => MONTHLY.map((r) => ({
-    ...r,
-    b26p: overrides.monthly?.[r.m]?.b26p ?? r.b26p,
-    i26p: overrides.monthly?.[r.m]?.i26p ?? r.i26p,
-  })), [overrides]);
+  // Live actuals from dealer_sales (current year YTD + prior year). Projections
+  // (b26p / i26p) remain seeded from the spreadsheet defaults below and are
+  // user-editable via inline cells.
+  const { data: liveAgg } = useDealerSalesAggregates();
+
+  const baseMonthly = useMemo(() => MONTHLY.map((seed) => {
+    const live = liveAgg.find((r) => r.m === seed.m);
+    return {
+      ...seed,
+      // Override actuals with live DB values; fall back to seed if missing.
+      b25:  live ? live.b25  : seed.b25,
+      i25:  live ? live.i25  : seed.i25,
+      ytdB: live ? live.ytdB : seed.ytdB,
+      ytdI: live ? live.ytdI : seed.ytdI,
+      // Projection cells stay editable; apply overrides on top of seed.
+      b26p: overrides.monthly?.[seed.m]?.b26p ?? seed.b26p,
+      i26p: overrides.monthly?.[seed.m]?.i26p ?? seed.i26p,
+    };
+  }), [overrides, liveAgg]);
 
   const baseLine = useMemo(() => LINE_BOOK.map((r) => ({
     ...r,

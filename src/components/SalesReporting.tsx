@@ -129,12 +129,15 @@ function monthsInRange(range: DateRange): { year: number; monthIdx: number; key:
 interface Props {
   groupBy: GroupBy;
   managerScopeRepIds?: string[] | null; // null = all reps; array = limit to these
+  /** When provided, user can toggle the leftmost column among these. */
+  groupByOptions?: GroupBy[];
 }
 
-export function SalesReporting({ groupBy, managerScopeRepIds }: Props) {
+export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions }: Props) {
   const today = new Date();
   const yearStart = startOfYear(today);
 
+  const [groupBy, setGroupBy] = useState<GroupBy>(initialGroupBy);
   const [primary, setPrimary] = useState<DateRange>({ from: yearStart, to: endOfMonth(today) });
   const [comparative, setComparative] = useState<DateRange>({
     from: subYears(yearStart, 1),

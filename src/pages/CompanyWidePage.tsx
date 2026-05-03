@@ -147,7 +147,7 @@ export default function CompanyWidePage() {
           <SalesReporting groupBy="dealer" managerScopeRepIds={managerScopeRepIds} />
         )}
         {activeReport === "rep-reporting" && !isRep && (
-          <SalesReporting groupBy="rep" managerScopeRepIds={managerScopeRepIds} />
+          <SalesReporting groupBy="rep" groupByOptions={["rep", "territory"]} managerScopeRepIds={managerScopeRepIds} />
         )}
       </section>
     </div>

@@ -122,6 +122,28 @@ export interface DbTravelLog {
   travel_end_date: string | null;
 }
 
+export interface DbProduct {
+  id: string;
+  acctivate_id: string | null;
+  sku: string;
+  name: string | null;
+  brand: string | null;
+  category: string | null;
+  collection: string | null;
+}
+
+export interface DbDealerSalesLine {
+  id: string;
+  dealer_id: string;
+  product_id: string;
+  year: number;
+  month: string;
+  bookings: number | null;
+  invoices: number | null;
+  booking_count: number | null;
+  invoice_count: number | null;
+}
+
 // ── Hooks ─────────────────────────────────────────────────────────
 
 export function useSalesReps() {

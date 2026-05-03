@@ -88,6 +88,44 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // List names mode: return [{id, name, acctivate_id}] for fuzzy matching client-side
+    if (body.action === "list_names") {
+      const { table } = ListNamesPayloadSchema.parse(body);
+      const out: { id: string; name: string; acctivate_id: string | null }[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from(table)
+          .select("id, name, acctivate_id")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        out.push(...(data as { id: string; name: string; acctivate_id: string | null }[]));
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return new Response(
+        JSON.stringify({ success: true, rows: out, count: out.length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    // Backfill acctivate_id for dealers (one update per row, batched)
+    if (body.action === "backfill_acctivate_id") {
+      const { table, updates } = BackfillPayloadSchema.parse(body);
+      let updated = 0;
+      for (const u of updates) {
+        const { error } = await supabase.from(table).update({ acctivate_id: u.acctivate_id }).eq("id", u.id);
+        if (error) console.error(`Backfill error for ${u.id}:`, error.message);
+        else updated++;
+      }
+      return new Response(
+        JSON.stringify({ success: true, updated, total: updates.length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
     // Prune mode: delete rows whose acctivate_id is not in keep list
     if (body.action === "prune") {
       const { table, keep_acctivate_ids } = PrunePayloadSchema.parse(body);

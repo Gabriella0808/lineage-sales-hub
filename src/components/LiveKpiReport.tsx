@@ -483,40 +483,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
             : <> · <span className="text-primary">Click any 2026 P value to edit</span></>}
         </p>
 
-        {/* Filter bar */}
-        <div className="flex flex-wrap items-center gap-3 mb-4 pb-4 border-b">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Metric:</span>
-            <div className="flex gap-1">
-              <FilterChip active={metricFilter === "both"} onClick={() => setMetricFilter("both")}>Both</FilterChip>
-              <FilterChip active={metricFilter === "bookings"} onClick={() => setMetricFilter("bookings")}>Bookings</FilterChip>
-              <FilterChip active={metricFilter === "invoiced"} onClick={() => setMetricFilter("invoiced")}>Invoiced</FilterChip>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Line:</span>
-            <select
-              value={monthlyLineFilter}
-              onChange={(e) => setMonthlyLineFilter(e.target.value as LineFilter)}
-              className="h-8 px-2 rounded-md border bg-background text-xs"
-            >
-              <option value="all">All Lines</option>
-              <option value="sw">Sea Winds</option>
-              <option value="fl">Finn &amp; Louise</option>
-              <option value="lux">Lux Lighting</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Month:</span>
-            <select
-              value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value as MonthFilter)}
-              className="h-8 px-2 rounded-md border bg-background text-xs"
-            >
-              {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-        </div>
+
 
         <div className="overflow-x-auto">
           <table className="w-full text-xs">

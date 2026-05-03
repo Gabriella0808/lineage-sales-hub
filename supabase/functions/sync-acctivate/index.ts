@@ -7,7 +7,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const SyncPayloadSchema = z.object({
-  table: z.enum(["managers", "sales_reps", "territories", "rep_territories", "dealers", "contacts", "kpi_records", "activities", "tasks", "dealer_sales", "inventory"]),
+  table: z.enum(["managers", "sales_reps", "territories", "rep_territories", "dealers", "contacts", "kpi_records", "activities", "tasks", "dealer_sales", "dealer_sales_lines", "products", "inventory"]),
   rows: z.array(z.record(z.unknown())).min(1).max(5000),
   on_conflict: z.string().optional(),
 });
@@ -18,7 +18,7 @@ const BatchPayloadSchema = z.object({
 
 const PrunePayloadSchema = z.object({
   action: z.literal("prune"),
-  table: z.enum(["inventory"]),
+  table: z.enum(["inventory", "products", "dealer_sales_lines"]),
   keep_acctivate_ids: z.array(z.string()).max(50000),
 });
 

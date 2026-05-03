@@ -209,6 +209,48 @@ export type Database = {
           },
         ]
       }
+      dealer_sales_lines: {
+        Row: {
+          booking_count: number
+          bookings: number
+          created_at: string
+          dealer_id: string
+          id: string
+          invoice_count: number
+          invoices: number
+          month: string
+          product_id: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          booking_count?: number
+          bookings?: number
+          created_at?: string
+          dealer_id: string
+          id?: string
+          invoice_count?: number
+          invoices?: number
+          month: string
+          product_id: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          booking_count?: number
+          bookings?: number
+          created_at?: string
+          dealer_id?: string
+          id?: string
+          invoice_count?: number
+          invoices?: number
+          month?: string
+          product_id?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       dealers: {
         Row: {
           acctivate_id: string | null
@@ -675,6 +717,42 @@ export type Database = {
           created_by?: string | null
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          acctivate_id: string | null
+          brand: string | null
+          category: string | null
+          collection: string | null
+          created_at: string
+          id: string
+          name: string | null
+          sku: string
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id?: string | null
+          brand?: string | null
+          category?: string | null
+          collection?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          sku: string
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string | null
+          brand?: string | null
+          category?: string | null
+          collection?: string | null
+          created_at?: string
+          id?: string
+          name?: string | null
+          sku?: string
+          updated_at?: string
         }
         Relationships: []
       }

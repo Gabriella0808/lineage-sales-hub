@@ -122,6 +122,28 @@ export interface DbTravelLog {
   travel_end_date: string | null;
 }
 
+export interface DbProduct {
+  id: string;
+  acctivate_id: string | null;
+  sku: string;
+  name: string | null;
+  brand: string | null;
+  category: string | null;
+  collection: string | null;
+}
+
+export interface DbDealerSalesLine {
+  id: string;
+  dealer_id: string;
+  product_id: string;
+  year: number;
+  month: string;
+  bookings: number | null;
+  invoices: number | null;
+  booking_count: number | null;
+  invoice_count: number | null;
+}
+
 // ── Hooks ─────────────────────────────────────────────────────────
 
 export function useSalesReps() {
@@ -245,6 +267,28 @@ export function useTravelLog() {
         .order("travel_date", { ascending: false });
       if (error) throw error;
       return (data ?? []) as DbTravelLog[];
+    },
+  });
+}
+
+export function useProducts() {
+  return useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("products").select("*").order("sku");
+      if (error) throw error;
+      return (data ?? []) as DbProduct[];
+    },
+  });
+}
+
+export function useDealerSalesLines() {
+  return useQuery({
+    queryKey: ["dealer_sales_lines"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("dealer_sales_lines").select("*");
+      if (error) throw error;
+      return (data ?? []) as DbDealerSalesLine[];
     },
   });
 }

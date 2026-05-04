@@ -112,15 +112,16 @@ function MultiSelect({
   );
 }
 
-function DateRangePicker({ label, value, onChange }: { label: string; value: DateRange; onChange: (v: DateRange) => void }) {
+function DateRangePicker({ label, value, onChange, onReset }: { label: string; value: DateRange; onChange: (v: DateRange) => void; onReset?: () => void }) {
   // Track an in-progress range so users can pick fresh from/to without being
   // anchored to the previously committed range.
   const [draft, setDraft] = useState<{ from?: Date; to?: Date } | undefined>(undefined);
+  const [open, setOpen] = useState(false);
   const display = draft ?? { from: value.from, to: value.to };
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
-      <Popover onOpenChange={(open) => { if (!open) setDraft(undefined); }}>
+      <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setDraft(undefined); }}>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="h-9 justify-start font-normal min-w-[230px]">
             <CalendarIcon className="mr-2 h-3.5 w-3.5" />
@@ -144,6 +145,17 @@ function DateRangePicker({ label, value, onChange }: { label: string; value: Dat
             numberOfMonths={2}
             className={cn("p-3 pointer-events-auto")}
           />
+          {onReset && (
+            <div className="flex justify-end gap-2 border-t p-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { onReset(); setDraft(undefined); setOpen(false); }}
+              >
+                Reset
+              </Button>
+            </div>
+          )}
         </PopoverContent>
       </Popover>
     </div>

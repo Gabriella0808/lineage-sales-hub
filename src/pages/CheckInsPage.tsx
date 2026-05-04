@@ -1012,7 +1012,7 @@ export default function CheckInsPage() {
                       <SelectValue placeholder="Select buying group" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No option</SelectItem>
+                      <SelectItem value="none">Nothing</SelectItem>
                       <SelectItem value="fmg">FMG</SelectItem>
                       <SelectItem value="furniture_first">Furniture First</SelectItem>
                     </SelectContent>

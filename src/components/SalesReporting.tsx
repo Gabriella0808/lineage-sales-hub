@@ -356,6 +356,19 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
   const noData = useAggregates ? aggregates.length === 0 : lines.length === 0;
 
+  // Warn when a product-level filter is active but dealer_sales_lines has no rows
+  // overlapping the primary date range — common right now since line sync is sparse.
+  const productFilterActive = !useAggregates;
+  const lineCoverageMissing = useMemo(() => {
+    if (!productFilterActive) return false;
+    const primKeys = new Set(monthsInRange(primary).map((m) => m.key));
+    return !lines.some((l) => {
+      const mNum = parseInt(String(l.month), 10);
+      const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(l.month);
+      return primKeys.has(`${l.year}-${monthName}`);
+    });
+  }, [productFilterActive, lines, primary]);
+
   return (
     <div className="space-y-4">
       {/* Filters */}

@@ -195,6 +195,8 @@ export default function CheckInsPage() {
   const [teamFilter, setTeamFilter] = useState<TeamMemberId | "all">("all");
   const [salesReps, setSalesReps] = useState<{ id: string; name: string }[]>([]);
   const [newDealer, setNewDealer] = useState<{
+    first_name: string;
+    last_name: string;
     name: string;
     street_address: string;
     city: string;
@@ -207,6 +209,8 @@ export default function CheckInsPage() {
     notes: string;
     buying_group: "none" | "fmg" | "furniture_first" | "";
   }>({
+    first_name: "",
+    last_name: "",
     name: "",
     street_address: "",
     city: "",
@@ -823,6 +827,8 @@ export default function CheckInsPage() {
       .from("dealers")
       .insert({
         name,
+        first_name: newDealer.first_name.trim() || null,
+        last_name: newDealer.last_name.trim() || null,
         street_address: street,
         city,
         state,
@@ -845,7 +851,7 @@ export default function CheckInsPage() {
     if (data) {
       setDealers((prev) => [...prev, data as Dealer]);
     }
-    setNewDealer({ name: "", street_address: "", city: "", state: "", phone: "", email: "", website: "", rep_owner: "", rep_id: "", notes: "", buying_group: "" });
+    setNewDealer({ first_name: "", last_name: "", name: "", street_address: "", city: "", state: "", phone: "", email: "", website: "", rep_owner: "", rep_id: "", notes: "", buying_group: "" });
     setAddOpen(false);
     const ownerName = TEAM_MEMBERS.find((t) => t.id === owner)?.name ?? owner;
     toast({ title: "Dealer added", description: `${name} added to ${ownerName}'s accounts. Geocoding will run shortly.` });
@@ -886,6 +892,28 @@ export default function CheckInsPage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="d-first-name">First name</Label>
+                    <Input
+                      id="d-first-name"
+                      value={newDealer.first_name}
+                      onChange={(e) => setNewDealer({ ...newDealer, first_name: e.target.value })}
+                      maxLength={100}
+                      placeholder="Jane"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="d-last-name">Last name</Label>
+                    <Input
+                      id="d-last-name"
+                      value={newDealer.last_name}
+                      onChange={(e) => setNewDealer({ ...newDealer, last_name: e.target.value })}
+                      maxLength={100}
+                      placeholder="Doe"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="d-name">Dealer name *</Label>
                   <Input

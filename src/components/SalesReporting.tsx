@@ -22,7 +22,7 @@ interface DateRange { from: Date; to: Date }
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 function MultiSelect({
-  label, options, selected, onChange, disabled, disabledReason,
+  label, options, selected, onChange, disabled, disabledReason, searchable, searchPlaceholder,
 }: {
   label: string;
   options: { value: string; label: string }[];
@@ -30,10 +30,19 @@ function MultiSelect({
   onChange: (v: string[]) => void;
   disabled?: boolean;
   disabledReason?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }) {
+  const [query, setQuery] = useState("");
   const summary = selected.length === 0 ? "All" : selected.length === 1
     ? options.find((o) => o.value === selected[0])?.label ?? "1 selected"
     : `${selected.length} selected`;
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !query.trim()) return options;
+    const q = query.trim().toLowerCase();
+    return options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
+  }, [options, query, searchable]);
 
   return (
     <div className="flex flex-col gap-1 min-w-[160px]">
@@ -51,6 +60,17 @@ function MultiSelect({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-0" align="start">
+          {searchable && (
+            <div className="p-2 border-b">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={searchPlaceholder ?? `Search ${label.toLowerCase()}...`}
+                className="w-full h-8 text-xs px-2 rounded border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+          )}
           <div className="max-h-72 overflow-y-auto p-2 space-y-1">
             <button
               onClick={() => onChange([])}
@@ -58,7 +78,7 @@ function MultiSelect({
             >
               Clear (All)
             </button>
-            {options.map((o) => {
+            {filteredOptions.map((o) => {
               const isOn = selected.includes(o.value);
               return (
                 <button
@@ -74,7 +94,9 @@ function MultiSelect({
                 </button>
               );
             })}
-            {options.length === 0 && <p className="text-xs text-muted-foreground p-2">No options</p>}
+            {filteredOptions.length === 0 && (
+              <p className="text-xs text-muted-foreground p-2">{query ? "No matches" : "No options"}</p>
+            )}
           </div>
         </PopoverContent>
       </Popover>
@@ -347,7 +369,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             />
             <MultiSelect
               label="SKU" selected={skus} onChange={setSkus}
-              options={visibleSkus.map((p) => ({ value: p.id, label: p.sku }))}
+              options={visibleSkus.map((p) => ({ value: p.id, label: p.name ? `${p.sku} — ${p.name}` : p.sku }))}
+              searchable
+              searchPlaceholder="Search SKU or name..."
             />
           </div>
         </CardContent>

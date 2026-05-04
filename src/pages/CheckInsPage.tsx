@@ -900,7 +900,7 @@ export default function CheckInsPage() {
                       value={newDealer.first_name}
                       onChange={(e) => setNewDealer({ ...newDealer, first_name: e.target.value })}
                       maxLength={100}
-                      placeholder="Jane"
+                      placeholder="First name"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -910,7 +910,7 @@ export default function CheckInsPage() {
                       value={newDealer.last_name}
                       onChange={(e) => setNewDealer({ ...newDealer, last_name: e.target.value })}
                       maxLength={100}
-                      placeholder="Doe"
+                      placeholder="Last name"
                     />
                   </div>
                 </div>
@@ -921,7 +921,7 @@ export default function CheckInsPage() {
                     value={newDealer.name}
                     onChange={(e) => setNewDealer({ ...newDealer, name: e.target.value })}
                     maxLength={200}
-                    placeholder="Acme Furniture Co."
+                    placeholder="Dealer name"
                   />
                 </div>
                 <div className="space-y-1.5">

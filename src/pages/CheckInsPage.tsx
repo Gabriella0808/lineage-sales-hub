@@ -1442,21 +1442,18 @@ export default function CheckInsPage() {
                               ? `${selected.lat},${selected.lng}`
                               : addr
                           )}`;
+                          const linkTarget = window.self === window.top ? "_blank" : "_top";
+
                           return (
                             <div className="flex items-start justify-between gap-2">
                               <span className="flex-1">{addr || "—"}</span>
                               <a
                                 href={mapsUrl}
-                                target="_blank"
+                                target={linkTarget}
                                 rel="noopener noreferrer external"
                                 referrerPolicy="no-referrer"
                                 onClick={(event) => {
                                   event.stopPropagation();
-
-                                  if (window.self !== window.top) {
-                                    event.preventDefault();
-                                    window.top.location.href = mapsUrl;
-                                  }
                                 }}
                                 title="Open directions in Google Maps"
                                 className="shrink-0 inline-flex items-center gap-1 text-primary hover:underline text-xs font-medium"

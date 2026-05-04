@@ -1,0 +1,1 @@
+ALTER TABLE public.dealers ADD COLUMN IF NOT EXISTS buying_group text;

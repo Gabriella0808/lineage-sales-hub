@@ -1442,19 +1442,17 @@ export default function CheckInsPage() {
                               ? `${selected.lat},${selected.lng}`
                               : addr
                           )}`;
+                          const linkTarget = window.self === window.top ? "_blank" : "_top";
+
                           return (
                             <div className="flex items-start justify-between gap-2">
                               <span className="flex-1">{addr || "—"}</span>
                               <a
                                 href={mapsUrl}
-                                target="_blank"
+                                target={linkTarget}
                                 rel="noopener noreferrer external"
                                 referrerPolicy="no-referrer"
                                 onClick={(event) => {
-                                  // Do NOT preventDefault — let the browser handle the
-                                  // target="_blank" navigation as a real user gesture so
-                                  // the new tab does not inherit the preview iframe's
-                                  // sandbox/CSP (which causes ERR_BLOCKED_BY_RESPONSE).
                                   event.stopPropagation();
                                 }}
                                 title="Open directions in Google Maps"

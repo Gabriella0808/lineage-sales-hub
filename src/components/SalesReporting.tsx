@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { format, startOfYear, endOfMonth, subYears } from "date-fns";
+import { format, startOfYear, endOfMonth, subYears, subMonths, startOfMonth, startOfDay } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -347,6 +347,29 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               onChange={setPrimary}
               onReset={() => setPrimary({ from: yearStart, to: endOfMonth(today) })}
             />
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Quick range</span>
+              <Select
+                value=""
+                onValueChange={(v) => {
+                  const end = startOfDay(today);
+                  let from: Date;
+                  if (v === "3m") from = startOfMonth(subMonths(end, 2));
+                  else if (v === "6m") from = startOfMonth(subMonths(end, 5));
+                  else from = startOfMonth(subMonths(end, 11));
+                  const to = endOfMonth(today);
+                  setPrimary({ from, to });
+                  setComparative({ from: subYears(from, 1), to: subYears(to, 1) });
+                }}
+              >
+                <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Select…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3m">Last 3 months</SelectItem>
+                  <SelectItem value="6m">Last 6 months</SelectItem>
+                  <SelectItem value="1y">Last year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <DateRangePicker
               label="Comparative date range"
               value={comparative}

@@ -1437,17 +1437,17 @@ export default function CheckInsPage() {
                           if (!addr && selected.lat == null) {
                             return <span className="text-muted-foreground italic">—</span>;
                           }
-                          const fallbackMapsUrl =
+                          const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
                             selected.lat != null && selected.lng != null
-                              ? `https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=;%20${selected.lat}%2C${selected.lng}`
-                              : `https://www.openstreetmap.org/search?query=${encodeURIComponent(addr)}`;
+                              ? `${selected.lat},${selected.lng}`
+                              : addr
+                          )}`;
                           return (
                             <div className="flex items-start justify-between gap-2">
                               <span className="flex-1">{addr || "—"}</span>
                               <a
-                                href={fallbackMapsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                href={mapsUrl}
+                                target="_top"
                                 title="Open directions"
                                 className="shrink-0 inline-flex items-center gap-1 text-primary hover:underline text-xs font-medium"
                               >

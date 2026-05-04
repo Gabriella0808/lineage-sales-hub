@@ -814,6 +814,8 @@ export default function CheckInsPage() {
         phone: newDealer.phone.trim() || null,
         email: newDealer.email.trim() || null,
         website: newDealer.website.trim() || null,
+        notes: newDealer.notes.trim() || null,
+        buying_group: newDealer.buying_group || null,
         status: "active",
         rep_owner: owner,
       })
@@ -827,7 +829,7 @@ export default function CheckInsPage() {
     if (data) {
       setDealers((prev) => [...prev, data as Dealer]);
     }
-    setNewDealer({ name: "", street_address: "", city: "", state: "", phone: "", email: "", website: "", rep_owner: "" });
+    setNewDealer({ name: "", street_address: "", city: "", state: "", phone: "", email: "", website: "", rep_owner: "", notes: "", buying_group: "" });
     setAddOpen(false);
     const ownerName = TEAM_MEMBERS.find((t) => t.id === owner)?.name ?? owner;
     toast({ title: "Dealer added", description: `${name} added to ${ownerName}'s accounts. Geocoding will run shortly.` });

@@ -190,6 +190,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const { data: repTerritories = [] } = useRepTerritories();
   const { data: products = [] } = useProducts();
   const { data: lines = [] } = useDealerSalesLines();
+  const { data: aggregates = [] } = useDealerSales();
+
+  // Use aggregate dealer_sales when no product-level filter is active.
+  // dealer_sales_lines is sparsely populated; aggregates have full totals.
+  const useAggregates = brands.length === 0 && categories.length === 0 && collections.length === 0 && skus.length === 0;
 
   // Hierarchical filter dependencies
   const visibleReps = useMemo(() => {

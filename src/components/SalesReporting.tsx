@@ -341,8 +341,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       <Card>
         <CardContent className="p-4 space-y-4">
           <div className="flex flex-wrap items-end gap-3">
-            <DateRangePicker label="Primary date range" value={primary} onChange={setPrimary} />
-            <DateRangePicker label="Comparative date range" value={comparative} onChange={setComparative} />
+            <DateRangePicker
+              label="Primary date range"
+              value={primary}
+              onChange={setPrimary}
+              onReset={() => setPrimary({ from: yearStart, to: endOfMonth(today) })}
+            />
+            <DateRangePicker
+              label="Comparative date range"
+              value={comparative}
+              onChange={setComparative}
+              onReset={() => setComparative({ from: subYears(yearStart, 1), to: subYears(endOfMonth(today), 1) })}
+            />
 
             {groupByOptions && groupByOptions.length > 1 && (
               <div className="flex flex-col gap-1">

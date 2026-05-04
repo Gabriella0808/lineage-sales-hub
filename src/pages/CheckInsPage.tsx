@@ -1441,7 +1441,10 @@ export default function CheckInsPage() {
                             selected.lat != null && selected.lng != null
                               ? `${selected.lat},${selected.lng}`
                               : encodeURIComponent(addr);
-                          const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
+                          const isAppleDevice = /iPad|iPhone|iPod|Mac/.test(navigator.userAgent);
+                          const mapsUrl = isAppleDevice
+                            ? `https://maps.apple.com/?daddr=${dest}`
+                            : `https://www.google.com/maps/search/?api=1&query=${dest}`;
                           return (
                             <div className="flex items-start justify-between gap-2">
                               <span className="flex-1">{addr || "—"}</span>

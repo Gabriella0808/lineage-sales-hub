@@ -349,26 +349,29 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             />
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Quick range</span>
-              <Select
-                value=""
-                onValueChange={(v) => {
-                  const end = startOfDay(today);
-                  let from: Date;
-                  if (v === "3m") from = startOfMonth(subMonths(end, 2));
-                  else if (v === "6m") from = startOfMonth(subMonths(end, 5));
-                  else from = startOfMonth(subMonths(end, 11));
-                  const to = endOfMonth(today);
-                  setPrimary({ from, to });
-                  setComparative({ from: subYears(from, 1), to: subYears(to, 1) });
-                }}
-              >
-                <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Select…" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3m">Last 3 months</SelectItem>
-                  <SelectItem value="6m">Last 6 months</SelectItem>
-                  <SelectItem value="1y">Last year</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-1">
+                {([
+                  { k: "3m", label: "3M", months: 3 },
+                  { k: "6m", label: "6M", months: 6 },
+                  { k: "1y", label: "1Y", months: 12 },
+                ] as const).map(({ k, label, months }) => (
+                  <Button
+                    key={k}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-3"
+                    onClick={() => {
+                      const to = endOfMonth(today);
+                      const from = startOfMonth(subMonths(to, months - 1));
+                      setPrimary({ from, to });
+                      setComparative({ from: subYears(from, 1), to: subYears(to, 1) });
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
             </div>
             <DateRangePicker
               label="Comparative date range"

@@ -79,6 +79,8 @@ const TEAM_MEMBERS: {
 interface Dealer {
   id: string;
   name: string;
+  first_name?: string | null;
+  last_name?: string | null;
   street_address?: string | null;
   city: string | null;
   state: string | null;
@@ -89,6 +91,7 @@ interface Dealer {
   email?: string | null;
   website?: string | null;
   notes?: string | null;
+  buying_group?: string | null;
   lat: number | null;
   lng: number | null;
 }

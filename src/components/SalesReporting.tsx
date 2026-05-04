@@ -129,6 +129,7 @@ function DateRangePicker({ label, value, onChange }: { label: string; value: Dat
             selected={{ from: value.from, to: value.to }}
             onSelect={(r) => {
               if (r?.from && r?.to) onChange({ from: r.from, to: r.to });
+              else if (r?.from) onChange({ from: r.from, to: r.from });
             }}
             numberOfMonths={2}
             className={cn("p-3 pointer-events-auto")}

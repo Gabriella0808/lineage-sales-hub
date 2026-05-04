@@ -259,8 +259,10 @@ export type Database = {
           created_at: string
           email: string | null
           engagement: string | null
+          first_name: string | null
           id: string
           last_contact: string | null
+          last_name: string | null
           lat: number | null
           lng: number | null
           name: string
@@ -283,8 +285,10 @@ export type Database = {
           created_at?: string
           email?: string | null
           engagement?: string | null
+          first_name?: string | null
           id?: string
           last_contact?: string | null
+          last_name?: string | null
           lat?: number | null
           lng?: number | null
           name: string
@@ -307,8 +311,10 @@ export type Database = {
           created_at?: string
           email?: string | null
           engagement?: string | null
+          first_name?: string | null
           id?: string
           last_contact?: string | null
+          last_name?: string | null
           lat?: number | null
           lng?: number | null
           name?: string

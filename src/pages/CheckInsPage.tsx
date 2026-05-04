@@ -1451,13 +1451,16 @@ export default function CheckInsPage() {
                                 rel="noopener noreferrer"
                                 onClick={(event) => {
                                   event.preventDefault();
-                                  const opened = window.open("", "_blank");
-                                  if (opened) {
-                                    opened.opener = null;
-                                    opened.location.href = mapsUrl;
-                                    return;
+                                  event.stopPropagation();
+                                  const opened = window.open(mapsUrl, "_blank", "noopener,noreferrer");
+                                  if (!opened) {
+                                    // Popup blocked — fall back to top-level navigation
+                                    try {
+                                      window.top!.location.href = mapsUrl;
+                                    } catch {
+                                      window.location.href = mapsUrl;
+                                    }
                                   }
-                                  window.location.href = mapsUrl;
                                 }}
                                 title="Open directions"
                                 className="shrink-0 inline-flex items-center gap-1 text-primary hover:underline text-xs font-medium"

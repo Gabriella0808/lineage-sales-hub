@@ -279,7 +279,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     for (const line of source) {
       if (!dealerIdSet.has(line.dealer_id)) continue;
       if (!useAggregates && !filteredProductIds.has((line as { product_id: string }).product_id)) continue;
-      const monthKey = `${line.year}-${line.month}`;
+      // Normalize month: dealer_sales uses "01"-"12", lines/keys use month names
+      const mNum = parseInt(String(line.month), 10);
+      const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(line.month);
+      const monthKey = `${line.year}-${monthName}`;
       const inPrim = primKeys.has(monthKey);
       const inComp = compKeys.has(monthKey);
       if (!inPrim && !inComp) continue;

@@ -961,7 +961,25 @@ export default function CheckInsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="d-owner">Rep *</Label>
+                  <Label htmlFor="d-rep">Rep *</Label>
+                  <Select
+                    value={newDealer.rep_id || ""}
+                    onValueChange={(v) => setNewDealer({ ...newDealer, rep_id: v })}
+                  >
+                    <SelectTrigger id="d-rep">
+                      <SelectValue placeholder="Select sales rep" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {salesReps.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="d-owner">Owner *</Label>
                   <Select
                     value={newDealer.rep_owner || ""}
                     onValueChange={(v) =>
@@ -969,7 +987,7 @@ export default function CheckInsPage() {
                     }
                   >
                     <SelectTrigger id="d-owner">
-                      <SelectValue placeholder="Select rep" />
+                      <SelectValue placeholder="Select owner" />
                     </SelectTrigger>
                     <SelectContent>
                       {TEAM_MEMBERS.map((t) => (
@@ -981,8 +999,8 @@ export default function CheckInsPage() {
                   </Select>
                   <p className="text-xs text-muted-foreground">
                     {detectedOwner
-                      ? `Auto-set to ${TEAM_MEMBERS.find((t) => t.id === detectedOwner)?.name} based on your login. Change if logging on someone else's behalf.`
-                      : "Pick which rep this dealer belongs to."}
+                      ? `Auto-set to ${TEAM_MEMBERS.find((t) => t.id === detectedOwner)?.name} based on your login.`
+                      : "Pick which teammate owns this dealer."}
                   </p>
                 </div>
                 <div className="space-y-1.5">

@@ -1441,17 +1441,14 @@ export default function CheckInsPage() {
                             selected.lat != null && selected.lng != null
                               ? `${selected.lat},${selected.lng}`
                               : encodeURIComponent(addr);
-                          const isAppleDevice = /iPad|iPhone|iPod|Mac/.test(navigator.userAgent);
-                          const mapsUrl = isAppleDevice
-                            ? `https://maps.apple.com/?daddr=${dest}`
-                            : `https://www.google.com/maps/search/?api=1&query=${dest}`;
+                          const mapsUrl = `https://maps.google.com/?q=${dest}`;
                           return (
                             <div className="flex items-start justify-between gap-2">
                               <span className="flex-1">{addr || "—"}</span>
                               <a
                                 href={mapsUrl}
                                 target="_blank"
-                                rel="noreferrer"
+                                rel="noopener noreferrer"
                                 className="shrink-0 inline-flex items-center gap-1 text-primary hover:underline text-xs font-medium"
                               >
                                 <Navigation className="h-3 w-3" />

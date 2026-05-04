@@ -1442,13 +1442,18 @@ export default function CheckInsPage() {
                               ? `${selected.lat},${selected.lng}`
                               : addr;
                           const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`;
+                          const fallbackMapsUrl =
+                            selected.lat != null && selected.lng != null
+                              ? `https://www.openstreetmap.org/directions?engine=fossgis_osrm_car&route=;%20${selected.lat}%2C${selected.lng}`
+                              : `https://www.openstreetmap.org/search?query=${encodeURIComponent(addr)}`;
                           return (
                             <div className="flex items-start justify-between gap-2">
                               <span className="flex-1">{addr || "—"}</span>
                               <a
-                                href={mapsUrl}
+                                href={fallbackMapsUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                title="Open directions"
                                 className="shrink-0 inline-flex items-center gap-1 text-primary hover:underline text-xs font-medium"
                               >
                                 <Navigation className="h-3 w-3" />

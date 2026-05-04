@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
-import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Plus, Users } from "lucide-react";
+import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Plus, Users, Navigation } from "lucide-react";
 import { STATE_TO_TERRITORY, STATE_NAME_TO_CODE, colorForTerritory } from "@/lib/territoryMap";
 
 // Team member → match config. We match dealers by rep_owner (authoritative
@@ -1430,9 +1430,33 @@ export default function CheckInsPage() {
                     <div className="px-3 py-2">
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Address</dt>
                       <dd className="mt-0.5">
-                        {[selected.street_address, selected.city, selected.state]
-                          .filter(Boolean)
-                          .join(", ") || <span className="text-muted-foreground italic">—</span>}
+                        {(() => {
+                          const addr = [selected.street_address, selected.city, selected.state]
+                            .filter(Boolean)
+                            .join(", ");
+                          if (!addr && selected.lat == null) {
+                            return <span className="text-muted-foreground italic">—</span>;
+                          }
+                          const dest =
+                            selected.lat != null && selected.lng != null
+                              ? `${selected.lat},${selected.lng}`
+                              : encodeURIComponent(addr);
+                          const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${dest}`;
+                          return (
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="flex-1">{addr || "—"}</span>
+                              <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="shrink-0 inline-flex items-center gap-1 text-primary hover:underline text-xs font-medium"
+                              >
+                                <Navigation className="h-3 w-3" />
+                                Directions
+                              </a>
+                            </div>
+                          );
+                        })()}
                       </dd>
                     </div>
                     <div className="px-3 py-2">

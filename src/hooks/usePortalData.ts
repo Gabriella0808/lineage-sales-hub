@@ -174,16 +174,32 @@ export function useTerritories() {
   });
 }
 
+// Fetch all rows from a table, paginating past Supabase's 1000-row default cap.
+async function fetchAllRows<T>(table: string, pageSize = 1000): Promise<T[]> {
+  const out: T[] = [];
+  let from = 0;
+  // Loop until a page returns fewer rows than requested.
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data, error } = await supabase
+      .from(table as never)
+      .select("*")
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as T[];
+    out.push(...rows);
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+  return out;
+}
+
 export function useDealers() {
   return useQuery({
     queryKey: ["dealers"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("dealers")
-        .select("*")
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as DbDealer[];
+      const rows = await fetchAllRows<DbDealer>("dealers");
+      return rows.sort((a, b) => a.name.localeCompare(b.name));
     },
   });
 }
@@ -234,13 +250,7 @@ export function useContacts() {
 export function useDealerSales() {
   return useQuery({
     queryKey: ["dealer_sales"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("dealer_sales")
-        .select("*");
-      if (error) throw error;
-      return (data ?? []) as DbDealerSale[];
-    },
+    queryFn: async () => fetchAllRows<DbDealerSale>("dealer_sales"),
   });
 }
 

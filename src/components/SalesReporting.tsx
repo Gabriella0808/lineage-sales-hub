@@ -555,7 +555,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Badge variant="secondary">{aggregation.rows.length} rows</Badge>
             <Badge variant="outline">{format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}</Badge>
-            <Badge variant="outline">vs {format(comparative.from, "MMM d, yyyy")} – {format(comparative.to, "MMM d, yyyy")}</Badge>
+            {compareMode !== "none" && (
+              <Badge variant="outline">vs {format(comparative.from, "MMM d, yyyy")} – {format(comparative.to, "MMM d, yyyy")}</Badge>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">

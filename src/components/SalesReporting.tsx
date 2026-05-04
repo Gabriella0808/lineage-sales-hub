@@ -72,12 +72,20 @@ function MultiSelect({
             </div>
           )}
           <div className="max-h-72 overflow-y-auto p-2 space-y-1">
-            <button
-              onClick={() => onChange([])}
-              className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted text-primary"
-            >
-              Clear (All)
-            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={() => onChange([])}
+                className="flex-1 text-left text-xs px-2 py-1.5 rounded hover:bg-muted text-primary"
+              >
+                Clear (All)
+              </button>
+              <button
+                onClick={() => onChange(filteredOptions.map((o) => o.value))}
+                className="text-left text-xs px-2 py-1.5 rounded hover:bg-muted text-primary whitespace-nowrap"
+              >
+                Select All
+              </button>
+            </div>
             {filteredOptions.map((o) => {
               const isOn = selected.includes(o.value);
               return (

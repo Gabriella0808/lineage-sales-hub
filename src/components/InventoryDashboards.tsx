@@ -739,7 +739,7 @@ export default function InventoryDashboards({ items }: Props) {
           <KPI label="Arriving ≤90 days" value={poBuckets.d30.length + poBuckets.d60.length + poBuckets.d90.length} icon={CalendarClock} />
         </div>
         <Card className="p-5">
-          <h3 className="text-base font-semibold mb-3">PO Line Coverage — Will the PO Fix the Problem?</h3>
+          <h3 className="text-base font-semibold mb-3">PO Line Coverage</h3>
           {poLineCoverage.length === 0 ? <EmptyState message="No open PO lines synced." /> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

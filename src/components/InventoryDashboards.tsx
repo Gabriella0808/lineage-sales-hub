@@ -240,27 +240,43 @@ export default function InventoryDashboards({ items }: Props) {
 
   const closeoutTotal = closeoutRows.reduce((s, it) => s + (it.unitCost ?? 0) * it.onHand, 0);
 
-  // ============ SECTION 3: REORDER ============
-  const reorderSuggestions = useMemo(() => {
-    return items
-      .map((it) => {
-        const target = (it.avgMonthlySales || 0) * 3;
-        const need = Math.max(0, target - it.available);
-        const suggested = it.moq ? Math.max(it.moq, Math.ceil(need / it.moq) * it.moq) : Math.ceil(need);
-        return { ...it, suggested, need };
-      })
-      .filter((it) => it.need > 0 && (it.status === "critical" || it.status === "out-of-stock" || it.status === "reorder-soon"))
-      .sort((a, b) => b.need - a.need);
+  // ============ SECTION 3: REORDER (Justin's InvCut model) ============
+  // Sales/Week = LTM/52 ; New Min = Sales/Week*4.5*4.5 ; Net Avail = OnHand+OnPO
+  // Over/Under = Net Avail - New Min ; Weeks = (NetAvail+Order)/SalesPerWeek
+  // Total Cubes = Order * Cubes
+  const reorderRows = useMemo(() => {
+    return items.map((it) => {
+      const salesPerWeek = it.ltmUnits != null
+        ? it.ltmUnits / 52
+        : (it.avgMonthlySales || 0) * 12 / 52;
+      const newMin = salesPerWeek * 4.5 * 4.5;
+      const onPo = it.onPo ?? 0;
+      const netAvail = it.onHand + onPo;
+      const overUnder = netAvail - newMin;
+      const rawNeed = Math.max(0, Math.ceil(newMin - netAvail));
+      const moq = it.moq ?? 0;
+      const suggestedOrder = moq > 0
+        ? (rawNeed > 0 ? Math.ceil(rawNeed / moq) * moq : 0)
+        : rawNeed;
+      const projectedWeeks = salesPerWeek > 0 ? (netAvail + suggestedOrder) / salesPerWeek : null;
+      return { ...it, salesPerWeek, newMin, netAvail, overUnder, suggestedOrder, onPo, projectedWeeks, cubesPerUnit: it.cubes ?? 0 };
+    });
   }, [items]);
 
+  const reorderSuggestions = useMemo(
+    () => reorderRows.filter((r) => r.suggestedOrder > 0).sort((a, b) => a.overUnder - b.overUnder),
+    [reorderRows]
+  );
+
   const reorderByFactory = useMemo(() => {
-    const m = new Map<string, { suggested: number; moq: number; skus: number }>();
+    const m = new Map<string, { suggested: number; moq: number; skus: number; totalCubes: number }>();
     for (const it of reorderSuggestions) {
       const f = it.factory ?? it.supplier ?? "—";
-      const e = m.get(f) ?? { suggested: 0, moq: 0, skus: 0 };
-      e.suggested += it.suggested;
+      const e = m.get(f) ?? { suggested: 0, moq: 0, skus: 0, totalCubes: 0 };
+      e.suggested += it.suggestedOrder;
       e.moq += it.moq ?? 0;
       e.skus += 1;
+      e.totalCubes += it.suggestedOrder * (it.cubes ?? 0);
       m.set(f, e);
     }
     return Array.from(m, ([factory, v]) => ({ factory, ...v }));

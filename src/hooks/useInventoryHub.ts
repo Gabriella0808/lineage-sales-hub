@@ -18,9 +18,13 @@ export interface PurchaseOrder {
   po_number: string | null;
   factory: string | null;
   status: string | null;
+  production_stage: string | null;
   order_date: string | null;
   eta: string | null;
   total_value: number;
+  prepaid_amount: number;
+  is_prepaid: boolean;
+  container_type: string | null;
 }
 
 export interface PurchaseOrderLine {

@@ -294,14 +294,14 @@ export default function SalesRepsPage() {
                 <Input value={editForm!.quota} onChange={e => setEditForm({ ...editForm!, quota: e.target.value })} placeholder="Quota" type="number" className="h-9" />
                 <Select value={editForm!.manager_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Manager" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-72">
                     <SelectItem value="none">— None —</SelectItem>
                     {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={editForm!.status} onValueChange={v => setEditForm({ ...editForm!, status: v })}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Status" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-72">
                     {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -435,7 +435,7 @@ export default function SalesRepsPage() {
                     {isEditing ? (
                       <Select value={editForm!.manager_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
                         <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Manager" /></SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-72">
                           <SelectItem value="none">— None —</SelectItem>
                           {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                         </SelectContent>
@@ -513,7 +513,7 @@ export default function SalesRepsPage() {
               <Label>Manager Email</Label>
               <Select value={newRep.manager_id ?? "none"} onValueChange={v => setNewRep({ ...newRep, manager_id: v === "none" ? null : v })}>
                 <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-72">
                   <SelectItem value="none">— None —</SelectItem>
                   {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.email || m.name}</SelectItem>)}
                 </SelectContent>
@@ -535,7 +535,7 @@ export default function SalesRepsPage() {
               <Label>Status</Label>
               <Select value={newRep.status} onValueChange={v => setNewRep({ ...newRep, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-72">
                   {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>

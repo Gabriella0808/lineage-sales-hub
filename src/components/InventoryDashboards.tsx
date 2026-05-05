@@ -332,7 +332,7 @@ export default function InventoryDashboards({ items }: Props) {
       <TabsList className="flex-wrap h-auto">
         <TabsTrigger value="summary">1. Summary</TabsTrigger>
         <TabsTrigger value="analysis">2. Analysis</TabsTrigger>
-        <TabsTrigger value="reorder">3. Reorder (InvCut)</TabsTrigger>
+        <TabsTrigger value="reorder">3. Reorder</TabsTrigger>
         <TabsTrigger value="closeout">4. Closeout</TabsTrigger>
       </TabsList>
 

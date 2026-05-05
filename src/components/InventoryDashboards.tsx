@@ -1297,6 +1297,22 @@ export default function InventoryDashboards({ items }: Props) {
             icon={TrendingDown}
           />
         </div>
+        {closeoutByCollection.length > 0 && (
+          <Card className="p-5">
+            <h3 className="text-base font-semibold mb-3">Closeout Value by Collection</h3>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={closeoutByCollection} layout="vertical" margin={{ left: 4, right: 12 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <RTooltip formatter={(v: number) => fmtMoney(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="value" fill="hsl(var(--accent))" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
         <Card className="p-5">
           <h3 className="text-base font-semibold mb-3">Closeout Inventory</h3>
           {closeoutRows.length === 0 ? <EmptyState message="No closeout SKUs flagged. Set is_closeout = true on inventory rows." /> : (
@@ -1306,21 +1322,25 @@ export default function InventoryDashboards({ items }: Props) {
                   <tr>
                     <th className="text-left px-3 py-2">SKU</th>
                     <th className="text-left px-3 py-2">Product</th>
-                    <th className="text-right px-3 py-2">Units Remaining</th>
+                    <th className="text-left px-3 py-2">Collection</th>
+                    <th className="text-right px-3 py-2">Units</th>
                     <th className="text-right px-3 py-2">% Sold</th>
                     <th className="text-right px-3 py-2">Burn-Down (mo)</th>
                     <th className="text-right px-3 py-2">Value</th>
+                    <th className="text-center px-3 py-2">Clr</th>
                   </tr>
                 </thead>
                 <tbody>
                   {closeoutRows.map((it) => (
-                    <tr key={it.sku} className="border-t border-border">
+                    <tr key={it.sku} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => setDrawerSku(it.sku)}>
                       <td className="px-3 py-2 font-mono">{it.sku}</td>
                       <td className="px-3 py-2">{it.product}</td>
+                      <td className="px-3 py-2">{it.collection}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{it.onHand}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{it.pctSold == null ? "—" : `${it.pctSold.toFixed(0)}%`}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{it.burnDownMonths == null ? "—" : it.burnDownMonths.toFixed(1)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{fmtMoney((it.unitCost ?? 0) * it.onHand)}</td>
+                      <td className="px-3 py-2 text-center">{it.isClearance ? <Badge variant="secondary" className="text-[10px]">Yes</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1329,6 +1349,51 @@ export default function InventoryDashboards({ items }: Props) {
           )}
         </Card>
       </TabsContent>
+
+      {/* SKU detail drawer */}
+      <Sheet open={drawerSku !== null} onOpenChange={(o) => !o && setDrawerSku(null)}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          {drawerItem && (
+            <>
+              <SheetHeader>
+                <SheetTitle className="font-mono">{drawerItem.sku}</SheetTitle>
+                <SheetDescription>{drawerItem.product}</SheetDescription>
+              </SheetHeader>
+              <div className="mt-6 space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><div className="text-xs text-muted-foreground">Collection</div><div>{drawerItem.collection}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Brand</div><div>{drawerItem.brand ?? "—"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Vendor / Factory</div><div>{drawerItem.factory ?? drawerItem.supplier}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Status</div><div>{drawerItem.status}</div></div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-lg border border-border p-3"><div className="text-xs text-muted-foreground">On Hand</div><div className="text-lg font-semibold tabular-nums">{drawerItem.onHand}</div><div className="text-[10px] text-muted-foreground">NC {drawerItem.onHandNc ?? 0} · VN {drawerItem.onHandVn ?? 0}</div></div>
+                  <div className="rounded-lg border border-border p-3"><div className="text-xs text-muted-foreground">On PO</div><div className="text-lg font-semibold tabular-nums">{drawerItem.onPo ?? 0}</div></div>
+                  <div className="rounded-lg border border-border p-3"><div className="text-xs text-muted-foreground">In Transit</div><div className="text-lg font-semibold tabular-nums">{drawerItem.inTransit ?? 0}</div></div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><div className="text-xs text-muted-foreground">L12M /wk</div><div className="tabular-nums">{drawerItem.unitsL12m != null ? (drawerItem.unitsL12m / 52).toFixed(1) : "—"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">L6M /wk</div><div className="tabular-nums">{drawerItem.unitsL6m != null ? (drawerItem.unitsL6m / 26).toFixed(1) : "—"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">L3M /wk</div><div className="tabular-nums">{drawerItem.unitsL3m != null ? (drawerItem.unitsL3m / 13).toFixed(1) : "—"}</div></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><div className="text-xs text-muted-foreground">Active basis</div><div>{drawerItem.reorderBasis ?? "L12M"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Override /wk</div><div className="tabular-nums">{drawerItem.reorderOverridePerWeek ?? "—"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Lead time (mo)</div><div className="tabular-nums">{drawerItem.leadTimeMonths ?? 4.5}</div></div>
+                  <div><div className="text-xs text-muted-foreground">MOQ</div><div className="tabular-nums">{drawerItem.moq ?? "—"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Months supply</div><div className="tabular-nums">{drawerItem.monthsSupply == null ? "—" : drawerItem.monthsSupply.toFixed(1)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Forecast/mo</div><div className="tabular-nums">{drawerItem.forecastMonthly ?? "—"}</div></div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {drawerItem.isClearance && <Badge variant="secondary">Clearance</Badge>}
+                  {drawerItem.isCloseout && <Badge variant="secondary">Closeout</Badge>}
+                  {drawerItem.isDiscontinued && <Badge variant="secondary">Discontinued</Badge>}
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </Tabs>
   );
 }

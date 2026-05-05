@@ -19,6 +19,14 @@ export interface InventoryItem {
   monthsSupply: number | null;
   status: InventoryStatus;
   link?: string;
+  unitCost?: number;
+  listPrice?: number;
+  isCloseout?: boolean;
+  isDiscontinued?: boolean;
+  factory?: string;
+  moq?: number;
+  leadTimeDays?: number;
+  forecastMonthly?: number;
 }
 
 // Dummy SKUs — modeled on Acctivate-style codes. Replace with real feed once cleaned.

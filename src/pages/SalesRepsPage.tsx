@@ -290,11 +290,19 @@ export default function SalesRepsPage() {
                   />
                 </div>
                 <Input value={editForm!.email} onChange={e => setEditForm({ ...editForm!, email: e.target.value })} placeholder="Email" className="h-9" />
+                <Input value={editForm!.phone} onChange={e => setEditForm({ ...editForm!, phone: e.target.value })} placeholder="Phone" className="h-9" />
+                <Input value={editForm!.quota} onChange={e => setEditForm({ ...editForm!, quota: e.target.value })} placeholder="Quota" type="number" className="h-9" />
                 <Select value={editForm!.manager_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Manager" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— None —</SelectItem>
                     {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={editForm!.status} onValueChange={v => setEditForm({ ...editForm!, status: v })}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2 pt-1">
@@ -499,6 +507,8 @@ export default function SalesRepsPage() {
             <div><Label>Name</Label><Input value={newRep.name} onChange={e => setNewRep({ ...newRep, name: e.target.value })} /></div>
             <div><Label>Rep Code</Label><Input value={newRep.acctivate_id} onChange={e => setNewRep({ ...newRep, acctivate_id: e.target.value })} /></div>
             <div><Label>Rep Email</Label><Input type="email" value={newRep.email} onChange={e => setNewRep({ ...newRep, email: e.target.value })} /></div>
+            <div><Label>Phone</Label><Input value={newRep.phone} onChange={e => setNewRep({ ...newRep, phone: e.target.value })} /></div>
+            <div><Label>Quota</Label><Input type="number" value={newRep.quota} onChange={e => setNewRep({ ...newRep, quota: e.target.value })} /></div>
             <div>
               <Label>Manager Email</Label>
               <Select value={newRep.manager_id ?? "none"} onValueChange={v => setNewRep({ ...newRep, manager_id: v === "none" ? null : v })}>

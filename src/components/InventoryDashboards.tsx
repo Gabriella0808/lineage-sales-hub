@@ -1237,7 +1237,7 @@ export default function InventoryDashboards({ items }: Props) {
                   { label: "Low Stock", val: healthSnapshot.low, tone: "text-warning-foreground" },
                   { label: "Risk", val: healthSnapshot.risk, tone: "text-destructive" },
                   { label: "Out of Stock", val: healthSnapshot.outOfStock, tone: "text-destructive" },
-                  { label: "Overstock", val: healthSnapshot.overstock, tone: "text-accent-foreground" },
+                  { label: "Overstock", val: healthSnapshot.overstock, tone: "text-slate-500" },
                   { label: "Slow Movers", val: healthSnapshot.slow, tone: "text-warning-foreground" },
                   { label: "Discontinued", val: healthSnapshot.discontinued, tone: "text-muted-foreground" },
                 ].map((b) => (

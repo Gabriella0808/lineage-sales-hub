@@ -19,9 +19,11 @@ interface RepEditState {
   name: string;
   acctivate_id: string;
   email: string;
+  phone: string;
   manager_id: string | null;
   territory_ids: string[];
   status: string;
+  quota: string;
 }
 
 const STATUS_OPTIONS = [
@@ -122,7 +124,7 @@ export default function SalesRepsPage() {
   const [editForm, setEditForm] = useState<RepEditState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [newRep, setNewRep] = useState<RepEditState>({
-    name: "", acctivate_id: "", email: "", manager_id: null, territory_ids: [], status: "active",
+    name: "", acctivate_id: "", email: "", phone: "", manager_id: null, territory_ids: [], status: "active", quota: "",
   });
 
   const invalidate = () => {
@@ -144,9 +146,11 @@ export default function SalesRepsPage() {
       name: r.name,
       acctivate_id: r.acctivate_id ?? "",
       email: r.email ?? "",
+      phone: r.phone ?? "",
       manager_id: r.manager_id,
       territory_ids: repTerritoryIds(repId),
       status: r.status,
+      quota: r.quota != null ? String(r.quota) : "",
     });
   };
 
@@ -161,12 +165,19 @@ export default function SalesRepsPage() {
       toast.error("Name is required");
       return;
     }
+    const quotaNum = editForm.quota.trim() === "" ? null : Number(editForm.quota);
+    if (quotaNum !== null && Number.isNaN(quotaNum)) {
+      toast.error("Quota must be a number");
+      return;
+    }
     const { error } = await supabase.from("sales_reps").update({
       name: editForm.name.trim(),
       acctivate_id: editForm.acctivate_id.trim() || null,
       email: editForm.email.trim() || null,
+      phone: editForm.phone.trim() || null,
       manager_id: editForm.manager_id,
       status: editForm.status,
+      quota: quotaNum,
     }).eq("id", editingId);
     if (error) { toast.error(error.message); return; }
 
@@ -197,12 +208,16 @@ export default function SalesRepsPage() {
 
   const addRep = async () => {
     if (!newRep.name.trim()) { toast.error("Name is required"); return; }
+    const quotaNum = newRep.quota.trim() === "" ? null : Number(newRep.quota);
+    if (quotaNum !== null && Number.isNaN(quotaNum)) { toast.error("Quota must be a number"); return; }
     const { data, error } = await supabase.from("sales_reps").insert({
       name: newRep.name.trim(),
       acctivate_id: newRep.acctivate_id.trim() || null,
       email: newRep.email.trim() || null,
+      phone: newRep.phone.trim() || null,
       manager_id: newRep.manager_id,
       status: newRep.status,
+      quota: quotaNum,
     }).select("id").single();
     if (error || !data) { toast.error(error?.message ?? "Failed"); return; }
     if (newRep.territory_ids.length > 0) {
@@ -210,7 +225,7 @@ export default function SalesRepsPage() {
     }
     toast.success("Rep added");
     setAddOpen(false);
-    setNewRep({ name: "", acctivate_id: "", email: "", manager_id: null, territory_ids: [], status: "active" });
+    setNewRep({ name: "", acctivate_id: "", email: "", phone: "", manager_id: null, territory_ids: [], status: "active", quota: "" });
     invalidate();
   };
 

@@ -430,7 +430,7 @@ export default function InventoryDashboards({ items }: Props) {
     for (const it of items) {
       if (!(it.isCloseout || it.isClearance)) continue;
       const k = it.collection || "—";
-      m.set(k, (m.get(k) ?? 0) + (it.unitCost ?? 0) * it.onHand);
+      m.set(k, (m.get(k) ?? 0) + (it.onHandValue ?? (it.unitCost ?? 0) * it.onHand));
     }
     return Array.from(m, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [items]);

@@ -354,8 +354,8 @@ export default function SalesRepsPage() {
         {filtered.length === 0 && <p className="text-center text-muted-foreground py-12 text-sm">No reps match your filters.</p>}
       </div>
 
-      <div className="table-container hidden lg:block">
-        <table className="w-full text-sm">
+      <div className="table-container hidden lg:block overflow-x-auto">
+        <table className="w-full text-sm min-w-[1100px]">
           <thead>
             <tr className="border-b bg-muted/30">
               <th className="text-left p-3 font-medium text-muted-foreground">Rep</th>

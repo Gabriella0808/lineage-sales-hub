@@ -260,10 +260,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center border-b border-border/70 px-3 sm:px-5 bg-card/80 backdrop-blur shrink-0 gap-2 sm:gap-3">
             <SidebarTrigger className="mr-1 shrink-0" />
-            <div className="hidden md:flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-success/80" />
-              Operations Live
-            </div>
             <div className="flex-1" />
             <span className="text-xs text-muted-foreground hidden lg:inline tabular-nums">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}

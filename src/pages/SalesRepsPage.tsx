@@ -480,8 +480,8 @@ export default function SalesRepsPage() {
                     <div className="flex items-center justify-end gap-1">
                       {isEditing ? (
                         <>
-                          <Button size="sm" className="h-7 gap-1" onClick={saveEdit}><Check className="h-3.5 w-3.5" /> Done</Button>
-                          <Button variant="outline" size="sm" className="h-7" onClick={cancelEdit}>Cancel</Button>
+                          <Button size="icon" className="h-7 w-7" onClick={saveEdit} aria-label="Save"><Check className="h-3.5 w-3.5" /></Button>
+                          <Button variant="outline" size="icon" className="h-7 w-7" onClick={cancelEdit} aria-label="Cancel"><X className="h-3.5 w-3.5" /></Button>
                         </>
                       ) : (
                         <>

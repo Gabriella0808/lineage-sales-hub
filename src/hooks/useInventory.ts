@@ -24,6 +24,21 @@ interface DbInventoryRow {
   moq: number | null;
   lead_time_days: number | null;
   forecast_monthly: number | null;
+  units_l12m: number | null;
+  units_l6m: number | null;
+  units_l3m: number | null;
+  on_po: number | null;
+  on_sales_order: number | null;
+  in_transit: number | null;
+  on_hand_nc: number | null;
+  on_hand_vn: number | null;
+  reorder_basis: string | null;
+  reorder_override_per_week: number | null;
+  lead_time_months: number | null;
+  cubes: number | null;
+  reorder_min: number | null;
+  reorder_max: number | null;
+  is_clearance: boolean | null;
 }
 
 function deriveStatus(onHand: number, monthsSupply: number | null): InventoryStatus {

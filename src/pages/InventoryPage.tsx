@@ -211,6 +211,8 @@ export default function InventoryPage() {
         <StatTile label="Fast Moving" value={counts.fast} icon={Zap} accent="text-success" />
       </div>
 
+      <InventoryDashboards items={items} />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-5">
           <h2 className="text-base font-semibold mb-3">Status Distribution</h2>

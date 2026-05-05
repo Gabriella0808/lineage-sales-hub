@@ -452,15 +452,92 @@ export default function InventoryDashboards({ items }: Props) {
 
       {/* ============ SECTION 1: SUMMARY ============ */}
       <TabsContent value="summary" className="space-y-6 mt-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
           <KPI label="Total Inventory Value" value={fmtMoney(summary.value)} hint={`${fmtNum(summary.units)} units`} icon={DollarSign} />
           <KPI label="Total Open POs" value={fmtMoney(summary.openPoValue)} hint="not yet arrived" icon={Truck} />
           <KPI label="Prepaid Inventory" value={fmtMoney(summary.prepaidValue)} icon={DollarSign} />
           <KPI label="Backlog (Open Orders)" value={fmtMoney(summary.backlogValue)} hint={`${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} />
+          <KPI label="Closeout Inventory" value={fmtMoney(summary.closeoutValue)} hint="clearance + closeout" icon={Tag} />
           <KPI label="Sales / Inv Ratio" value={summary.salesToInv.toFixed(2)} hint={summary.salesToInv > 0.5 ? "healthy" : summary.salesToInv > 0.2 ? "OK" : "carrying too much"} icon={Activity} accent={summary.salesToInv < 0.2 ? "text-warning-foreground" : undefined} />
+          <KPI label="Annual Turnover" value={`${summary.turnover.toFixed(1)}×`} hint="sales ÷ inventory" icon={Activity} />
           <KPI label="Out of Stock — Lost Sales" value={fmtMoney(summary.lostSales)} hint="per month" icon={AlertCircle} accent="text-destructive" />
           <KPI label="Late POs" value={poBuckets.late.length} hint={fmtMoney(poBuckets.late.reduce((s, p) => s + Number(p.total_value), 0))} icon={AlertCircle} accent={poBuckets.late.length > 0 ? "text-destructive" : undefined} />
           <KPI label="Arriving ≤30 days" value={poBuckets.d30.length} hint={fmtMoney(poBuckets.d30.reduce((s, p) => s + Number(p.total_value), 0))} icon={CalendarClock} />
+        </div>
+
+        {/* Health snapshot strip */}
+        <Card className="p-5">
+          <h3 className="text-base font-semibold mb-3">Health Snapshot</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 text-center">
+            {[
+              { label: "Healthy", val: healthSnapshot.healthy, tone: "text-success" },
+              { label: "Low Stock", val: healthSnapshot.low, tone: "text-warning-foreground" },
+              { label: "Risk", val: healthSnapshot.risk, tone: "text-destructive" },
+              { label: "Out of Stock", val: healthSnapshot.outOfStock, tone: "text-destructive" },
+              { label: "Overstock", val: healthSnapshot.overstock, tone: "text-accent-foreground" },
+              { label: "Slow Movers", val: healthSnapshot.slow, tone: "text-warning-foreground" },
+              { label: "Discontinued", val: healthSnapshot.discontinued, tone: "text-muted-foreground" },
+            ].map((b) => (
+              <div key={b.label} className="rounded-lg border border-border p-3">
+                <div className="text-xs text-muted-foreground">{b.label}</div>
+                <div className={cn("text-2xl font-semibold mt-1 tabular-nums", b.tone)}>{b.val}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        {/* Inventory value drilldown by collection / brand */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card className="p-5">
+            <h3 className="text-base font-semibold mb-3">Inventory Value by Collection</h3>
+            <div className="overflow-y-auto max-h-72">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
+                  <tr>
+                    <th className="text-left px-3 py-2">Collection</th>
+                    <th className="text-right px-3 py-2">SKUs</th>
+                    <th className="text-right px-3 py-2">Units</th>
+                    <th className="text-right px-3 py-2">Value</th>
+                    <th className="text-right px-3 py-2">% of Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {valueByCollection.map((c) => (
+                    <tr key={c.name} className="border-t border-border">
+                      <td className="px-3 py-2">{c.name}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{c.skus}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(c.units)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(c.value)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{((c.value / (summary.value || 1)) * 100).toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+          <Card className="p-5">
+            <h3 className="text-base font-semibold mb-3">Inventory Value by Brand</h3>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={valueByBrand} layout="vertical" margin={{ left: 4, right: 12 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <RTooltip formatter={(v: number) => fmtMoney(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="value" fill="hsl(var(--primary))" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {newProducts.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-border">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">New Products (no sales history yet)</div>
+                <div className="text-2xl font-semibold tabular-nums">{newProducts.length}</div>
+                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  {newProducts.slice(0, 6).map((it) => it.sku).join(", ")}{newProducts.length > 6 ? "…" : ""}
+                </div>
+              </div>
+            )}
+          </Card>
         </div>
 
         {/* PO stage status board */}

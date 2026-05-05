@@ -287,7 +287,7 @@ export default function InventoryDashboards({ items }: Props) {
       <TabsList className="flex-wrap h-auto">
         <TabsTrigger value="summary">1. Summary</TabsTrigger>
         <TabsTrigger value="analysis">2. Analysis</TabsTrigger>
-        <TabsTrigger value="reorder">3. Reorder</TabsTrigger>
+        <TabsTrigger value="reorder">3. Reorder (InvCut)</TabsTrigger>
         <TabsTrigger value="closeout">4. Closeout</TabsTrigger>
       </TabsList>
 
@@ -424,20 +424,28 @@ export default function InventoryDashboards({ items }: Props) {
                   <th className="text-right px-3 py-2">% Total Inv</th>
                   <th className="text-right px-3 py-2">% Total Sales</th>
                   <th className="text-right px-3 py-2">Velocity / mo</th>
+                  <th className="text-right px-3 py-2">Trend</th>
                 </tr>
               </thead>
               <tbody>
-                {analysisRows.slice(0, 30).map((it) => (
-                  <tr key={it.sku} className="border-t border-border">
-                    <td className="px-3 py-2 font-mono">{it.sku}</td>
-                    <td className="px-3 py-2">{it.product}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{it.onHand}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.value)}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{it.pctTotalInv.toFixed(1)}%</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{it.pctTotalSales.toFixed(1)}%</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{it.avgMonthlySales}</td>
-                  </tr>
-                ))}
+                {analysisRows.slice(0, 30).map((it) => {
+                  const fc = it.forecastMonthly ?? 0;
+                  const trend = fc > 0 ? (it.avgMonthlySales - fc) / fc : null;
+                  return (
+                    <tr key={it.sku} className="border-t border-border">
+                      <td className="px-3 py-2 font-mono">{it.sku}</td>
+                      <td className="px-3 py-2">{it.product}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{it.onHand}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.value)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{it.pctTotalInv.toFixed(1)}%</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{it.pctTotalSales.toFixed(1)}%</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{it.avgMonthlySales}</td>
+                      <td className={cn("px-3 py-2 text-right tabular-nums", trend == null ? "text-muted-foreground" : trend > 0 ? "text-success" : trend < 0 ? "text-destructive" : "")}>
+                        {trend == null ? "—" : `${trend > 0 ? "▲ +" : trend < 0 ? "▼ " : ""}${(trend * 100).toFixed(0)}%`}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -365,7 +365,7 @@ export default function SalesRepsPage() {
               <th className="text-left p-3 font-medium text-muted-foreground">Manager</th>
               <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Manager Email</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Region</th>
-              <th className="text-right p-3 font-medium text-muted-foreground w-28">Actions</th>
+              <th className="text-right p-3 font-medium text-muted-foreground w-32 sticky right-0 bg-muted/30 z-10">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -476,7 +476,7 @@ export default function SalesRepsPage() {
 
 
                   {/* Actions */}
-                  <td className="p-3">
+                  <td className="p-3 sticky right-0 bg-background shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.1)]">
                     <div className="flex items-center justify-end gap-1">
                       {isEditing ? (
                         <>

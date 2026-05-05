@@ -13,7 +13,11 @@ export default {
     extend: {
       fontFamily: {
         sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
-        display: ['"DM Serif Display"', 'Georgia', 'serif'],
+        display: ['"Fraunces"', 'Georgia', 'serif'],
+        serif: ['"Fraunces"', 'Georgia', 'serif'],
+      },
+      letterSpacing: {
+        editorial: "0.18em",
       },
       colors: {
         border: "hsl(var(--border))",
@@ -67,6 +71,7 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
           muted: "hsl(var(--sidebar-muted))",
+          section: "hsl(var(--sidebar-section))",
         },
         chart: {
           1: "hsl(var(--chart-1))",
@@ -80,6 +85,14 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      boxShadow: {
+        soft: "var(--shadow-soft)",
+        elev: "var(--shadow-elev)",
+      },
+      backgroundImage: {
+        "gradient-bronze": "var(--gradient-bronze)",
+        "gradient-graphite": "var(--gradient-graphite)",
       },
       keyframes: {
         "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },

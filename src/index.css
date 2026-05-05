@@ -1,94 +1,135 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Lineage Collections — Internal Operating System
+  Editorial / premium furniture house aesthetic.
+  Foundations: deep graphite navy, warm ivory canvas, muted taupe surfaces,
+  bronze accent. Typography pairs Fraunces (display) with DM Sans (body).
+*/
+
 @layer base {
   :root {
-    --background: 40 20% 97%;
-    --foreground: 220 20% 12%;
+    /* Canvas */
+    --background: 36 22% 96%;          /* warm ivory */
+    --foreground: 220 24% 11%;         /* graphite navy */
 
     --card: 0 0% 100%;
-    --card-foreground: 220 20% 12%;
+    --card-foreground: 220 24% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 12%;
+    --popover-foreground: 220 24% 11%;
 
-    --primary: 220 35% 22%;
-    --primary-foreground: 40 20% 97%;
+    /* Brand */
+    --primary: 220 32% 16%;            /* deep graphite navy */
+    --primary-foreground: 36 30% 96%;
 
-    --secondary: 38 25% 93%;
-    --secondary-foreground: 220 20% 12%;
+    --secondary: 32 18% 90%;           /* muted taupe */
+    --secondary-foreground: 220 24% 11%;
 
-    --muted: 40 15% 94%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 30 14% 92%;               /* parchment */
+    --muted-foreground: 220 12% 38%;
 
-    --accent: 38 75% 50%;
-    --accent-foreground: 220 35% 12%;
+    --accent: 28 55% 44%;              /* refined bronze */
+    --accent-foreground: 36 30% 97%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 4 64% 46%;          /* bordeaux */
+    --destructive-foreground: 36 30% 97%;
 
-    --success: 152 60% 40%;
-    --success-foreground: 0 0% 100%;
+    --success: 152 38% 32%;            /* deep moss */
+    --success-foreground: 36 30% 97%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 220 20% 12%;
+    --warning: 36 72% 46%;             /* amber */
+    --warning-foreground: 220 24% 11%;
 
-    --border: 220 13% 90%;
-    --input: 220 13% 90%;
-    --ring: 220 35% 22%;
+    --border: 30 14% 86%;
+    --input: 30 14% 86%;
+    --ring: 28 55% 44%;
 
-    --radius: 0.625rem;
+    --radius: 0.5rem;
 
-    --sidebar-background: 220 25% 14%;
-    --sidebar-foreground: 220 15% 75%;
-    --sidebar-primary: 38 75% 50%;
-    --sidebar-primary-foreground: 220 25% 14%;
-    --sidebar-accent: 220 20% 20%;
-    --sidebar-accent-foreground: 40 20% 95%;
-    --sidebar-border: 220 20% 20%;
-    --sidebar-ring: 38 75% 50%;
-    --sidebar-muted: 220 15% 40%;
+    /* Sidebar — bespoke graphite shell */
+    --sidebar-background: 220 28% 10%;
+    --sidebar-foreground: 36 18% 78%;
+    --sidebar-primary: 28 55% 52%;
+    --sidebar-primary-foreground: 220 28% 10%;
+    --sidebar-accent: 220 24% 16%;
+    --sidebar-accent-foreground: 36 30% 96%;
+    --sidebar-border: 220 22% 18%;
+    --sidebar-ring: 28 55% 52%;
+    --sidebar-muted: 220 12% 50%;
+    --sidebar-section: 36 14% 60%;
 
-    --chart-1: 220 35% 22%;
-    --chart-2: 38 75% 50%;
-    --chart-3: 152 60% 40%;
-    --chart-4: 200 60% 50%;
-    --chart-5: 280 50% 55%;
+    /* Charts */
+    --chart-1: 220 32% 22%;
+    --chart-2: 28 55% 44%;
+    --chart-3: 152 38% 36%;
+    --chart-4: 200 42% 38%;
+    --chart-5: 12 48% 48%;
+
+    /* Premium effects */
+    --shadow-soft: 0 1px 2px hsl(220 24% 11% / 0.04), 0 4px 16px -8px hsl(220 24% 11% / 0.08);
+    --shadow-elev: 0 2px 4px hsl(220 24% 11% / 0.06), 0 12px 32px -12px hsl(220 24% 11% / 0.14);
+    --gradient-bronze: linear-gradient(135deg, hsl(28 55% 50%), hsl(34 60% 58%));
+    --gradient-graphite: linear-gradient(180deg, hsl(220 28% 12%), hsl(220 28% 8%));
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01", "cv11";
   }
-  h1, h2, h3, h4 {
-    @apply font-display;
-  }
+  h1, h2, h3, h4 { @apply font-display tracking-tight; }
+  h1 { font-feature-settings: "ss01"; }
 }
 
 @layer utilities {
+  /* Surfaces */
+  .surface {
+    @apply bg-card border border-border/70 rounded-md;
+    box-shadow: var(--shadow-soft);
+  }
+  .surface-elev {
+    @apply bg-card border border-border/70 rounded-md;
+    box-shadow: var(--shadow-elev);
+  }
   .glass-card {
-    @apply bg-card border border-border/60 shadow-sm rounded-xl;
+    @apply surface;
   }
   .stat-card {
-    @apply glass-card p-4 sm:p-5 transition-shadow hover:shadow-md;
-  }
-  .page-header {
-    @apply mb-5 sm:mb-6;
-  }
-  .page-title {
-    @apply text-xl sm:text-2xl font-semibold tracking-tight;
-  }
-  .page-subtitle {
-    @apply text-xs sm:text-sm text-muted-foreground mt-1;
+    @apply surface p-4 sm:p-5 transition-all hover:shadow-[var(--shadow-elev)];
   }
   .table-container {
-    @apply glass-card overflow-hidden;
+    @apply surface overflow-hidden;
+  }
+
+  /* Page header */
+  .page-header { @apply mb-6 sm:mb-7; }
+  .page-eyebrow {
+    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-accent;
+  }
+  .page-title {
+    @apply font-display text-2xl sm:text-3xl font-semibold tracking-tight text-foreground;
+  }
+  .page-subtitle {
+    @apply text-sm text-muted-foreground mt-1.5 max-w-2xl;
+  }
+
+  /* Section label — editorial */
+  .section-label {
+    @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  /* Refined hairline divider */
+  .hairline { @apply border-t border-border/70; }
+
+  /* Bronze underline accent */
+  .accent-rule {
+    @apply inline-block h-px w-10 bg-accent align-middle mr-3;
   }
 }

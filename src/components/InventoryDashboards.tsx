@@ -362,6 +362,85 @@ export default function InventoryDashboards({ items }: Props) {
     return { onPoUnits, onPoValue, inTransitUnits, inTransitValue, onHandNc, onHandVn, onHandValue };
   }, [items]);
 
+  // Health snapshot
+  const healthSnapshot = useMemo(() => {
+    const buckets = { healthy: 0, low: 0, overstock: 0, risk: 0, outOfStock: 0, discontinued: 0, slow: 0 };
+    for (const it of items) {
+      if (it.isDiscontinued) buckets.discontinued++;
+      if (it.status === "out-of-stock") buckets.outOfStock++;
+      else if (it.status === "critical" || it.status === "stockout-risk") buckets.risk++;
+      else if (it.status === "reorder-soon") buckets.low++;
+      else if (it.status === "overstock") buckets.overstock++;
+      else if (it.status === "healthy" || it.status === "fast-moving") buckets.healthy++;
+      if ((it.monthsSupply ?? 0) >= 6 && it.onHand > 0) buckets.slow++;
+    }
+    return buckets;
+  }, [items]);
+
+  // Product ranking by sales velocity
+  const ranking = useMemo(
+    () => [...items]
+      .map((it) => ({ ...it, salesValue: it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0) }))
+      .sort((a, b) => b.salesValue - a.salesValue)
+      .slice(0, 25),
+    [items],
+  );
+
+  // Discontinued
+  const discontinuedRows = useMemo(() => items.filter((it) => it.isDiscontinued), [items]);
+
+  // Forecast vs Reality
+  const forecastRows = useMemo(
+    () => items
+      .filter((it) => it.forecastMonthly != null && it.forecastMonthly > 0)
+      .map((it) => {
+        const fc = it.forecastMonthly ?? 0;
+        const variance = it.avgMonthlySales - fc;
+        const pct = fc > 0 ? (variance / fc) * 100 : 0;
+        return { ...it, fc, variance, pct };
+      })
+      .sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct))
+      .slice(0, 30),
+    [items],
+  );
+
+  // Performance by Collection
+  const collectionPerf = useMemo(() => {
+    const m = new Map<string, { sales: number; value: number; skus: number }>();
+    for (const it of items) {
+      const k = it.collection || "—";
+      const e = m.get(k) ?? { sales: 0, value: 0, skus: 0 };
+      e.sales += it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
+      e.value += (it.unitCost ?? 0) * it.onHand;
+      e.skus += 1;
+      m.set(k, e);
+    }
+    const total = Array.from(m.values()).reduce((s, e) => s + e.sales, 0) || 1;
+    return Array.from(m, ([name, v]) => ({
+      name, ...v,
+      pctSales: (v.sales / total) * 100,
+      turnover: v.value > 0 ? (v.sales * 12) / v.value : 0,
+    })).sort((a, b) => b.sales - a.sales);
+  }, [items]);
+
+  // Closeout by collection
+  const closeoutByCollection = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const it of items) {
+      if (!(it.isCloseout || it.isClearance)) continue;
+      const k = it.collection || "—";
+      m.set(k, (m.get(k) ?? 0) + (it.unitCost ?? 0) * it.onHand);
+    }
+    return Array.from(m, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [items]);
+
+  // SKU detail drawer
+  const [drawerSku, setDrawerSku] = useState<string | null>(null);
+  const drawerItem = useMemo(() => items.find((it) => it.sku === drawerSku) ?? null, [items, drawerSku]);
+
+  // Analysis sub-tab
+  const [analysisTab, setAnalysisTab] = useState<string>("sku");
+
   return (
     <Tabs defaultValue="summary" className="w-full">
       <TabsList className="flex-wrap h-auto">

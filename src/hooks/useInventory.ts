@@ -120,7 +120,7 @@ export function useInventory() {
           cubes: r.cubes == null ? undefined : Number(r.cubes),
           reorderMin: r.reorder_min == null ? undefined : Number(r.reorder_min),
           reorderMax: r.reorder_max == null ? undefined : Number(r.reorder_max),
-          isCloseout: r.is_closeout ?? false,
+          isClearance: r.is_clearance ?? false,
         } satisfies InventoryItem;
       });
 

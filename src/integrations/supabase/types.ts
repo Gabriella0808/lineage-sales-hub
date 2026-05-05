@@ -481,6 +481,8 @@ export type Database = {
           acctivate_id: string | null
           available: number | null
           avg_monthly_sales: number | null
+          closeout_initial_qty: number | null
+          closeout_units_sold: number | null
           collection: string | null
           created_at: string
           factory: string | null
@@ -496,6 +498,7 @@ export type Database = {
           moq: number | null
           on_hand: number | null
           product: string
+          received_date: string | null
           sku: string
           status: string | null
           supplier: string | null
@@ -506,6 +509,8 @@ export type Database = {
           acctivate_id?: string | null
           available?: number | null
           avg_monthly_sales?: number | null
+          closeout_initial_qty?: number | null
+          closeout_units_sold?: number | null
           collection?: string | null
           created_at?: string
           factory?: string | null
@@ -521,6 +526,7 @@ export type Database = {
           moq?: number | null
           on_hand?: number | null
           product: string
+          received_date?: string | null
           sku: string
           status?: string | null
           supplier?: string | null
@@ -531,6 +537,8 @@ export type Database = {
           acctivate_id?: string | null
           available?: number | null
           avg_monthly_sales?: number | null
+          closeout_initial_qty?: number | null
+          closeout_units_sold?: number | null
           collection?: string | null
           created_at?: string
           factory?: string | null
@@ -546,6 +554,7 @@ export type Database = {
           moq?: number | null
           on_hand?: number | null
           product?: string
+          received_date?: string | null
           sku?: string
           status?: string | null
           supplier?: string | null
@@ -977,39 +986,51 @@ export type Database = {
       purchase_orders: {
         Row: {
           acctivate_id: string | null
+          container_type: string | null
           created_at: string
           eta: string | null
           factory: string | null
           id: string
+          is_prepaid: boolean
           last_synced_at: string | null
           order_date: string | null
           po_number: string | null
+          prepaid_amount: number
+          production_stage: string | null
           status: string | null
           total_value: number
           updated_at: string
         }
         Insert: {
           acctivate_id?: string | null
+          container_type?: string | null
           created_at?: string
           eta?: string | null
           factory?: string | null
           id?: string
+          is_prepaid?: boolean
           last_synced_at?: string | null
           order_date?: string | null
           po_number?: string | null
+          prepaid_amount?: number
+          production_stage?: string | null
           status?: string | null
           total_value?: number
           updated_at?: string
         }
         Update: {
           acctivate_id?: string | null
+          container_type?: string | null
           created_at?: string
           eta?: string | null
           factory?: string | null
           id?: string
+          is_prepaid?: boolean
           last_synced_at?: string | null
           order_date?: string | null
           po_number?: string | null
+          prepaid_amount?: number
+          production_stage?: string | null
           status?: string | null
           total_value?: number
           updated_at?: string

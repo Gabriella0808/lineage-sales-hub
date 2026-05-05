@@ -485,24 +485,39 @@ export type Database = {
           closeout_units_sold: number | null
           collection: string | null
           created_at: string
+          cubes: number | null
           factory: string | null
           forecast_monthly: number | null
           id: string
+          in_transit: number | null
+          is_clearance: boolean
           is_closeout: boolean
           is_discontinued: boolean
           last_synced_at: string | null
           lead_time_days: number | null
+          lead_time_months: number | null
           link: string | null
           list_price: number | null
           months_supply: number | null
           moq: number | null
           on_hand: number | null
+          on_hand_nc: number | null
+          on_hand_vn: number | null
+          on_po: number | null
+          on_sales_order: number | null
           product: string
           received_date: string | null
+          reorder_basis: string | null
+          reorder_max: number | null
+          reorder_min: number | null
+          reorder_override_per_week: number | null
           sku: string
           status: string | null
           supplier: string | null
           unit_cost: number | null
+          units_l12m: number | null
+          units_l3m: number | null
+          units_l6m: number | null
           updated_at: string
         }
         Insert: {
@@ -513,24 +528,39 @@ export type Database = {
           closeout_units_sold?: number | null
           collection?: string | null
           created_at?: string
+          cubes?: number | null
           factory?: string | null
           forecast_monthly?: number | null
           id?: string
+          in_transit?: number | null
+          is_clearance?: boolean
           is_closeout?: boolean
           is_discontinued?: boolean
           last_synced_at?: string | null
           lead_time_days?: number | null
+          lead_time_months?: number | null
           link?: string | null
           list_price?: number | null
           months_supply?: number | null
           moq?: number | null
           on_hand?: number | null
+          on_hand_nc?: number | null
+          on_hand_vn?: number | null
+          on_po?: number | null
+          on_sales_order?: number | null
           product: string
           received_date?: string | null
+          reorder_basis?: string | null
+          reorder_max?: number | null
+          reorder_min?: number | null
+          reorder_override_per_week?: number | null
           sku: string
           status?: string | null
           supplier?: string | null
           unit_cost?: number | null
+          units_l12m?: number | null
+          units_l3m?: number | null
+          units_l6m?: number | null
           updated_at?: string
         }
         Update: {
@@ -541,24 +571,39 @@ export type Database = {
           closeout_units_sold?: number | null
           collection?: string | null
           created_at?: string
+          cubes?: number | null
           factory?: string | null
           forecast_monthly?: number | null
           id?: string
+          in_transit?: number | null
+          is_clearance?: boolean
           is_closeout?: boolean
           is_discontinued?: boolean
           last_synced_at?: string | null
           lead_time_days?: number | null
+          lead_time_months?: number | null
           link?: string | null
           list_price?: number | null
           months_supply?: number | null
           moq?: number | null
           on_hand?: number | null
+          on_hand_nc?: number | null
+          on_hand_vn?: number | null
+          on_po?: number | null
+          on_sales_order?: number | null
           product?: string
           received_date?: string | null
+          reorder_basis?: string | null
+          reorder_max?: number | null
+          reorder_min?: number | null
+          reorder_override_per_week?: number | null
           sku?: string
           status?: string | null
           supplier?: string | null
           unit_cost?: number | null
+          units_l12m?: number | null
+          units_l3m?: number | null
+          units_l6m?: number | null
           updated_at?: string
         }
         Relationships: []

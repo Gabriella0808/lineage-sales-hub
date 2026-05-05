@@ -805,13 +805,13 @@ export default function InventoryDashboards({ items }: Props) {
               { label: "Low Stock", val: healthSnapshot.low, tone: "text-warning-foreground" },
               { label: "Risk", val: healthSnapshot.risk, tone: "text-destructive" },
               { label: "Out of Stock", val: healthSnapshot.outOfStock, tone: "text-destructive" },
-              { label: "Overstock", val: healthSnapshot.overstock, tone: "text-accent-foreground" },
+              { label: "Overstock", val: healthSnapshot.overstock, tone: "text-slate-500" },
               { label: "Slow Movers", val: healthSnapshot.slow, tone: "text-warning-foreground" },
               { label: "Discontinued", val: healthSnapshot.discontinued, tone: "text-muted-foreground" },
             ].map((b) => (
               <div key={b.label} className="rounded-lg border border-border p-3">
                 <div className="text-xs text-muted-foreground">{b.label}</div>
-                <div className={cn("text-2xl font-semibold mt-1 tabular-nums", b.tone)}>{b.val}</div>
+                <div className={cn("text-2xl font-semibold mt-1 tabular-nums", b.tone === "text-slate-500" ? "text-accent-foreground text-slate-500" : b.tone)}>{b.val}</div>
               </div>
             ))}
           </div>
@@ -1237,13 +1237,13 @@ export default function InventoryDashboards({ items }: Props) {
                   { label: "Low Stock", val: healthSnapshot.low, tone: "text-warning-foreground" },
                   { label: "Risk", val: healthSnapshot.risk, tone: "text-destructive" },
                   { label: "Out of Stock", val: healthSnapshot.outOfStock, tone: "text-destructive" },
-                  { label: "Overstock", val: healthSnapshot.overstock, tone: "text-accent-foreground" },
+                  { label: "Overstock", val: healthSnapshot.overstock, tone: "text-slate-500" },
                   { label: "Slow Movers", val: healthSnapshot.slow, tone: "text-warning-foreground" },
                   { label: "Discontinued", val: healthSnapshot.discontinued, tone: "text-muted-foreground" },
                 ].map((b) => (
                   <div key={b.label} className="rounded-lg border border-border p-4">
                     <div className="text-xs text-muted-foreground">{b.label}</div>
-                    <div className={cn("text-3xl font-semibold mt-2 tabular-nums", b.tone)}>{b.val}</div>
+                    <div className={cn("text-3xl font-semibold mt-2 tabular-nums", b.tone === "text-slate-500" ? "text-accent-foreground text-slate-500" : b.tone)}>{b.val}</div>
                   </div>
                 ))}
               </div>

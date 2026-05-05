@@ -431,7 +431,7 @@ export default function TasksPage() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Command Center"
-        title="Task Queue"
+        title="My Tasks"
         subtitle="Track internal follow-ups, ownership, and operational priorities across the Lineage team."
         actions={
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>

@@ -192,12 +192,6 @@ function SidebarNav() {
       <SidebarHeader className="px-4 py-5 border-b border-sidebar-border/70">
         <div className="flex items-center gap-3">
           <img src={lineageLogo} alt="Lineage Collections" className="h-7 w-auto" />
-          {!collapsed && (
-            <div className="leading-tight">
-              <p className="font-display text-[15px] text-sidebar-accent-foreground">Lineage</p>
-              <p className="text-[10px] uppercase tracking-[0.18em] text-sidebar-section">Internal Portal</p>
-            </div>
-          )}
         </div>
       </SidebarHeader>
 

@@ -811,7 +811,7 @@ export default function InventoryDashboards({ items }: Props) {
             ].map((b) => (
               <div key={b.label} className="rounded-lg border border-border p-3">
                 <div className="text-xs text-muted-foreground">{b.label}</div>
-                <div className={cn("text-2xl font-semibold mt-1 tabular-nums", b.tone)}>{b.val}</div>
+                <div className={cn("text-2xl font-semibold mt-1 tabular-nums", b.tone === "text-slate-500" ? "text-accent-foreground text-slate-500" : b.tone)}>{b.val}</div>
               </div>
             ))}
           </div>

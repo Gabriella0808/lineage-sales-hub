@@ -409,64 +409,94 @@ export default function TasksPage() {
       !(a.full_name ?? "").toLowerCase().includes("michigan (open)"),
   );
 
+  // ---- Header summary metrics ----
+  const today = new Date();
+  const totalTasks = tasks.length;
+  const overdueCount = tasks.filter(
+    (t) => t.due_date && t.status !== "done" && parseISO(t.due_date) < startOfDay(today),
+  ).length;
+  const dueSoonCount = tasks.filter(
+    (t) =>
+      t.due_date &&
+      t.status !== "done" &&
+      isWithinInterval(parseISO(t.due_date), { start: startOfDay(today), end: endOfDay(addDays(today, 7)) }),
+  ).length;
+  const assignedToMeCount = user
+    ? tasks.filter((t) => getAssigneeIds(t).includes(user.id) && t.status !== "done").length
+    : 0;
+  const stuckCount = tasks.filter((t) => t.status === "blocked").length;
+  const completedCount = tasks.filter((t) => t.status === "done").length;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-serif font-semibold">My Tasks</h1>
-          <p className="text-sm text-muted-foreground">Tasks you created or were assigned to you</p>
-        </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button onClick={openNew}>
-              <Plus className="h-4 w-4" /> New Task
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editing ? "Edit Task" : "New Task"}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <Input
-                placeholder="Title"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                maxLength={200}
-              />
-              <Textarea
-                placeholder="Description (optional)"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                maxLength={2000}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <Select value={form.status} onValueChange={(v: Status) => setForm({ ...form, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {COLUMNS.map((c) => (
-                      <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+      <PageHeader
+        eyebrow="Command Center"
+        title="Task Queue"
+        subtitle="Track internal follow-ups, ownership, and operational priorities across the Lineage team."
+        actions={
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button onClick={openNew} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Plus className="h-4 w-4" /> New Action Item
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="font-display text-xl">{editing ? "Edit Action Item" : "New Action Item"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
                 <Input
-                  type="date"
-                  value={form.due_date}
-                  onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                  placeholder="Title"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  maxLength={200}
+                />
+                <Textarea
+                  placeholder="Add context, links, or follow-up notes"
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  maxLength={2000}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Select value={form.status} onValueChange={(v: Status) => setForm({ ...form, status: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {COLUMNS.map((c) => (
+                        <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="date"
+                    value={form.due_date}
+                    onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                  />
+                </div>
+                <AssigneeMultiPicker
+                  assignees={visibleAssignees}
+                  selectedIds={form.assigned_user_ids}
+                  onChange={(ids) => setForm({ ...form, assigned_user_ids: ids })}
                 />
               </div>
-              <AssigneeMultiPicker
-                assignees={visibleAssignees}
-                selectedIds={form.assigned_user_ids}
-                onChange={(ids) => setForm({ ...form, assigned_user_ids: ids })}
-              />
-            </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={save}>{editing ? "Save" : "Create"}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button onClick={save}>{editing ? "Save" : "Create"}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        }
+      />
+
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <MetricCard label="Total" value={totalTasks} icon={ListChecks} hint="all action items" />
+          <MetricCard label="Overdue" value={overdueCount} icon={AlertTriangle} tone="destructive" hint="past due, open" />
+          <MetricCard label="Due Soon" value={dueSoonCount} icon={Timer} tone="warning" hint="next 7 days" />
+          <MetricCard label="Assigned to Me" value={assignedToMeCount} icon={UserCheck} tone="accent" hint="open · my queue" />
+          <MetricCard label="Stuck" value={stuckCount} icon={CircleSlash} tone="destructive" hint="needs unblocking" />
+          <MetricCard label="Completed" value={completedCount} icon={CheckCircle2} tone="success" hint="closed" />
+        </div>
+      )}
 
       {!loading && user && (() => {
         const assignedToMe = tasks.filter(

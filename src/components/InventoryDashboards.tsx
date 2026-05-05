@@ -976,18 +976,18 @@ export default function InventoryDashboards({ items }: Props) {
       {/* ============ SECTION 2: ANALYSIS ============ */}
       <TabsContent value="analysis" className="space-y-4 mt-4">
         <Tabs value={analysisTab} onValueChange={setAnalysisTab}>
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="sku">SKU Table</TabsTrigger>
-            <TabsTrigger value="compare">Compare Periods</TabsTrigger>
-            <TabsTrigger value="vendor">By Vendor</TabsTrigger>
-            <TabsTrigger value="collection">By Collection</TabsTrigger>
-            <TabsTrigger value="slow">Slow Movers</TabsTrigger>
-            <TabsTrigger value="aging">Aging</TabsTrigger>
-            <TabsTrigger value="health">Inventory</TabsTrigger>
-            <TabsTrigger value="ranking">Ranking</TabsTrigger>
-            <TabsTrigger value="discontinued">Discontinued</TabsTrigger>
-            <TabsTrigger value="forecast">Forecast vs Reality</TabsTrigger>
-            <TabsTrigger value="demand">Dealer Demand</TabsTrigger>
+          <TabsList className="flex w-full flex-nowrap overflow-x-auto h-auto justify-start">
+            <TabsTrigger value="sku" className="whitespace-nowrap text-xs px-2.5">SKU Table</TabsTrigger>
+            <TabsTrigger value="compare" className="whitespace-nowrap text-xs px-2.5">Compare Periods</TabsTrigger>
+            <TabsTrigger value="vendor" className="whitespace-nowrap text-xs px-2.5">By Vendor</TabsTrigger>
+            <TabsTrigger value="collection" className="whitespace-nowrap text-xs px-2.5">By Collection</TabsTrigger>
+            <TabsTrigger value="slow" className="whitespace-nowrap text-xs px-2.5">Slow Movers</TabsTrigger>
+            <TabsTrigger value="aging" className="whitespace-nowrap text-xs px-2.5">Aging</TabsTrigger>
+            <TabsTrigger value="health" className="whitespace-nowrap text-xs px-2.5">Inventory</TabsTrigger>
+            <TabsTrigger value="ranking" className="whitespace-nowrap text-xs px-2.5">Ranking</TabsTrigger>
+            <TabsTrigger value="discontinued" className="whitespace-nowrap text-xs px-2.5">Discontinued</TabsTrigger>
+            <TabsTrigger value="forecast" className="whitespace-nowrap text-xs px-2.5">Forecast vs Reality</TabsTrigger>
+            <TabsTrigger value="demand" className="whitespace-nowrap text-xs px-2.5">Dealer Demand</TabsTrigger>
           </TabsList>
 
           <TabsContent value="sku" className="mt-4">

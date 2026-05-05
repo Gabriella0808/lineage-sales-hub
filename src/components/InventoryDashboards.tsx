@@ -574,13 +574,211 @@ export default function InventoryDashboards({ items }: Props) {
   }, [skuSearch]);
 
   return (
-    <Tabs defaultValue="summary" className="w-full">
+    <Tabs defaultValue="buynow" className="w-full">
       <TabsList className="flex-wrap h-auto">
-        <TabsTrigger value="summary">1. Summary</TabsTrigger>
-        <TabsTrigger value="analysis">2. Analysis</TabsTrigger>
-        <TabsTrigger value="reorder">3. Reorder</TabsTrigger>
-        <TabsTrigger value="closeout">4. Closeout</TabsTrigger>
+        <TabsTrigger value="buynow">Buy Now</TabsTrigger>
+        <TabsTrigger value="stockouts">Stockouts / Lost Sales</TabsTrigger>
+        <TabsTrigger value="incoming">Incoming POs</TabsTrigger>
+        <TabsTrigger value="summary">Summary</TabsTrigger>
+        <TabsTrigger value="analysis">Analysis</TabsTrigger>
+        <TabsTrigger value="reorder">Reorder</TabsTrigger>
+        <TabsTrigger value="closeout">Closeout</TabsTrigger>
       </TabsList>
+
+      {/* ============ BUY NOW ============ */}
+      <TabsContent value="buynow" className="space-y-6 mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KPI label="Order Now" value={buyNowKpis.orderNow} hint={fmtMoney(buyNowKpis.orderNowValue)} icon={AlertCircle} accent={buyNowKpis.orderNow > 0 ? "text-destructive" : undefined} />
+          <KPI label="Watch" value={buyNowKpis.watch} icon={CalendarClock} accent="text-warning-foreground" />
+          <KPI label="Covered by PO" value={buyNowKpis.covered} icon={Truck} accent="text-success" />
+          <KPI label="Out of Stock — Lost / mo" value={fmtMoney(summary.lostSales)} icon={TrendingDown} accent="text-destructive" />
+        </div>
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 text-primary" />
+              <h3 className="text-base font-semibold">Action Items — What to Order</h3>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant={buyNowFilter === "action" ? "default" : "outline"} className="h-8" onClick={() => setBuyNowFilter("action")}>Needs Action</Button>
+              <Button size="sm" variant={buyNowFilter === "all" ? "default" : "outline"} className="h-8" onClick={() => setBuyNowFilter("all")}>All SKUs</Button>
+            </div>
+          </div>
+          {buyNowFiltered.length === 0 ? <EmptyState message="Nothing needs ordering right now." /> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="text-left px-2 py-2">SKU</th>
+                    <th className="text-left px-2 py-2">Product</th>
+                    <th className="text-left px-2 py-2">Factory</th>
+                    <th className="text-right px-2 py-2">Avail</th>
+                    <th className="text-right px-2 py-2">On PO</th>
+                    <th className="text-left px-2 py-2">Next ETA</th>
+                    <th className="text-right px-2 py-2">Mo Demand</th>
+                    <th className="text-right px-2 py-2">Lead (mo)</th>
+                    <th className="text-right px-2 py-2">Days Supply</th>
+                    <th className="text-left px-2 py-2">Stockout Date</th>
+                    <th className="text-right px-2 py-2">Suggest</th>
+                    <th className="text-right px-2 py-2">MOQ</th>
+                    <th className="text-left px-2 py-2">Decision</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {buyNowFiltered.slice(0, 100).map((r) => {
+                    const tone =
+                      r.decision === "Order Now" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                      r.decision === "Watch" ? "bg-warning/15 text-warning-foreground border-warning/30" :
+                      r.decision === "Covered by PO" ? "bg-success/15 text-success border-success/25" :
+                      r.decision === "Liquidate" || r.decision === "Discontinue Candidate" ? "bg-muted text-muted-foreground border-border" :
+                      "bg-muted text-muted-foreground border-border";
+                    return (
+                      <tr key={r.sku} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => setDrawerSku(r.sku)}>
+                        <td className="px-2 py-1.5 font-mono">{r.sku}</td>
+                        <td className="px-2 py-1.5 max-w-[200px] truncate" title={r.product}>{r.product}</td>
+                        <td className="px-2 py-1.5 text-xs text-muted-foreground">{r.factory ?? r.supplier}</td>
+                        <td className={cn("px-2 py-1.5 text-right tabular-nums", r.netAvail <= 0 && "text-destructive font-semibold")}>{r.netAvail}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.onPo}</td>
+                        <td className="px-2 py-1.5 text-xs">{r.nextEta ?? "—"}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.avgMonthlySales.toFixed(1)}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.leadMonths.toFixed(1)}</td>
+                        <td className={cn("px-2 py-1.5 text-right tabular-nums", r.daysOfSupply != null && r.daysOfSupply < r.leadDays && "text-destructive font-semibold")}>
+                          {r.daysOfSupply == null ? "—" : Math.round(r.daysOfSupply)}
+                        </td>
+                        <td className="px-2 py-1.5 text-xs">{r.stockoutDate ? r.stockoutDate.toLocaleDateString() : "—"}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{r.suggestedOrder > 0 ? fmtNum(r.suggestedOrder) : "—"}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{r.moq ?? "—"}</td>
+                        <td className="px-2 py-1.5">
+                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border whitespace-nowrap", tone)}>{r.decision}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </TabsContent>
+
+      {/* ============ STOCKOUTS / LOST SALES ============ */}
+      <TabsContent value="stockouts" className="space-y-6 mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KPI label="SKUs Out of Stock" value={stockoutKpis.oosCount} icon={AlertCircle} accent={stockoutKpis.oosCount > 0 ? "text-destructive" : undefined} />
+          <KPI label="Estimated Lost Sales / mo" value={fmtMoney(stockoutKpis.monthlyLost)} icon={TrendingDown} accent="text-destructive" />
+          <KPI label="Backorder Units" value={fmtNum(stockoutKpis.backorderUnits)} icon={ShoppingCart} />
+          <KPI label="Backorder Value" value={fmtMoney(stockoutKpis.backorderValue)} icon={DollarSign} />
+        </div>
+        <Card className="p-5">
+          <h3 className="text-base font-semibold mb-3">Top Lost-Sales SKUs</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stockoutRows.slice(0, 10).map((r) => ({ sku: r.sku, lost: r.monthlyLost }))} layout="vertical" margin={{ left: 4, right: 12 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis type="category" dataKey="sku" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <RTooltip formatter={(v: number) => fmtMoney(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                <Bar dataKey="lost" fill="hsl(var(--destructive))" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+        <Card className="p-5">
+          <h3 className="text-base font-semibold mb-3">Out-of-Stock Detail</h3>
+          {stockoutRows.length === 0 ? <EmptyState message="No SKUs are currently out of stock." /> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="text-left px-3 py-2">SKU</th>
+                    <th className="text-left px-3 py-2">Product</th>
+                    <th className="text-left px-3 py-2">Collection</th>
+                    <th className="text-right px-3 py-2">Mo Sales</th>
+                    <th className="text-right px-3 py-2">Lost / mo</th>
+                    <th className="text-right px-3 py-2">On PO</th>
+                    <th className="text-right px-3 py-2">In Transit</th>
+                    <th className="text-left px-3 py-2">Priority</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stockoutRows.slice(0, 100).map((r) => {
+                    const tone =
+                      r.priority === "Critical" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                      r.priority === "High" ? "bg-warning/15 text-warning-foreground border-warning/30" :
+                      r.priority === "Medium" ? "bg-accent/15 text-accent-foreground border-accent/30" :
+                      "bg-muted text-muted-foreground border-border";
+                    return (
+                      <tr key={r.sku} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => setDrawerSku(r.sku)}>
+                        <td className="px-3 py-2 font-mono">{r.sku}</td>
+                        <td className="px-3 py-2 max-w-[220px] truncate">{r.product}</td>
+                        <td className="px-3 py-2">{r.collection}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{r.avgMonthlySales.toFixed(1)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-semibold text-destructive">{fmtMoney(r.monthlyLost)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{r.onPo ?? 0}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{r.inTransit ?? 0}</td>
+                        <td className="px-3 py-2">
+                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border", tone)}>{r.priority}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </TabsContent>
+
+      {/* ============ INCOMING POs ============ */}
+      <TabsContent value="incoming" className="space-y-6 mt-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KPI label="Open PO Value" value={fmtMoney(summary.openPoValue)} icon={Truck} />
+          <KPI label="Late POs" value={poBuckets.late.length} hint={fmtMoney(poBuckets.late.reduce((s, p) => s + Number(p.total_value), 0))} icon={AlertCircle} accent={poBuckets.late.length > 0 ? "text-destructive" : undefined} />
+          <KPI label="Arriving ≤30 days" value={poBuckets.d30.length} icon={CalendarClock} />
+          <KPI label="Arriving ≤90 days" value={poBuckets.d30.length + poBuckets.d60.length + poBuckets.d90.length} icon={CalendarClock} />
+        </div>
+        <Card className="p-5">
+          <h3 className="text-base font-semibold mb-3">PO Line Coverage — Will the PO Fix the Problem?</h3>
+          {poLineCoverage.length === 0 ? <EmptyState message="No open PO lines synced." /> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="text-left px-3 py-2">SKU</th>
+                    <th className="text-left px-3 py-2">Product</th>
+                    <th className="text-right px-3 py-2">Qty Remaining</th>
+                    <th className="text-left px-3 py-2">ETA</th>
+                    <th className="text-right px-3 py-2">Mo Sales</th>
+                    <th className="text-right px-3 py-2">Projected Avail</th>
+                    <th className="text-right px-3 py-2">Mo Supply After</th>
+                    <th className="text-left px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {poLineCoverage.slice(0, 100).map((r) => (
+                    <tr key={r.id} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => r.item && setDrawerSku(r.item.sku)}>
+                      <td className="px-3 py-2 font-mono">{r.sku}</td>
+                      <td className="px-3 py-2 max-w-[220px] truncate">{r.item?.product ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.remaining)}</td>
+                      <td className="px-3 py-2 text-xs">{r.eta ?? "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{r.monthlySales.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.projectedAvail)}</td>
+                      <td className={cn("px-3 py-2 text-right tabular-nums", r.monthsAfter != null && r.monthsAfter < 3 && "text-destructive font-semibold")}>
+                        {r.monthsAfter == null ? "—" : `${r.monthsAfter.toFixed(1)} mo`}
+                      </td>
+                      <td className="px-3 py-2">
+                        {r.stillNeed
+                          ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border bg-warning/15 text-warning-foreground border-warning/30">Still Need to Reorder</span>
+                          : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border bg-success/15 text-success border-success/25">Covered</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </TabsContent>
 
       {/* ============ SECTION 1: SUMMARY ============ */}
       <TabsContent value="summary" className="space-y-6 mt-4">

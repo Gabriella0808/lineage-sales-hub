@@ -42,7 +42,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Command Center",
     items: [
       { title: "Overview",  url: "/",      icon: Compass,     roles: ["admin", "manager", "rep"] },
-      { title: "Task Queue", url: "/tasks", icon: ListChecks, roles: ["admin", "manager", "rep"] },
+      { title: "My Tasks", url: "/tasks", icon: ListChecks, roles: ["admin", "manager", "rep"] },
     ],
   },
   {

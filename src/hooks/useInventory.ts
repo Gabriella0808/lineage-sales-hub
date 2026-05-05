@@ -16,6 +16,14 @@ interface DbInventoryRow {
   status: string | null;
   link: string | null;
   last_synced_at: string | null;
+  unit_cost: number | null;
+  list_price: number | null;
+  is_closeout: boolean | null;
+  is_discontinued: boolean | null;
+  factory: string | null;
+  moq: number | null;
+  lead_time_days: number | null;
+  forecast_monthly: number | null;
 }
 
 function deriveStatus(onHand: number, monthsSupply: number | null): InventoryStatus {

@@ -918,8 +918,9 @@ export default function TasksPage() {
           </div>
         </Card>
       )}
+        </TabsContent>
+      </Tabs>
 
-      {/* Task detail panel */}
       <Sheet open={!!detailTask} onOpenChange={(o) => !o && setDetailTask(null)}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {detailTask && (() => {

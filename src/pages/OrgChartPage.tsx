@@ -715,26 +715,41 @@ function OrgChartCanvas({
   const [lines, setLines] = useState<Array<{ id: string; x1: number; y1: number; x2: number; y2: number }>>([]);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
+  // Walk offsetParent chain up to (but not including) the container to get
+  // unscaled coordinates. getBoundingClientRect would include the CSS zoom
+  // transform on an ancestor, which would then be applied again to the SVG
+  // (since the SVG is inside the same scaled container) — causing the lines
+  // to drift away from the boxes whenever zoom !== 100%.
+  const offsetWithin = (el: HTMLElement, container: HTMLElement) => {
+    let x = 0;
+    let y = 0;
+    let node: HTMLElement | null = el;
+    while (node && node !== container) {
+      x += node.offsetLeft;
+      y += node.offsetTop;
+      node = node.offsetParent as HTMLElement | null;
+    }
+    return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+  };
+
   const recompute = () => {
     const container = containerRef.current;
     if (!container) return;
-    const cRect = container.getBoundingClientRect();
     setSize({ w: container.scrollWidth, h: container.scrollHeight });
     const next: typeof lines = [];
     dotted.forEach((d) => {
-      const from = nodeRefs.current.get(d.position_id);
-      const to = nodeRefs.current.get(d.reports_to_id);
-      if (!from || !to) return;
-      const a = from.getBoundingClientRect();
-      const b = to.getBoundingClientRect();
-      // Connect side-to-side based on horizontal positions
-      const fromCenterX = a.left + a.width / 2 - cRect.left;
-      const toCenterX = b.left + b.width / 2 - cRect.left;
+      const fromEl = nodeRefs.current.get(d.position_id);
+      const toEl = nodeRefs.current.get(d.reports_to_id);
+      if (!fromEl || !toEl) return;
+      const a = offsetWithin(fromEl, container);
+      const b = offsetWithin(toEl, container);
+      const fromCenterX = a.x + a.w / 2;
+      const toCenterX = b.x + b.w / 2;
       const fromOnLeft = fromCenterX < toCenterX;
-      const x1 = (fromOnLeft ? a.right : a.left) - cRect.left;
-      const y1 = a.top + a.height / 2 - cRect.top;
-      const x2 = (fromOnLeft ? b.left : b.right) - cRect.left;
-      const y2 = b.top + b.height / 2 - cRect.top;
+      const x1 = fromOnLeft ? a.x + a.w : a.x;
+      const y1 = a.y + a.h / 2;
+      const x2 = fromOnLeft ? b.x : b.x + b.w;
+      const y2 = b.y + b.h / 2;
       next.push({ id: d.id, x1, y1, x2, y2 });
     });
     setLines(next);

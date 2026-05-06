@@ -811,7 +811,12 @@ export default function TaskBoardsView() {
                     ).values()
                   ).map((u) => (
                     <SelectItem key={u.user_id} value={u.user_id}>
-                      {u.full_name || u.email || u.user_id.slice(0, 8)}
+                      <span className="flex flex-col">
+                        <span>{u.full_name || u.email || u.user_id.slice(0, 8)}</span>
+                        {u.email && (u.full_name && u.full_name !== u.email) && (
+                          <span className="text-xs text-muted-foreground">{u.email}</span>
+                        )}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

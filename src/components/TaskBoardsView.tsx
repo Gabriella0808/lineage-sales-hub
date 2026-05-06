@@ -466,7 +466,7 @@ export default function TaskBoardsView() {
           <LayoutGrid className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
           <h3 className="text-lg font-semibold mb-1">No board selected</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Create your first board to organize tasks like Monday.com.
+            Create your first board to organize tasks.
           </p>
           <Button onClick={openNewBoard}>
             <Plus className="h-4 w-4" /> Create board

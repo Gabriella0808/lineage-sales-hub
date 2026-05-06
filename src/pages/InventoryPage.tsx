@@ -11,6 +11,7 @@ import { type InventoryStatus } from "@/data/inventoryMock";
 import { useInventory } from "@/hooks/useInventory";
 import InventoryDashboards from "@/components/InventoryDashboards";
 import { cn } from "@/lib/utils";
+import { weeksOfSupply, reorderPoint, weeksTone, LEAD_TIME_WEEKS } from "@/lib/inventoryMath";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,

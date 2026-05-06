@@ -380,7 +380,7 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
+      <Card id="inventory-sku-table" className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">

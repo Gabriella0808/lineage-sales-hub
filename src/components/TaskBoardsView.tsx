@@ -338,10 +338,28 @@ export default function TaskBoardsView() {
       toast({ title: "Status update failed", description: error.message, variant: "destructive" });
     }
   };
+  const inferStatusFromGroupName = (name: string | undefined): Status | null => {
+    if (!name) return null;
+    const n = name.toLowerCase().trim();
+    if (/(^|\b)(done|complete|completed|finished)\b/.test(n)) return "done";
+    if (/(in[\s-]?progress|in[\s-]?motion|doing|working|wip)/.test(n)) return "in_progress";
+    if (/(block|stuck|hold|waiting)/.test(n)) return "blocked";
+    if (/(to[\s-]?do|todo|backlog|not[\s-]?started|new)/.test(n)) return "todo";
+    return null;
+  };
   const moveTaskToGroup = async (id: string, group_id: string | null) => {
     const prev = tasks;
-    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, group_id } : t)));
-    const { error } = await supabase.from("manager_tasks").update({ group_id }).eq("id", id);
+    const targetGroup = group_id ? groups.find((g) => g.id === group_id) : null;
+    const inferred = inferStatusFromGroupName(targetGroup?.name);
+    const task = tasks.find((t) => t.id === id);
+    const newStatus = inferred && task && task.status !== inferred ? inferred : null;
+
+    setTasks((ts) =>
+      ts.map((t) => (t.id === id ? { ...t, group_id, ...(newStatus ? { status: newStatus } : {}) } : t)),
+    );
+    const payload: any = { group_id };
+    if (newStatus) payload.status = newStatus;
+    const { error } = await supabase.from("manager_tasks").update(payload).eq("id", id);
     if (error) {
       setTasks(prev);
       toast({ title: "Move failed", description: error.message, variant: "destructive" });

@@ -1790,5 +1790,6 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         </SheetContent>
       </Sheet>
     </Tabs>
+    </div>
   );
 }

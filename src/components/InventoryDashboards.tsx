@@ -1703,7 +1703,7 @@ export default function InventoryDashboards({ items }: Props) {
                   <div><div className="text-xs text-muted-foreground">Override /wk</div><div className="tabular-nums">{drawerItem.reorderOverridePerWeek ?? "—"}</div></div>
                   <div><div className="text-xs text-muted-foreground">Lead time (mo)</div><div className="tabular-nums">{drawerItem.leadTimeMonths ?? 4.5}</div></div>
                   <div><div className="text-xs text-muted-foreground">MOQ</div><div className="tabular-nums">{drawerItem.moq ?? "—"}</div></div>
-                  <div><div className="text-xs text-muted-foreground">Months supply</div><div className="tabular-nums">{drawerItem.monthsSupply == null ? "—" : drawerItem.monthsSupply.toFixed(1)}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Weeks supply</div><div className={cn("tabular-nums", weeksTone(weeksOfSupply(drawerItem)))}>{(() => { const w = weeksOfSupply(drawerItem); return w == null ? "—" : `${w.toFixed(1)} wk`; })()}</div></div>
                   <div><div className="text-xs text-muted-foreground">Forecast/mo</div><div className="tabular-nums">{drawerItem.forecastMonthly ?? "—"}</div></div>
                 </div>
                 <div className="flex gap-2 flex-wrap">

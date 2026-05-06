@@ -1320,6 +1320,35 @@ export type Database = {
           },
         ]
       }
+      task_board_members: {
+        Row: {
+          added_by: string
+          board_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          added_by: string
+          board_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string
+          board_id?: string
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_board_members_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "task_boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_boards: {
         Row: {
           color: string | null

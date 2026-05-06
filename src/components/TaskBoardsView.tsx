@@ -485,11 +485,11 @@ export default function TaskBoardsView() {
               )}
             </div>
             <div className="flex items-center gap-1.5">
+              <Button size="sm" variant="outline" onClick={openShareDialog}>
+                <UserPlus className="h-3.5 w-3.5" /> Share
+              </Button>
               {isBoardOwner && (
                 <>
-                  <Button size="sm" variant="outline" onClick={openShareDialog}>
-                    <UserPlus className="h-3.5 w-3.5" /> Share
-                  </Button>
                   <Button size="sm" variant="outline" onClick={openNewGroup}>
                     <Plus className="h-3.5 w-3.5" /> Add group
                   </Button>

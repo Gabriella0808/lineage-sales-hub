@@ -175,7 +175,7 @@ export default function InventoryDashboards({ items }: Props) {
 
   const analysisRows = useMemo(() => {
     return items.map((it) => {
-      const value = (it.unitCost ?? 0) * it.onHand;
+      const value = it.onHandValue ?? (it.unitCost ?? 0) * it.onHand;
       const sales = it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
       return {
         ...it,

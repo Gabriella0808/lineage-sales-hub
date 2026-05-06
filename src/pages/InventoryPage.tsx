@@ -61,21 +61,6 @@ function StatusPill({ status }: { status: InventoryStatus }) {
   );
 }
 
-function StatTile({ label, value, icon: Icon, accent, hint }: { label: string; value: number | string; icon: React.ComponentType<{ className?: string }>; accent?: string; hint?: string }) {
-  return (
-    <Card className="p-5 flex items-start justify-between">
-      <div>
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-        <div className="text-3xl font-semibold mt-2 tabular-nums">{value}</div>
-        {hint && <div className={cn("text-xs mt-1", accent ?? "text-muted-foreground")}>{hint}</div>}
-      </div>
-      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
-        <Icon className="h-4 w-4" />
-      </div>
-    </Card>
-  );
-}
-
 export default function InventoryPage() {
   const [filter, setFilter] = useState<"all" | InventoryStatus>("all");
   const [query, setQuery] = useState("");

@@ -628,6 +628,47 @@ function ChartViewport({ children }: { children: React.ReactNode }) {
     return () => wrap.removeEventListener("wheel", onWheel);
   }, []);
 
+  // Click-and-drag panning (mouse + touch)
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    let isDown = false;
+    let startX = 0, startY = 0, scrollLeft = 0, scrollTop = 0;
+    const onDown = (e: PointerEvent) => {
+      // Don't hijack clicks on interactive elements
+      const target = e.target as HTMLElement;
+      if (target.closest("button, a, input, [role='button']")) return;
+      isDown = true;
+      wrap.setPointerCapture(e.pointerId);
+      startX = e.clientX;
+      startY = e.clientY;
+      scrollLeft = wrap.scrollLeft;
+      scrollTop = wrap.scrollTop;
+      wrap.style.cursor = "grabbing";
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!isDown) return;
+      wrap.scrollLeft = scrollLeft - (e.clientX - startX);
+      wrap.scrollTop = scrollTop - (e.clientY - startY);
+    };
+    const onUp = (e: PointerEvent) => {
+      isDown = false;
+      try { wrap.releasePointerCapture(e.pointerId); } catch {}
+      wrap.style.cursor = "grab";
+    };
+    wrap.style.cursor = "grab";
+    wrap.addEventListener("pointerdown", onDown);
+    wrap.addEventListener("pointermove", onMove);
+    wrap.addEventListener("pointerup", onUp);
+    wrap.addEventListener("pointercancel", onUp);
+    return () => {
+      wrap.removeEventListener("pointerdown", onDown);
+      wrap.removeEventListener("pointermove", onMove);
+      wrap.removeEventListener("pointerup", onUp);
+      wrap.removeEventListener("pointercancel", onUp);
+    };
+  }, []);
+
   return (
     <div className="relative">
       <div className="absolute right-0 -top-9 flex items-center gap-2 text-xs text-muted-foreground">
@@ -645,7 +686,7 @@ function ChartViewport({ children }: { children: React.ReactNode }) {
           onClick={fit}
         >Fit</button>
       </div>
-      <div ref={wrapRef} className="w-full overflow-auto pb-4">
+      <div ref={wrapRef} className="w-full overflow-auto pb-4 touch-pan-x touch-pan-y select-none">
         <div
           ref={innerRef}
           style={{ transformOrigin: "top left", transform: `scale(${zoom})` }}

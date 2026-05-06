@@ -1,0 +1,1 @@
+CREATE POLICY "Board members view board tasks" ON public.manager_tasks FOR SELECT USING (board_id IS NOT NULL AND can_view_task_board(board_id));

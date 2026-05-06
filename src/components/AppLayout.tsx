@@ -49,7 +49,6 @@ const NAV_SECTIONS: NavSection[] = [
     id: "sales",
     label: "Sales Operations",
     items: [
-      { title: "Account Boards",   url: "/monday-boards", icon: LayoutGrid, roles: ["admin", "manager"] },
       {
         title: "Field Check-Ins", url: "/check-ins", icon: MapPinned, roles: ["admin", "manager"],
         children: [

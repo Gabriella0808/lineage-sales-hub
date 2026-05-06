@@ -180,17 +180,12 @@ export default function TaskBoardsView() {
         .eq("id", editingBoard.id);
       if (error) return toast({ title: "Update failed", description: error.message, variant: "destructive" });
     } else {
-      // Get fresh user id from current session to avoid stale React state mismatching auth.uid()
-      const { data: sessionData } = await supabase.auth.getUser();
-      const currentUid = sessionData.user?.id;
-      if (!currentUid) return toast({ title: "Not signed in", variant: "destructive" });
       const { data, error } = await supabase
         .from("task_boards" as any)
         .insert({
           name: boardForm.name.trim(),
           description: boardForm.description.trim() || null,
           color: boardForm.color,
-          created_by: currentUid,
         })
         .select("id")
         .single();

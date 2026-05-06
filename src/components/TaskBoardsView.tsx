@@ -329,10 +329,26 @@ export default function TaskBoardsView() {
     if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     load();
   };
+  const findGroupForStatus = (boardId: string | null, status: Status): string | null => {
+    if (!boardId) return null;
+    const candidates = groups.filter((g) => g.board_id === boardId);
+    const match = candidates.find((g) => inferStatusFromGroupName(g.name) === status);
+    return match?.id ?? null;
+  };
   const updateTaskStatus = async (id: string, status: Status) => {
     const prev = tasks;
-    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status } : t)));
-    const { error } = await supabase.from("manager_tasks").update({ status }).eq("id", id);
+    const task = tasks.find((t) => t.id === id);
+    const targetGroupId = task ? findGroupForStatus(task.board_id, status) : null;
+    const shouldMove = targetGroupId && task && task.group_id !== targetGroupId;
+
+    setTasks((ts) =>
+      ts.map((t) =>
+        t.id === id ? { ...t, status, ...(shouldMove ? { group_id: targetGroupId } : {}) } : t,
+      ),
+    );
+    const payload: any = { status };
+    if (shouldMove) payload.group_id = targetGroupId;
+    const { error } = await supabase.from("manager_tasks").update(payload).eq("id", id);
     if (error) {
       setTasks(prev);
       toast({ title: "Status update failed", description: error.message, variant: "destructive" });

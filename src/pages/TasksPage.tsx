@@ -59,6 +59,13 @@ interface Task {
   assigned_manager_id: string | null;
   assigned_user_id: string | null;
   user_id: string;
+  board_id: string | null;
+}
+
+interface Board {
+  id: string;
+  name: string;
+  color: string | null;
 }
 
 
@@ -124,6 +131,7 @@ export default function TasksPage() {
   const [assignees, setAssignees] = useState<AssignableUser[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [taskAssignees, setTaskAssignees] = useState<Record<string, string[]>>({});
+  const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const readKey = user ? `tasks_read_${user.id}` : "";
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -247,12 +255,14 @@ export default function TasksPage() {
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const [tasksRes, assigneesRes, profilesRes, taRes] = await Promise.all([
+    const [tasksRes, assigneesRes, profilesRes, taRes, boardsRes] = await Promise.all([
       supabase.from("manager_tasks").select("*").order("created_at", { ascending: false }),
       supabase.rpc("assignable_users"),
       supabase.from("profiles").select("user_id, full_name"),
       supabase.from("manager_task_assignees" as any).select("task_id, user_id"),
+      supabase.from("task_boards" as any).select("id, name, color").order("name"),
     ]);
+    if (!boardsRes.error) setBoards(((boardsRes.data ?? []) as unknown) as Board[]);
     if (tasksRes.error) {
       toast({ title: "Failed to load tasks", description: tasksRes.error.message, variant: "destructive" });
     } else {
@@ -379,6 +389,19 @@ export default function TasksPage() {
     if (error) {
       setTasks(prev);
       toast({ title: "Status update failed", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const updateBoard = async (id: string, board_id: string | null) => {
+    const prev = tasks;
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, board_id } : t)));
+    const { error } = await supabase.from("manager_tasks").update({ board_id } as any).eq("id", id);
+    if (error) {
+      setTasks(prev);
+      toast({ title: "Move failed", description: error.message, variant: "destructive" });
+    } else {
+      const board = boards.find((b) => b.id === board_id);
+      toast({ title: board_id ? `Moved to "${board?.name ?? "board"}"` : "Removed from board" });
     }
   };
 
@@ -672,12 +695,13 @@ export default function TasksPage() {
       ) : (
         <Card className="overflow-hidden p-0">
           {/* Board column header (Monday-style) */}
-          <div className="hidden md:grid grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_80px] items-center gap-0 border-b bg-muted/30 px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="hidden md:grid grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_150px_80px] items-center gap-0 border-b bg-muted/30 px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <div />
             <div className="px-3">Task</div>
             <div className="px-3">Owner</div>
             <div className="px-3">Status</div>
             <div className="px-3">Due date</div>
+            <div className="px-3">Board</div>
             <div className="px-3 text-right">Actions</div>
           </div>
 
@@ -723,7 +747,7 @@ export default function TasksPage() {
                           <li
                             key={t.id}
                             onClick={() => { setDetailTask(t); markRead(t.id); }}
-                            className="group/row grid grid-cols-[4px_minmax(0,1fr)] md:grid-cols-[4px_minmax(0,1fr)_180px_160px_120px_80px] items-center gap-0 hover:bg-muted/40 transition-colors cursor-pointer"
+                            className="group/row grid grid-cols-[4px_minmax(0,1fr)] md:grid-cols-[4px_minmax(0,1fr)_180px_160px_120px_150px_80px] items-center gap-0 hover:bg-muted/40 transition-colors cursor-pointer"
                           >
                             {/* Subtle hover accent */}
                             <div className={`self-stretch ${col.accent} opacity-0 group-hover/row:opacity-100 transition-opacity`} />
@@ -858,6 +882,37 @@ export default function TasksPage() {
                                 </span>
                               ) : (
                                 <span className="italic">—</span>
+                              )}
+                            </div>
+
+                            {/* Board (md+) */}
+                            <div className="hidden md:flex items-center px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                              {isMine ? (
+                                <Select
+                                  value={t.board_id ?? "__none__"}
+                                  onValueChange={(v) => updateBoard(t.id, v === "__none__" ? null : v)}
+                                >
+                                  <SelectTrigger className="h-7 px-2 text-xs w-full">
+                                    <SelectValue placeholder="No board" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__none__" className="text-xs italic">No board</SelectItem>
+                                    {boards.map((b) => (
+                                      <SelectItem key={b.id} value={b.id} className="text-xs">
+                                        <span className="inline-flex items-center gap-2">
+                                          {b.color && (
+                                            <span className="h-2 w-2 rounded-full" style={{ background: b.color }} />
+                                          )}
+                                          {b.name}
+                                        </span>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className="text-xs text-muted-foreground truncate">
+                                  {boards.find((b) => b.id === t.board_id)?.name ?? "—"}
+                                </span>
                               )}
                             </div>
 

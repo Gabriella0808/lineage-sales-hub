@@ -695,7 +695,7 @@ export default function TasksPage() {
       ) : (
         <Card className="overflow-hidden p-0">
           {/* Board column header (Monday-style) */}
-          <div className="hidden md:grid grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_150px_80px] items-center gap-0 border-b bg-muted/30 px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="hidden md:grid grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_180px_80px] items-center gap-0 border-b bg-muted/30 px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <div />
             <div className="px-3">Task</div>
             <div className="px-3">Owner</div>
@@ -747,7 +747,7 @@ export default function TasksPage() {
                           <li
                             key={t.id}
                             onClick={() => { setDetailTask(t); markRead(t.id); }}
-                            className="group/row grid grid-cols-[4px_minmax(0,1fr)] md:grid-cols-[4px_minmax(0,1fr)_180px_160px_120px_150px_80px] items-center gap-0 hover:bg-muted/40 transition-colors cursor-pointer"
+                            className="group/row grid grid-cols-[4px_minmax(0,1fr)] md:grid-cols-[4px_minmax(0,1fr)_180px_160px_120px_180px_80px] items-center gap-0 hover:bg-muted/40 transition-colors cursor-pointer"
                           >
                             {/* Subtle hover accent */}
                             <div className={`self-stretch ${col.accent} opacity-0 group-hover/row:opacity-100 transition-opacity`} />
@@ -892,7 +892,7 @@ export default function TasksPage() {
                                   value={t.board_id ?? "__none__"}
                                   onValueChange={(v) => updateBoard(t.id, v === "__none__" ? null : v)}
                                 >
-                                  <SelectTrigger className="h-7 px-2 text-xs w-full">
+                                  <SelectTrigger className="h-7 px-2 text-xs w-full min-w-0 overflow-hidden [&>span]:truncate [&>span]:block [&>span]:min-w-0 [&>span]:flex-1 [&>span]:text-left">
                                     <SelectValue placeholder="No board" />
                                   </SelectTrigger>
                                   <SelectContent>

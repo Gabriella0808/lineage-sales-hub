@@ -129,7 +129,7 @@ export default function InventoryDashboards({ items }: Props) {
     const m = new Map<string, number>();
     for (const it of items) {
       const k = it.brand || "—";
-      m.set(k, (m.get(k) ?? 0) + (it.unitCost ?? 0) * it.onHand);
+      m.set(k, (m.get(k) ?? 0) + (it.onHandValue ?? (it.unitCost ?? 0) * it.onHand));
     }
     return Array.from(m, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [items]);

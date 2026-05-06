@@ -1478,7 +1478,6 @@ export default function InventoryDashboards({ items }: Props) {
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
             <h3 className="text-base font-semibold">InvCut — Reorder Worksheet</h3>
             <span className="text-xs text-muted-foreground">
-              Mirrors the Acctivate InvCut sheet · Only the <strong>Order</strong> column is editable
             </span>
           </div>
           {reorderRows.length === 0 ? <EmptyState message="No items." /> : (

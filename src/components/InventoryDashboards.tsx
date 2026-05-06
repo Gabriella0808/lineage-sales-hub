@@ -68,7 +68,10 @@ function KPI({ label, value, hint, icon: Icon, accent, onClick, active }: {
       <button
         type="button"
         onClick={onClick}
-        className="text-left rounded-lg border border-border bg-card p-5 flex items-start justify-between transition-colors hover:border-primary/40 hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-ring"
+        className={cn(
+          "text-left rounded-lg border bg-card p-5 flex items-start justify-between transition-colors hover:border-primary/40 hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-ring",
+          active ? "border-primary ring-1 ring-primary/40" : "border-border",
+        )}
       >
         {inner}
       </button>

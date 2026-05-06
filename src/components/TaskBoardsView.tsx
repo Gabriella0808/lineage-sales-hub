@@ -803,13 +803,17 @@ export default function TaskBoardsView() {
                   <SelectValue placeholder="Select a person to add…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {assignableUsers
-                    .filter((u) => u.user_id !== user?.id && !members.some((m) => m.user_id === u.user_id))
-                    .map((u) => (
-                      <SelectItem key={u.user_id} value={u.user_id}>
-                        {u.full_name || u.email || u.user_id.slice(0, 8)}
-                      </SelectItem>
-                    ))}
+                  {Array.from(
+                    new Map(
+                      assignableUsers
+                        .filter((u) => u.user_id !== user?.id && !members.some((m) => m.user_id === u.user_id))
+                        .map((u) => [u.user_id, u])
+                    ).values()
+                  ).map((u) => (
+                    <SelectItem key={u.user_id} value={u.user_id}>
+                      {u.full_name || u.email || u.user_id.slice(0, 8)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Button onClick={addMember} disabled={!addUserId}>

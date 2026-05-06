@@ -243,10 +243,6 @@ export default function OrgChartPage() {
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-2">
-          <span className="inline-block w-8 h-px bg-border" />
-          Solid line — direct (primary) reporting
-        </span>
-        <span className="inline-flex items-center gap-2">
           <span
             className="inline-block w-8 h-0 border-t-2 border-dashed"
             style={{ borderColor: "hsl(var(--accent))" }}

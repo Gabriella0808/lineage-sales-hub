@@ -591,7 +591,69 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 type NodeRefMap = Map<string, HTMLElement>;
-const NodeRefCtx = ({} as any);
+
+function ChartViewport({ children }: { children: React.ReactNode }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+
+  const fit = () => {
+    const wrap = wrapRef.current;
+    const inner = innerRef.current;
+    if (!wrap || !inner) return;
+    // Reset to measure natural size
+    inner.style.transform = "scale(1)";
+    const naturalWidth = inner.scrollWidth;
+    const available = wrap.clientWidth;
+    if (naturalWidth <= available) {
+      setZoom(1);
+      inner.style.transform = "scale(1)";
+      return;
+    }
+    const next = Math.max(0.4, available / naturalWidth);
+    setZoom(next);
+    inner.style.transform = `scale(${next})`;
+  };
+
+  useLayoutEffect(() => {
+    fit();
+    const ro = new ResizeObserver(() => fit());
+    if (wrapRef.current) ro.observe(wrapRef.current);
+    if (innerRef.current) ro.observe(innerRef.current);
+    window.addEventListener("resize", fit);
+    return () => { ro.disconnect(); window.removeEventListener("resize", fit); };
+  }, []);
+
+  return (
+    <div className="relative">
+      <div className="absolute right-0 -top-9 flex items-center gap-2 text-xs text-muted-foreground">
+        <button
+          className="px-2 py-0.5 rounded border hover:bg-muted"
+          onClick={() => { const z = Math.max(0.4, zoom - 0.1); setZoom(z); if (innerRef.current) innerRef.current.style.transform = `scale(${z})`; }}
+        >−</button>
+        <span className="tabular-nums w-10 text-center">{Math.round(zoom * 100)}%</span>
+        <button
+          className="px-2 py-0.5 rounded border hover:bg-muted"
+          onClick={() => { const z = Math.min(1.5, zoom + 0.1); setZoom(z); if (innerRef.current) innerRef.current.style.transform = `scale(${z})`; }}
+        >+</button>
+        <button
+          className="px-2 py-0.5 rounded border hover:bg-muted"
+          onClick={fit}
+        >Fit</button>
+      </div>
+      <div ref={wrapRef} className="w-full overflow-auto pb-4">
+        <div
+          ref={innerRef}
+          style={{ transformOrigin: "top left", transform: `scale(${zoom})` }}
+          className="inline-block"
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function OrgChartCanvas({
   roots, byParent, onSelect, selectedId, positionsWithDotted, dotted,

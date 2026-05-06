@@ -1767,6 +1767,7 @@ export type Database = {
       is_admin: { Args: never; Returns: boolean }
       is_assigned_manager: { Args: { _manager_id: string }; Returns: boolean }
       is_manager_task_creator: { Args: { _task_id: string }; Returns: boolean }
+      is_task_board_creator: { Args: { _board_id: string }; Returns: boolean }
       is_trade_show_task: { Args: { _task_id: string }; Returns: boolean }
       move_to_dlq: {
         Args: {

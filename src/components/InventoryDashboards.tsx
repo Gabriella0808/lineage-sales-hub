@@ -88,54 +88,6 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-type DrilldownType = null | "value" | "openpo" | "prepaid" | "backlog" | "closeout" | "ratio" | "turnover" | "lost";
-
-function DrilldownDialog({
-  type, onClose, items, purchaseOrders, openOrders, summary,
-}: {
-  type: DrilldownType;
-  onClose: () => void;
-  items: InventoryItem[];
-  purchaseOrders: PurchaseOrder[];
-  openOrders: { id: string; order_number: string | null; sku: string; dealer_name: string | null; qty_open: number; unit_price: number; extended_value: number; order_date: string | null; promised_date: string | null }[];
-  summary: { value: number; units: number; openPoValue: number; prepaidValue: number; backlogValue: number; backlogUnits: number; closeoutValue: number; salesToInv: number; turnover: number; lostSales: number };
-}) {
-  const open = type !== null;
-
-  const titles: Record<Exclude<DrilldownType, null>, { title: string; desc: string }> = {
-    value: { title: "Total Inventory Value — by SKU", desc: "All on-hand inventory valued at unit cost." },
-    openpo: { title: "Total Open POs — not yet arrived", desc: "Purchase orders still in production or transit." },
-    prepaid: { title: "Prepaid Inventory — POs with deposits", desc: "Cash already paid out to factories." },
-    backlog: { title: "Backlog — Open Sales Orders", desc: "Customer orders placed but not yet shipped." },
-    closeout: { title: "Closeout Inventory — clearance & closeout", desc: "SKUs flagged closeout or clearance." },
-    ratio: { title: "Sales / Inv Ratio — slowest movers first", desc: "Monthly $ sales ÷ on-hand value, lowest carrying first." },
-    turnover: { title: "Annual Turnover — by SKU", desc: "Annualized turns based on monthly sales velocity." },
-    lost: { title: "Lost Sales — out-of-stock SKUs", desc: "Estimated monthly $ lost from stockouts." },
-  };
-
-  const cfg = type ? titles[type] : null;
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{cfg?.title}</DialogTitle>
-          {cfg?.desc && <DialogDescription>{cfg.desc}</DialogDescription>}
-        </DialogHeader>
-        <div className="overflow-auto -mx-6 px-6">
-          {type === "value" && <ReportSkuValue items={items} total={summary.value} />}
-          {type === "closeout" && <ReportSkuValue items={items.filter((it) => it.isCloseout || it.isClearance)} total={summary.closeoutValue} />}
-          {type === "openpo" && <ReportPOs pos={purchaseOrders.filter((p) => p.production_stage !== "closed" && p.production_stage !== "arrived")} />}
-          {type === "prepaid" && <ReportPOs pos={purchaseOrders.filter((p) => p.is_prepaid)} prepaidMode />}
-          {type === "backlog" && <ReportBacklog rows={openOrders} />}
-          {type === "ratio" && <ReportSalesRatio items={items} />}
-          {type === "turnover" && <ReportTurnover items={items} />}
-          {type === "lost" && <ReportLost items={items.filter((it) => it.status === "out-of-stock" && it.avgMonthlySales > 0)} />}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function ReportSkuValue({ items, total }: { items: InventoryItem[]; total: number }) {
   const rows = useMemo(() => items

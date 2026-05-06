@@ -1058,7 +1058,7 @@ export default function InventoryDashboards({ items }: Props) {
           <TabsContent value="compare" className="mt-4">
             <Card className="p-5">
               <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-                <h3 className="text-base font-semibold">Comparative Sales — Pick 2 Periods</h3>
+                <h3 className="text-base font-semibold">Comparative Sales</h3>
                 <div className="flex gap-2">
                   <select className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={periodA} onChange={(e) => setPeriodA(e.target.value)}>
                     <option value="">Period A</option>

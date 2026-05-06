@@ -466,17 +466,32 @@ function OrgNode({
           </button>
           {open && (
             <>
-              <div className="w-px h-4 bg-border" />
-              <div className="flex gap-6 items-start relative pt-2">
-                {children.length > 1 && (
-                  <div className="absolute top-0 left-[90px] right-[90px] h-px bg-border" />
-                )}
-                {children.map((c) => (
-                  <div key={c.id} className="flex flex-col items-center">
-                    <div className="w-px h-2 bg-border" />
-                    <OrgNode pos={c} byParent={byParent} onSelect={onSelect} selectedId={selectedId} depth={depth + 1} />
-                  </div>
-                ))}
+              <div className="w-px h-3 bg-border" />
+              <div className="flex items-start">
+                {children.map((c, i) => {
+                  const isFirst = i === 0;
+                  const isLast = i === children.length - 1;
+                  const isOnly = children.length === 1;
+                  return (
+                    <div key={c.id} className="flex flex-col items-center px-3">
+                      {!isOnly && (
+                        <div className="relative h-3 w-full">
+                          {/* horizontal connector */}
+                          <div
+                            className={cn(
+                              "absolute top-0 h-px bg-border",
+                              isFirst ? "left-1/2 right-0" : isLast ? "left-0 right-1/2" : "left-0 right-0",
+                            )}
+                          />
+                          {/* vertical drop to child */}
+                          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-3 bg-border" />
+                        </div>
+                      )}
+                      {isOnly && <div className="w-px h-3 bg-border" />}
+                      <OrgNode pos={c} byParent={byParent} onSelect={onSelect} selectedId={selectedId} depth={depth + 1} />
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}

@@ -117,7 +117,7 @@ export default function InventoryDashboards({ items }: Props) {
     for (const it of items) {
       const k = it.collection || "—";
       const e = m.get(k) ?? { value: 0, skus: 0, units: 0 };
-      e.value += (it.unitCost ?? 0) * it.onHand;
+      e.value += it.onHandValue ?? (it.unitCost ?? 0) * it.onHand;
       e.skus += 1;
       e.units += it.onHand;
       m.set(k, e);

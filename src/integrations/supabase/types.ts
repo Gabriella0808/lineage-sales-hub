@@ -933,6 +933,109 @@ export type Database = {
         }
         Relationships: []
       }
+      org_position_reviews: {
+        Row: {
+          areas_for_improvement: string | null
+          created_at: string
+          created_by: string | null
+          goals_next_year: string | null
+          id: string
+          notes: string | null
+          position_id: string
+          rating: number | null
+          review_year: number
+          reviewer_name: string | null
+          strengths: string | null
+          updated_at: string
+        }
+        Insert: {
+          areas_for_improvement?: string | null
+          created_at?: string
+          created_by?: string | null
+          goals_next_year?: string | null
+          id?: string
+          notes?: string | null
+          position_id: string
+          rating?: number | null
+          review_year: number
+          reviewer_name?: string | null
+          strengths?: string | null
+          updated_at?: string
+        }
+        Update: {
+          areas_for_improvement?: string | null
+          created_at?: string
+          created_by?: string | null
+          goals_next_year?: string | null
+          id?: string
+          notes?: string | null
+          position_id?: string
+          rating?: number | null
+          review_year?: number
+          reviewer_name?: string | null
+          strengths?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_position_reviews_position_id_fkey"
+            columns: ["position_id"]
+            isOneToOne: false
+            referencedRelation: "org_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_positions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          department: string | null
+          holder_name: string | null
+          id: string
+          job_description: string | null
+          main_objectives: string | null
+          parent_id: string | null
+          position_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          holder_name?: string | null
+          id?: string
+          job_description?: string | null
+          main_objectives?: string | null
+          parent_id?: string | null
+          position_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          holder_name?: string | null
+          id?: string
+          job_description?: string | null
+          main_objectives?: string | null
+          parent_id?: string | null
+          position_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_positions_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "org_positions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_collections: {
         Row: {
           created_at: string

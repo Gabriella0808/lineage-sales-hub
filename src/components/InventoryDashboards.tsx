@@ -1505,56 +1505,88 @@ export default function InventoryDashboards({ items }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {reorderRows.slice(0, 200).map((it) => {
-                    const order = orderQty[it.sku] ?? 0;
-                    // InvCut formulas
-                    const reorderMin = Math.round(it.salesPerWeek * 20.25); // =L*4.5*4.5
-                    const maxQty = it.reorderMax ?? Math.round(reorderMin * 1.5);
-                    const onSalesOrder = it.onSalesOrder ?? 0;
-                    const available = it.available ?? Math.max(0, it.onHand - onSalesOrder);
-                    const netAvail = available + (it.onPo ?? 0); // =SUM(H,I)
-                    const overUnder = netAvail - reorderMin;     // =N-M
-                    const weeks = it.salesPerWeek > 0
-                      ? (netAvail + order) / it.salesPerWeek     // =(N+R)/L
-                      : null;
-                    const cubesPer = it.cubes ?? 0;
-                    const totalCubes = order * cubesPer;
-                    const weeksBelowLead = weeks != null && weeks < 32;
-                    return (
-                      <tr key={it.sku} className="hover:bg-muted/30">
-                        <td className="px-2 py-1 font-mono border border-border cursor-pointer" onClick={() => setDrawerSku(it.sku)}>{it.sku}</td>
-                        <td className="px-2 py-1 max-w-[260px] truncate border border-border" title={it.product}>{it.product}</td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{reorderMin}</td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{maxQty}</td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{it.onHand}</td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{onSalesOrder}</td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{available}</td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{it.onPo ?? 0}</td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{it.salesPerWeek.toFixed(1)}</td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{reorderMin}</td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{netAvail}</td>
-                        <td className={cn("px-2 py-1 text-right tabular-nums border border-border", overUnder < 0 ? "text-destructive" : "")}>
-                          {overUnder < 0 ? `(${Math.abs(Math.round(overUnder))})` : Math.round(overUnder)}
-                        </td>
-                        <td className={cn("px-2 py-1 text-right tabular-nums border border-border", weeksBelowLead && "bg-destructive/10 text-destructive font-semibold")}>
-                          {weeks == null ? "—" : weeks.toFixed(1)}
-                        </td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border bg-accent/10">
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            className="h-6 w-20 rounded-sm border border-input bg-background px-1 text-right tabular-nums"
-                            value={order || ""}
-                            placeholder="0"
-                            onChange={(e) => setOrder(it.sku, e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
-                          />
-                        </td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{cubesPer ? cubesPer.toFixed(2) : "—"}</td>
-                        <td className="px-2 py-1 text-right tabular-nums border border-border">{totalCubes ? totalCubes.toFixed(2) : "—"}</td>
-                      </tr>
-                    );
-                  })}
+                  {(() => {
+                    // Group by vendor/factory like the Excel sheet (vendor header + line rows + subtotal)
+                    const groups = new Map<string, typeof reorderRows>();
+                    for (const it of reorderRows.slice(0, 400)) {
+                      const v = (it.factory || it.supplier || "—").toUpperCase();
+                      if (!groups.has(v)) groups.set(v, [] as any);
+                      (groups.get(v) as any).push(it);
+                    }
+                    const out: JSX.Element[] = [];
+                    for (const [vendor, rows] of groups) {
+                      // Vendor header (mirrors Col A in InvCut)
+                      out.push(
+                        <tr key={`hdr-${vendor}`} className="bg-muted/40">
+                          <td colSpan={16} className="px-2 py-1.5 font-semibold border border-border">{vendor}</td>
+                        </tr>
+                      );
+                      let groupCubes = 0;
+                      for (const it of rows) {
+                        const order = orderQty[it.sku] ?? 0;
+                        const reorderMin = Math.round(it.salesPerWeek * 20.25); // =L*4.5*4.5
+                        const maxQty = it.reorderMax ?? Math.round(reorderMin * 1.5);
+                        const onSalesOrder = it.onSalesOrder ?? 0;
+                        const available = it.available ?? Math.max(0, it.onHand - onSalesOrder);
+                        const netAvail = available + (it.onPo ?? 0); // =SUM(H,I)
+                        const overUnder = netAvail - reorderMin;     // =N-M
+                        const weeks = it.salesPerWeek > 0
+                          ? (netAvail + order) / it.salesPerWeek     // =(N+R)/L
+                          : null;
+                        const cubesPer = it.cubes ?? 0;
+                        const totalCubes = order * cubesPer;          // =R*S
+                        groupCubes += totalCubes;
+                        const weeksBelowLead = weeks != null && weeks < 32;
+                        out.push(
+                          <tr key={it.sku} className="hover:bg-muted/30">
+                            <td className="px-2 py-1 font-mono border border-border cursor-pointer" onClick={() => setDrawerSku(it.sku)}>{it.sku}</td>
+                            <td className="px-2 py-1 max-w-[260px] truncate border border-border" title={it.product}>{it.product}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{reorderMin}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{maxQty}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{it.onHand}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{onSalesOrder}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{available}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{it.onPo ?? 0}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{it.salesPerWeek.toFixed(1)}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{reorderMin}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{netAvail}</td>
+                            <td className={cn("px-2 py-1 text-right tabular-nums border border-border", overUnder < 0 ? "text-destructive" : "")}>
+                              {overUnder < 0 ? `(${Math.abs(Math.round(overUnder))})` : Math.round(overUnder)}
+                            </td>
+                            <td className={cn("px-2 py-1 text-right tabular-nums border border-border", weeksBelowLead && "bg-destructive/10 text-destructive font-semibold")}>
+                              {weeks == null ? "—" : weeks.toFixed(1)}
+                            </td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border bg-accent/10">
+                              <input
+                                type="number"
+                                min={0}
+                                step={1}
+                                className="h-6 w-20 rounded-sm border border-input bg-background px-1 text-right tabular-nums"
+                                value={order || ""}
+                                placeholder="0"
+                                onChange={(e) => setOrder(it.sku, e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
+                              />
+                            </td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{cubesPer ? cubesPer.toFixed(2) : "—"}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{totalCubes ? totalCubes.toFixed(2) : "—"}</td>
+                          </tr>
+                        );
+                      }
+                      // Subtotal row: =SUM(T:T) and =U/2350 (40' HC container)
+                      const containers = groupCubes / 2350;
+                      out.push(
+                        <tr key={`sub-${vendor}`} className="bg-muted/30 font-semibold">
+                          <td colSpan={14} className="px-2 py-1.5 text-right border border-border">
+                            {vendor} — Total Cubes / Containers (40&apos; HC = 2,350 cu ft):
+                          </td>
+                          <td className="px-2 py-1.5 text-right tabular-nums border border-border" colSpan={2}>
+                            {groupCubes.toFixed(2)} cu ft · {containers.toFixed(2)} cont.
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return out;
+                  })()}
                 </tbody>
               </table>
             </div>

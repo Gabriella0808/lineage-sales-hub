@@ -1628,7 +1628,7 @@ export default function InventoryDashboards({ items }: Props) {
         </div>
         {closeoutByCollection.length > 0 && (
           <Card className="p-5">
-            <h3 className="text-base font-semibold mb-3">Closeout Value by Collection</h3>
+            <h3 className="text-base font-semibold mb-3">Closeout Value</h3>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={closeoutByCollection} layout="vertical" margin={{ left: 4, right: 12 }}>

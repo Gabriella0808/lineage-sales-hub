@@ -887,7 +887,7 @@ export default function TasksPage() {
 
                             {/* Board (md+) */}
                             <div className="hidden md:flex items-center px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                              {isMine ? (
+                              {(isMine || assignedToMe) ? (
                                 <Select
                                   value={t.board_id ?? "__none__"}
                                   onValueChange={(v) => updateBoard(t.id, v === "__none__" ? null : v)}

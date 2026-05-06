@@ -240,16 +240,6 @@ export default function OrgChartPage() {
         )}
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-2">
-          <span
-            className="inline-block w-8 h-0 border-t-2 border-dashed"
-            style={{ borderColor: "hsl(var(--accent))" }}
-          />
-          Dotted line — secondary / indirect reporting
-        </span>
-      </div>
 
       {loading ? (
         <Card><CardContent className="p-8 text-sm text-muted-foreground">Loading…</CardContent></Card>

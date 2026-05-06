@@ -204,15 +204,16 @@ export default function InventoryPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-        <StatTile label="Total SKUs" value={counts.total} icon={Package} />
-        <StatTile label="Critical Items" value={counts.critical} icon={AlertTriangle} accent="text-destructive" hint="Needs attention" />
-        <StatTile label="Out of Stock" value={counts.outOfStock} icon={XCircle} accent="text-destructive" />
-        <StatTile label="Reorder Soon" value={counts.reorder} icon={RefreshCw} accent="text-warning-foreground" />
-        <StatTile label="Fast Moving" value={counts.fast} icon={Zap} accent="text-success" />
-      </div>
-
-      <InventoryDashboards items={items} />
+      <InventoryDashboards
+        items={items}
+        statusFilter={filter}
+        onStatusFilterChange={(s) => {
+          setFilter(s);
+          requestAnimationFrame(() => {
+            document.getElementById("inventory-sku-table")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+        }}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="p-5">

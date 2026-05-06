@@ -44,12 +44,13 @@ const STAGE_COLOR: Record<string, string> = {
   closed: "bg-muted text-muted-foreground border-border",
 };
 
-function KPI({ label, value, hint, icon: Icon, accent }: {
+function KPI({ label, value, hint, icon: Icon, accent, onClick }: {
   label: string; value: string | number; hint?: string;
   icon: React.ComponentType<{ className?: string }>; accent?: string;
+  onClick?: () => void;
 }) {
-  return (
-    <Card className="p-5 flex items-start justify-between">
+  const inner = (
+    <>
       <div>
         <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
         <div className="text-2xl font-semibold mt-2 tabular-nums">{value}</div>
@@ -58,8 +59,20 @@ function KPI({ label, value, hint, icon: Icon, accent }: {
       <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
         <Icon className="h-4 w-4" />
       </div>
-    </Card>
+    </>
   );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="text-left rounded-lg border border-border bg-card p-5 flex items-start justify-between transition-colors hover:border-primary/40 hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        {inner}
+      </button>
+    );
+  }
+  return <Card className="p-5 flex items-start justify-between">{inner}</Card>;
 }
 
 function EmptyState({ message }: { message: string }) {

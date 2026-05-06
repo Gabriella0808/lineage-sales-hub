@@ -289,6 +289,11 @@ export default function InventoryDashboards({ items }: Props) {
   const setOv = (sku: string, patch: Override) =>
     setOverrides((prev) => ({ ...prev, [sku]: { ...prev[sku], ...patch } }));
 
+  // User-entered Order quantities (the ONLY editable column in the InvCut-style sheet)
+  const [orderQty, setOrderQty] = useState<Record<string, number>>({});
+  const setOrder = (sku: string, qty: number) =>
+    setOrderQty((prev) => ({ ...prev, [sku]: qty }));
+
   const reorderRows = useMemo(() => {
     return items.map((it) => {
       const ov = overrides[it.sku] ?? {};
@@ -1471,100 +1476,85 @@ export default function InventoryDashboards({ items }: Props) {
 
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-            <h3 className="text-base font-semibold">Suggested Order Lines</h3>
+            <h3 className="text-base font-semibold">InvCut — Reorder Worksheet</h3>
             <span className="text-xs text-muted-foreground">
-              Sales/Wk basis: L12M / L6M / L3M or manual override · New Min = Sales/Wk × 4.35 × Lead (mo)
+              Mirrors the Acctivate InvCut sheet · Only the <strong>Order</strong> column is editable
             </span>
           </div>
           {reorderRows.length === 0 ? <EmptyState message="No items." /> : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+              <table className="w-full text-xs border-collapse">
+                <thead className="bg-muted/60 uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th className="text-left px-2 py-2">SKU</th>
-                    <th className="text-left px-2 py-2">Item</th>
-                    <th className="text-left px-2 py-2">Brand</th>
-                    <th className="text-center px-2 py-2">Clr</th>
-                    <th className="text-right px-2 py-2">NC</th>
-                    <th className="text-right px-2 py-2">VN</th>
-                    <th className="text-right px-2 py-2">On PO</th>
-                    <th className="text-right px-2 py-2">In Transit</th>
-                    <th className="text-right px-2 py-2">L12M /wk</th>
-                    <th className="text-right px-2 py-2">L6M /wk</th>
-                    <th className="text-right px-2 py-2">L3M /wk</th>
-                    <th className="text-left px-2 py-2">Active</th>
-                    <th className="text-right px-2 py-2">Override /wk</th>
-                    <th className="text-right px-2 py-2">Lead (mo)</th>
-                    <th className="text-right px-2 py-2">Sales/Wk</th>
-                    <th className="text-right px-2 py-2">Mo Equiv</th>
-                    <th className="text-right px-2 py-2">New Min</th>
-                    <th className="text-right px-2 py-2">Net Avail</th>
-                    <th className="text-right px-2 py-2">Over/Under</th>
-                    <th className="text-right px-2 py-2">MOQ</th>
-                    <th className="text-right px-2 py-2">Order</th>
-                    <th className="text-right px-2 py-2">Wks</th>
+                    <th className="text-left px-2 py-2 border border-border">SKU</th>
+                    <th className="text-left px-2 py-2 border border-border">Item Description</th>
+                    <th className="text-right px-2 py-2 border border-border">Reorder Pt (Min)</th>
+                    <th className="text-right px-2 py-2 border border-border">Max</th>
+                    <th className="text-right px-2 py-2 border border-border">On Hand</th>
+                    <th className="text-right px-2 py-2 border border-border">On Sales Order</th>
+                    <th className="text-right px-2 py-2 border border-border">Available</th>
+                    <th className="text-right px-2 py-2 border border-border">On PO</th>
+                    <th className="text-right px-2 py-2 border border-border">Sales/Week</th>
+                    <th className="text-right px-2 py-2 border border-border">New Min</th>
+                    <th className="text-right px-2 py-2 border border-border">Net Avail</th>
+                    <th className="text-right px-2 py-2 border border-border">Over/Under</th>
+                    <th className="text-right px-2 py-2 border border-border">Weeks</th>
+                    <th className="text-right px-2 py-2 border border-border bg-accent/20">Order</th>
+                    <th className="text-right px-2 py-2 border border-border">Cubes</th>
+                    <th className="text-right px-2 py-2 border border-border">Total Cubes</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {reorderRows.slice(0, 60).map((it) => (
-                    <tr key={it.sku} className="border-t border-border hover:bg-muted/30">
-                      <td className="px-2 py-1.5 font-mono cursor-pointer" onClick={() => setDrawerSku(it.sku)}>{it.sku}</td>
-                      <td className="px-2 py-1.5 max-w-[200px] truncate" title={it.product}>{it.product}</td>
-                      <td className="px-2 py-1.5 text-xs text-muted-foreground">{it.brand ?? "—"}</td>
-                      <td className="px-2 py-1.5 text-center">{it.isClearance ? <Badge variant="secondary" className="text-[10px]">Yes</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{it.onHandNc ?? 0}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{it.onHandVn ?? 0}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{it.onPo}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{it.inTransit}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{it.wkL12.toFixed(1)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{it.wkL6 != null ? it.wkL6.toFixed(1) : "—"}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{it.wkL3 != null ? it.wkL3.toFixed(1) : "—"}</td>
-                      <td className="px-2 py-1.5">
-                        <select
-                          className="h-7 rounded-md border border-input bg-background px-1 text-xs"
-                          value={it.basis}
-                          onChange={(e) => setOv(it.sku, { basis: e.target.value as Basis })}
-                        >
-                          <option value="L12M">L12M</option>
-                          <option value="L6M">L6M</option>
-                          <option value="L3M">L3M</option>
-                          <option value="OVERRIDE">Override</option>
-                        </select>
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">
-                        <input
-                          type="number"
-                          step="0.1"
-                          className="h-7 w-16 rounded-md border border-input bg-background px-1 text-right text-xs"
-                          placeholder="—"
-                          value={it.overrideWk ?? ""}
-                          onChange={(e) => setOv(it.sku, {
-                            perWeek: e.target.value === "" ? undefined : Number(e.target.value),
-                            basis: e.target.value === "" ? it.basis : "OVERRIDE",
-                          })}
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">
-                        <input
-                          type="number"
-                          step="0.1"
-                          className="h-7 w-14 rounded-md border border-input bg-background px-1 text-right text-xs"
-                          value={it.leadMonths}
-                          onChange={(e) => setOv(it.sku, { leadMonths: Number(e.target.value) })}
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{it.salesPerWeek.toFixed(1)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{(it.salesPerWeek * 4.35).toFixed(1)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{Math.round(it.newMin)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{it.netAvail}</td>
-                      <td className={cn("px-2 py-1.5 text-right tabular-nums font-semibold", it.overUnder < 0 ? "text-destructive" : "text-success")}>
-                        {Math.round(it.overUnder)}
-                      </td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{it.moq ?? "—"}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtNum(it.suggestedOrder)}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{it.projectedWeeks != null ? it.projectedWeeks.toFixed(1) : "—"}</td>
-                    </tr>
-                  ))}
+                  {reorderRows.slice(0, 200).map((it) => {
+                    const order = orderQty[it.sku] ?? 0;
+                    // InvCut formulas
+                    const reorderMin = Math.round(it.salesPerWeek * 20.25); // =L*4.5*4.5
+                    const maxQty = it.reorderMax ?? Math.round(reorderMin * 1.5);
+                    const onSalesOrder = it.onSalesOrder ?? 0;
+                    const available = it.available ?? Math.max(0, it.onHand - onSalesOrder);
+                    const netAvail = available + (it.onPo ?? 0); // =SUM(H,I)
+                    const overUnder = netAvail - reorderMin;     // =N-M
+                    const weeks = it.salesPerWeek > 0
+                      ? (netAvail + order) / it.salesPerWeek     // =(N+R)/L
+                      : null;
+                    const cubesPer = it.cubes ?? 0;
+                    const totalCubes = order * cubesPer;
+                    const weeksBelowLead = weeks != null && weeks < 32;
+                    return (
+                      <tr key={it.sku} className="hover:bg-muted/30">
+                        <td className="px-2 py-1 font-mono border border-border cursor-pointer" onClick={() => setDrawerSku(it.sku)}>{it.sku}</td>
+                        <td className="px-2 py-1 max-w-[260px] truncate border border-border" title={it.product}>{it.product}</td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{reorderMin}</td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{maxQty}</td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{it.onHand}</td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{onSalesOrder}</td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{available}</td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{it.onPo ?? 0}</td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{it.salesPerWeek.toFixed(1)}</td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{reorderMin}</td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{netAvail}</td>
+                        <td className={cn("px-2 py-1 text-right tabular-nums border border-border", overUnder < 0 ? "text-destructive" : "")}>
+                          {overUnder < 0 ? `(${Math.abs(Math.round(overUnder))})` : Math.round(overUnder)}
+                        </td>
+                        <td className={cn("px-2 py-1 text-right tabular-nums border border-border", weeksBelowLead && "bg-destructive/10 text-destructive font-semibold")}>
+                          {weeks == null ? "—" : weeks.toFixed(1)}
+                        </td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border bg-accent/10">
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            className="h-6 w-20 rounded-sm border border-input bg-background px-1 text-right tabular-nums"
+                            value={order || ""}
+                            placeholder="0"
+                            onChange={(e) => setOrder(it.sku, e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
+                          />
+                        </td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{cubesPer ? cubesPer.toFixed(2) : "—"}</td>
+                        <td className="px-2 py-1 text-right tabular-nums border border-border">{totalCubes ? totalCubes.toFixed(2) : "—"}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -31,6 +31,8 @@ import {
   ChevronRight,
   Calendar,
   GripVertical,
+  UserPlus,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 

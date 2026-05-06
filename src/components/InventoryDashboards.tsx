@@ -1023,10 +1023,7 @@ export default function InventoryDashboards({ items }: Props) {
                   </thead>
                   <tbody>
                     {analysisRows.filter(matchesSearch).slice(0, 100).map((it) => {
-                      const fc = it.forecastMonthly ?? 0;
-                      const trend = fc > 0 ? (it.avgMonthlySales - fc) / fc : null;
                       const invToSales = it.avgMonthlySales > 0 ? it.onHand / it.avgMonthlySales : null;
-                      const turn = it.value > 0 ? (it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0) * 12) / it.value : 0;
                       return (
                         <tr key={it.sku} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => setDrawerSku(it.sku)}>
                           <td className="px-3 py-2 font-mono">{it.sku}</td>
@@ -1040,10 +1037,6 @@ export default function InventoryDashboards({ items }: Props) {
                           <td className="px-3 py-2 text-right tabular-nums">{it.pctTotalSales.toFixed(1)}%</td>
                           <td className="px-3 py-2 text-right tabular-nums">{it.avgMonthlySales}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{invToSales == null ? "—" : invToSales.toFixed(1)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{turn.toFixed(1)}×</td>
-                          <td className={cn("px-3 py-2 text-right tabular-nums", trend == null ? "text-muted-foreground" : trend > 0 ? "text-success" : trend < 0 ? "text-destructive" : "")}>
-                            {trend == null ? "—" : `${trend > 0 ? "▲ +" : trend < 0 ? "▼ " : ""}${(trend * 100).toFixed(0)}%`}
-                          </td>
                           <td className="px-3 py-2 text-center">{it.isClearance ? <Badge variant="secondary" className="text-[10px]">Yes</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
                         </tr>
                       );

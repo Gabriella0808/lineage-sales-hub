@@ -255,12 +255,14 @@ export default function TasksPage() {
   const load = async () => {
     if (!user) return;
     setLoading(true);
-    const [tasksRes, assigneesRes, profilesRes, taRes] = await Promise.all([
+    const [tasksRes, assigneesRes, profilesRes, taRes, boardsRes] = await Promise.all([
       supabase.from("manager_tasks").select("*").order("created_at", { ascending: false }),
       supabase.rpc("assignable_users"),
       supabase.from("profiles").select("user_id, full_name"),
       supabase.from("manager_task_assignees" as any).select("task_id, user_id"),
+      supabase.from("task_boards" as any).select("id, name, color").order("name"),
     ]);
+    if (!boardsRes.error) setBoards((boardsRes.data ?? []) as Board[]);
     if (tasksRes.error) {
       toast({ title: "Failed to load tasks", description: tasksRes.error.message, variant: "destructive" });
     } else {

@@ -379,13 +379,19 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
 
   const monthly = useMemo(() => {
     const filtered = monthFilter === "All" ? scaledMonthly : scaledMonthly.filter((r) => r.m === monthFilter);
-    if (monthlyLineFilter === "all") return filtered;
+    if (monthlyLineFilter.length === 0) return filtered;
     return filtered.map((r) => {
       const lineRow = scaledLine.find((l) => l.m === r.m);
       if (!lineRow) return r;
       const totalP = lineRow.luxP + lineRow.swP + lineRow.flP;
-      const lineP = monthlyLineFilter === "lux" ? lineRow.luxP : monthlyLineFilter === "sw" ? lineRow.swP : lineRow.flP;
-      const lineA = monthlyLineFilter === "lux" ? lineRow.luxA : monthlyLineFilter === "sw" ? lineRow.swA : lineRow.flA;
+      const lineP =
+        (monthlyLineFilter.includes("lux") ? lineRow.luxP : 0) +
+        (monthlyLineFilter.includes("sw") ? lineRow.swP : 0) +
+        (monthlyLineFilter.includes("fl") ? lineRow.flP : 0);
+      const lineA =
+        (monthlyLineFilter.includes("lux") ? lineRow.luxA : 0) +
+        (monthlyLineFilter.includes("sw") ? lineRow.swA : 0) +
+        (monthlyLineFilter.includes("fl") ? lineRow.flA : 0);
       const share = totalP > 0 ? lineP / totalP : 0;
       return {
         ...r,

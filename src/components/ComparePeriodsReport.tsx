@@ -176,7 +176,7 @@ function EditableNote({ value, onSave }: { value: string; onSave: (v: string) =>
 export default function ComparePeriodsReport(_props: Props) {
   const { getNote, saveNote } = useComparePeriodsNotes();
   // -------------------- State --------------------
-  const months = SEED.months;
+  const months = ROLLING.labels;
   const monthCount = months.length;
 
   const [preset, setPreset] = useState<Preset>("L3M_VS_PRIOR");

@@ -216,18 +216,18 @@ export default function ComparePeriodsReport(_props: Props) {
   // -------------------- Filter accounts --------------------
   const allSources = useMemo(() => {
     const set = new Set<string>();
-    for (const a of SEED.accounts) set.add(a.account);
+    for (const a of REMAPPED_ACCOUNTS) set.add(a.account);
     return Array.from(set);
   }, []);
   const allBrands = useMemo(() => {
     const set = new Set<string>();
-    for (const a of SEED.accounts) set.add(classifyAccount(a.account).brand);
+    for (const a of REMAPPED_ACCOUNTS) set.add(classifyAccount(a.account).brand);
     return Array.from(set).sort();
   }, []);
 
   const filteredAccounts = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return SEED.accounts.map((acc) => {
+    return REMAPPED_ACCOUNTS.map((acc) => {
       const meta = classifyAccount(acc.account);
       if (!includeDiscounts && meta.type === "discount") return null;
       if (!includeQc && meta.type === "qc") return null;

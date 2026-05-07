@@ -1,7 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { formatCurrency, useSalesReps } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Pencil } from "lucide-react";
+import { Pencil, ChevronsUpDown, Check, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { REP_MONTHLY, type RepMonthRow } from "@/data/repMonthly";
 import { useDealerSalesAggregates } from "@/hooks/useDealerSalesAggregates";
 
@@ -248,17 +251,18 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     return reps;
   }, [allReps, allowedRepNames, territoryFilter]);
 
-  const [repFilter, setRepFilter] = useState<string>(lockedRepName ?? "all");
+  const [repFilter, setRepFilter] = useState<string[]>(lockedRepName ? [lockedRepName] : []);
+  const [repPickerOpen, setRepPickerOpen] = useState(false);
 
-  // Reset rep filter when manager scope changes and current rep isn't in scope.
+  // Reset rep filter when manager scope changes and current selections aren't in scope.
   useEffect(() => {
     if (lockedRepName) {
-      if (repFilter !== lockedRepName) setRepFilter(lockedRepName);
+      if (repFilter.length !== 1 || repFilter[0] !== lockedRepName) setRepFilter([lockedRepName]);
       return;
     }
-    if (repFilter !== "all" && !visibleReps.some((r) => r.name === repFilter)) {
-      setRepFilter("all");
-    }
+    const allowed = new Set(visibleReps.map((r) => r.name));
+    const next = repFilter.filter((n) => allowed.has(n));
+    if (next.length !== repFilter.length) setRepFilter(next);
   }, [visibleReps, repFilter, lockedRepName]);
 
   const [monthFilter, setMonthFilter] = useState<MonthFilter>("All");
@@ -316,19 +320,25 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   // from the spreadsheet (REP_MONTHLY). Otherwise use the team Summary totals
   // (or the sum of the manager's reps when scoped to a manager).
   const totalRepBook = REP_BOOK.reduce((s, r) => s + r.book, 0);
-  const selectedRep = repFilter === "all" ? null : REP_BOOK.find((r) => r.name === repFilter) ?? null;
+  const selectedRepObjs = useMemo(
+    () => repFilter.map((n) => REP_BOOK.find((r) => r.name === n)).filter(Boolean) as typeof REP_BOOK,
+    [repFilter],
+  );
+  const selectedRep = selectedRepObjs.length === 1 ? selectedRepObjs[0] : null;
+  const hasRepSelection = repFilter.length > 0;
   const managerRepBook = useMemo(
     () => visibleReps.reduce((s, r) => s + r.book, 0),
     [visibleReps],
   );
-  const repShare = selectedRep
-    ? (totalRepBook > 0 ? selectedRep.book / totalRepBook : 0)
+  const selectedRepBook = selectedRepObjs.reduce((s, r) => s + r.book, 0);
+  const repShare = hasRepSelection
+    ? (totalRepBook > 0 ? selectedRepBook / totalRepBook : 0)
     : (allowedRepNames === null ? 1 : (totalRepBook > 0 ? managerRepBook / totalRepBook : 0));
 
   // Edits to per-rep projections aren't persisted back to the team total (real per-rep
   // numbers come from the spreadsheet). For "All" view we still write through to MONTHLY.
   const saveMonthly = (month: string, key: "b26p" | "i26p", displayedVal: number) => {
-    if (selectedRep) return; // editing disabled when viewing a single rep
+    if (hasRepSelection) return; // editing disabled when viewing specific rep(s)
     updateMonthly(month, key, displayedVal);
   };
   const saveLine = (month: string, key: "luxP" | "swP" | "flP", displayedVal: number) => {
@@ -337,11 +347,10 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   };
 
   const scaledMonthly = useMemo(() => {
-    if (selectedRep) {
-      const keys = REP_NAME_TO_MONTHLY_KEYS[selectedRep.name];
-      const rows = keys ? sumRepMonthly(keys) : null;
+    if (hasRepSelection) {
+      const allKeys = repFilter.flatMap((n) => REP_NAME_TO_MONTHLY_KEYS[n] ?? []);
+      const rows = allKeys.length > 0 ? sumRepMonthly(allKeys) : null;
       if (rows) return rows;
-      // No spreadsheet data for this rep — show zeros (don't fall back to team totals)
       return baseMonthly.map((r) => ({ m: r.m, b25: 0, b26p: 0, ytdB: 0, i25: 0, i26p: 0, ytdI: 0 }));
     }
     // Manager-scoped "All" view: sum the per-rep monthly figures for that manager's reps.
@@ -357,7 +366,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       }));
     }
     return baseMonthly;
-  }, [selectedRep, baseMonthly, allowedRepNames, repShare]);
+  }, [hasRepSelection, repFilter, baseMonthly, allowedRepNames, repShare]);
 
   const scaledLine = useMemo(() => baseLine.map((r) => ({
     ...r,
@@ -427,21 +436,55 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       <div className="glass-card p-4 space-y-4">
         <div className="flex flex-wrap items-center gap-3 pb-3 border-b">
           <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Filter Report By Rep</span>
-          <select
-            value={repFilter}
-            onChange={(e) => setRepFilter(e.target.value)}
-            disabled={!!lockedRepName}
-            className="h-9 px-3 rounded-md border bg-background text-sm font-medium min-w-[200px] disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {!lockedRepName && (
-              <option value="all">
-                {allowedRepNames === null ? "All Reps (Combined)" : `All ${managerName}'s Reps (Combined)`}
-              </option>
-            )}
-            {[...visibleReps].sort((a, b) => a.name.localeCompare(b.name)).map((r) => (
-              <option key={r.name} value={r.name}>{r.name}</option>
-            ))}
-          </select>
+          <Popover open={repPickerOpen} onOpenChange={(o) => !lockedRepName && setRepPickerOpen(o)}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                disabled={!!lockedRepName}
+                className="h-9 px-3 rounded-md border bg-background text-sm font-medium min-w-[220px] disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center justify-between gap-2"
+              >
+                <span className={cn(repFilter.length === 0 && "text-muted-foreground")}>
+                  {repFilter.length === 0
+                    ? (allowedRepNames === null ? "All Reps (Combined)" : `All ${managerName}'s Reps (Combined)`)
+                    : repFilter.length === 1
+                      ? repFilter[0]
+                      : `${repFilter.length} reps selected`}
+                </span>
+                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-[260px] p-0 overflow-hidden">
+              <div className="max-h-72 overflow-y-auto py-1">
+                {[...visibleReps].sort((a, b) => a.name.localeCompare(b.name)).map((r) => {
+                  const checked = repFilter.includes(r.name);
+                  return (
+                    <button
+                      type="button"
+                      key={r.name}
+                      onClick={() =>
+                        setRepFilter((prev) =>
+                          prev.includes(r.name) ? prev.filter((n) => n !== r.name) : [...prev, r.name],
+                        )
+                      }
+                      className="w-full flex items-center justify-between px-3 py-1.5 text-sm hover:bg-accent text-left"
+                    >
+                      <span>{r.name}</span>
+                      <Check className={cn("h-4 w-4", checked ? "opacity-100" : "opacity-0")} />
+                    </button>
+                  );
+                })}
+              </div>
+              {repFilter.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setRepFilter([])}
+                  className="w-full px-3 py-2 text-xs text-primary hover:bg-accent text-left border-t"
+                >
+                  Clear selection
+                </button>
+              )}
+            </PopoverContent>
+          </Popover>
           <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold ml-2">Territory</span>
           <select
             value={territoryFilter}
@@ -467,20 +510,32 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
           {!lockedRepName && allowedRepNames !== null && visibleReps.length === 0 && (
             <span className="text-xs text-muted-foreground">No reps mapped for this manager yet.</span>
           )}
-          {selectedRep && (
-            <>
-              <span className="text-xs text-muted-foreground">
-                Showing <span className="font-semibold text-foreground">{selectedRep.name}</span>
-              </span>
+          {hasRepSelection && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {repFilter.map((name) => (
+                <Badge key={name} variant="secondary" className="gap-1 pr-1">
+                  {name}
+                  {!lockedRepName && (
+                    <button
+                      type="button"
+                      onClick={() => setRepFilter((prev) => prev.filter((n) => n !== name))}
+                      className="hover:bg-muted-foreground/20 rounded-sm"
+                      aria-label={`Remove ${name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </Badge>
+              ))}
               {!lockedRepName && (
                 <button
-                  onClick={() => setRepFilter("all")}
-                  className="ml-auto text-xs text-primary hover:underline"
+                  onClick={() => setRepFilter([])}
+                  className="ml-1 text-xs text-primary hover:underline"
                 >
-                  Clear filter
+                  Clear
                 </button>
               )}
-            </>
+            </div>
           )}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -510,7 +565,9 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
             <h3 className="text-base font-semibold">Bookings — Actual vs Goal</h3>
             <p className="text-xs text-muted-foreground">
               Monthly 2026 projection (goal) vs YTD actual
-              {selectedRep ? <> · <span className="font-medium text-foreground">{selectedRep.name}</span></> : <> · all reps</>}
+              {hasRepSelection
+                ? <> · <span className="font-medium text-foreground">{repFilter.length === 1 ? repFilter[0] : `${repFilter.length} reps`}</span></>
+                : <> · all reps</>}
             </p>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -553,8 +610,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
         <h3 className="text-base font-semibold mb-1">Monthly Results</h3>
         <p className="text-xs text-muted-foreground mb-4">
           Bookings & Invoiced — 2025 actual vs 2026 projection vs YTD
-          {selectedRep
-            ? <span className="ml-1">· live data from <span className="font-medium text-foreground">{selectedRep.name}</span> tab</span>
+          {hasRepSelection
+            ? <span className="ml-1">· live data from <span className="font-medium text-foreground">{repFilter.length === 1 ? `${repFilter[0]} tab` : `${repFilter.length} reps`}</span></span>
             : <> · <span className="text-primary">Click any 2026 P value to edit</span></>}
         </p>
 
@@ -596,7 +653,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                     {showB && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdB)}</td>
                       <td className="p-2 text-right">
-                        {selectedRep
+                        {hasRepSelection
                           ? formatCurrency(r.b26p)
                           : <EditableCurrency value={r.b26p} onSave={(v) => saveMonthly(r.m, "b26p", v)} />}
                       </td>
@@ -608,7 +665,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                     {showI && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
                       <td className="p-2 text-right">
-                        {selectedRep
+                        {hasRepSelection
                           ? formatCurrency(r.i26p)
                           : <EditableCurrency value={r.i26p} onSave={(v) => saveMonthly(r.m, "i26p", v)} />}
                       </td>

@@ -600,9 +600,12 @@ export default function ComparePeriodsReport(_props: Props) {
                           <td className={cn("px-3 py-2 text-right tabular-nums font-semibold", diff > 0 ? "text-success" : diff < 0 ? "text-destructive" : "")}>{diff > 0 ? "+" : ""}{fmtMoney(diff)}</td>
                           <td className={cn("px-3 py-2 text-right tabular-nums", pct && pct > 0 ? "text-success" : pct && pct < 0 ? "text-destructive" : "text-muted-foreground")}>{fmtPct(pct)}</td>
                           <td className={cn("px-3 py-2 text-right tabular-nums", r.growth && r.growth > 0 ? "text-success" : r.growth && r.growth < 0 ? "text-destructive" : "text-muted-foreground")}>{fmtPct(r.growth)}</td>
-                          <td className="px-3 py-2 text-xs">
-                            {r.notes && <div className="text-foreground/80 mb-1">{r.notes}</div>}
-                            <FlagBadge s1={s1} s2={s2} growth={r.growth} notes={r.notes} />
+                          <td className="px-3 py-2 text-xs" onClick={(e) => e.stopPropagation()}>
+                            <EditableNote
+                              value={getNote(acc.account, r.name, r.notes)}
+                              onSave={(v) => saveNote(acc.account, r.name, v)}
+                            />
+                            <FlagBadge s1={s1} s2={s2} growth={r.growth} notes={getNote(acc.account, r.name, r.notes)} />
                           </td>
                         </tr>
                       );

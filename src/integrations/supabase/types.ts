@@ -58,6 +58,36 @@ export type Database = {
           },
         ]
       }
+      compare_periods_notes: {
+        Row: {
+          account: string
+          collection: string
+          created_at: string
+          id: string
+          note: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          account: string
+          collection: string
+          created_at?: string
+          id?: string
+          note?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          account?: string
+          collection?: string
+          created_at?: string
+          id?: string
+          note?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           assigned_to: string | null

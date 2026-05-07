@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { useComparePeriodsNotes } from "@/hooks/useComparePeriodsNotes";
+import { Pencil, Check, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -81,7 +84,57 @@ interface Props {
 
 type Preset = "L3M_VS_PRIOR" | "LM_VS_PRIOR" | "FIRST3_VS_LAST3" | "CUSTOM";
 
+function EditableNote({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
+
+  if (!editing) {
+    return (
+      <div className="group flex items-start gap-1.5 mb-1 min-h-[20px]">
+        <div className={cn("flex-1 whitespace-pre-wrap", value ? "text-foreground/80" : "text-muted-foreground/60 italic")}>
+          {value || "Add note…"}
+        </div>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+          aria-label="Edit note"
+        >
+          <Pencil className="h-3 w-3 text-muted-foreground" />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1 mb-1">
+      <Textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        autoFocus
+        rows={2}
+        className="text-xs min-h-[48px]"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { onSave(draft); setEditing(false); }
+          if (e.key === "Escape") { setDraft(value); setEditing(false); }
+        }}
+      />
+      <div className="flex items-center gap-1">
+        <Button size="sm" className="h-6 px-2 text-[11px]" onClick={() => { onSave(draft); setEditing(false); }}>
+          <Check className="h-3 w-3 mr-1" />Save
+        </Button>
+        <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={() => { setDraft(value); setEditing(false); }}>
+          <X className="h-3 w-3 mr-1" />Cancel
+        </Button>
+        <span className="text-[10px] text-muted-foreground ml-1">⌘↵ to save</span>
+      </div>
+    </div>
+  );
+}
+
 export default function ComparePeriodsReport(_props: Props) {
+  const { getNote, saveNote } = useComparePeriodsNotes();
   // -------------------- State --------------------
   const months = SEED.months;
   const monthCount = months.length;
@@ -506,9 +559,15 @@ export default function ComparePeriodsReport(_props: Props) {
       <Card className="p-0 overflow-hidden">
         <div className="p-4 border-b border-border flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h3 className="text-base font-semibold">Comparative Sales by Account & Collection</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-semibold">Comparative Sales by Account & Collection</h3>
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+                Live
+              </span>
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Mirrors the monthly comparison report. Click an account row to expand collections. Click a collection to drill into the line.
+              Auto-refreshes when sales data syncs from Acctivate. Hover the Notes column to edit commentary — saved instantly and shared across the team.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -596,9 +655,12 @@ export default function ComparePeriodsReport(_props: Props) {
                           <td className={cn("px-3 py-2 text-right tabular-nums font-semibold", diff > 0 ? "text-success" : diff < 0 ? "text-destructive" : "")}>{diff > 0 ? "+" : ""}{fmtMoney(diff)}</td>
                           <td className={cn("px-3 py-2 text-right tabular-nums", pct && pct > 0 ? "text-success" : pct && pct < 0 ? "text-destructive" : "text-muted-foreground")}>{fmtPct(pct)}</td>
                           <td className={cn("px-3 py-2 text-right tabular-nums", r.growth && r.growth > 0 ? "text-success" : r.growth && r.growth < 0 ? "text-destructive" : "text-muted-foreground")}>{fmtPct(r.growth)}</td>
-                          <td className="px-3 py-2 text-xs">
-                            {r.notes && <div className="text-foreground/80 mb-1">{r.notes}</div>}
-                            <FlagBadge s1={s1} s2={s2} growth={r.growth} notes={r.notes} />
+                          <td className="px-3 py-2 text-xs" onClick={(e) => e.stopPropagation()}>
+                            <EditableNote
+                              value={getNote(acc.account, r.name, r.notes)}
+                              onSave={(v) => saveNote(acc.account, r.name, v)}
+                            />
+                            <FlagBadge s1={s1} s2={s2} growth={r.growth} notes={getNote(acc.account, r.name, r.notes)} />
                           </td>
                         </tr>
                       );

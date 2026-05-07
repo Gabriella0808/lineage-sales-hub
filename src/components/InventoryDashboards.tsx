@@ -868,9 +868,8 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         </Card>
       )}
 
-      <Tabs defaultValue="buynow" className="w-full">
+      <Tabs defaultValue="stockouts" className="w-full">
       <TabsList className="flex-wrap h-auto">
-        <TabsTrigger value="buynow">Buy Now</TabsTrigger>
         <TabsTrigger value="stockouts">Stockouts / Lost Sales</TabsTrigger>
         <TabsTrigger value="incoming">Incoming POs</TabsTrigger>
         <TabsTrigger value="summary">Summary</TabsTrigger>
@@ -878,82 +877,6 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         <TabsTrigger value="reorder">Reorder</TabsTrigger>
         <TabsTrigger value="closeout">Closeout</TabsTrigger>
       </TabsList>
-
-      {/* ============ BUY NOW ============ */}
-      <TabsContent value="buynow" className="space-y-6 mt-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KPI label="Order Now" value={buyNowKpis.orderNow} hint={fmtMoney(buyNowKpis.orderNowValue)} icon={AlertCircle} accent={buyNowKpis.orderNow > 0 ? "text-destructive" : undefined} />
-          <KPI label="Watch" value={buyNowKpis.watch} icon={CalendarClock} accent="text-warning-foreground" />
-          <KPI label="Covered by PO" value={buyNowKpis.covered} icon={Truck} accent="text-success" />
-          <KPI label="Out of Stock — Lost / mo" value={fmtMoney(summary.lostSales)} icon={TrendingDown} accent="text-destructive" />
-        </div>
-        <Card className="p-5">
-          <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4 text-primary" />
-              <h3 className="text-base font-semibold">Action Items — What to Order</h3>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" variant={buyNowFilter === "action" ? "default" : "outline"} className="h-8" onClick={() => setBuyNowFilter("action")}>Needs Action</Button>
-              <Button size="sm" variant={buyNowFilter === "all" ? "default" : "outline"} className="h-8" onClick={() => setBuyNowFilter("all")}>All SKUs</Button>
-            </div>
-          </div>
-          {buyNowFiltered.length === 0 ? <EmptyState message="Nothing needs ordering right now." /> : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="text-left px-2 py-2">SKU</th>
-                    <th className="text-left px-2 py-2">Product</th>
-                    <th className="text-left px-2 py-2">Factory</th>
-                    <th className="text-right px-2 py-2">Avail</th>
-                    <th className="text-right px-2 py-2">On PO</th>
-                    <th className="text-left px-2 py-2">Next ETA</th>
-                    <th className="text-right px-2 py-2">Mo Demand</th>
-                    <th className="text-right px-2 py-2">Lead (mo)</th>
-                    <th className="text-right px-2 py-2">Days Supply</th>
-                    <th className="text-left px-2 py-2">Stockout Date</th>
-                    <th className="text-right px-2 py-2">Suggest</th>
-                    <th className="text-right px-2 py-2">MOQ</th>
-                    <th className="text-left px-2 py-2">Decision</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {buyNowFiltered.slice(0, 100).map((r) => {
-                    const tone =
-                      r.decision === "Order Now" ? "bg-destructive/10 text-destructive border-destructive/20" :
-                      r.decision === "Watch" ? "bg-warning/15 text-warning-foreground border-warning/30" :
-                      r.decision === "Covered by PO" ? "bg-success/15 text-success border-success/25" :
-                      r.decision === "Liquidate" || r.decision === "Discontinue Candidate" ? "bg-muted text-muted-foreground border-border" :
-                      "bg-muted text-muted-foreground border-border";
-                    return (
-                      <tr key={r.sku} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => setDrawerSku(r.sku)}>
-                        <td className="px-2 py-1.5 font-mono">{r.sku}</td>
-                        <td className="px-2 py-1.5 max-w-[200px] truncate" title={r.product}>{r.product}</td>
-                        <td className="px-2 py-1.5 text-xs text-muted-foreground">{r.factory ?? r.supplier}</td>
-                        <td className={cn("px-2 py-1.5 text-right tabular-nums", r.netAvail <= 0 && "text-destructive font-semibold")}>{r.netAvail}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums">{r.onPo}</td>
-                        <td className="px-2 py-1.5 text-xs">{r.nextEta ?? "—"}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums">{r.avgMonthlySales.toFixed(1)}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums">{r.leadMonths.toFixed(1)}</td>
-                        <td className={cn("px-2 py-1.5 text-right tabular-nums", r.daysOfSupply != null && r.daysOfSupply < r.leadDays && "text-destructive font-semibold")}>
-                          {r.daysOfSupply == null ? "—" : Math.round(r.daysOfSupply)}
-                        </td>
-                        <td className="px-2 py-1.5 text-xs">{r.stockoutDate ? r.stockoutDate.toLocaleDateString() : "—"}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{r.suggestedOrder > 0 ? fmtNum(r.suggestedOrder) : "—"}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums">{r.moq ?? "—"}</td>
-                        <td className="px-2 py-1.5">
-                          <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border whitespace-nowrap", tone)}>{r.decision}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      </TabsContent>
 
       {/* ============ STOCKOUTS / LOST SALES ============ */}
       <TabsContent value="stockouts" className="space-y-6 mt-4">

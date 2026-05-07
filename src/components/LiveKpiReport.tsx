@@ -677,7 +677,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
         </div>
         <div style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={monthFilter === "All" ? monthly : scaledMonthly.map((r) => monthly.find((m) => m.m === r.m) ?? { ...r, b26p: 0, ytdB: 0, i26p: 0, ytdI: 0 })} margin={{ top: 8, right: 16, left: 8, bottom: 8 }} barCategoryGap="20%">
+            <BarChart data={chartMonthly} margin={{ top: 8, right: 16, left: 8, bottom: 8 }} barCategoryGap="20%">
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="m"

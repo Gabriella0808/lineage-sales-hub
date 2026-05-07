@@ -946,56 +946,6 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         </Card>
       </TabsContent>
 
-      {/* ============ INCOMING POs ============ */}
-      <TabsContent value="incoming" className="space-y-6 mt-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KPI label="Open PO Value" value={fmtMoney(summary.openPoValue)} icon={Truck} />
-          <KPI label="Late POs" value={poBuckets.late.length} hint={fmtMoney(poBuckets.late.reduce((s, p) => s + Number(p.total_value), 0))} icon={AlertCircle} accent={poBuckets.late.length > 0 ? "text-destructive" : undefined} />
-          <KPI label="Arriving ≤30 days" value={poBuckets.d30.length} icon={CalendarClock} />
-          <KPI label="Arriving ≤90 days" value={poBuckets.d30.length + poBuckets.d60.length + poBuckets.d90.length} icon={CalendarClock} />
-        </div>
-        <Card className="p-5">
-          <h3 className="text-base font-semibold mb-3">PO Line Coverage</h3>
-          {poLineCoverage.length === 0 ? <EmptyState message="No open PO lines synced." /> : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                  <tr>
-                    <th className="text-left px-3 py-2">SKU</th>
-                    <th className="text-left px-3 py-2">Product</th>
-                    <th className="text-right px-3 py-2">Qty Remaining</th>
-                    <th className="text-left px-3 py-2">ETA</th>
-                    <th className="text-right px-3 py-2">Mo Sales</th>
-                    <th className="text-right px-3 py-2">Projected Avail</th>
-                    <th className="text-right px-3 py-2">Mo Supply After</th>
-                    <th className="text-left px-3 py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {poLineCoverage.slice(0, 100).map((r) => (
-                    <tr key={r.id} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => r.item && setDrawerSku(r.item.sku)}>
-                      <td className="px-3 py-2 font-mono">{r.sku}</td>
-                      <td className="px-3 py-2 max-w-[220px] truncate">{r.item?.product ?? "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.remaining)}</td>
-                      <td className="px-3 py-2 text-xs">{r.eta ?? "—"}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.monthlySales.toFixed(1)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.projectedAvail)}</td>
-                      <td className={cn("px-3 py-2 text-right tabular-nums", r.monthsAfter != null && r.monthsAfter < 3 && "text-destructive font-semibold")}>
-                        {r.monthsAfter == null ? "—" : `${r.monthsAfter.toFixed(1)} mo`}
-                      </td>
-                      <td className="px-3 py-2">
-                        {r.stillNeed
-                          ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border bg-warning/15 text-warning-foreground border-warning/30">Still Need to Reorder</span>
-                          : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] border bg-success/15 text-success border-success/25">Covered</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-      </TabsContent>
 
       {/* ============ SECTION 1: SUMMARY ============ */}
       <TabsContent value="summary" className="space-y-6 mt-4">

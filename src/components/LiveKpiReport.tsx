@@ -663,7 +663,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                     {showI && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
                       <td className="p-2 text-right">
-                        {selectedRep
+                        {hasRepSelection
                           ? formatCurrency(r.i26p)
                           : <EditableCurrency value={r.i26p} onSave={(v) => saveMonthly(r.m, "i26p", v)} />}
                       </td>

@@ -807,7 +807,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const drawerItem = useMemo(() => items.find((it) => it.sku === drawerSku) ?? null, [items, drawerSku]);
 
   // Analysis sub-tab
-  const [analysisTab, setAnalysisTab] = useState<string>("sku");
+  const [analysisTab, setAnalysisTab] = useState<string>("compare");
 
   const [skuSearch, setSkuSearch] = useState("");
   const matchesSearch = useCallback((it: { sku: string; product: string; collection?: string; brand?: string }) => {
@@ -1146,8 +1146,8 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       <TabsContent value="analysis" className="space-y-4 mt-4">
         <Tabs value={analysisTab} onValueChange={setAnalysisTab}>
           <TabsList className="flex w-full flex-nowrap overflow-x-auto h-auto justify-start">
-            <TabsTrigger value="sku" className="whitespace-nowrap px-2.5 text-sm">SKU Table</TabsTrigger>
             <TabsTrigger value="compare" className="whitespace-nowrap px-2.5 text-sm">Compare Periods</TabsTrigger>
+            <TabsTrigger value="sku" className="whitespace-nowrap px-2.5 text-sm">SKU Table</TabsTrigger>
             <TabsTrigger value="vendor" className="whitespace-nowrap px-2.5 text-sm">By Vendor</TabsTrigger>
             
             <TabsTrigger value="slow" className="whitespace-nowrap px-2.5 text-sm">Slow Movers</TabsTrigger>

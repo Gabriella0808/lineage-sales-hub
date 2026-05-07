@@ -376,7 +376,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     }
     return baseMonthly;
   }, [hasRepSelection, repFilter, territoryFilter, visibleReps, baseMonthly, allowedRepNames, repShare]);
-  }, [hasRepSelection, repFilter, baseMonthly, allowedRepNames, repShare]);
+  
 
   const scaledLine = useMemo(() => baseLine.map((r) => ({
     ...r,

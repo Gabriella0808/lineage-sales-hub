@@ -320,19 +320,25 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   // from the spreadsheet (REP_MONTHLY). Otherwise use the team Summary totals
   // (or the sum of the manager's reps when scoped to a manager).
   const totalRepBook = REP_BOOK.reduce((s, r) => s + r.book, 0);
-  const selectedRep = repFilter === "all" ? null : REP_BOOK.find((r) => r.name === repFilter) ?? null;
+  const selectedRepObjs = useMemo(
+    () => repFilter.map((n) => REP_BOOK.find((r) => r.name === n)).filter(Boolean) as typeof REP_BOOK,
+    [repFilter],
+  );
+  const selectedRep = selectedRepObjs.length === 1 ? selectedRepObjs[0] : null;
+  const hasRepSelection = repFilter.length > 0;
   const managerRepBook = useMemo(
     () => visibleReps.reduce((s, r) => s + r.book, 0),
     [visibleReps],
   );
-  const repShare = selectedRep
-    ? (totalRepBook > 0 ? selectedRep.book / totalRepBook : 0)
+  const selectedRepBook = selectedRepObjs.reduce((s, r) => s + r.book, 0);
+  const repShare = hasRepSelection
+    ? (totalRepBook > 0 ? selectedRepBook / totalRepBook : 0)
     : (allowedRepNames === null ? 1 : (totalRepBook > 0 ? managerRepBook / totalRepBook : 0));
 
   // Edits to per-rep projections aren't persisted back to the team total (real per-rep
   // numbers come from the spreadsheet). For "All" view we still write through to MONTHLY.
   const saveMonthly = (month: string, key: "b26p" | "i26p", displayedVal: number) => {
-    if (selectedRep) return; // editing disabled when viewing a single rep
+    if (hasRepSelection) return; // editing disabled when viewing specific rep(s)
     updateMonthly(month, key, displayedVal);
   };
   const saveLine = (month: string, key: "luxP" | "swP" | "flP", displayedVal: number) => {
@@ -341,11 +347,10 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   };
 
   const scaledMonthly = useMemo(() => {
-    if (selectedRep) {
-      const keys = REP_NAME_TO_MONTHLY_KEYS[selectedRep.name];
-      const rows = keys ? sumRepMonthly(keys) : null;
+    if (hasRepSelection) {
+      const allKeys = repFilter.flatMap((n) => REP_NAME_TO_MONTHLY_KEYS[n] ?? []);
+      const rows = allKeys.length > 0 ? sumRepMonthly(allKeys) : null;
       if (rows) return rows;
-      // No spreadsheet data for this rep — show zeros (don't fall back to team totals)
       return baseMonthly.map((r) => ({ m: r.m, b25: 0, b26p: 0, ytdB: 0, i25: 0, i26p: 0, ytdI: 0 }));
     }
     // Manager-scoped "All" view: sum the per-rep monthly figures for that manager's reps.
@@ -361,7 +366,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       }));
     }
     return baseMonthly;
-  }, [selectedRep, baseMonthly, allowedRepNames, repShare]);
+  }, [hasRepSelection, repFilter, baseMonthly, allowedRepNames, repShare]);
 
   const scaledLine = useMemo(() => baseLine.map((r) => ({
     ...r,

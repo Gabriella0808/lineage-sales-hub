@@ -246,8 +246,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     let reps = allowedRepNames === null
       ? allReps
       : allReps.filter((r) => allowedRepNames.includes(r.name));
-    if (territoryFilter !== "all") {
-      reps = reps.filter((r) => (REP_TO_TERRITORIES[r.name] ?? []).includes(territoryFilter));
+    if (territoryFilter.length > 0) {
+      reps = reps.filter((r) => (REP_TO_TERRITORIES[r.name] ?? []).some((t) => territoryFilter.includes(t)));
     }
     return reps;
   }, [allReps, allowedRepNames, territoryFilter]);

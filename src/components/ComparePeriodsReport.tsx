@@ -581,7 +581,7 @@ export default function ComparePeriodsReport(_props: Props) {
           <table className="w-full text-sm border-separate border-spacing-0">
             <thead className="bg-muted/60 text-[11px] uppercase tracking-wide text-muted-foreground sticky top-0 z-10">
               <tr>
-                <th className="text-left px-3 py-2 sticky left-0 bg-muted/60 z-20 min-w-[260px]">Account / Collection</th>
+                <th className="text-left px-3 py-2 sticky left-0 bg-muted z-30 min-w-[260px] shadow-[2px_0_4px_-2px_hsl(var(--border))] border-r border-border">Account / Collection</th>
                 {months.map((m, i) => (
                   <th key={m} className={cn("text-right px-3 py-2 min-w-[88px]",
                     inRange(i, p1Idx) && "bg-muted/40",
@@ -610,7 +610,7 @@ export default function ComparePeriodsReport(_props: Props) {
                 return (
                   <>
                     <tr key={acc.account} className="bg-muted/30 hover:bg-muted/50 cursor-pointer font-semibold border-t border-border" onClick={() => toggle(acc.account)}>
-                      <td className="px-3 py-2 sticky left-0 bg-muted/30 z-10">
+                      <td className="px-3 py-2 sticky left-0 bg-secondary z-20 shadow-[2px_0_4px_-2px_hsl(var(--border))] border-r border-border">
                         <div className="flex items-center gap-1.5">
                           {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                           <span>{acc.account}</span>
@@ -637,7 +637,7 @@ export default function ComparePeriodsReport(_props: Props) {
                       const pct = s1 !== 0 ? diff / Math.abs(s1) : null;
                       return (
                         <tr key={`${acc.account}-${r.name}`} className="border-t border-border hover:bg-muted/20 cursor-pointer" onClick={() => setDrillRow({ account: acc.account, row: r })}>
-                          <td className="px-3 py-2 pl-9 sticky left-0 bg-card z-10">
+                          <td className="px-3 py-2 pl-9 sticky left-0 bg-card z-20 shadow-[2px_0_4px_-2px_hsl(var(--border))] border-r border-border">
                             <div className="flex items-center gap-1">
                               <span>{r.name}</span>
                               <TrendIcon diff={diff} />

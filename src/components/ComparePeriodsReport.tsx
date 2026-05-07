@@ -566,9 +566,6 @@ export default function ComparePeriodsReport(_props: Props) {
                 Live
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Auto-refreshes when sales data syncs from Acctivate. Hover the Notes column to edit commentary — saved instantly and shared across the team.
-            </p>
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" className="h-7 text-xs"

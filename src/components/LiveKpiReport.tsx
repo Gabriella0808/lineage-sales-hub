@@ -227,7 +227,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     return list ?? [];
   }, [managerName, lockedRepName]);
 
-  const [territoryFilter, setTerritoryFilter] = useState<string>("all");
+  const [territoryFilter, setTerritoryFilter] = useState<string[]>([]);
+  const [territoryPickerOpen, setTerritoryPickerOpen] = useState(false);
   const { data: dbReps = [] } = useSalesReps();
 
   // Merge REP_BOOK (which has the spreadsheet figures) with all reps from the DB,

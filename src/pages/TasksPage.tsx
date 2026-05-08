@@ -696,6 +696,7 @@ export default function TasksPage() {
                 <SelectContent>
                   <SelectItem value="any" className="text-xs">Anyone</SelectItem>
                   <SelectItem value="__trade_show__" className="text-xs">Trade Show Leads</SelectItem>
+                  <SelectItem value="__kpi_review__" className="text-xs">KPI Review</SelectItem>
                   {visibleAssignees
                     .slice()
                     .sort((a, b) =>

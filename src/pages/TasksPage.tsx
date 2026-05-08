@@ -554,6 +554,8 @@ export default function TasksPage() {
                   onChange={(ids) => setForm({ ...form, assigned_user_ids: ids })}
                   tradeShow={form.trade_show}
                   onTradeShowChange={(v) => setForm({ ...form, trade_show: v })}
+                  kpiReview={form.kpi_review}
+                  onKpiReviewChange={(v) => setForm({ ...form, kpi_review: v })}
                 />
               </div>
               <DialogFooter>

@@ -174,7 +174,10 @@ export default function TasksPage() {
     status: Status;
     due_date: string;
     assigned_user_ids: string[];
-  }>({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [] });
+    trade_show: boolean;
+  }>({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false });
+
+  const TRADE_SHOW_TAG = "[Trade Show Leads]";
 
   // ---- Filters ----
   type AssigneeFilter = "all" | "mine" | "created";
@@ -308,7 +311,7 @@ export default function TasksPage() {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [] });
+    setForm({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false });
   };
 
   const openNew = () => {
@@ -324,6 +327,7 @@ export default function TasksPage() {
       status: t.status,
       due_date: t.due_date ?? "",
       assigned_user_ids: getAssigneeIds(t),
+      trade_show: isTradeShowTask(t),
     });
     setOpen(true);
   };
@@ -348,8 +352,15 @@ export default function TasksPage() {
     }
     const ids = form.assigned_user_ids;
     const primary = ids[0] ?? null; // keep legacy field in sync with first assignee
+    let finalTitle = form.title.trim();
+    const hasTag = /\bTrade Show\b/i.test(finalTitle);
+    if (form.trade_show && !hasTag) {
+      finalTitle = `${TRADE_SHOW_TAG} ${finalTitle}`;
+    } else if (!form.trade_show && hasTag) {
+      finalTitle = finalTitle.replace(/\[Trade Show Leads\]\s*/i, "").replace(/\bTrade Show Leads?\b\s*/i, "").trim() || finalTitle;
+    }
     const payload = {
-      title: form.title.trim(),
+      title: finalTitle,
       description: form.description.trim() || null,
       status: form.status,
       due_date: form.due_date || null,
@@ -527,6 +538,14 @@ export default function TasksPage() {
                   selectedIds={form.assigned_user_ids}
                   onChange={(ids) => setForm({ ...form, assigned_user_ids: ids })}
                 />
+                <label className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm cursor-pointer hover:bg-muted/50">
+                  <Checkbox
+                    checked={form.trade_show}
+                    onCheckedChange={(v) => setForm({ ...form, trade_show: v === true })}
+                  />
+                  <span className="font-medium">Assign to Trade Show Leads</span>
+                  <span className="text-xs text-muted-foreground ml-auto">Tag this task as a trade show lead follow-up</span>
+                </label>
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>

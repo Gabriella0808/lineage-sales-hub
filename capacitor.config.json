@@ -1,9 +1,9 @@
 {
-  "appId": "com.lineagecollections.portal",
-  "appName": "Lineage Collections Portal",
+  "appId": "app.lovable.70f79ed3f0874215913ad377e2fdf8a7",
+  "appName": "lineage-sales-hub",
   "webDir": "dist",
   "server": {
-    "url": "https://70f79ed3-f087-4215-913a-d377e2fdf8a7.lovableproject.com?forceHideBadge=true",
+    "url": "https://lineage-sales-hub.lovable.app",
     "cleartext": true
   },
   "ios": {

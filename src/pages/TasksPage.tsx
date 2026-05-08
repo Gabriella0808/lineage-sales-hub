@@ -175,9 +175,11 @@ export default function TasksPage() {
     due_date: string;
     assigned_user_ids: string[];
     trade_show: boolean;
-  }>({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false });
+    kpi_review: boolean;
+  }>({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false, kpi_review: false });
 
   const TRADE_SHOW_TAG = "[Trade Show Leads]";
+  const KPI_REVIEW_TAG = "[KPI Review]";
 
   // ---- Filters ----
   type AssigneeFilter = "all" | "mine" | "created";

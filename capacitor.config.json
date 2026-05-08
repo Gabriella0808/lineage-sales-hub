@@ -3,7 +3,7 @@
   "appName": "lineage-sales-hub",
   "webDir": "dist",
   "server": {
-    "url": "https://lineage-sales-hub.lovable.app",
+    "url": "https://www.lineage-portal.com",
     "cleartext": true
   },
   "ios": {

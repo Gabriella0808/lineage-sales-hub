@@ -537,15 +537,9 @@ export default function TasksPage() {
                   assignees={visibleAssignees}
                   selectedIds={form.assigned_user_ids}
                   onChange={(ids) => setForm({ ...form, assigned_user_ids: ids })}
+                  tradeShow={form.trade_show}
+                  onTradeShowChange={(v) => setForm({ ...form, trade_show: v })}
                 />
-                <label className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm cursor-pointer hover:bg-muted/50">
-                  <Checkbox
-                    checked={form.trade_show}
-                    onCheckedChange={(v) => setForm({ ...form, trade_show: v === true })}
-                  />
-                  <span className="font-medium">Assign to Trade Show Leads</span>
-                  <span className="text-xs text-muted-foreground ml-auto">Tag this task as a trade show lead follow-up</span>
-                </label>
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
@@ -1148,9 +1142,11 @@ interface AssigneeMultiPickerProps {
   assignees: AssignableUser[];
   selectedIds: string[];
   onChange: (ids: string[]) => void;
+  tradeShow?: boolean;
+  onTradeShowChange?: (v: boolean) => void;
 }
 
-function AssigneeMultiPicker({ assignees, selectedIds, onChange }: AssigneeMultiPickerProps) {
+function AssigneeMultiPicker({ assignees, selectedIds, onChange, tradeShow, onTradeShowChange }: AssigneeMultiPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -1185,10 +1181,12 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange }: AssigneeMulti
     .filter(Boolean) as AssignableUser[];
 
   const triggerLabel = (() => {
-    if (selectedUsers.length === 0) return "Assign to...";
-    if (selectedUsers.length === 1)
-      return selectedUsers[0].full_name?.trim() || selectedUsers[0].email || "Unknown";
-    return `${selectedUsers.length} people assigned`;
+    const parts: string[] = [];
+    if (tradeShow) parts.push("Trade Show Leads");
+    if (selectedUsers.length === 1) parts.push(selectedUsers[0].full_name?.trim() || selectedUsers[0].email || "Unknown");
+    else if (selectedUsers.length > 1) parts.push(`${selectedUsers.length} people`);
+    if (parts.length === 0) return "Assign to...";
+    return parts.join(" + ");
   })();
 
   return (
@@ -1223,6 +1221,20 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange }: AssigneeMulti
           </div>
           <div className="h-64 overflow-y-scroll overscroll-contain touch-pan-y">
             <div className="p-1">
+              {onTradeShowChange && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onTradeShowChange(!tradeShow)}
+                    className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                  >
+                    <Checkbox checked={!!tradeShow} className="pointer-events-none" />
+                    <span className="truncate font-medium">Trade Show Leads</span>
+                    <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">Group</span>
+                  </button>
+                  <div className="my-1 h-px bg-border" />
+                </>
+              )}
               {filtered.map((a) => {
                 const checked = selectedIds.includes(a.user_id);
                 const name = a.full_name?.trim() || a.email || "Unknown";

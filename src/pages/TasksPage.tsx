@@ -175,9 +175,11 @@ export default function TasksPage() {
     due_date: string;
     assigned_user_ids: string[];
     trade_show: boolean;
-  }>({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false });
+    kpi_review: boolean;
+  }>({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false, kpi_review: false });
 
   const TRADE_SHOW_TAG = "[Trade Show Leads]";
+  const KPI_REVIEW_TAG = "[KPI Review]";
 
   // ---- Filters ----
   type AssigneeFilter = "all" | "mine" | "created";
@@ -245,9 +247,15 @@ export default function TasksPage() {
     return /lead from/i.test(desc) || /\bTrade Show\b/i.test(desc) || /\bTrade Show\b/i.test(t.title);
   };
 
+  const isKpiReviewTask = (t: Task): boolean => {
+    const desc = t.description ?? "";
+    return /\bKPI Review\b/i.test(t.title) || /\bKPI Review\b/i.test(desc);
+  };
+
   const matchesAssigneeUser = (t: Task): boolean => {
     if (assigneeUserId === "any") return true;
     if (assigneeUserId === "__trade_show__") return isTradeShowTask(t);
+    if (assigneeUserId === "__kpi_review__") return isKpiReviewTask(t);
     return getAssigneeIds(t).includes(assigneeUserId);
   };
 
@@ -311,7 +319,7 @@ export default function TasksPage() {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false });
+    setForm({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false, kpi_review: false });
   };
 
   const openNew = () => {
@@ -328,6 +336,7 @@ export default function TasksPage() {
       due_date: t.due_date ?? "",
       assigned_user_ids: getAssigneeIds(t),
       trade_show: isTradeShowTask(t),
+      kpi_review: isKpiReviewTask(t),
     });
     setOpen(true);
   };
@@ -358,6 +367,12 @@ export default function TasksPage() {
       finalTitle = `${TRADE_SHOW_TAG} ${finalTitle}`;
     } else if (!form.trade_show && hasTag) {
       finalTitle = finalTitle.replace(/\[Trade Show Leads\]\s*/i, "").replace(/\bTrade Show Leads?\b\s*/i, "").trim() || finalTitle;
+    }
+    const hasKpiTag = /\bKPI Review\b/i.test(finalTitle);
+    if (form.kpi_review && !hasKpiTag) {
+      finalTitle = `${KPI_REVIEW_TAG} ${finalTitle}`;
+    } else if (!form.kpi_review && hasKpiTag) {
+      finalTitle = finalTitle.replace(/\[KPI Review\]\s*/i, "").replace(/\bKPI Review\b\s*/i, "").trim() || finalTitle;
     }
     const payload = {
       title: finalTitle,
@@ -539,6 +554,8 @@ export default function TasksPage() {
                   onChange={(ids) => setForm({ ...form, assigned_user_ids: ids })}
                   tradeShow={form.trade_show}
                   onTradeShowChange={(v) => setForm({ ...form, trade_show: v })}
+                  kpiReview={form.kpi_review}
+                  onKpiReviewChange={(v) => setForm({ ...form, kpi_review: v })}
                 />
               </div>
               <DialogFooter>
@@ -679,6 +696,7 @@ export default function TasksPage() {
                 <SelectContent>
                   <SelectItem value="any" className="text-xs">Anyone</SelectItem>
                   <SelectItem value="__trade_show__" className="text-xs">Trade Show Leads</SelectItem>
+                  <SelectItem value="__kpi_review__" className="text-xs">KPI Review</SelectItem>
                   {visibleAssignees
                     .slice()
                     .sort((a, b) =>
@@ -1144,9 +1162,11 @@ interface AssigneeMultiPickerProps {
   onChange: (ids: string[]) => void;
   tradeShow?: boolean;
   onTradeShowChange?: (v: boolean) => void;
+  kpiReview?: boolean;
+  onKpiReviewChange?: (v: boolean) => void;
 }
 
-function AssigneeMultiPicker({ assignees, selectedIds, onChange, tradeShow, onTradeShowChange }: AssigneeMultiPickerProps) {
+function AssigneeMultiPicker({ assignees, selectedIds, onChange, tradeShow, onTradeShowChange, kpiReview, onKpiReviewChange }: AssigneeMultiPickerProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -1183,6 +1203,7 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange, tradeShow, onTr
   const triggerLabel = (() => {
     const parts: string[] = [];
     if (tradeShow) parts.push("Trade Show Leads");
+    if (kpiReview) parts.push("KPI Review");
     if (selectedUsers.length === 1) parts.push(selectedUsers[0].full_name?.trim() || selectedUsers[0].email || "Unknown");
     else if (selectedUsers.length > 1) parts.push(`${selectedUsers.length} people`);
     if (parts.length === 0) return "Assign to...";
@@ -1230,6 +1251,20 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange, tradeShow, onTr
                   >
                     <Checkbox checked={!!tradeShow} className="pointer-events-none" />
                     <span className="truncate font-medium">Trade Show Leads</span>
+                    <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">Group</span>
+                  </button>
+                  <div className="my-1 h-px bg-border" />
+                </>
+              )}
+              {onKpiReviewChange && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onKpiReviewChange(!kpiReview)}
+                    className="w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                  >
+                    <Checkbox checked={!!kpiReview} className="pointer-events-none" />
+                    <span className="truncate font-medium">KPI Review</span>
                     <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">Group</span>
                   </button>
                   <div className="my-1 h-px bg-border" />

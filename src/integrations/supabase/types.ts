@@ -1454,6 +1454,24 @@ export type Database = {
         }
         Relationships: []
       }
+      task_assignment_notifications_sent: {
+        Row: {
+          sent_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          sent_at?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          sent_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       task_board_groups: {
         Row: {
           board_id: string

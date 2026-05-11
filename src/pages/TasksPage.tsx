@@ -925,14 +925,29 @@ export default function TasksPage() {
                         return (
                           <li
                             key={t.id}
-                            onClick={() => { setDetailTask(t); markRead(t.id); }}
-                            className="group/row grid grid-cols-[4px_minmax(0,1fr)] md:grid-cols-[4px_minmax(0,1fr)_180px_160px_120px_180px_80px] items-center gap-0 hover:bg-muted/40 transition-colors cursor-pointer"
+                            onClick={() => {
+                              if (selectMode) { toggleSelect(t.id); return; }
+                              setDetailTask(t); markRead(t.id);
+                            }}
+                            className={`group/row grid grid-cols-[4px_minmax(0,1fr)] md:grid-cols-[4px_minmax(0,1fr)_180px_160px_120px_180px_80px] items-center gap-0 hover:bg-muted/40 transition-colors cursor-pointer ${
+                              selectMode && selectedIds.has(t.id) ? "bg-primary/10" : ""
+                            }`}
                           >
                             {/* Subtle hover accent */}
                             <div className={`self-stretch ${col.accent} opacity-0 group-hover/row:opacity-100 transition-opacity`} />
 
                             {/* Task title + description */}
-                            <div className="px-3 py-2 min-w-0">
+                            <div className="px-3 py-2 min-w-0 flex items-start gap-2">
+                              {selectMode && (
+                                <Checkbox
+                                  className="mt-0.5"
+                                  checked={selectedIds.has(t.id)}
+                                  onCheckedChange={() => toggleSelect(t.id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label="Select task"
+                                />
+                              )}
+                              <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium leading-snug break-words">
                                 {t.title}
                               </p>

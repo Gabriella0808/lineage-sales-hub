@@ -426,15 +426,27 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     }).sort((a, b) => b.value - a.value);
   }, [items, totalInvValue, totalSalesAmount]);
 
-  // Vendor performance
+  // Growth helper: compare recent 3 months (L3M/3) vs prior 9 months ((L12M-L3M)/9)
+  const computeGrowth = (l3m?: number, l12m?: number) => {
+    if (l3m == null || l12m == null) return null;
+    const recent = l3m / 3;
+    const prior = Math.max(0, (l12m - l3m)) / 9;
+    if (prior === 0 && recent === 0) return 0;
+    if (prior === 0) return 999; // new / huge growth sentinel
+    return ((recent - prior) / prior) * 100;
+  };
+
+  // Vendor performance (with growth/decline)
   const vendorPerf = useMemo(() => {
-    const m = new Map<string, { sales: number; value: number }>();
+    const m = new Map<string, { sales: number; value: number; l3m: number; l12m: number; hasTrend: boolean }>();
     for (const it of items) {
       const v = it.supplier ?? "—";
       const sales = it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
-      const e = m.get(v) ?? { sales: 0, value: 0 };
+      const e = m.get(v) ?? { sales: 0, value: 0, l3m: 0, l12m: 0, hasTrend: false };
       e.sales += sales;
       e.value += (it.unitCost ?? 0) * it.onHand;
+      if (it.unitsL3m != null) { e.l3m += it.unitsL3m; e.hasTrend = true; }
+      if (it.unitsL12m != null) { e.l12m += it.unitsL12m; e.hasTrend = true; }
       m.set(v, e);
     }
     const total = Array.from(m.values()).reduce((s, e) => s + e.sales, 0) || 1;
@@ -443,7 +455,25 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       sales: v.sales,
       pctSales: (v.sales / total) * 100,
       value: v.value,
+      growthPct: v.hasTrend ? computeGrowth(v.l3m, v.l12m) : null,
     })).sort((a, b) => b.sales - a.sales);
+  }, [items]);
+
+  // Item performance (with growth/decline)
+  const itemPerf = useMemo(() => {
+    return items
+      .map((it) => {
+        const sales = it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
+        return {
+          sku: it.sku,
+          product: it.product,
+          vendor: it.supplier ?? "—",
+          sales,
+          value: (it.unitCost ?? 0) * it.onHand,
+          growthPct: computeGrowth(it.unitsL3m, it.unitsL12m),
+        };
+      })
+      .sort((a, b) => b.sales - a.sales);
   }, [items]);
 
   // Slow movers

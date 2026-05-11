@@ -1147,7 +1147,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
           <TabsList className="flex w-full flex-nowrap overflow-x-auto h-auto justify-start">
             <TabsTrigger value="compare" className="whitespace-nowrap px-2.5 text-sm">Compare Periods</TabsTrigger>
             <TabsTrigger value="sku" className="whitespace-nowrap px-2.5 text-sm">SKU Table</TabsTrigger>
-            <TabsTrigger value="vendor" className="whitespace-nowrap px-2.5 text-sm">By Vendor</TabsTrigger>
+            <TabsTrigger value="vendor" className="whitespace-nowrap px-2.5 text-sm">Performance by Vendor</TabsTrigger>
             
             <TabsTrigger value="slow" className="whitespace-nowrap px-2.5 text-sm">Slow Movers</TabsTrigger>
             

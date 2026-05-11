@@ -255,7 +255,11 @@ export default function TasksPage() {
   };
 
   const matchesAssigneeUser = (t: Task): boolean => {
-    if (assigneeUserId === "any") return true;
+    if (assigneeUserId === "any") {
+      // Default scope: only my tasks (created by me or assigned to me)
+      if (!user) return true;
+      return t.user_id === user.id || getAssigneeIds(t).includes(user.id);
+    }
     if (assigneeUserId === "__trade_show__") return isTradeShowTask(t);
     if (assigneeUserId === "__kpi_review__") return isKpiReviewTask(t);
     return getAssigneeIds(t).includes(assigneeUserId) || t.user_id === assigneeUserId;

@@ -514,7 +514,7 @@ export default function TaskBoardsView() {
           </div>
 
           {/* Groups */}
-          <div className="divide-y">
+          <div className="space-y-4 p-4">
             {boardGroups.length === 0 && (
               <div className="p-6 text-sm italic text-muted-foreground">
                 No groups yet. {isBoardOwner && "Click \"Add group\" to create one."}
@@ -528,6 +528,7 @@ export default function TaskBoardsView() {
                   key={g.id}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => onDropToGroup(e, g.id)}
+                  className="rounded-lg border border-border bg-card overflow-hidden shadow-sm"
                 >
                   {/* Group header */}
                   <div
@@ -552,6 +553,28 @@ export default function TaskBoardsView() {
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openNewTask(g.id)}>
                       <Plus className="h-3.5 w-3.5" /> Item
                     </Button>
+                    {isBoardOwner && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => openEditGroup(g)}
+                          title="Edit group"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => deleteGroup(g)}
+                          title="Delete group"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
                   </div>
 
                   {/* Group rows */}

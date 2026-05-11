@@ -191,6 +191,23 @@ export default function TasksPage() {
   const [dueFilter, setDueFilter] = useState<DueFilter>("any");
   const [contextQuery, setContextQuery] = useState("");
 
+  // ---- Bulk select ----
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    clearSelection();
+  };
+
   const filtersActive =
     assigneeFilter !== "all" ||
     assigneeUserId !== "any" ||

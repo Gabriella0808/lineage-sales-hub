@@ -1174,6 +1174,38 @@ export default function TasksPage() {
         </TabsContent>
       </Tabs>
 
+      {/* Bulk action bar */}
+      {selectMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-wrap items-center gap-2 rounded-full border bg-background/95 backdrop-blur px-3 py-2 shadow-lg">
+          <span className="text-xs font-medium px-2">
+            {selectedIds.size} selected
+          </span>
+          <div className="h-5 w-px bg-border" />
+          <Select onValueChange={(v: Status) => bulkUpdateStatus(v)}>
+            <SelectTrigger className="h-8 w-[150px] text-xs">
+              <SelectValue placeholder="Change status" />
+            </SelectTrigger>
+            <SelectContent>
+              {COLUMNS.map((c) => (
+                <SelectItem key={c.key} value={c.key} className="text-xs">{c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 text-xs text-destructive hover:text-destructive"
+            onClick={bulkDelete}
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Delete
+          </Button>
+          <div className="h-5 w-px bg-border" />
+          <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={exitSelectMode}>
+            Cancel
+          </Button>
+        </div>
+      )}
+
       <Sheet open={!!detailTask} onOpenChange={(o) => !o && setDetailTask(null)}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
           {detailTask && (() => {

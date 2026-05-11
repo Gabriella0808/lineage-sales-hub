@@ -1220,6 +1220,7 @@ export default function TasksPage() {
               <SelectItem value="public" className="text-xs">Public</SelectItem>
               <SelectItem value="private" className="text-xs">Private</SelectItem>
             </SelectContent>
+          </Select>
           <Button
             size="sm"
             variant="ghost"

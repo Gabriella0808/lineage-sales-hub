@@ -1018,30 +1018,30 @@ export default function TasksPage() {
 
                             {/* Actions (md+) */}
                             <div className="hidden md:flex items-center justify-end gap-1 px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                              {(isMine || assignedToMe) && (
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => openEdit(t)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                               {isMine && (
-                                <>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => openEdit(t)}
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => remove(t.id)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => remove(t.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
                               )}
                             </div>
 
                             {/* Mobile actions */}
-                            {isMine && (
+                            {(isMine || assignedToMe) && (
                               <div className="md:hidden col-start-2 flex items-center gap-1 px-3 pb-2 -mt-1" onClick={(e) => e.stopPropagation()}>
                                 <Button
                                   size="icon"
@@ -1051,14 +1051,16 @@ export default function TasksPage() {
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7"
-                                  onClick={() => remove(t.id)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                {isMine && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                    onClick={() => remove(t.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
                               </div>
                             )}
                           </li>
@@ -1165,7 +1167,7 @@ export default function TasksPage() {
                     )}
                   </div>
 
-                  {isMine && (
+                  {(isMine || (user && getAssigneeIds(t).includes(user.id))) && (
                     <div className="flex items-center gap-2 pt-4 border-t">
                       <Button
                         size="sm"
@@ -1174,17 +1176,19 @@ export default function TasksPage() {
                       >
                         <Pencil className="h-3.5 w-3.5" /> Edit
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => {
-                          remove(t.id);
-                          setDetailTask(null);
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> Delete
-                      </Button>
+                      {isMine && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => {
+                            remove(t.id);
+                            setDetailTask(null);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

@@ -837,6 +837,14 @@ export default function TasksPage() {
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {filteredTasks.length} of {tasks.length}
               </span>
+              <Button
+                size="sm"
+                variant={selectMode ? "default" : "outline"}
+                className="h-8 text-xs"
+                onClick={() => { if (selectMode) exitSelectMode(); else setSelectMode(true); }}
+              >
+                {selectMode ? "Done" : "Select"}
+              </Button>
               {filtersActive && (
                 <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={clearFilters}>
                   Clear

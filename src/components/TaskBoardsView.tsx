@@ -45,6 +45,14 @@ const STATUS_META: Record<Status, { label: string; pillBg: string; pillText: str
   done: { label: "Completed", pillBg: "bg-success", pillText: "text-success-foreground" },
 };
 
+const DEFAULT_GROUP_NAMES = ["To Do", "In Progress", "Stuck", "Done"] as const;
+const STATUS_ORDER: { key: Status; label: string }[] = [
+  { key: "todo", label: "To Do" },
+  { key: "in_progress", label: "In Progress" },
+  { key: "blocked", label: "Stuck" },
+  { key: "done", label: "Done" },
+];
+
 const GROUP_COLORS = [
   "#6366f1", "#0ea5e9", "#10b981", "#f59e0b",
   "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6",
@@ -316,9 +324,9 @@ export default function TaskBoardsView() {
   };
 
   // --- Task CRUD ---
-  const openNewTask = (groupId: string | null) => {
+  const openNewTask = (groupId: string | null, status: Status = "todo") => {
     setEditingTask(null);
-    setTaskForm({ title: "", description: "", status: "todo", due_date: "", group_id: groupId });
+    setTaskForm({ title: "", description: "", status, due_date: "", group_id: groupId });
     setTaskDlgOpen(true);
   };
   const openEditTask = (t: BoardTask) => {
@@ -421,6 +429,13 @@ export default function TaskBoardsView() {
     const id = e.dataTransfer.getData("text/task-id");
     if (id) moveTaskToGroup(id, groupId);
   };
+  const onDropToCustomSubsection = async (e: React.DragEvent, groupId: string, status: Status) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/task-id");
+    if (!id) return;
+    await moveTaskToGroup(id, groupId);
+    await updateTaskStatus(id, status);
+  };
 
   if (loading) return <p className="text-sm text-muted-foreground">Loading boards…</p>;
 
@@ -514,179 +529,266 @@ export default function TaskBoardsView() {
           </div>
 
           {/* Groups */}
-          <div className="space-y-4 p-4">
-            {boardGroups.length === 0 && (
-              <div className="p-6 text-sm italic text-muted-foreground">
-                No groups yet. {isBoardOwner && "Click \"Add group\" to create one."}
-              </div>
-            )}
-            {boardGroups.map((g) => {
-              const items = boardTasks.filter((t) => t.group_id === g.id);
-              const isCollapsed = collapsed[g.id];
+          {(() => {
+            const defaultGroups = boardGroups
+              .filter((g) => (DEFAULT_GROUP_NAMES as readonly string[]).includes(g.name))
+              .sort((a, b) => {
+                const ai = (DEFAULT_GROUP_NAMES as readonly string[]).indexOf(a.name);
+                const bi = (DEFAULT_GROUP_NAMES as readonly string[]).indexOf(b.name);
+                return ai - bi;
+              });
+            const customGroups = boardGroups.filter(
+              (g) => !(DEFAULT_GROUP_NAMES as readonly string[]).includes(g.name),
+            );
+
+            const renderTaskRow = (t: BoardTask) => {
+              const meta = STATUS_META[t.status];
+              const isMine = !!user && t.user_id === user.id;
               return (
-                <div
-                  key={g.id}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => onDropToGroup(e, g.id)}
-                  className="rounded-lg border border-border bg-card overflow-hidden shadow-sm"
+                <li
+                  key={t.id}
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
+                  className="grid grid-cols-[24px_minmax(0,1fr)] md:grid-cols-[24px_minmax(0,1fr)_140px_140px_60px] items-center hover:bg-muted/40 cursor-grab active:cursor-grabbing"
                 >
-                  {/* Group header */}
-                  <div
-                    className="flex items-center gap-2 px-3 py-2.5 border-b border-border/60"
-                    style={{ backgroundColor: `${g.color ?? "#6366f1"}14` }}
-                  >
-                    <button
-                      onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </button>
-                    <span
-                      className="inline-block h-2 w-2 rounded-full"
-                      style={{ backgroundColor: g.color ?? "#6366f1" }}
-                    />
-                    <h3 className="text-sm font-semibold" style={{ color: g.color ?? undefined }}>
-                      {g.name}
-                    </h3>
-                    <span className="text-xs text-muted-foreground tabular-nums">{items.length}</span>
-                    <span className="flex-1" />
-                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openNewTask(g.id)}>
-                      <Plus className="h-3.5 w-3.5" /> Item
-                    </Button>
-                    {isBoardOwner && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                          onClick={() => openEditGroup(g)}
-                          title="Edit group"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => deleteGroup(g)}
-                          title="Delete group"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
+                  <div className="flex items-center justify-center text-muted-foreground/40">
+                    <GripVertical className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="px-2 py-2 min-w-0">
+                    <p className="text-sm font-medium leading-snug break-words">{t.title}</p>
+                    {t.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                     )}
                   </div>
+                  <div className="hidden md:flex items-center px-2">
+                    <Select value={t.status} onValueChange={(v: Status) => updateTaskStatus(t.id, v)}>
+                      <SelectTrigger
+                        className={`h-7 px-3 text-xs font-semibold border-0 ${meta.pillBg} ${meta.pillText} rounded-md w-full justify-center gap-1 shadow-sm`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(Object.keys(STATUS_META) as Status[]).map((s) => (
+                          <SelectItem key={s} value={s} className="text-xs">
+                            {STATUS_META[s].label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="hidden md:flex items-center px-2 text-xs text-muted-foreground">
+                    {t.due_date ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(t.due_date), "MMM d")}
+                      </span>
+                    ) : (
+                      <span className="italic">—</span>
+                    )}
+                  </div>
+                  <div className="hidden md:flex items-center justify-end gap-0.5 px-1">
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditTask(t)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    {isMine && (
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteTask(t)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                  {/* mobile meta */}
+                  <div className="md:hidden col-start-2 px-2 pb-2 -mt-1 flex flex-wrap items-center gap-2">
+                    <Badge className={`${meta.pillBg} ${meta.pillText} border-0 text-[10px]`}>{meta.label}</Badge>
+                    {t.due_date && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(t.due_date), "MMM d")}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            };
 
-                  {/* Group rows */}
-                  {!isCollapsed && (
-                    <>
-                      {/* column header */}
-                      <div className="hidden md:grid grid-cols-[24px_minmax(0,1fr)_140px_140px_60px] items-center gap-0 bg-muted/20 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        <div />
-                        <div className="px-2">Task</div>
-                        <div className="px-2">Status</div>
-                        <div className="px-2">Due date</div>
-                        <div />
-                      </div>
-                      {items.length === 0 ? (
-                        <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
-                          Drag tasks here or click "+ Item".
-                        </div>
-                      ) : (
-                        <ul className="divide-y">
-                          {items.map((t) => {
-                            const meta = STATUS_META[t.status];
-                            const isMine = !!user && t.user_id === user.id;
-                            return (
-                              <li
-                                key={t.id}
-                                draggable
-                                onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
-                                className="grid grid-cols-[24px_minmax(0,1fr)] md:grid-cols-[24px_minmax(0,1fr)_140px_140px_60px] items-center hover:bg-muted/40 cursor-grab active:cursor-grabbing"
+            const columnHeader = (
+              <div className="hidden md:grid grid-cols-[24px_minmax(0,1fr)_140px_140px_60px] items-center gap-0 bg-muted/20 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <div />
+                <div className="px-2">Task</div>
+                <div className="px-2">Status</div>
+                <div className="px-2">Due date</div>
+                <div />
+              </div>
+            );
+
+            return (
+              <div className="space-y-6 p-4">
+                {boardGroups.length === 0 && (
+                  <div className="p-6 text-sm italic text-muted-foreground">
+                    No groups yet. {isBoardOwner && "Click \"Add group\" to create one."}
+                  </div>
+                )}
+
+                {/* Main workflow — the 4 default groups treated as ONE section */}
+                {defaultGroups.length > 0 && (
+                  <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/60 bg-muted/30">
+                      <LayoutGrid className="h-4 w-4 text-primary" />
+                      <h3 className="text-sm font-semibold">Main workflow</h3>
+                      <span className="text-xs text-muted-foreground">
+                        · {boardTasks.filter((t) => defaultGroups.some((g) => g.id === t.group_id)).length} tasks
+                      </span>
+                    </div>
+                    <div className="divide-y">
+                      {defaultGroups.map((g) => {
+                        const items = boardTasks.filter((t) => t.group_id === g.id);
+                        const isCollapsed = collapsed[g.id];
+                        return (
+                          <div
+                            key={g.id}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => onDropToGroup(e, g.id)}
+                          >
+                            <div
+                              className="flex items-center gap-2 px-3 py-2 border-b border-border/40"
+                              style={{ backgroundColor: `${g.color ?? "#6366f1"}10` }}
+                            >
+                              <button
+                                onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
+                                className="text-muted-foreground hover:text-foreground"
                               >
-                                <div className="flex items-center justify-center text-muted-foreground/40">
-                                  <GripVertical className="h-3.5 w-3.5" />
-                                </div>
-                                <div className="px-2 py-2 min-w-0">
-                                  <p className="text-sm font-medium leading-snug break-words">{t.title}</p>
-                                  {t.description && (
-                                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                                      {t.description}
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="hidden md:flex items-center px-2">
-                                  <Select
-                                    value={t.status}
-                                    onValueChange={(v: Status) => updateTaskStatus(t.id, v)}
-                                  >
-                                    <SelectTrigger
-                                      className={`h-7 px-3 text-xs font-semibold border-0 ${meta.pillBg} ${meta.pillText} rounded-md w-full justify-center gap-1 shadow-sm`}
-                                    >
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {(Object.keys(STATUS_META) as Status[]).map((s) => (
-                                        <SelectItem key={s} value={s} className="text-xs">
-                                          {STATUS_META[s].label}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="hidden md:flex items-center px-2 text-xs text-muted-foreground">
-                                  {t.due_date ? (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Calendar className="h-3 w-3" />
-                                      {format(new Date(t.due_date), "MMM d")}
-                                    </span>
-                                  ) : (
-                                    <span className="italic">—</span>
-                                  )}
-                                </div>
-                                <div className="hidden md:flex items-center justify-end gap-0.5 px-1">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => openEditTask(t)}
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                  {isMine && (
-                                    <Button
-                                      size="icon"
-                                      variant="ghost"
-                                      className="h-7 w-7"
-                                      onClick={() => deleteTask(t)}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  )}
-                                </div>
-                                {/* mobile meta */}
-                                <div className="md:hidden col-start-2 px-2 pb-2 -mt-1 flex flex-wrap items-center gap-2">
+                                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              </button>
+                              <span
+                                className="inline-block h-2 w-2 rounded-full"
+                                style={{ backgroundColor: g.color ?? "#6366f1" }}
+                              />
+                              <h4 className="text-sm font-medium" style={{ color: g.color ?? undefined }}>
+                                {g.name}
+                              </h4>
+                              <span className="text-xs text-muted-foreground tabular-nums">{items.length}</span>
+                              <span className="flex-1" />
+                              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openNewTask(g.id)}>
+                                <Plus className="h-3.5 w-3.5" /> Item
+                              </Button>
+                            </div>
+                            {!isCollapsed && (
+                              <>
+                                {columnHeader}
+                                {items.length === 0 ? (
+                                  <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
+                                    Drag tasks here or click "+ Item".
+                                  </div>
+                                ) : (
+                                  <ul className="divide-y">{items.map(renderTaskRow)}</ul>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom groups — each its own section with internal status sub-rows */}
+                {customGroups.map((g) => {
+                  const groupTasks = boardTasks.filter((t) => t.group_id === g.id);
+                  const isCollapsed = collapsed[g.id];
+                  return (
+                    <div
+                      key={g.id}
+                      className="rounded-lg border border-border bg-card overflow-hidden shadow-sm"
+                    >
+                      <div
+                        className="flex items-center gap-2 px-3 py-2.5 border-b border-border/60"
+                        style={{ backgroundColor: `${g.color ?? "#6366f1"}14` }}
+                      >
+                        <button
+                          onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </button>
+                        <span
+                          className="inline-block h-2 w-2 rounded-full"
+                          style={{ backgroundColor: g.color ?? "#6366f1" }}
+                        />
+                        <h3 className="text-sm font-semibold" style={{ color: g.color ?? undefined }}>
+                          {g.name}
+                        </h3>
+                        <span className="text-xs text-muted-foreground tabular-nums">{groupTasks.length}</span>
+                        <span className="flex-1" />
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openNewTask(g.id)}>
+                          <Plus className="h-3.5 w-3.5" /> Item
+                        </Button>
+                        {isBoardOwner && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => openEditGroup(g)}
+                              title="Edit group"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => deleteGroup(g)}
+                              title="Delete group"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                      {!isCollapsed && (
+                        <div className="divide-y">
+                          {STATUS_ORDER.map(({ key: status, label }) => {
+                            const items = groupTasks.filter((t) => t.status === status);
+                            const meta = STATUS_META[status];
+                            return (
+                              <div
+                                key={status}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDrop={(e) => onDropToCustomSubsection(e, g.id, status)}
+                              >
+                                <div className="flex items-center gap-2 px-3 py-2 bg-muted/20 border-b border-border/40">
                                   <Badge className={`${meta.pillBg} ${meta.pillText} border-0 text-[10px]`}>
-                                    {meta.label}
+                                    {label}
                                   </Badge>
-                                  {t.due_date && (
-                                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                                      <Calendar className="h-3 w-3" />
-                                      {format(new Date(t.due_date), "MMM d")}
-                                    </span>
-                                  )}
+                                  <span className="text-xs text-muted-foreground tabular-nums">{items.length}</span>
+                                  <span className="flex-1" />
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 text-xs"
+                                    onClick={() => openNewTask(g.id, status)}
+                                  >
+                                    <Plus className="h-3.5 w-3.5" /> Item
+                                  </Button>
                                 </div>
-                              </li>
+                                {columnHeader}
+                                {items.length === 0 ? (
+                                  <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
+                                    Drag tasks here or click "+ Item".
+                                  </div>
+                                ) : (
+                                  <ul className="divide-y">{items.map(renderTaskRow)}</ul>
+                                )}
+                              </div>
                             );
                           })}
-                        </ul>
+                        </div>
                       )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </Card>
       )}
 

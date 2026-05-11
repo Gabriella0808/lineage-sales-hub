@@ -316,9 +316,9 @@ export default function TaskBoardsView() {
   };
 
   // --- Task CRUD ---
-  const openNewTask = (groupId: string | null) => {
+  const openNewTask = (groupId: string | null, status: Status = "todo") => {
     setEditingTask(null);
-    setTaskForm({ title: "", description: "", status: "todo", due_date: "", group_id: groupId });
+    setTaskForm({ title: "", description: "", status, due_date: "", group_id: groupId });
     setTaskDlgOpen(true);
   };
   const openEditTask = (t: BoardTask) => {

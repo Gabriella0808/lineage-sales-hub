@@ -977,6 +977,35 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const [perfMode, setPerfMode] = useState<"vendor" | "item">("vendor");
   const [compareLY, setCompareLY] = useState<boolean>(false);
 
+  // Item-mode filters (apply to chart + table)
+  const [itemQuery, setItemQuery] = useState("");
+  const [itemBrand, setItemBrand] = useState<string>("all");
+  const [itemCollection, setItemCollection] = useState<string>("all");
+
+  const itemBrandOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const it of items) if (it.brand) s.add(it.brand);
+    return Array.from(s).sort();
+  }, [items]);
+  const itemCollectionOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const it of items) if (it.collection) s.add(it.collection);
+    return Array.from(s).sort();
+  }, [items]);
+
+  const itemMetaMap = useMemo(() => new Map(items.map((it) => [it.sku, it])), [items]);
+  const itemPassesFilter = useCallback((sku: string, productHint?: string) => {
+    const meta = itemMetaMap.get(sku);
+    if (itemBrand !== "all" && (meta?.brand ?? "") !== itemBrand) return false;
+    if (itemCollection !== "all" && (meta?.collection ?? "") !== itemCollection) return false;
+    if (itemQuery) {
+      const q = itemQuery.toLowerCase();
+      const hay = `${sku} ${meta?.product ?? productHint ?? ""} ${meta?.collection ?? ""} ${meta?.brand ?? ""}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }, [itemMetaMap, itemBrand, itemCollection, itemQuery]);
+
   const [skuSearch, setSkuSearch] = useState("");
   const matchesSearch = useCallback((it: { sku: string; product: string; collection?: string; brand?: string }) => {
     if (!skuSearch) return true;

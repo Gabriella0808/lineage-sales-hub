@@ -177,7 +177,8 @@ export default function TasksPage() {
     assigned_user_ids: string[];
     trade_show: boolean;
     kpi_review: boolean;
-  }>({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false, kpi_review: false });
+    visibility: "public" | "private";
+  }>({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false, kpi_review: false, visibility: "public" });
 
   const TRADE_SHOW_TAG = "[Trade Show Leads]";
   const KPI_REVIEW_TAG = "[KPI Review]";

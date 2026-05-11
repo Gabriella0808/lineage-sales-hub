@@ -78,25 +78,55 @@ export function useInventoryHub() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
-      const [oso, po, pol, ssh, ls, ds] = await Promise.all([
-        supabase.from("open_sales_orders").select("id, order_number, sku, dealer_name, qty_open, unit_price, extended_value, order_date, promised_date").limit(1000),
+
+    const loadPOs = async () => {
+      const [po, pol] = await Promise.all([
         supabase.from("purchase_orders").select("id, po_number, factory, status, production_stage, order_date, eta, total_value, prepaid_amount, is_prepaid, container_type").limit(1000),
         supabase.from("purchase_order_lines").select("id, po_id, sku, qty_ordered, qty_received, unit_cost, eta").limit(1000),
+      ]);
+      if (!active) return;
+      setPurchaseOrders((po.data ?? []) as PurchaseOrder[]);
+      setPoLines((pol.data ?? []) as PurchaseOrderLine[]);
+    };
+
+    (async () => {
+      const [oso, ssh, ls, ds] = await Promise.all([
+        supabase.from("open_sales_orders").select("id, order_number, sku, dealer_name, qty_open, unit_price, extended_value, order_date, promised_date").limit(1000),
         supabase.from("sku_sales_history").select("id, sku, year, month, units_sold, revenue, forecast_units").limit(1000),
         supabase.from("lost_sales_events").select("id, sku, event_date, qty_requested, estimated_value, reason, dealer_name").limit(1000),
         supabase.from("dealer_demand_signals").select("id, sku, dealer_name, signal_type, signal_strength, signal_date, notes").limit(1000),
       ]);
       if (!active) return;
       setOpenOrders((oso.data ?? []) as OpenSalesOrder[]);
-      setPurchaseOrders((po.data ?? []) as PurchaseOrder[]);
-      setPoLines((pol.data ?? []) as PurchaseOrderLine[]);
       setSalesHistory((ssh.data ?? []) as SkuSalesHistory[]);
       setLostSales((ls.data ?? []) as LostSaleEvent[]);
       setDemandSignals((ds.data ?? []) as DealerDemandSignal[]);
+      await loadPOs();
       setLoading(false);
     })();
-    return () => { active = false; };
+
+    // Debounced refetch for live PO updates from Acctivate sync
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { loadPOs(); }, 400);
+    };
+
+    const channel = supabase
+      .channel("inventory-hub-pos")
+      .on("postgres_changes", { event: "*", schema: "public", table: "purchase_orders" }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "purchase_order_lines" }, scheduleReload)
+      .subscribe();
+
+    // Safety net: poll every 60s in case realtime drops
+    const poll = setInterval(loadPOs, 60_000);
+
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+      clearInterval(poll);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return { openOrders, purchaseOrders, poLines, salesHistory, lostSales, demandSignals, loading };

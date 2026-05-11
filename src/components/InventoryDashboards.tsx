@@ -337,6 +337,7 @@ function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

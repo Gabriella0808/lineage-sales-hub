@@ -1582,41 +1582,98 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                           </div>
                         </>
                       );
-                    })() : (
-                      <table className="w-full text-sm mt-4">
-                        <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                          <tr>
-                            <th className="text-left px-3 py-2">Item</th>
-                            <th className="text-left px-3 py-2">Vendor</th>
-                            <th className="text-right px-3 py-2">Monthly Sales</th>
-                            <th className="text-right px-3 py-2">Inv Value</th>
-                            <th className="text-right px-3 py-2">Growth (3m vs 9m)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows.slice(0, 20).map((r) => {
-                            const g = r.growthPct;
-                            const growthLabel = g == null
-                              ? "—"
-                              : g === 999
-                                ? "New"
-                                : `${g > 0 ? "+" : ""}${g.toFixed(0)}%`;
-                            const growthCls = g == null || g === 999
-                              ? "text-muted-foreground"
-                              : g >= 10 ? "text-success" : g <= -10 ? "text-destructive" : "text-foreground";
-                            return (
-                              <tr key={r.key} className="border-t border-border">
-                                <td className="px-3 py-2">{r.label}</td>
-                                <td className="px-3 py-2 text-muted-foreground">{r.sub}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(r.sales)}</td>
-                                <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(r.value)}</td>
-                                <td className={cn("px-3 py-2 text-right tabular-nums font-medium", growthCls)}>{growthLabel}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    )}
+                    })() : (() => {
+                      // Item mode — YTD POs by SKU, joined with item metadata
+                      const itemMeta = new Map(items.map((it) => [it.sku, it]));
+                      const itemRows = itemPoYtd.rows
+                        .slice(0, 30)
+                        .map((r) => {
+                          const meta = itemMeta.get(r.sku);
+                          return {
+                            ...r,
+                            product: meta?.product ?? r.sku,
+                            vendor: meta?.supplier ?? "—",
+                            invValue: (meta?.unitCost ?? 0) * (meta?.onHand ?? 0),
+                            delta: r.ytdValueLY > 0 ? ((r.ytdValue - r.ytdValueLY) / r.ytdValueLY) * 100 : (r.ytdValue > 0 ? 999 : 0),
+                          };
+                        });
+                      const ty = itemPoYtd.thisYear;
+                      const ly = itemPoYtd.lastYear;
+                      return (
+                        <>
+                          <div className="flex items-center justify-between mt-4 mb-2 gap-2 flex-wrap">
+                            <div className="text-xs text-muted-foreground">
+                              YTD Purchase Orders ({ty}{compareLY ? ` vs ${ly}` : ""}) · {hub.poLines.length === 0 ? "no PO line data yet" : `${itemPoYtd.rows.length} items`}
+                            </div>
+                            <label className="inline-flex items-center gap-2 text-xs cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                className="h-3.5 w-3.5 rounded border-border accent-primary"
+                                checked={compareLY}
+                                onChange={(e) => setCompareLY(e.target.checked)}
+                              />
+                              <span className="font-medium">Compare to last year ({ly})</span>
+                            </label>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                                <tr>
+                                  <th className="text-left px-3 py-2">Item</th>
+                                  <th className="text-left px-3 py-2">Vendor</th>
+                                  <th className="text-right px-3 py-2">YTD PO&apos;s ({ty})</th>
+                                  <th className="text-right px-3 py-2">% of Total</th>
+                                  <th className="text-right px-3 py-2">Inv Value</th>
+                                  {compareLY && (
+                                    <>
+                                      <th className="text-right px-3 py-2">YTD PO&apos;s ({ly})</th>
+                                      <th className="text-right px-3 py-2">YoY Change</th>
+                                    </>
+                                  )}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {itemRows.length === 0 ? (
+                                  <tr><td colSpan={compareLY ? 7 : 5} className="px-3 py-6 text-center text-muted-foreground text-xs">No YTD purchase orders found.</td></tr>
+                                ) : itemRows.map((r) => {
+                                  const d = r.delta;
+                                  const dLabel = r.ytdValueLY === 0
+                                    ? (r.ytdValue > 0 ? "New" : "—")
+                                    : `${d > 0 ? "+" : ""}${d.toFixed(0)}%`;
+                                  const dCls = r.ytdValueLY === 0
+                                    ? "text-muted-foreground"
+                                    : d >= 10 ? "text-success" : d <= -10 ? "text-destructive" : "text-foreground";
+                                  return (
+                                    <tr key={r.sku} className="border-t border-border">
+                                      <td className="px-3 py-2">
+                                        <div className="font-medium">{r.product}</div>
+                                        <div className="text-xs text-muted-foreground">{r.sku}</div>
+                                      </td>
+                                      <td className="px-3 py-2 text-muted-foreground">{r.vendor}</td>
+                                      <td className="px-3 py-2 text-right tabular-nums">
+                                        {fmtMoney(r.ytdValue)}
+                                        <span className="text-xs text-muted-foreground ml-1.5">· {r.ytdCount} PO{r.ytdCount === 1 ? "" : "s"}</span>
+                                      </td>
+                                      <td className="px-3 py-2 text-right tabular-nums">{r.pctOfTotal.toFixed(1)}%</td>
+                                      <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(r.invValue)}</td>
+                                      {compareLY && (
+                                        <>
+                                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                                            {fmtMoney(r.ytdValueLY)}
+                                            <span className="text-xs ml-1.5">· {r.ytdCountLY}</span>
+                                          </td>
+                                          <td className={cn("px-3 py-2 text-right tabular-nums font-medium", dCls)}>{dLabel}</td>
+                                        </>
+                                      )}
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </>
                 );
               })()}

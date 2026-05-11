@@ -45,6 +45,14 @@ const STATUS_META: Record<Status, { label: string; pillBg: string; pillText: str
   done: { label: "Completed", pillBg: "bg-success", pillText: "text-success-foreground" },
 };
 
+const DEFAULT_GROUP_NAMES = ["To Do", "In Progress", "Stuck", "Done"] as const;
+const STATUS_ORDER: { key: Status; label: string }[] = [
+  { key: "todo", label: "To Do" },
+  { key: "in_progress", label: "In Progress" },
+  { key: "blocked", label: "Stuck" },
+  { key: "done", label: "Done" },
+];
+
 const GROUP_COLORS = [
   "#6366f1", "#0ea5e9", "#10b981", "#f59e0b",
   "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6",

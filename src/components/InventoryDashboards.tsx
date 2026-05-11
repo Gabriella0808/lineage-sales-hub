@@ -1471,6 +1471,41 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
                 return (
                   <>
+                    {perfMode === "item" && (
+                      <div className="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-lg border border-border bg-muted/30">
+                        <div className="relative flex-1 min-w-[200px]">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <Input
+                            value={itemQuery}
+                            onChange={(e) => setItemQuery(e.target.value)}
+                            placeholder="Search SKU or product…"
+                            className="pl-8 h-9 text-sm bg-background"
+                          />
+                        </div>
+                        <Select value={itemBrand} onValueChange={setItemBrand}>
+                          <SelectTrigger className="w-[170px] h-9 text-sm bg-background"><SelectValue placeholder="Brand" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All brands</SelectItem>
+                            {itemBrandOptions.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Select value={itemCollection} onValueChange={setItemCollection}>
+                          <SelectTrigger className="w-[180px] h-9 text-sm bg-background"><SelectValue placeholder="Collection" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All collections</SelectItem>
+                            {itemCollectionOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        {(itemQuery || itemBrand !== "all" || itemCollection !== "all") && (
+                          <button
+                            onClick={() => { setItemQuery(""); setItemBrand("all"); setItemCollection("all"); }}
+                            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 px-1"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {/* Growth / decline summary */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
                       <div className="rounded-lg border border-success/30 bg-success/5 p-3">

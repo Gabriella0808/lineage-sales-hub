@@ -193,8 +193,106 @@ function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
 
   if (rows.length === 0) return <EmptyState message="No POs to show." />;
   const fd = (d: Date) => d.toLocaleDateString();
+
+  // Vendor lateness: avg days late = actualShip - proForma
+  const vendorLateness = (() => {
+    const m = new Map<string, { sum: number; n: number; late: number }>();
+    for (const r of rows) {
+      const days = Math.round((r.actualShip.getTime() - r.proForma.getTime()) / 86400000);
+      const e = m.get(r.vendor) ?? { sum: 0, n: 0, late: 0 };
+      e.sum += days; e.n += 1; if (days > 0) e.late += 1;
+      m.set(r.vendor, e);
+    }
+    return Array.from(m.entries())
+      .map(([vendor, v]) => ({ vendor, avgDaysLate: Math.round(v.sum / v.n), pos: v.n, lateCount: v.late }))
+      .sort((a, b) => b.avgDaysLate - a.avgDaysLate);
+  })();
+
+  // ETA by month
+  const etaByMonth = (() => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      const key = `${r.eta.getFullYear()}-${String(r.eta.getMonth() + 1).padStart(2, "0")}`;
+      m.set(key, (m.get(key) ?? 0) + 1);
+    }
+    return Array.from(m.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, count]) => {
+        const [y, mo] = month.split("-");
+        const label = new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+        return { month: label, count };
+      });
+  })();
+
+  // On-time vs late
+  const now = Date.now();
+  const statusSplit = (() => {
+    let onTime = 0, late = 0, arrived = 0;
+    for (const r of rows) {
+      if (r.eta.getTime() < now) arrived += 1;
+      else if (r.actualShip.getTime() > r.proForma.getTime()) late += 1;
+      else onTime += 1;
+    }
+    return [
+      { name: "On Time", value: onTime, fill: "hsl(var(--success))" },
+      { name: "Delayed", value: late, fill: "hsl(var(--destructive))" },
+      { name: "Arrived", value: arrived, fill: "hsl(var(--muted-foreground))" },
+    ].filter((d) => d.value > 0);
+  })();
+
+  const totalLate = vendorLateness.reduce((s, v) => s + v.lateCount, 0);
+
   return (
-    <div className="overflow-auto">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+        <Card className="p-3">
+          <div className="text-xs font-semibold mb-1">Avg Days Late by Vendor</div>
+          <div className="text-[10px] text-muted-foreground mb-2">Actual ship vs Pro Forma · {totalLate} late POs</div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={vendorLateness} layout="vertical" margin={{ left: 10, right: 10, top: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" tick={{ fontSize: 10 }} />
+              <YAxis type="category" dataKey="vendor" tick={{ fontSize: 10 }} width={110} />
+              <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
+              <Bar dataKey="avgDaysLate" name="Avg days late" radius={[0, 4, 4, 0]}>
+                {vendorLateness.map((v, i) => (
+                  <Cell key={i} fill={v.avgDaysLate > 7 ? "hsl(var(--destructive))" : v.avgDaysLate > 0 ? "hsl(var(--warning))" : "hsl(var(--success))"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-3">
+          <div className="text-xs font-semibold mb-1">Estimated Arrivals by Month</div>
+          <div className="text-[10px] text-muted-foreground mb-2">PO count by ETA month</div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={etaByMonth} margin={{ left: 0, right: 10, top: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+              <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
+              <Bar dataKey="count" name="POs arriving" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+
+        <Card className="p-3">
+          <div className="text-xs font-semibold mb-1">Shipment Status</div>
+          <div className="text-[10px] text-muted-foreground mb-2">On time vs delayed vs arrived</div>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie data={statusSplit} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={40} label={{ fontSize: 10 }}>
+                {statusSplit.map((d, i) => <Cell key={i} fill={d.fill} />)}
+              </Pie>
+              <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      <div className="overflow-auto">
       <table className="w-full text-xs">
         <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground sticky top-0">
           <tr>

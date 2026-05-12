@@ -1450,6 +1450,74 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const [drilldown, setDrilldown] = useState<null | DrilldownKey>(null);
   const toggleDrill = (k: DrilldownKey) => setDrilldown((curr) => (curr === k ? null : k));
 
+  // Closeout report (shown when Closeout Inventory tile is clicked)
+  function ReportCloseout() {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <KPI label="Closeout SKUs" value={closeoutRows.length} icon={Tag} />
+          <KPI label="Total Closeout Value" value={fmtMoney(closeoutTotal)} icon={DollarSign} />
+          <KPI
+            label="Avg Burn-Down"
+            value={`${(closeoutRows.reduce((s, r) => s + (r.burnDownMonths ?? 0), 0) / Math.max(1, closeoutRows.filter(r => r.burnDownMonths != null).length) || 0).toFixed(1)} mo`}
+            icon={TrendingDown}
+          />
+        </div>
+        {closeoutByCollection.length > 0 && (
+          <Card className="p-5">
+            <h3 className="text-base font-semibold mb-3">Closeout Value by Brand</h3>
+            <div className="h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={closeoutByCollection} layout="vertical" margin={{ left: 4, right: 12 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <RTooltip formatter={(v: number) => fmtMoney(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                  <Bar dataKey="value" fill="hsl(var(--accent))" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
+        <Card className="p-5">
+          <h3 className="text-base font-semibold mb-3">Closeout Inventory</h3>
+          {closeoutRows.length === 0 ? <EmptyState message="No closeout SKUs flagged. Set is_closeout = true on inventory rows." /> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="text-left px-3 py-2">SKU</th>
+                    <th className="text-left px-3 py-2">Product</th>
+                    <th className="text-left px-3 py-2">Collection</th>
+                    <th className="text-right px-3 py-2">Units</th>
+                    <th className="text-right px-3 py-2">% Sold</th>
+                    <th className="text-right px-3 py-2">Burn-Down (mo)</th>
+                    <th className="text-right px-3 py-2">Value</th>
+                    <th className="text-center px-3 py-2">Clr</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {closeoutRows.map((it) => (
+                    <tr key={it.sku} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => setDrawerSku(it.sku)}>
+                      <td className="px-3 py-2 font-mono">{it.sku}</td>
+                      <td className="px-3 py-2">{it.product}</td>
+                      <td className="px-3 py-2">{it.collection}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{it.onHand}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{it.pctSold == null ? "—" : `${it.pctSold.toFixed(0)}%`}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{it.burnDownMonths == null ? "—" : it.burnDownMonths.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.onHandValue ?? (it.unitCost ?? 0) * it.onHand)}</td>
+                      <td className="px-3 py-2 text-center">{it.isClearance ? <Badge variant="secondary" className="text-[10px]">Yes</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
   const drillTitles: Record<DrilldownKey, { title: string; desc: string }> = {
     value: { title: "Total Inventory Value — by SKU", desc: "All on-hand inventory valued at unit cost." },
     openpo: { title: "Total Open POs — not yet arrived", desc: "Purchase orders still in production or transit." },

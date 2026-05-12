@@ -628,7 +628,7 @@ export default function TravelLogPage() {
                       )}
                       <p className="text-xs font-medium">
                         {isMulti
-                          ? `${format(start, "MMM d")} – ${format(end, "MMM d")}`
+                          ? `${format(start, "MMM d")} - ${format(end, "MMM d")}`
                           : format(start, "MMM d, yyyy")}
                       </p>
                     </div>

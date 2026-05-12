@@ -315,7 +315,7 @@ export default function SalesReport({ metric }: SalesReportProps) {
           <h1 className="text-2xl font-semibold">{title}</h1>
           <p className="text-sm text-muted-foreground">
             {dealerCount} active dealers • {useDateRange && dateFrom && dateTo
-              ? `${format(dateFrom, "MMM d, yyyy")} – ${format(dateTo, "MMM d, yyyy")}`
+              ? `${format(dateFrom, "MMM d, yyyy")} - ${format(dateTo, "MMM d, yyyy")}`
               : `${year}`}
           </p>
         </div>
@@ -557,7 +557,7 @@ export default function SalesReport({ metric }: SalesReportProps) {
           {totalPages > 1 && (
             <div className="flex items-center justify-between gap-2 px-4 py-3 border-t">
               <p className="text-xs text-muted-foreground">
-                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, sortedRows.length)} of {sortedRows.length}
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, sortedRows.length)} of {sortedRows.length}
               </p>
               <div className="flex items-center gap-1 flex-wrap justify-end">
                 <Button size="sm" variant="outline" className="h-8 px-2" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Prev</Button>

@@ -1446,7 +1446,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       || (it.brand ?? "").toLowerCase().includes(q);
   }, [skuSearch]);
 
-  type DrilldownKey = "value" | "openpo" | "prepaid" | "backlog" | "closeout" | "ratio" | "turnover" | "lost";
+  type DrilldownKey = "value" | "openpo" | "prepaid" | "backlog" | "closeout" | "lost";
   const [drilldown, setDrilldown] = useState<null | DrilldownKey>(null);
   const toggleDrill = (k: DrilldownKey) => setDrilldown((curr) => (curr === k ? null : k));
 

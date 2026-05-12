@@ -8,6 +8,11 @@
     <meta name="author" content="Lineage Collections" />
     <meta name="theme-color" content="#1a2233" />
 
+    <!-- Prevent caching in preview/dev -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
@@ -22,6 +27,25 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Lineage Collections — Internal Portal" />
     <meta name="twitter:description" content="Internal operating system for the Lineage Collections team." />
+
+    <!-- Aggressive cache/SW purge in preview environments -->
+    <script>
+      (function() {
+        const host = location.hostname;
+        const isPreview = host.includes('id-preview--') || host.includes('preview--') || host.endsWith('lovableproject.com') || host.endsWith('lovableproject-dev.com') || host === 'localhost' || host === '127.0.0.1';
+        if (!isPreview) return;
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          });
+        }
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            names.forEach(function(n) { caches.delete(n); });
+          });
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

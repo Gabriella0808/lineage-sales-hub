@@ -164,11 +164,13 @@ export default function InventoryPage() {
         <div>
           <h1 className="page-title">Inventory</h1>
           <p className="page-subtitle">
-            {usingMock
-              ? "Showing sample data — Acctivate sync hasn't run yet."
-              : lastSyncedAt
-                ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
-                : "Synced from Acctivate."}
+            <span>
+              {usingMock
+                ? "Showing sample data — Acctivate sync hasn't run yet."
+                : lastSyncedAt
+                  ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
+                  : "Synced from Acctivate."}
+            </span>
             {lastFetchedAt && !usingMock && (
               <span className="text-xs text-muted-foreground ml-2">
                 · refreshed {new Date(lastFetchedAt).toLocaleTimeString()}

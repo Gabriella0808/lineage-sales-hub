@@ -47,44 +47,6 @@ const STAGE_COLOR: Record<string, string> = {
   closed: "bg-muted text-muted-foreground border-border",
 };
 
-// Mock arrival POs — used when no real PO data is synced yet, for previewing the Arrival Calendar
-const MOCK_ARRIVAL_POS: PurchaseOrder[] = (() => {
-  const today = new Date();
-  const dayOffset = (d: number) => {
-    const dt = new Date(today);
-    dt.setDate(dt.getDate() + d);
-    return dt.toISOString().slice(0, 10);
-  };
-  const factories = ["Sea Winds", "Finn & Louise", "Lux Lighting"];
-  const rows: Array<{ days: number; value: number; stage: string }> = [
-    { days: -18, value: 42500, stage: "at_port" },
-    { days: -7, value: 31200, stage: "in_transit" },
-    { days: 5, value: 58400, stage: "in_transit" },
-    { days: 12, value: 27800, stage: "loaded" },
-    { days: 22, value: 64900, stage: "in_transit" },
-    { days: 28, value: 18750, stage: "at_port" },
-    { days: 41, value: 73200, stage: "loaded" },
-    { days: 52, value: 36500, stage: "in_manufacturing" },
-    { days: 58, value: 49800, stage: "in_manufacturing" },
-    { days: 71, value: 82400, stage: "in_manufacturing" },
-    { days: 83, value: 29600, stage: "in_manufacturing" },
-    { days: 89, value: 55300, stage: "loaded" },
-  ];
-  return rows.map((r, i) => ({
-    id: `mock-po-${i}`,
-    po_number: `PO-${24000 + i}`,
-    factory: factories[i % factories.length],
-    status: "open",
-    production_stage: r.stage,
-    order_date: dayOffset(-90 + i * 4),
-    eta: dayOffset(r.days),
-    total_value: r.value,
-    prepaid_amount: 0,
-    is_prepaid: false,
-    container_type: i % 3 === 0 ? "mixed" : "direct",
-  }));
-})();
-
 function KPI({ label, value, hint, icon: Icon, accent, onClick, active }: {
   label: string; value: string | number; hint?: string;
   icon: React.ComponentType<{ className?: string }>; accent?: string;

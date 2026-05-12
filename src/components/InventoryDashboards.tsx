@@ -1524,8 +1524,6 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     prepaid: { title: "Prepaid Inventory — POs with deposits", desc: "Cash already paid out to factories." },
     backlog: { title: "Backlog — Open Sales Orders", desc: "Customer orders placed but not yet shipped." },
     closeout: { title: "Closeout Inventory — clearance & closeout", desc: "SKUs flagged closeout or clearance." },
-    ratio: { title: "Sales / Inv Ratio — slowest movers first", desc: "Monthly $ sales ÷ on-hand value, lowest carrying first." },
-    turnover: { title: "Annual Turnover — by SKU", desc: "Annualized turns based on monthly sales velocity." },
     lost: { title: "Lost Sales — out-of-stock SKUs", desc: "Estimated monthly $ lost from stockouts." },
   };
 

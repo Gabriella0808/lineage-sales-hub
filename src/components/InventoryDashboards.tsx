@@ -47,44 +47,6 @@ const STAGE_COLOR: Record<string, string> = {
   closed: "bg-muted text-muted-foreground border-border",
 };
 
-// Mock arrival POs — used when no real PO data is synced yet, for previewing the Arrival Calendar
-const MOCK_ARRIVAL_POS: PurchaseOrder[] = (() => {
-  const today = new Date();
-  const dayOffset = (d: number) => {
-    const dt = new Date(today);
-    dt.setDate(dt.getDate() + d);
-    return dt.toISOString().slice(0, 10);
-  };
-  const factories = ["Sea Winds", "Finn & Louise", "Lux Lighting"];
-  const rows: Array<{ days: number; value: number; stage: string }> = [
-    { days: -18, value: 42500, stage: "at_port" },
-    { days: -7, value: 31200, stage: "in_transit" },
-    { days: 5, value: 58400, stage: "in_transit" },
-    { days: 12, value: 27800, stage: "loaded" },
-    { days: 22, value: 64900, stage: "in_transit" },
-    { days: 28, value: 18750, stage: "at_port" },
-    { days: 41, value: 73200, stage: "loaded" },
-    { days: 52, value: 36500, stage: "in_manufacturing" },
-    { days: 58, value: 49800, stage: "in_manufacturing" },
-    { days: 71, value: 82400, stage: "in_manufacturing" },
-    { days: 83, value: 29600, stage: "in_manufacturing" },
-    { days: 89, value: 55300, stage: "loaded" },
-  ];
-  return rows.map((r, i) => ({
-    id: `mock-po-${i}`,
-    po_number: `PO-${24000 + i}`,
-    factory: factories[i % factories.length],
-    status: "open",
-    production_stage: r.stage,
-    order_date: dayOffset(-90 + i * 4),
-    eta: dayOffset(r.days),
-    total_value: r.value,
-    prepaid_amount: 0,
-    is_prepaid: false,
-    container_type: i % 3 === 0 ? "mixed" : "direct",
-  }));
-})();
-
 function KPI({ label, value, hint, icon: Icon, accent, onClick, active }: {
   label: string; value: string | number; hint?: string;
   icon: React.ComponentType<{ className?: string }>; accent?: string;
@@ -723,10 +685,75 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   );
 
   // PO arrival buckets (next 30/60/90, late)
+  // When no real PO data is synced, synthesize POs from the same vendor data
+  // shown in "Performance by Vendor" so the calendar is consistent with that view.
   const poBuckets = useMemo(() => {
     const today = new Date();
     const buckets = { late: [] as PurchaseOrder[], d30: [] as PurchaseOrder[], d60: [] as PurchaseOrder[], d90: [] as PurchaseOrder[] };
-    const source = hub.purchaseOrders.length > 0 ? hub.purchaseOrders : MOCK_ARRIVAL_POS;
+
+    let source: PurchaseOrder[] = hub.purchaseOrders;
+
+    if (source.length === 0) {
+      // Aggregate vendor-level value from items (matches vendorPerf logic upstream)
+      const vendorValue = new Map<string, number>();
+      for (const it of items) {
+        const v = it.supplier ?? "—";
+        const sales = it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
+        vendorValue.set(v, (vendorValue.get(v) ?? 0) + sales);
+      }
+      const vendors = Array.from(vendorValue.entries())
+        .filter(([, val]) => val > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+      // Fallback to canonical brand list if no vendor data
+      const list: Array<[string, number]> = vendors.length > 0
+        ? vendors
+        : [["Sea Winds", 80000], ["Finn & Louise", 60000], ["Lux Lighting", 40000]];
+
+      const hash = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
+      const stages = ["in_manufacturing", "loaded", "in_transit", "at_port"];
+      const synth: PurchaseOrder[] = [];
+
+      // Each vendor gets ~3 POs spread over -30..+90 days, sized proportionally to their YTD sales
+      const totalVal = list.reduce((s, [, v]) => s + v, 0) || 1;
+      list.forEach(([vendor, val], vi) => {
+        const seed = hash(vendor);
+        const share = val / totalVal;
+        // Allocate ~25% of annual value across the visible 4-month window
+        const windowValue = val * 0.25;
+        const poCount = 3;
+        for (let k = 0; k < poCount; k++) {
+          const offset = ((seed >> (k * 3)) % 110) - 20; // -20..89 days
+          const stage = offset < 0
+            ? "at_port"
+            : offset < 30
+              ? "in_transit"
+              : offset < 60
+                ? "loaded"
+                : "in_manufacturing";
+          const dt = new Date(today);
+          dt.setDate(dt.getDate() + offset);
+          const value = Math.round((windowValue / poCount) * (0.7 + ((seed >> (k * 5)) % 60) / 100));
+          synth.push({
+            id: `synth-${vi}-${k}`,
+            po_number: `PO-${24000 + vi * 10 + k}`,
+            factory: vendor,
+            status: "open",
+            production_stage: stage,
+            order_date: null,
+            eta: dt.toISOString().slice(0, 10),
+            total_value: value,
+            prepaid_amount: 0,
+            is_prepaid: false,
+            container_type: k % 2 === 0 ? "mixed" : "direct",
+          });
+        }
+        void share;
+      });
+      source = synth;
+    }
+
     for (const po of source) {
       if (po.production_stage === "closed" || po.production_stage === "arrived") continue;
       if (!po.eta) continue;
@@ -738,7 +765,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       else if (days <= 90) buckets.d90.push(po);
     }
     return buckets;
-  }, [hub.purchaseOrders]);
+  }, [hub.purchaseOrders, items]);
 
   // PO stage counts
   const stageCounts = useMemo(() => {

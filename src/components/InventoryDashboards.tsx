@@ -1543,10 +1543,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       </div>
 
       {drilldown && (
-        <Card className={cn(
-          "p-5 animate-in fade-in slide-in-from-top-2 duration-200",
-          drilldown === "closeout" && "lg:-mx-12 xl:-mx-24 2xl:-mx-32",
-        )}>
+        <Card className="p-5 animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
               <h3 className="text-base font-semibold">{drillTitles[drilldown].title}</h3>

@@ -1656,12 +1656,11 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       {/* ============ SECTION 1: SUMMARY ============ */}
       <TabsContent value="summary" className="space-y-6 mt-4">
         {/* Clickable status tiles — filter the SKU table below */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {([
             { key: "all" as StatusFilter, label: "Total SKUs", value: statusCounts.total, icon: Package, accent: undefined as string | undefined, hint: undefined as string | undefined },
             { key: "critical" as StatusFilter, label: "Critical Items", value: statusCounts.critical, icon: AlertTriangle, accent: "text-destructive", hint: "Needs attention" },
             { key: "out-of-stock" as StatusFilter, label: "Out of Stock", value: statusCounts.outOfStock, icon: XCircle, accent: "text-destructive", hint: undefined },
-            { key: "reorder-soon" as StatusFilter, label: "Reorder Soon", value: statusCounts.reorder, icon: RefreshCw, accent: "text-warning-foreground", hint: undefined },
             { key: "fast-moving" as StatusFilter, label: "Fast Moving", value: statusCounts.fast, icon: Zap, accent: "text-success", hint: undefined },
           ]).map((t) => {
             const Icon = t.icon;

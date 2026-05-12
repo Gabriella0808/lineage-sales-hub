@@ -1836,10 +1836,16 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                       const perf = vendorPerf.find((x) => x.vendor === v.vendor);
                       return { label: v.vendor, key: v.vendor, sales: v.ytdValue, pctSales: v.pctOfTotal, value: perf?.value ?? 0, growthPct, sub: undefined as string | undefined };
                     })
-                  : itemPerf
-                      .filter((i) => itemPassesFilter(i.sku, i.product))
-                      .slice(0, 50)
-                      .map((i) => ({ label: i.product || i.sku, key: i.sku, sales: i.sales, pctSales: 0, value: i.value, growthPct: i.growthPct, sub: i.vendor }));
+                  : itemPoYtd.rows
+                      .map((r) => {
+                        const growthPct = r.ytdValueLY > 0
+                          ? ((r.ytdValue - r.ytdValueLY) / r.ytdValueLY) * 100
+                          : (r.ytdValue > 0 ? 999 : 0);
+                        const it = items.find((x) => x.sku === r.sku);
+                        return { label: it?.product || r.sku, key: r.sku, sales: r.ytdValue, pctSales: r.pctOfTotal, value: (it?.unitCost ?? 0) * (it?.onHand ?? 0), growthPct, sub: it?.supplier };
+                      })
+                      .filter((i) => itemPassesFilter(i.key, i.label))
+                      .slice(0, 50);
 
                 const withGrowth = rows.filter((r) => r.growthPct != null && r.growthPct !== 999);
                 const topGrowing = [...withGrowth].sort((a, b) => (b.growthPct ?? 0) - (a.growthPct ?? 0)).slice(0, 5);

@@ -1604,15 +1604,6 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            {newProducts.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-border">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">New Products (no sales history yet)</div>
-                <div className="text-2xl font-semibold tabular-nums">{newProducts.length}</div>
-                <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                  {newProducts.slice(0, 6).map((it) => it.sku).join(", ")}{newProducts.length > 6 ? "…" : ""}
-                </div>
-              </div>
-            )}
           </Card>
         </div>
 

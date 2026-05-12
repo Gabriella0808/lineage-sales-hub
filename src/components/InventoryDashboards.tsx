@@ -1968,7 +1968,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                                   labelFormatter={(label) => String(label)}
                                   contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                                 />
-                                <Bar dataKey="sales" name="Monthly Sales">
+                                <Bar dataKey="sales" name={perfMode === "vendor" ? "YTD POs" : "Monthly Sales"}>
                                   {chartData.map((r, idx) => (
                                     <Cell key={idx} fill={r.fill} />
                                   ))}

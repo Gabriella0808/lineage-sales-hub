@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
             profile?.full_name?.split(" ")?.[0] ||
             email.split("@")[0];
 
-          const { error: eErr } = await supabase.functions.invoke(
+          const { data: invokeData, error: eErr } = await supabase.functions.invoke(
             "send-transactional-email",
             {
               body: {
@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
               },
             },
           );
+          console.log("invoke send-transactional-email", { email, eErr: eErr ? String(eErr) : null, invokeData });
           if (!eErr) emailed++;
         } catch (e) {
           console.error("Failed to send task-due email", { userId, taskId: t.id, error: String(e) });

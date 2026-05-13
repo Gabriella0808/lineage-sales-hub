@@ -175,6 +175,9 @@ export default function DashboardPage() {
         <StatCard title="Orders" value={totalOrders.toLocaleString()} trend="neutral" subtitle={String(currentYear)} variant="success" />
       </div>
 
+      {/* Sales Targets — YTD/MTD progress */}
+      <TargetsProgressCard />
+
       {/* Sales Leaderboard — full width */}
       <div className="glass-card p-4 sm:p-6 mb-6">
         <h3 className="text-base font-semibold mb-4 sm:mb-5 flex items-center gap-2">

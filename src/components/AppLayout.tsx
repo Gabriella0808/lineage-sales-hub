@@ -261,6 +261,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="text-xs text-muted-foreground hidden sm:inline lg:hidden tabular-nums">
               {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </span>
+            <RefreshUpdatesButton />
             <SignOutButton />
           </header>
           <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">

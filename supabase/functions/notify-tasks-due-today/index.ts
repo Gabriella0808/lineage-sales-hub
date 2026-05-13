@@ -98,8 +98,10 @@ Deno.serve(async (req) => {
 
         // Email reminder — idempotency key ensures no duplicates per task/user/day
         try {
-          const { data: userResp } = await supabase.auth.admin.getUserById(userId);
+          const { data: userResp, error: uErr } = await supabase.auth.admin.getUserById(userId);
+          if (uErr) console.error("getUserById error", { userId, error: uErr.message });
           const email = userResp?.user?.email;
+          console.log("resolving email", { userId, taskId: t.id, hasEmail: !!email });
           if (!email) continue;
 
           const { data: profile } = await supabase

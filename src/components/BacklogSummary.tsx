@@ -203,6 +203,43 @@ export function BacklogSummary() {
           </div>
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Customer</label>
+              <Select value={customerFilter} onValueChange={setCustomerFilter}>
+                <SelectTrigger className="h-8 w-[180px] text-xs">
+                  <SelectValue placeholder="All customers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All customers</SelectItem>
+                  {allCustomers.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">SKU / Search</label>
+              <Input
+                className="h-8 w-[180px] text-xs"
+                placeholder="SKU, item, customer..."
+                value={skuQuery}
+                onChange={(e) => setSkuQuery(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Rep</label>
+              <Select value={repFilter} onValueChange={setRepFilter}>
+                <SelectTrigger className="h-8 w-[150px] text-xs">
+                  <SelectValue placeholder="All reps" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All reps</SelectItem>
+                  {allReps.map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Territory</label>
               <Select value={territoryFilter} onValueChange={setTerritoryFilter}>
                 <SelectTrigger className="h-8 w-[160px] text-xs">
@@ -213,33 +250,6 @@ export function BacklogSummary() {
                   {allTerritories.map((t) => (
                     <SelectItem key={t} value={t}>{t}</SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Stock Class</label>
-              <Select value={stockClassFilter} onValueChange={setStockClassFilter}>
-                <SelectTrigger className="h-8 w-[140px] text-xs">
-                  <SelectValue placeholder="All classes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All classes</SelectItem>
-                  {data.stockClasses.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-8 w-[120px] text-xs">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="Open">Open</SelectItem>
-                  <SelectItem value="Cleared">Cleared</SelectItem>
                 </SelectContent>
               </Select>
             </div>

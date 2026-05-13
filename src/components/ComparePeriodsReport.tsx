@@ -371,7 +371,7 @@ export default function ComparePeriodsReport(_props: Props) {
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">Sales Report — Filters</h3>
+          <h3 className="text-sm font-semibold">Sales Report - Filters</h3>
           <div className="ml-auto flex items-center gap-2">
             <Button size="sm" variant="ghost" onClick={reset} className="h-8 text-xs">
               <RotateCcw className="h-3 w-3 mr-1" /> Reset

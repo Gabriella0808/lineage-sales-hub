@@ -669,40 +669,42 @@ export default function TasksPage() {
                   kpiReview={form.kpi_review}
                   onKpiReviewChange={(v) => setForm({ ...form, kpi_review: v })}
                 />
-                <div className="flex items-center justify-between rounded-md border p-3">
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-medium">Visibility</p>
-                    <p className="text-xs text-muted-foreground">
-                      {form.visibility === "public"
-                        ? "Public — anyone in the portal can view this task."
-                        : "Private — only you and assignees can view this task."}
-                    </p>
+                {!(activeTab === "boards" && !editing) && (
+                  <div className="flex items-center justify-between rounded-md border p-3">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">Visibility</p>
+                      <p className="text-xs text-muted-foreground">
+                        {form.visibility === "public"
+                          ? "Public — anyone in the portal can view this task."
+                          : "Private — only you and assignees can view this task."}
+                      </p>
+                    </div>
+                    <div className="inline-flex rounded-md border bg-muted p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, visibility: "public" })}
+                        className={`px-3 py-1 text-xs rounded-sm transition-colors ${
+                          form.visibility === "public"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Public
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setForm({ ...form, visibility: "private" })}
+                        className={`px-3 py-1 text-xs rounded-sm transition-colors ${
+                          form.visibility === "private"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Private
+                      </button>
+                    </div>
                   </div>
-                  <div className="inline-flex rounded-md border bg-muted p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, visibility: "public" })}
-                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${
-                        form.visibility === "public"
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      Public
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, visibility: "private" })}
-                      className={`px-3 py-1 text-xs rounded-sm transition-colors ${
-                        form.visibility === "private"
-                          ? "bg-background text-foreground shadow-sm"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      Private
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>

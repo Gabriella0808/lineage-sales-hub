@@ -355,12 +355,27 @@ export default function TaskBoardsView() {
     };
     if (editingTask) {
       const { error } = await supabase.from("manager_tasks").update(payload).eq("id", editingTask.id);
-      if (error) return toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      if (error) {
+        console.error("[TaskBoards] update task failed", error);
+        return toast({ title: "Update failed", description: error.message, variant: "destructive" });
+      }
     } else {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("manager_tasks")
-        .insert({ ...payload, user_id: user.id });
-      if (error) return toast({ title: "Create failed", description: error.message, variant: "destructive" });
+        .insert({ ...payload, user_id: user.id })
+        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id")
+        .single();
+      if (error || !data) {
+        console.error("[TaskBoards] create task failed", error, "payload:", { ...payload, user_id: user.id });
+        return toast({
+          title: "Create failed",
+          description: error?.message || "No row returned (likely blocked by access rules).",
+          variant: "destructive",
+        });
+      }
+      // Optimistic insert so the new task appears immediately, even if the
+      // refetch is delayed or filtered.
+      setTasks((prev) => [...prev, data as unknown as BoardTask]);
     }
     setTaskDlgOpen(false);
     load();

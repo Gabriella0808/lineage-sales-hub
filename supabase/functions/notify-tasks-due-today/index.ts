@@ -115,6 +115,7 @@ Deno.serve(async (req) => {
             email.split("@")[0];
 
           const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? serviceKey;
           const supaUrl = Deno.env.get("SUPABASE_URL")!;
           const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
             method: "POST",

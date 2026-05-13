@@ -114,25 +114,31 @@ Deno.serve(async (req) => {
             profile?.full_name?.split(" ")?.[0] ||
             email.split("@")[0];
 
-          const { data: invokeData, error: eErr } = await supabase.functions.invoke(
-            "send-transactional-email",
-            {
-              body: {
-                templateName: "task-due-today",
-                recipientEmail: email,
-                idempotencyKey: `task-due-${t.id}-${userId}-${today}`,
-                templateData: {
-                  recipientName,
-                  taskTitle: t.title,
-                  taskDescription: t.description ?? undefined,
-                  dueDate: dueDateLabel,
-                  link: "https://www.lineage-portal.com/tasks",
-                },
-              },
+          const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          const supaUrl = Deno.env.get("SUPABASE_URL")!;
+          const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${serviceKey}`,
+              "apikey": serviceKey,
             },
-          );
-          console.log("invoke send-transactional-email", { email, eErr: eErr ? String(eErr) : null, invokeData });
-          if (!eErr) emailed++;
+            body: JSON.stringify({
+              templateName: "task-due-today",
+              recipientEmail: email,
+              idempotencyKey: `task-due-${t.id}-${userId}-${today}`,
+              templateData: {
+                recipientName,
+                taskTitle: t.title,
+                taskDescription: t.description ?? undefined,
+                dueDate: dueDateLabel,
+                link: "https://www.lineage-portal.com/tasks",
+              },
+            }),
+          });
+          const respText = await resp.text();
+          console.log("send-transactional-email response", { status: resp.status, body: respText.slice(0, 300) });
+          if (resp.ok) emailed++;
         } catch (e) {
           console.error("Failed to send task-due email", { userId, taskId: t.id, error: String(e) });
         }

@@ -9,20 +9,46 @@ const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'
 
 function ProgressRing({ pct, size = 64, label }: { pct: number; size?: number; label: string }) {
   const uid = useId();
-  const gradientId = `ring-grad-${uid}`;
   const r = (size - 12) / 2;
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(pct, 100));
   const offset = c - (clamped / 100) * c;
 
+  const status =
+    pct >= 100
+      ? { label: "On track", tone: "success" as const }
+      : pct >= 75
+      ? { label: "On track", tone: "gold" as const }
+      : pct >= 50
+      ? { label: "At risk", tone: "warning" as const }
+      : { label: "Off track", tone: "danger" as const };
+
+  const gradients: Record<string, { from: string; to: string }> = {
+    success: { from: "#34d399", to: "#059669" },
+    gold:    { from: "#d4af37", to: "#b8860b" },
+    warning: { from: "#fb923c", to: "#ea580c" },
+    danger:  { from: "#f87171", to: "#dc2626" },
+  };
+
+  const grad = gradients[status.tone];
+  const gradId = `ring-grad-${uid}`;
+  const textColor =
+    status.tone === "success"
+      ? "text-emerald-600"
+      : status.tone === "gold"
+      ? "text-amber-600"
+      : status.tone === "warning"
+      ? "text-orange-600"
+      : "text-red-600";
+
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-1.5">
       <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
         <svg className="w-full h-full -rotate-90" viewBox={`0 0 ${size} ${size}`}>
           <defs>
-            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#d4af37" />
-              <stop offset="100%" stopColor="#b8860b" />
+            <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={grad.from} />
+              <stop offset="100%" stopColor={grad.to} />
             </linearGradient>
           </defs>
           <circle
@@ -31,20 +57,21 @@ function ProgressRing({ pct, size = 64, label }: { pct: number; size?: number; l
           />
           <circle
             cx={size / 2} cy={size / 2} r={r}
-            stroke={`url(#${gradientId})`} strokeWidth={6}
+            stroke={`url(#${gradId})`} strokeWidth={6}
             fill="transparent" strokeLinecap="round"
             strokeDasharray={c} strokeDashoffset={offset}
             style={{ transition: "stroke-dashoffset 800ms ease-out" }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="font-['DM_Serif_Display'] text-sm font-bold text-foreground leading-none tracking-tight">
+          <span className={`font-['DM_Serif_Display'] text-sm font-bold leading-none tracking-tight ${textColor}`}>
             {clamped}<span className="text-[10px] align-top ml-0.5 opacity-60 font-sans">%</span>
           </span>
         </div>
         <div className="absolute inset-[6px] border border-white/40 rounded-full pointer-events-none" />
       </div>
       <span className="text-[10px] font-bold tracking-[0.12em] text-muted-foreground uppercase">{label}</span>
+      <span className={`text-[9px] font-semibold uppercase tracking-wider ${textColor}`}>{status.label}</span>
     </div>
   );
 }

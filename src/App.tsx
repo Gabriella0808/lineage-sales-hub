@@ -18,6 +18,7 @@ import InvoicingReportPage from "@/pages/InvoicingReportPage";
 import CompanyWidePage from "@/pages/CompanyWidePage";
 import MondayBoardsPage from "@/pages/MondayBoardsPage";
 import TasksPage from "@/pages/TasksPage";
+import SalesTargetsPage from "@/pages/SalesTargetsPage";
 import InventoryPage from "@/pages/InventoryPage";
 import CheckInsPage from "@/pages/CheckInsPage";
 import CheckInAnalyticsPage from "@/pages/CheckInAnalyticsPage";

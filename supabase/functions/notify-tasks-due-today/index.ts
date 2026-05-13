@@ -98,8 +98,10 @@ Deno.serve(async (req) => {
 
         // Email reminder — idempotency key ensures no duplicates per task/user/day
         try {
-          const { data: userResp } = await supabase.auth.admin.getUserById(userId);
+          const { data: userResp, error: uErr } = await supabase.auth.admin.getUserById(userId);
+          if (uErr) console.error("getUserById error", { userId, error: uErr.message });
           const email = userResp?.user?.email;
+          console.log("resolving email", { userId, taskId: t.id, hasEmail: !!email });
           if (!email) continue;
 
           const { data: profile } = await supabase
@@ -112,24 +114,32 @@ Deno.serve(async (req) => {
             profile?.full_name?.split(" ")?.[0] ||
             email.split("@")[0];
 
-          const { error: eErr } = await supabase.functions.invoke(
-            "send-transactional-email",
-            {
-              body: {
-                templateName: "task-due-today",
-                recipientEmail: email,
-                idempotencyKey: `task-due-${t.id}-${userId}-${today}`,
-                templateData: {
-                  recipientName,
-                  taskTitle: t.title,
-                  taskDescription: t.description ?? undefined,
-                  dueDate: dueDateLabel,
-                  link: "https://www.lineage-portal.com/tasks",
-                },
-              },
+          // Use legacy anon JWT (env vars may be new sb_publishable_* format which gateway rejects).
+          const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
+          const supaUrl = Deno.env.get("SUPABASE_URL")!;
+          const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${anonKey}`,
+              "apikey": anonKey,
             },
-          );
-          if (!eErr) emailed++;
+            body: JSON.stringify({
+              templateName: "task-due-today",
+              recipientEmail: email,
+              idempotencyKey: `task-due-${t.id}-${userId}-${today}`,
+              templateData: {
+                recipientName,
+                taskTitle: t.title,
+                taskDescription: t.description ?? undefined,
+                dueDate: dueDateLabel,
+                link: "https://www.lineage-portal.com/tasks",
+              },
+            }),
+          });
+          const respText = await resp.text();
+          console.log("send-transactional-email response", { status: resp.status, body: respText.slice(0, 300) });
+          if (resp.ok) emailed++;
         } catch (e) {
           console.error("Failed to send task-due email", { userId, taskId: t.id, error: String(e) });
         }

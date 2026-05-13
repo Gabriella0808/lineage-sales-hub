@@ -114,8 +114,8 @@ Deno.serve(async (req) => {
             profile?.full_name?.split(" ")?.[0] ||
             email.split("@")[0];
 
-          const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-          const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? serviceKey;
+          // Use legacy anon JWT (env vars may be new sb_publishable_* format which gateway rejects).
+          const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
           const supaUrl = Deno.env.get("SUPABASE_URL")!;
           const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
             method: "POST",

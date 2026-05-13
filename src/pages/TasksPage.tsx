@@ -623,11 +623,13 @@ export default function TasksPage() {
         
         actions={
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button onClick={openNew} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="h-4 w-4" /> {activeTab === "boards" ? "Item" : "New Action Item"}
-              </Button>
-            </DialogTrigger>
+            {activeTab !== "boards" && (
+              <DialogTrigger asChild>
+                <Button onClick={openNew} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  <Plus className="h-4 w-4" /> New Action Item
+                </Button>
+              </DialogTrigger>
+            )}
             <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-display text-xl">{editing ? "Edit Action Item" : activeTab === "boards" ? "New Item" : "New Action Item"}</DialogTitle>

@@ -53,7 +53,7 @@ const NAV_SECTIONS: NavSection[] = [
       title: "Sales Targets",
       url: "/sales-targets",
       icon: Target,
-      roles: ["admin"],
+      roles: ["admin", "manager"],
     },
     {
       title: "Field Check-Ins",

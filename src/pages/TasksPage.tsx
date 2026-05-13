@@ -417,9 +417,30 @@ export default function TasksPage() {
       }
       await syncAssignees(editing.id, ids);
     } else {
+      // If creating from the Boards tab, attach to the currently-active board
+      // and place the task in the group whose name maps to its status.
+      let extra: { board_id?: string; group_id?: string | null } = {};
+      if (activeTab === "boards") {
+        let activeBoardId: string | null = null;
+        try { activeBoardId = localStorage.getItem("active_task_board_id"); } catch {}
+        if (activeBoardId) {
+          extra.board_id = activeBoardId;
+          const { data: groups } = await supabase
+            .from("task_board_groups" as any)
+            .select("id,name,position")
+            .eq("board_id", activeBoardId)
+            .order("position", { ascending: true });
+          const list = (groups ?? []) as any[];
+          if (list.length > 0) {
+            const wanted = ({ todo: "to do", in_progress: "in progress", blocked: "stuck", done: "done" } as Record<Status, string>)[form.status];
+            const match = list.find((g) => (g.name ?? "").toLowerCase().trim() === wanted);
+            extra.group_id = (match ?? list[0]).id;
+          }
+        }
+      }
       const { data, error } = await supabase
         .from("manager_tasks")
-        .insert({ ...payload, user_id: user.id })
+        .insert({ ...payload, ...extra, user_id: user.id })
         .select("id")
         .single();
       if (error || !data) {

@@ -150,6 +150,14 @@ export default function TaskBoardsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  // Persist active board so other parts of the page (e.g. the global "+ Item"
+  // button in TasksPage) can target the currently-viewed board.
+  useEffect(() => {
+    if (activeBoardId) {
+      try { localStorage.setItem("active_task_board_id", activeBoardId); } catch {}
+    }
+  }, [activeBoardId]);
+
   const activeBoard = boards.find((b) => b.id === activeBoardId) ?? null;
   const isBoardOwner = !!user && !!activeBoard && activeBoard.created_by === user.id;
   const boardGroups = useMemo(

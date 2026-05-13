@@ -49,12 +49,21 @@ const NAV_SECTIONS: NavSection[] = [
     id: "sales",
     label: "Sales Operations",
     items: [
-      {
-        title: "Field Check-Ins", url: "/check-ins", icon: MapPinned, roles: ["admin", "manager"],
-        children: [
-          { title: "Visit Analytics", url: "/check-ins/analytics", icon: PieChart, roles: ["admin", "manager"] },
-        ],
-      },
+    {
+      title: "Sales Targets",
+      url: "/sales-targets",
+      icon: Target,
+      roles: ["admin"],
+    },
+    {
+      title: "Field Check-Ins",
+      url: "/check-ins",
+      icon: MapPinned,
+      roles: ["admin", "manager"],
+      children: [
+        { title: "Visit Analytics", url: "/check-ins/analytics", icon: PieChart, roles: ["admin", "manager"] },
+      ],
+    },
       { title: "Travel Log", url: "/travel-log", icon: Plane, roles: ["admin", "manager"] },
       {
         title: "Trade Show Leads", url: "/trade-show-leads", icon: Megaphone, roles: ["admin", "manager"],
@@ -80,7 +89,6 @@ const NAV_SECTIONS: NavSection[] = [
       { title: "Company-wide",     url: "/company-wide",  icon: BarChart3, roles: ["admin"] },
       { title: "Team Performance", url: "/company-wide",  icon: BarChart3, roles: ["manager"] },
       { title: "My Performance",   url: "/company-wide",  icon: BarChart3, roles: ["rep"] },
-      { title: "Sales Targets",    url: "/sales-targets", icon: Target,    roles: ["admin"] },
       { title: "Inventory", url: "/inventory", icon: Boxes, roles: ["admin"] },
     ],
   },

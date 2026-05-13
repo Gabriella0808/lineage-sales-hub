@@ -87,6 +87,9 @@ export function BacklogSummary() {
   const [territoryFilter, setTerritoryFilter] = useState<string>("all");
   const [stockClassFilter, setStockClassFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [customerFilter, setCustomerFilter] = useState<string>("all");
+  const [skuQuery, setSkuQuery] = useState<string>("");
+  const [repFilter, setRepFilter] = useState<string>("all");
 
   // Derive territory for every detail row
   const detailWithTerritory = useMemo(() => {
@@ -102,15 +105,34 @@ export function BacklogSummary() {
     [detailWithTerritory],
   );
 
+  const allCustomers = useMemo(
+    () => Array.from(new Set(detailWithTerritory.map((r) => r.customer).filter(Boolean))).sort(),
+    [detailWithTerritory],
+  );
+
+  const allReps = useMemo(
+    () => Array.from(new Set(detailWithTerritory.map((r) => r.rep).filter(Boolean))).sort(),
+    [detailWithTerritory],
+  );
+
   const filteredDetail = useMemo(() => {
     return detailWithTerritory.filter((r) => {
       if (territoryFilter !== "all" && r.territory !== territoryFilter) return false;
       if (stockClassFilter !== "all" && r.stockClass !== stockClassFilter) return false;
       if (statusFilter === "Open" && (r.openBalance || 0) === 0) return false;
       if (statusFilter === "Cleared" && (r.openBalance || 0) !== 0) return false;
+      if (customerFilter !== "all" && r.customer !== customerFilter) return false;
+      if (repFilter !== "all" && r.rep !== repFilter) return false;
+      if (skuQuery) {
+        const q = skuQuery.toLowerCase();
+        const match = (r.item ?? "").toLowerCase().includes(q) ||
+          (r.description ?? "").toLowerCase().includes(q) ||
+          (r.customer ?? "").toLowerCase().includes(q);
+        if (!match) return false;
+      }
       return true;
     });
-  }, [detailWithTerritory, territoryFilter, stockClassFilter, statusFilter]);
+  }, [detailWithTerritory, territoryFilter, stockClassFilter, statusFilter, customerFilter, repFilter, skuQuery]);
 
   // Recompute summary tables from filtered detail
   const filteredStockClasses = useMemo(() => {

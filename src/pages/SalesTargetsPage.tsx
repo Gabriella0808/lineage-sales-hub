@@ -56,14 +56,15 @@ export default function SalesTargetsPage() {
   if (roleLoading) {
     return <div className="p-6"><Skeleton className="h-64 w-full" /></div>;
   }
-  if (role !== "admin") {
+  if (role !== "admin" && role !== "manager") {
     return (
       <div className="animate-fade-in">
         <div className="page-header"><h1 className="page-title">Sales Targets</h1></div>
-        <div className="glass-card p-6 text-sm text-muted-foreground">Only admins can edit sales targets.</div>
+        <div className="glass-card p-6 text-sm text-muted-foreground">You don't have access to sales targets.</div>
       </div>
     );
   }
+  const canEdit = role === "admin";
 
   const getValue = (repId: string, key: keyof RepTarget): number => {
     const d = draft[repId]?.[key];

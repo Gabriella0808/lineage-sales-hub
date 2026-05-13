@@ -175,7 +175,7 @@ export default function SalesTargetsPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-left sticky left-0 bg-muted/50 z-10 min-w-[160px]">Rep</th>
+                  <th className="px-3 py-2 text-left sticky left-0 bg-muted z-20 min-w-[160px] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">Rep</th>
                   {MONTH_LABELS.map(m => (
                     <th key={m} className="px-2 py-2 text-right min-w-[88px]">{m}</th>
                   ))}
@@ -193,7 +193,7 @@ export default function SalesTargetsPage() {
                   const dirty = !!draft[rep.id];
                   return (
                     <tr key={rep.id} className="border-t border-border/40 hover:bg-muted/20">
-                      <td className="px-3 py-2 sticky left-0 bg-background z-10 font-medium">
+                      <td className="px-3 py-2 sticky left-0 bg-background z-10 font-medium shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
                         {rep.name}
                         {dirty && <span className="ml-2 text-[10px] text-amber-600">unsaved</span>}
                       </td>

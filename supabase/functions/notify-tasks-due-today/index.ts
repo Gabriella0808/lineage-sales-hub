@@ -28,11 +28,23 @@ Deno.serve(async (req) => {
       { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" },
     );
 
-    const { data: tasks, error: tErr } = await supabase
+    // Optional taskId filter — when called right after task creation
+    let taskId: string | null = null;
+    try {
+      if (req.method === "POST") {
+        const body = await req.json().catch(() => ({}));
+        if (body && typeof body.taskId === "string") taskId = body.taskId;
+      }
+    } catch (_) { /* no body */ }
+
+    let query = supabase
       .from("manager_tasks")
       .select("id, title, description, user_id, assigned_user_id, assigned_manager_id, due_date, status")
       .eq("due_date", today)
       .neq("status", "done");
+    if (taskId) query = query.eq("id", taskId);
+
+    const { data: tasks, error: tErr } = await query;
 
     if (tErr) throw tErr;
 

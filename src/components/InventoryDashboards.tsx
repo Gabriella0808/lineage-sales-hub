@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { weeksOfSupply, weeksTone, LEAD_TIME_WEEKS } from "@/lib/inventoryMath";
 import ComparePeriodsReport from "@/components/ComparePeriodsReport";
+import { BacklogSummary, BACKLOG_SUMMARY_TOTAL } from "@/components/BacklogSummary";
 
 const fmtMoney = (n: number) =>
   n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` :

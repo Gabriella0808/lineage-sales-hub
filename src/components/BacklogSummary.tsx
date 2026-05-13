@@ -1,8 +1,9 @@
 import { useMemo, useState, useCallback } from "react";
-import { ArrowLeft, AlertTriangle, MessageSquare, Filter, X } from "lucide-react";
+import { ArrowLeft, AlertTriangle, MessageSquare, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import backlogData from "@/data/backlogSummary.json";
 
@@ -86,6 +87,9 @@ export function BacklogSummary() {
   const [territoryFilter, setTerritoryFilter] = useState<string>("all");
   const [stockClassFilter, setStockClassFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [customerFilter, setCustomerFilter] = useState<string>("all");
+  const [skuQuery, setSkuQuery] = useState<string>("");
+  const [repFilter, setRepFilter] = useState<string>("all");
 
   // Derive territory for every detail row
   const detailWithTerritory = useMemo(() => {
@@ -101,15 +105,34 @@ export function BacklogSummary() {
     [detailWithTerritory],
   );
 
+  const allCustomers = useMemo(
+    () => Array.from(new Set(detailWithTerritory.map((r) => r.customer).filter(Boolean))).sort(),
+    [detailWithTerritory],
+  );
+
+  const allReps = useMemo(
+    () => Array.from(new Set(detailWithTerritory.map((r) => r.rep).filter(Boolean))).sort(),
+    [detailWithTerritory],
+  );
+
   const filteredDetail = useMemo(() => {
     return detailWithTerritory.filter((r) => {
       if (territoryFilter !== "all" && r.territory !== territoryFilter) return false;
       if (stockClassFilter !== "all" && r.stockClass !== stockClassFilter) return false;
       if (statusFilter === "Open" && (r.openBalance || 0) === 0) return false;
       if (statusFilter === "Cleared" && (r.openBalance || 0) !== 0) return false;
+      if (customerFilter !== "all" && r.customer !== customerFilter) return false;
+      if (repFilter !== "all" && r.rep !== repFilter) return false;
+      if (skuQuery) {
+        const q = skuQuery.toLowerCase();
+        const match = (r.item ?? "").toLowerCase().includes(q) ||
+          (r.description ?? "").toLowerCase().includes(q) ||
+          (r.customer ?? "").toLowerCase().includes(q);
+        if (!match) return false;
+      }
       return true;
     });
-  }, [detailWithTerritory, territoryFilter, stockClassFilter, statusFilter]);
+  }, [detailWithTerritory, territoryFilter, stockClassFilter, statusFilter, customerFilter, repFilter, skuQuery]);
 
   // Recompute summary tables from filtered detail
   const filteredStockClasses = useMemo(() => {
@@ -130,14 +153,17 @@ export function BacklogSummary() {
   );
 
   const activeFilterCount = useMemo(
-    () => [territoryFilter, stockClassFilter, statusFilter].filter((f) => f !== "all").length,
-    [territoryFilter, stockClassFilter, statusFilter],
+    () => [territoryFilter, stockClassFilter, statusFilter, customerFilter, repFilter].filter((f) => f !== "all").length + (skuQuery ? 1 : 0),
+    [territoryFilter, stockClassFilter, statusFilter, customerFilter, repFilter, skuQuery],
   );
 
   const clearFilters = useCallback(() => {
     setTerritoryFilter("all");
     setStockClassFilter("all");
     setStatusFilter("all");
+    setCustomerFilter("all");
+    setSkuQuery("");
+    setRepFilter("all");
   }, []);
 
   const drillRows = useMemo<typeof filteredDetail>(() => {
@@ -177,6 +203,43 @@ export function BacklogSummary() {
           </div>
           <div className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Customer</label>
+              <Select value={customerFilter} onValueChange={setCustomerFilter}>
+                <SelectTrigger className="h-8 w-[180px] text-xs">
+                  <SelectValue placeholder="All customers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All customers</SelectItem>
+                  {allCustomers.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">SKU / Search</label>
+              <Input
+                className="h-8 w-[180px] text-xs"
+                placeholder="SKU, item, customer..."
+                value={skuQuery}
+                onChange={(e) => setSkuQuery(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Rep</label>
+              <Select value={repFilter} onValueChange={setRepFilter}>
+                <SelectTrigger className="h-8 w-[150px] text-xs">
+                  <SelectValue placeholder="All reps" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All reps</SelectItem>
+                  {allReps.map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
               <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Territory</label>
               <Select value={territoryFilter} onValueChange={setTerritoryFilter}>
                 <SelectTrigger className="h-8 w-[160px] text-xs">
@@ -187,33 +250,6 @@ export function BacklogSummary() {
                   {allTerritories.map((t) => (
                     <SelectItem key={t} value={t}>{t}</SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Stock Class</label>
-              <Select value={stockClassFilter} onValueChange={setStockClassFilter}>
-                <SelectTrigger className="h-8 w-[140px] text-xs">
-                  <SelectValue placeholder="All classes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All classes</SelectItem>
-                  {data.stockClasses.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Status</label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-8 w-[120px] text-xs">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  <SelectItem value="Open">Open</SelectItem>
-                  <SelectItem value="Cleared">Cleared</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -342,8 +378,7 @@ export function BacklogSummary() {
             <X className="h-3 w-3 mr-1" /> Clear
           </Button>
         )}
-        <div className="ml-auto text-xs text-muted-foreground flex items-center gap-1.5">
-          <Filter className="h-3 w-3" />
+        <div className="ml-auto text-xs text-muted-foreground">
           Backlog as of{" "}
           <span className="font-medium text-foreground">
             {new Date(data.asOf).toLocaleDateString(undefined, {

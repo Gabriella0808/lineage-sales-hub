@@ -692,7 +692,7 @@ export default function TasksPage() {
         }
       />
 
-      <Tabs defaultValue="list" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
           <TabsTrigger value="list">List View</TabsTrigger>
           <TabsTrigger value="boards">Boards</TabsTrigger>

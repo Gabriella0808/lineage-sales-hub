@@ -96,7 +96,7 @@ const quote = {
   margin: '0 0 16px',
 }
 const button = {
-  backgroundColor: 'hsl(40, 60%, 50%)',
+  backgroundColor: '#d4a93a',
   color: '#1a1a1a',
   padding: '12px 22px',
   borderRadius: '6px',

@@ -230,7 +230,7 @@ function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
   // Vendor lateness: avg days late = actualShip - proForma
   const vendorLateness = (() => {
     const m = new Map<string, { sum: number; n: number; late: number }>();
-    for (const r of rows) {
+    for (const r of filteredRows) {
       const days = Math.round((r.actualShip.getTime() - r.proForma.getTime()) / 86400000);
       const e = m.get(r.vendor) ?? { sum: 0, n: 0, late: 0 };
       e.sum += days; e.n += 1; if (days > 0) e.late += 1;

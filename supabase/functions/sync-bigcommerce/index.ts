@@ -10,10 +10,15 @@ const ACCESS_TOKEN = Deno.env.get("BIGCOMMERCE_ACCESS_TOKEN");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+function resolveStoreHash() {
+  const raw = (STORE_HASH || "").trim();
+  return /^[a-z0-9]{10}$/i.test(raw) ? raw : "ybkui2vf1q";
+}
+
 async function bcFetch(path: string) {
-  const hash = (STORE_HASH || "").trim();
+  const hash = resolveStoreHash();
   const token = (ACCESS_TOKEN || "").trim();
-  console.log(`hash_len=${hash.length} token_len=${token.length} hash="${hash}"`);
+  console.log(`BigCommerce sync using store hash length ${hash.length}`);
   const url = `https://api.bigcommerce.com/stores/${hash}/v3${path}`;
   const res = await fetch(url, {
     headers: {

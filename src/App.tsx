@@ -26,6 +26,8 @@ import ProductDetailPage from "@/pages/ProductDetailPage";
 import CartPage from "@/pages/CartPage";
 import MyQuotesPage from "@/pages/MyQuotesPage";
 import CustomerQuotesPage from "@/pages/CustomerQuotesPage";
+import CustomerQuoteBuilderPage from "@/pages/CustomerQuoteBuilderPage";
+import CustomerQuoteViewPage from "@/pages/CustomerQuoteViewPage";
 import DigitalAssetsPage from "@/pages/DigitalAssetsPage";
 
 import CheckInsPage from "@/pages/CheckInsPage";
@@ -50,6 +52,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/unsubscribe" element={<UnsubscribePage />} />
+            <Route path="/q/:token" element={<CustomerQuoteViewPage />} />
             <Route
               path="/*"
               element={
@@ -73,7 +76,9 @@ const App = () => (
                       <Route path="/catalog/:sku" element={<ProductDetailPage />} />
                       <Route path="/cart" element={<CartPage />} />
                       <Route path="/my-quotes" element={<MyQuotesPage />} />
-                      <Route path="/customer-quotes" element={<ProtectedRoute allow={["admin", "manager"]}><CustomerQuotesPage /></ProtectedRoute>} />
+                      <Route path="/customer-quotes" element={<CustomerQuotesPage />} />
+                      <Route path="/customer-quotes/new" element={<CustomerQuoteBuilderPage />} />
+                      <Route path="/customer-quotes/:id" element={<CustomerQuoteBuilderPage />} />
                       <Route path="/digital-assets" element={<DigitalAssetsPage />} />
                       <Route path="/check-ins" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInsPage /></ProtectedRoute>} />
                       <Route path="/check-ins/analytics" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInAnalyticsPage /></ProtectedRoute>} />

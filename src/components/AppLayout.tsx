@@ -3,7 +3,6 @@ import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, LayoutGrid, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
-  Globe, Lock, Percent, MapIcon, Mail, Image as ImageIcon, Heart, BookOpen as BookOpenIcon, FileText,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";

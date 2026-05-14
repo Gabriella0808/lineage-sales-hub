@@ -1176,6 +1176,7 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          image_urls: string[] | null
           inventory_level: number | null
           is_active: boolean
           last_synced_at: string | null
@@ -1195,6 +1196,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string[] | null
           inventory_level?: number | null
           is_active?: boolean
           last_synced_at?: string | null
@@ -1214,6 +1216,7 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: string[] | null
           inventory_level?: number | null
           is_active?: boolean
           last_synced_at?: string | null

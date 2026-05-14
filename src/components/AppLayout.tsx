@@ -39,6 +39,14 @@ type NavSection = {
  */
 const NAV_SECTIONS: NavSection[] = [
   {
+    id: "command",
+    label: "Command Center",
+    items: [
+      { title: "Overview",  url: "/",      icon: Compass,     roles: ["admin", "manager", "rep"] },
+      { title: "My Tasks", url: "/tasks", icon: ListChecks, roles: ["admin", "manager", "rep"] },
+    ],
+  },
+  {
     id: "catalog",
     label: "Catalog & Inventory",
     items: [
@@ -48,14 +56,6 @@ const NAV_SECTIONS: NavSection[] = [
       { title: "Customer Quotes", url: "/customer-quotes", icon: Send, roles: ["admin", "manager"] },
       { title: "Digital Assets", url: "/digital-assets", icon: FolderOpen, roles: ["admin", "manager", "rep"] },
       { title: "Public Inventory", url: "/inventory", icon: Boxes, roles: ["admin"] },
-    ],
-  },
-  {
-    id: "command",
-    label: "Command Center",
-    items: [
-      { title: "Overview",  url: "/",      icon: Compass,     roles: ["admin", "manager", "rep"] },
-      { title: "My Tasks", url: "/tasks", icon: ListChecks, roles: ["admin", "manager", "rep"] },
     ],
   },
   {

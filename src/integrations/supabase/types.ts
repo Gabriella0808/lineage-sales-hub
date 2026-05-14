@@ -136,6 +136,137 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_quote_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number
+          name: string
+          product_id: string | null
+          qty: number
+          quote_id: string
+          sku: string
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          name: string
+          product_id?: string | null
+          qty?: number
+          quote_id: string
+          sku: string
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          name?: string
+          product_id?: string | null
+          qty?: number
+          quote_id?: string
+          sku?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "customer_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_quotes: {
+        Row: {
+          created_at: string
+          customer_company: string | null
+          customer_email: string | null
+          customer_name: string
+          dealer_user_id: string
+          footer_message: string | null
+          id: string
+          intro_message: string | null
+          sent_at: string | null
+          share_token: string
+          status: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_company?: string | null
+          customer_email?: string | null
+          customer_name: string
+          dealer_user_id: string
+          footer_message?: string | null
+          id?: string
+          intro_message?: string | null
+          sent_at?: string | null
+          share_token?: string
+          status?: string
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_company?: string | null
+          customer_email?: string | null
+          customer_name?: string
+          dealer_user_id?: string
+          footer_message?: string | null
+          id?: string
+          intro_message?: string | null
+          sent_at?: string | null
+          share_token?: string
+          status?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      dealer_branding: {
+        Row: {
+          company_name: string | null
+          contact_address: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          footer_message: string | null
+          intro_message: string | null
+          logo_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_name?: string | null
+          contact_address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          footer_message?: string | null
+          intro_message?: string | null
+          logo_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_name?: string | null
+          contact_address?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          footer_message?: string | null
+          intro_message?: string | null
+          logo_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dealer_check_ins: {
         Row: {
           brand: string | null
@@ -2186,6 +2317,28 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      get_customer_quote_by_token: {
+        Args: { _token: string }
+        Returns: {
+          company_name: string
+          contact_address: string
+          contact_email: string
+          contact_phone: string
+          created_at: string
+          customer_company: string
+          customer_email: string
+          customer_name: string
+          dealer_user_id: string
+          footer_message: string
+          id: string
+          intro_message: string
+          items: Json
+          logo_url: string
+          sent_at: string
+          status: string
+          total: number
+        }[]
       }
       has_role: {
         Args: {

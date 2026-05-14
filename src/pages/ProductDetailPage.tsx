@@ -212,10 +212,11 @@ export default function ProductDetailPage() {
             <Button
               size="lg"
               onClick={handleAddToCart}
+              disabled={oos}
               className="flex-1 h-12 text-base"
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
-              Add to Cart
+              {oos ? "Out of Stock" : "Add to Cart"}
             </Button>
           </div>
 

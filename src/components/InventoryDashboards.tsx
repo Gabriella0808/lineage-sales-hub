@@ -1603,7 +1603,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                   )}
                 </div>
               </div>
-              <div className="max-h-[500px] overflow-y-auto">
+              <div className="h-56 overflow-y-auto">
                 <ResponsiveContainer width="100%" height={Math.max(224, closeoutBySku.length * 28 + 60)}>
                   <BarChart data={closeoutBySku} layout="vertical" margin={{ left: 4, right: 12 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />

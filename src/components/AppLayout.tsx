@@ -48,7 +48,7 @@ const NAV_SECTIONS: NavSection[] = [
   },
   {
     id: "catalog",
-    label: "Catalog & Inventory",
+    label: "Products & Orders",
     items: [
       { title: "Product Catalog", url: "/catalog", icon: Package, roles: ["admin", "manager", "rep", "dealer"] },
       { title: "Cart", url: "/cart", icon: ShoppingCart, roles: ["admin", "manager", "rep", "dealer"] },

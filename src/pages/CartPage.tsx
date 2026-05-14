@@ -88,7 +88,7 @@ export default function CartPage() {
     <div className="space-y-6">
       <div className="page-header flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="page-title">Quote Cart</h1>
+          <h1 className="page-title">Cart</h1>
           <p className="page-subtitle">{count} item{count === 1 ? "" : "s"} ready for quote request</p>
         </div>
         <Button variant="outline" onClick={() => navigate("/catalog")}>

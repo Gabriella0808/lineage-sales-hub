@@ -1480,27 +1480,33 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   }, [items]);
 
   const [closeoutSkuFilter, setCloseoutSkuFilter] = useState<string>("all");
+  const closeoutSkuValue = useCallback(
+    (it: InventoryItem) => Number(it.onHandValue ?? (it.unitCost ?? 0) * it.onHand) || 0,
+    [],
+  );
   const closeoutSkuOptions = useMemo(() => {
     const s = new Set<string>();
-    for (const it of items) if (it.isCloseout || it.isClearance) s.add(it.sku);
+    for (const it of items) {
+      if ((it.isCloseout || it.isClearance) && Math.round(closeoutSkuValue(it)) > 0) s.add(it.sku);
+    }
     return Array.from(s).sort();
-  }, [items]);
+  }, [items, closeoutSkuValue]);
 
-  // Closeout by SKU (all with value > 0, filtered)
+  // Closeout by SKU (only values that display above $0, filtered)
   const closeoutBySku = useMemo(() => {
     const arr = items
       .filter((it) => {
         if (!(it.isCloseout || it.isClearance)) return false;
-        const value = it.onHandValue ?? (it.unitCost ?? 0) * it.onHand;
-        return value > 0 && (closeoutSkuFilter === "all" || it.sku === closeoutSkuFilter);
+        const value = closeoutSkuValue(it);
+        return Math.round(value) > 0 && (closeoutSkuFilter === "all" || it.sku === closeoutSkuFilter);
       })
       .map((it) => ({
         name: it.sku,
-        value: it.onHandValue ?? (it.unitCost ?? 0) * it.onHand,
+        value: closeoutSkuValue(it),
       }))
       .sort((a, b) => b.value - a.value);
     return arr;
-  }, [items, closeoutSkuFilter]);
+  }, [items, closeoutSkuFilter, closeoutSkuValue]);
 
   // SKU detail drawer
   const [drawerSku, setDrawerSku] = useState<string | null>(null);

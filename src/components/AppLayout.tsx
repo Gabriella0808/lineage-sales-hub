@@ -98,6 +98,7 @@ const NAV_SECTIONS: NavSection[] = [
     id: "ops",
     label: "Inventory & Reporting",
     items: [
+      { title: "Inventory", url: "/inventory", icon: Boxes, roles: ["admin", "manager", "rep", "dealer"] },
       { title: "Company-wide",     url: "/company-wide",  icon: BarChart3, roles: ["admin"] },
       { title: "Team Performance", url: "/company-wide",  icon: BarChart3, roles: ["manager"] },
       { title: "My Performance",   url: "/company-wide",  icon: BarChart3, roles: ["rep"] },

@@ -61,6 +61,7 @@ Deno.serve(async (req) => {
         name: p.name,
         description: p.description?.replace(/<[^>]*>/g, "").slice(0, 5000) ?? null,
         image_url: p.primary_image?.url_standard ?? p.images?.[0]?.url_standard ?? null,
+        image_urls: p.images?.map((img: any) => img.url_standard).filter(Boolean) ?? null,
         base_price: p.price ?? 0,
         is_active: p.is_visible !== false,
         stock_status: p.availability ?? null,

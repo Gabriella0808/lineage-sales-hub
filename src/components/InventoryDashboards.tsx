@@ -277,6 +277,54 @@ function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
 
   return (
     <div className="space-y-4">
+      <Card className="p-3">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filters</div>
+          <div className="text-[10px] text-muted-foreground">
+            Showing {filteredRows.length} of {rows.length} POs
+            {filtersActive && (
+              <Button size="sm" variant="ghost" className="h-6 px-2 ml-2 text-[10px]" onClick={resetFilters}>Reset</Button>
+            )}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+          <Select value={fVendor} onValueChange={setFVendor}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vendor" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Vendors</SelectItem>
+              {vendorOpts.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={fItem} onValueChange={setFItem}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Items</SelectItem>
+              {itemOpts.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={fCollection} onValueChange={setFCollection}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Collection" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Collections</SelectItem>
+              {collectionOpts.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={fBrand} onValueChange={setFBrand}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Brand" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Brands</SelectItem>
+              {brandOpts.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input
+            value={fSku}
+            onChange={(e) => setFSku(e.target.value)}
+            placeholder="SKU or PO #"
+            className="h-8 text-xs"
+          />
+        </div>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card className="p-3">
           <div className="text-xs font-semibold mb-1">Avg Days Late by Vendor</div>

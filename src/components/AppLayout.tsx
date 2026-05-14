@@ -55,7 +55,6 @@ const NAV_SECTIONS: NavSection[] = [
       { title: "My Quotes", url: "/my-quotes", icon: FileText, roles: ["admin", "manager", "rep", "dealer"] },
       { title: "Customer Quotes", url: "/customer-quotes", icon: Send, roles: ["admin", "manager", "rep"] },
       { title: "Digital Assets", url: "/digital-assets", icon: FolderOpen, roles: ["admin", "manager", "rep", "dealer"] },
-      { title: "Public Inventory", url: "/inventory", icon: Boxes, roles: ["admin", "manager", "rep", "dealer"] },
     ],
   },
   {
@@ -99,6 +98,7 @@ const NAV_SECTIONS: NavSection[] = [
     id: "ops",
     label: "Inventory & Reporting",
     items: [
+      { title: "Inventory", url: "/inventory", icon: Boxes, roles: ["admin", "manager", "rep", "dealer"] },
       { title: "Company-wide",     url: "/company-wide",  icon: BarChart3, roles: ["admin"] },
       { title: "Team Performance", url: "/company-wide",  icon: BarChart3, roles: ["manager"] },
       { title: "My Performance",   url: "/company-wide",  icon: BarChart3, roles: ["rep"] },

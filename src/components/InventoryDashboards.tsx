@@ -1613,8 +1613,8 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                   )}
                 </div>
               </div>
-              <div className="h-56 overflow-y-auto">
-                <ResponsiveContainer width="100%" height={Math.max(224, closeoutBySku.length * 28 + 60)}>
+              <div style={{ height: Math.max(224, closeoutBySku.length * 28 + 60) }}>
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={closeoutBySku} layout="vertical" margin={{ left: 4, right: 12 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />

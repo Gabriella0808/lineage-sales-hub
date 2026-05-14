@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, LayoutGrid, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
+  FileText, Send, FolderOpen,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -42,8 +43,11 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Catalog & Inventory",
     items: [
       { title: "Product Catalog", url: "/catalog", icon: Package, roles: ["admin", "manager", "rep"] },
-      { title: "Public Inventory", url: "/inventory", icon: Boxes, roles: ["admin"] },
       { title: "Quote Cart", url: "/cart", icon: ShoppingCart, roles: ["admin", "manager", "rep"] },
+      { title: "My Quotes", url: "/my-quotes", icon: FileText, roles: ["admin", "manager", "rep"] },
+      { title: "Customer Quotes", url: "/customer-quotes", icon: Send, roles: ["admin", "manager"] },
+      { title: "Digital Assets", url: "/digital-assets", icon: FolderOpen, roles: ["admin", "manager", "rep"] },
+      { title: "Public Inventory", url: "/inventory", icon: Boxes, roles: ["admin"] },
     ],
   },
   {

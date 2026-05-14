@@ -24,6 +24,9 @@ import InventoryPage from "@/pages/InventoryPage";
 import CatalogPage from "@/pages/CatalogPage";
 import ProductDetailPage from "@/pages/ProductDetailPage";
 import CartPage from "@/pages/CartPage";
+import MyQuotesPage from "@/pages/MyQuotesPage";
+import CustomerQuotesPage from "@/pages/CustomerQuotesPage";
+import DigitalAssetsPage from "@/pages/DigitalAssetsPage";
 
 import CheckInsPage from "@/pages/CheckInsPage";
 import CheckInAnalyticsPage from "@/pages/CheckInAnalyticsPage";
@@ -69,6 +72,9 @@ const App = () => (
                       <Route path="/catalog" element={<CatalogPage />} />
                       <Route path="/catalog/:sku" element={<ProductDetailPage />} />
                       <Route path="/cart" element={<CartPage />} />
+                      <Route path="/my-quotes" element={<MyQuotesPage />} />
+                      <Route path="/customer-quotes" element={<ProtectedRoute allow={["admin", "manager"]}><CustomerQuotesPage /></ProtectedRoute>} />
+                      <Route path="/digital-assets" element={<DigitalAssetsPage />} />
                       <Route path="/check-ins" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInsPage /></ProtectedRoute>} />
                       <Route path="/check-ins/analytics" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInAnalyticsPage /></ProtectedRoute>} />
                       <Route path="/travel-log" element={<ProtectedRoute allow={["admin", "manager"]}><TravelLogPage /></ProtectedRoute>} />

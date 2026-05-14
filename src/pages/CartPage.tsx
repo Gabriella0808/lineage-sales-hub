@@ -64,7 +64,7 @@ export default function CartPage() {
     return (
       <div className="space-y-6">
         <div className="page-header">
-          <h1 className="page-title">Quote Cart</h1>
+          <h1 className="page-title">Cart</h1>
           <p className="page-subtitle">Items you've added for a quote request</p>
         </div>
         <Card className="p-16 text-center space-y-4">

@@ -69,6 +69,7 @@ const App = () => (
                       <Route path="/catalog" element={<CatalogPage />} />
                       <Route path="/catalog/:sku" element={<ProductDetailPage />} />
                       <Route path="/cart" element={<CartPage />} />
+                      <Route path="/website" element={<WebsitePortalPage />} />
                       <Route path="/check-ins" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInsPage /></ProtectedRoute>} />
                       <Route path="/check-ins/analytics" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInAnalyticsPage /></ProtectedRoute>} />
                       <Route path="/travel-log" element={<ProtectedRoute allow={["admin", "manager"]}><TravelLogPage /></ProtectedRoute>} />

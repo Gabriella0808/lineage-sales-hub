@@ -1129,38 +1129,97 @@ export type Database = {
         }
         Relationships: []
       }
+      product_price_tiers: {
+        Row: {
+          created_at: string
+          customer_group_label: string
+          id: string
+          price: number
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_group_label: string
+          id?: string
+          price?: number
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_group_label?: string
+          id?: string
+          price?: number
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_price_tiers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           acctivate_id: string | null
+          base_price: number | null
+          bc_product_id: string | null
           brand: string | null
           category: string | null
           collection: string | null
           created_at: string
+          description: string | null
           id: string
+          image_url: string | null
+          inventory_level: number | null
+          is_active: boolean
+          last_synced_at: string | null
           name: string | null
           sku: string
+          stock_status: string | null
           updated_at: string
         }
         Insert: {
           acctivate_id?: string | null
+          base_price?: number | null
+          bc_product_id?: string | null
           brand?: string | null
           category?: string | null
           collection?: string | null
           created_at?: string
+          description?: string | null
           id?: string
+          image_url?: string | null
+          inventory_level?: number | null
+          is_active?: boolean
+          last_synced_at?: string | null
           name?: string | null
           sku: string
+          stock_status?: string | null
           updated_at?: string
         }
         Update: {
           acctivate_id?: string | null
+          base_price?: number | null
+          bc_product_id?: string | null
           brand?: string | null
           category?: string | null
           collection?: string | null
           created_at?: string
+          description?: string | null
           id?: string
+          image_url?: string | null
+          inventory_level?: number | null
+          is_active?: boolean
+          last_synced_at?: string | null
           name?: string | null
           sku?: string
+          stock_status?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1281,6 +1340,93 @@ export type Database = {
           status?: string | null
           total_value?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      quote_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number
+          name: string
+          product_id: string | null
+          qty: number
+          quote_id: string
+          sku: string
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          name: string
+          product_id?: string | null
+          qty?: number
+          quote_id: string
+          sku: string
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          name?: string
+          product_id?: string | null
+          qty?: number
+          quote_id?: string
+          sku?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          created_at: string
+          dealer_id: string | null
+          id: string
+          notes: string | null
+          status: string
+          submitted_at: string | null
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dealer_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          submitted_at?: string | null
+          total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dealer_id?: string | null
+          id?: string
+          notes?: string | null
+          status?: string
+          submitted_at?: string | null
+          total?: number
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1919,6 +2065,24 @@ export type Database = {
           },
         ]
       }
+      user_dealers: {
+        Row: {
+          created_at: string
+          dealer_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dealer_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dealer_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_managers: {
         Row: {
           created_at: string
@@ -2008,6 +2172,7 @@ export type Database = {
       }
       can_view_manager_task: { Args: { _task_id: string }; Returns: boolean }
       can_view_task_board: { Args: { _board_id: string }; Returns: boolean }
+      current_dealer_id: { Args: never; Returns: string }
       current_manager_id: { Args: never; Returns: string }
       current_manager_rep_ids: { Args: never; Returns: string[] }
       current_rep_id: { Args: never; Returns: string }
@@ -2056,7 +2221,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "manager" | "rep"
+      app_role: "admin" | "manager" | "rep" | "dealer"
       manager_task_status: "todo" | "in_progress" | "blocked" | "done"
     }
     CompositeTypes: {
@@ -2185,7 +2350,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "rep"],
+      app_role: ["admin", "manager", "rep", "dealer"],
       manager_task_status: ["todo", "in_progress", "blocked", "done"],
     },
   },

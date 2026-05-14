@@ -1580,7 +1580,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
               <ScrollArea className="h-96">
                 <div className="h-full min-h-[400px]">
                   <ResponsiveContainer width="100%" height={Math.max(400, closeoutBySku.length * 28)}>
-                    <BarChart data={closeoutBySku} layout="vertical" margin={{ left: 4, right: 12 }}>
+                    <BarChart data={[...closeoutBySku].reverse()} layout="vertical" margin={{ left: 4, right: 12 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                       <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />

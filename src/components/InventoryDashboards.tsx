@@ -198,6 +198,32 @@ function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
 
   const [detail, setDetail] = useState<{ title: string; subset: typeof rows } | null>(null);
 
+  const [fVendor, setFVendor] = useState<string>("all");
+  const [fBrand, setFBrand] = useState<string>("all");
+  const [fCollection, setFCollection] = useState<string>("all");
+  const [fItem, setFItem] = useState<string>("all");
+  const [fSku, setFSku] = useState<string>("");
+
+  const uniq = (arr: string[]) => Array.from(new Set(arr)).sort();
+  const vendorOpts = useMemo(() => uniq(rows.map((r) => r.vendor)), [rows]);
+  const brandOpts = useMemo(() => uniq(rows.map((r) => r.brand)), [rows]);
+  const collectionOpts = useMemo(() => uniq(rows.map((r) => r.collection)), [rows]);
+  const itemOpts = useMemo(() => uniq(rows.map((r) => r.description)), [rows]);
+
+  const filteredRows = useMemo(() => {
+    const skuQ = fSku.trim().toLowerCase();
+    return rows.filter((r) =>
+      (fVendor === "all" || r.vendor === fVendor) &&
+      (fBrand === "all" || r.brand === fBrand) &&
+      (fCollection === "all" || r.collection === fCollection) &&
+      (fItem === "all" || r.description === fItem) &&
+      (skuQ === "" || r.sku.toLowerCase().includes(skuQ) || r.poNumber.toLowerCase().includes(skuQ))
+    );
+  }, [rows, fVendor, fBrand, fCollection, fItem, fSku]);
+
+  const filtersActive = fVendor !== "all" || fBrand !== "all" || fCollection !== "all" || fItem !== "all" || fSku.trim() !== "";
+  const resetFilters = () => { setFVendor("all"); setFBrand("all"); setFCollection("all"); setFItem("all"); setFSku(""); };
+
   if (rows.length === 0) return <EmptyState message="No POs to show." />;
   const fd = (d: Date) => d.toLocaleDateString();
 

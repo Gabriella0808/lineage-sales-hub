@@ -477,6 +477,8 @@ function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
               <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.orderDate)}</td>
               <td className="px-2 py-1.5">{r.brand}</td>
               <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor}</td>
+              <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.sku}</td>
+              <td className="px-2 py-1.5 whitespace-nowrap">{r.collection}</td>
               <td className="px-2 py-1.5 max-w-[200px] truncate" title={r.description}>{r.description}</td>
               <td className="px-2 py-1.5">{r.dcInvRec}</td>
               <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.proForma)}</td>

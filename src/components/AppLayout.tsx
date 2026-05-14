@@ -119,12 +119,6 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    id: "ops-extra",
-    label: "_unused_",
-    items: [
-    ],
-  },
-  {
     id: "admin",
     label: "Administration",
     items: [

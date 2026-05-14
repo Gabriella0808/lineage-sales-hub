@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Minus, Plus, Trash2, ShoppingCart, ImageOff, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 function formatPrice(n: number | null | undefined) {
   if (n == null) return "—";
@@ -13,17 +16,49 @@ function formatPrice(n: number | null | undefined) {
 
 export default function CartPage() {
   const { items, subtotal, count, updateQty, removeItem, clear } = useCart();
+  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmitQuote = () => {
-    toast({
-      title: "Quote request submitted",
-      description: `${count} item${count === 1 ? "" : "s"} sent for review.`,
-    });
-    clear();
-    navigate("/catalog");
+  const handleSubmitQuote = async () => {
+    if (!user) {
+      toast({ title: "Sign in required", description: "Please sign in to submit a quote.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data: quote, error: qErr } = await supabase
+        .from("quotes")
+        .insert({ user_id: user.id, status: "submitted", submitted_at: new Date().toISOString(), total: subtotal })
+        .select("id")
+        .single();
+      if (qErr || !quote) throw qErr ?? new Error("Failed to create quote");
+
+      const lines = items.map((it) => ({
+        quote_id: quote.id,
+        sku: it.sku,
+        name: it.name,
+        qty: it.quantity,
+        unit_price: it.base_price ?? 0,
+        line_total: (it.base_price ?? 0) * it.quantity,
+      }));
+      const { error: liErr } = await supabase.from("quote_items").insert(lines);
+      if (liErr) throw liErr;
+
+      toast({
+        title: "Quote request submitted",
+        description: `${count} item${count === 1 ? "" : "s"} sent for review.`,
+      });
+      clear();
+      navigate("/my-quotes");
+    } catch (e: any) {
+      toast({ title: "Submission failed", description: e?.message ?? "Please try again.", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
   };
+
 
   if (items.length === 0) {
     return (

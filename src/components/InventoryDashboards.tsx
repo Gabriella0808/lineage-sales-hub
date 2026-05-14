@@ -1557,22 +1557,40 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             icon={TrendingDown}
           />
         </div>
-        {closeoutByCollection.length > 0 && (
-          <Card className="p-5">
-            <h3 className="text-base font-semibold mb-3">Closeout Value by Brand</h3>
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={closeoutByCollection} layout="vertical" margin={{ left: 4, right: 12 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                  <RTooltip formatter={(v: number) => fmtMoney(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="value" fill="hsl(var(--accent))" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {closeoutByCollection.length > 0 && (
+            <Card className="p-5">
+              <h3 className="text-base font-semibold mb-3">Closeout Value by Brand</h3>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={closeoutByCollection} layout="vertical" margin={{ left: 4, right: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <RTooltip formatter={(v: number) => fmtMoney(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                    <Bar dataKey="value" fill="hsl(var(--accent))" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
+          {closeoutBySku.length > 0 && (
+            <Card className="p-5">
+              <h3 className="text-base font-semibold mb-3">Closeout Value by SKU</h3>
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={closeoutBySku} layout="vertical" margin={{ left: 4, right: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                    <RTooltip formatter={(v: number) => fmtMoney(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                    <Bar dataKey="value" fill="hsl(var(--primary))" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
+        </div>
         <Card className="p-5">
           <h3 className="text-base font-semibold mb-3">Closeout Inventory</h3>
           {closeoutRows.length === 0 ? <EmptyState message="No closeout SKUs flagged. Set is_closeout = true on inventory rows." /> : (

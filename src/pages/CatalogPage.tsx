@@ -1,19 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Search, Package, ImageOff, X, ChevronLeft, ChevronRight,
-  ShoppingCart, Tag, Box, DollarSign,
-} from "lucide-react";
+import { Link } from "react-router-dom";
+import { Search, Package, ImageOff, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle,
-} from "@/components/ui/sheet";
+import { useCart } from "@/contexts/CartContext";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 type Product = {
@@ -25,7 +22,6 @@ type Product = {
   collection: string | null;
   description: string | null;
   image_url: string | null;
-  image_urls: string[] | null;
   base_price: number | null;
   stock_status: string | null;
   inventory_level: number | null;
@@ -48,7 +44,7 @@ function ProductImage({ src, alt }: { src: string | null; alt: string }) {
     );
   }
   return (
-    <div className="aspect-square w-full bg-muted/20 overflow-hidden flex items-center justify-center">
+    <div className="aspect-square w-full bg-white overflow-hidden flex items-center justify-center p-4">
       <img
         src={src}
         alt={alt}
@@ -60,146 +56,16 @@ function ProductImage({ src, alt }: { src: string | null; alt: string }) {
   );
 }
 
-function ProductDetailDrawer({
-  product, open, onClose,
-}: {
-  product: Product | null;
-  open: boolean;
-  onClose: () => void;
-}) {
-  const [activeImg, setActiveImg] = useState(0);
-  const images = product?.image_urls?.length ? product.image_urls : (product?.image_url ? [product.image_url] : []);
-
-  useEffect(() => { if (open) setActiveImg(0); }, [open, product?.id]);
-
-  if (!product) return null;
-
-  const oos = (product.inventory_level ?? 0) <= 0;
-
-  return (
-    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto p-0">
-        <div className="relative bg-muted/30">
-          {images.length > 0 ? (
-            <div className="aspect-[4/3] w-full bg-white flex items-center justify-center overflow-hidden">
-              <img
-                src={images[activeImg]}
-                alt={product.name}
-                className="w-full h-full object-contain"
-              />
-            </div>
-          ) : (
-            <div className="aspect-[4/3] w-full bg-muted/40 flex items-center justify-center text-muted-foreground">
-              <ImageOff className="h-12 w-12 opacity-40" />
-            </div>
-          )}
-          {images.length > 1 && (
-            <>
-              <button
-                onClick={() => setActiveImg((i) => (i - 1 + images.length) % images.length)}
-                className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => setActiveImg((i) => (i + 1) % images.length)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </>
-          )}
-          {oos && (
-            <span className="absolute top-3 left-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-destructive text-destructive-foreground shadow-sm">
-              Out of Stock
-            </span>
-          )}
-        </div>
-
-        {images.length > 1 && (
-          <div className="flex gap-2 px-6 pt-4 overflow-x-auto">
-            {images.map((url, i) => (
-              <button
-                key={i}
-                onClick={() => setActiveImg(i)}
-                className={cn(
-                  "h-14 w-14 rounded-md border-2 overflow-hidden flex-shrink-0",
-                  i === activeImg ? "border-primary" : "border-transparent hover:border-muted-foreground/30"
-                )}
-              >
-                <img src={url} alt="" className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="p-6 space-y-5">
-          <SheetHeader className="space-y-1 text-left p-0">
-            <div className="text-[11px] tracking-wider text-muted-foreground uppercase">{product.sku}</div>
-            <SheetTitle className="font-serif text-2xl leading-tight">{product.name}</SheetTitle>
-          </SheetHeader>
-
-          <div className="flex flex-wrap gap-2">
-            {product.brand && <Badge variant="secondary" className="rounded-full">{product.brand}</Badge>}
-            {product.collection && <Badge variant="outline" className="rounded-full">{product.collection}</Badge>}
-            {product.category && <Badge variant="outline" className="rounded-full">{product.category}</Badge>}
-          </div>
-
-          {product.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-              {product.description}
-            </p>
-          )}
-
-          <Separator />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <DollarSign className="h-3.5 w-3.5" />
-                Price
-              </div>
-              <div className="text-lg font-semibold">{formatPrice(product.base_price)}</div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Box className="h-3.5 w-3.5" />
-                Stock
-              </div>
-              <div className={cn("text-sm font-medium", oos ? "text-destructive" : "text-success")}>
-                {oos ? "Out of Stock" : `${product.inventory_level} in stock`}
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Tag className="h-3.5 w-3.5" />
-                Status
-              </div>
-              <div className="text-sm font-medium capitalize">{product.stock_status ?? "—"}</div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <ShoppingCart className="h-3.5 w-3.5" />
-                SKU
-              </div>
-              <div className="text-sm font-medium">{product.sku}</div>
-            </div>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
 export default function CatalogPage() {
+  const { addItem } = useCart();
+  const { toast } = useToast();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [brand, setBrand] = useState<string>("all");
   const [collection, setCollection] = useState<string>("all");
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<Product | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -207,7 +73,7 @@ export default function CatalogPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from("products")
-        .select("id, sku, name, brand, category, collection, description, image_url, image_urls, base_price, stock_status, inventory_level")
+        .select("id, sku, name, brand, category, collection, description, image_url, base_price, stock_status, inventory_level")
         .eq("is_active", true)
         .order("name", { ascending: true })
         .limit(1000);
@@ -250,9 +116,17 @@ export default function CatalogPage() {
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const openProduct = (p: Product) => {
-    setSelected(p);
-    setDrawerOpen(true);
+  const handleAdd = (e: React.MouseEvent, p: Product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    addItem({
+      sku: p.sku,
+      name: p.name,
+      brand: p.brand,
+      image_url: p.image_url,
+      base_price: p.base_price,
+    }, 1);
+    toast({ title: "Added to cart", description: p.name });
   };
 
   return (
@@ -260,7 +134,7 @@ export default function CatalogPage() {
       <div className="page-header">
         <h1 className="page-title">Product Catalog</h1>
         <p className="page-subtitle">
-          Synced from BigCommerce · {products.length.toLocaleString()} products
+          {products.length.toLocaleString()} products available
         </p>
       </div>
 
@@ -299,12 +173,12 @@ export default function CatalogPage() {
         {paged.map((p) => {
           const oos = (p.inventory_level ?? 0) <= 0;
           return (
-            <button
+            <Link
               key={p.id}
-              onClick={() => openProduct(p)}
-              className="text-left"
+              to={`/catalog/${encodeURIComponent(p.sku)}`}
+              className="block group"
             >
-              <Card className="overflow-hidden flex flex-col group cursor-pointer hover:shadow-md transition-shadow">
+              <Card className="overflow-hidden flex flex-col cursor-pointer hover:shadow-md transition-shadow h-full">
                 <div className="relative">
                   <ProductImage src={p.image_url} alt={p.name} />
                   {oos && (
@@ -315,23 +189,26 @@ export default function CatalogPage() {
                 </div>
                 <div className="p-4 flex flex-col flex-1">
                   <div className="text-[11px] tracking-wider text-muted-foreground uppercase">{p.sku}</div>
-                  <h3 className="font-serif text-lg leading-snug mt-1 line-clamp-2">{p.name}</h3>
+                  <h3 className="font-serif text-lg leading-snug mt-1 line-clamp-2 group-hover:text-primary transition-colors">{p.name}</h3>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {p.brand && <Badge variant="secondary" className="rounded-full font-normal">{p.brand}</Badge>}
                     {p.collection && <Badge variant="outline" className="rounded-full font-normal">{p.collection}</Badge>}
                   </div>
-                  {p.description && (
-                    <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{p.description}</p>
-                  )}
-                  <div className="mt-auto pt-4 flex items-baseline justify-between">
-                    <span className="text-xl font-semibold">{formatPrice(p.base_price)}</span>
-                    {p.inventory_level != null && p.inventory_level > 0 && (
-                      <span className="text-xs text-muted-foreground">{p.inventory_level} in stock</span>
-                    )}
+                  <div className="mt-auto pt-4">
+                    <div className="text-xl font-semibold mb-3">{formatPrice(p.base_price)}</div>
+                    <Button
+                      onClick={(e) => handleAdd(e, p)}
+                      disabled={oos}
+                      className="w-full"
+                      variant={oos ? "secondary" : "default"}
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      Add to Cart
+                    </Button>
                   </div>
                 </div>
               </Card>
-            </button>
+            </Link>
           );
         })}
       </div>
@@ -358,12 +235,6 @@ export default function CatalogPage() {
           >Next</button>
         </div>
       )}
-
-      <ProductDetailDrawer
-        product={selected}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-      />
     </div>
   );
 }

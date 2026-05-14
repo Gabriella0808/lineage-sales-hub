@@ -164,8 +164,8 @@ export default function CartPage() {
             <p className="text-xs text-muted-foreground">
               Final pricing, freight, and lead times will be confirmed in your quote.
             </p>
-            <Button size="lg" className="w-full" onClick={handleSubmitQuote}>
-              Submit Quote Request
+            <Button size="lg" className="w-full" onClick={handleSubmitQuote} disabled={submitting}>
+              {submitting ? "Submitting…" : "Submit Quote Request"}
             </Button>
             <button
               onClick={() => clear()}

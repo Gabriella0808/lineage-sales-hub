@@ -244,8 +244,7 @@ function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
   // ETA by month
   const etaByMonth = (() => {
     const m = new Map<string, number>();
-    for (const r of rows) {
-      const key = `${r.eta.getFullYear()}-${String(r.eta.getMonth() + 1).padStart(2, "0")}`;
+    for (const r of filteredRows) {
       m.set(key, (m.get(key) ?? 0) + 1);
     }
     return Array.from(m.entries())

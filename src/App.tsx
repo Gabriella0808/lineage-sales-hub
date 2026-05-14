@@ -20,6 +20,7 @@ import MondayBoardsPage from "@/pages/MondayBoardsPage";
 import TasksPage from "@/pages/TasksPage";
 import SalesTargetsPage from "@/pages/SalesTargetsPage";
 import InventoryPage from "@/pages/InventoryPage";
+import CatalogPage from "@/pages/CatalogPage";
 import CheckInsPage from "@/pages/CheckInsPage";
 import CheckInAnalyticsPage from "@/pages/CheckInAnalyticsPage";
 import TravelLogPage from "@/pages/TravelLogPage";
@@ -60,6 +61,7 @@ const App = () => (
                       <Route path="/tasks" element={<TasksPage />} />
                       <Route path="/sales-targets" element={<ProtectedRoute allow={["admin","manager"]}><SalesTargetsPage /></ProtectedRoute>} />
                       <Route path="/inventory" element={<ProtectedRoute allow={["admin"]}><InventoryPage /></ProtectedRoute>} />
+                      <Route path="/catalog" element={<CatalogPage />} />
                       <Route path="/check-ins" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInsPage /></ProtectedRoute>} />
                       <Route path="/check-ins/analytics" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInAnalyticsPage /></ProtectedRoute>} />
                       <Route path="/travel-log" element={<ProtectedRoute allow={["admin", "manager"]}><TravelLogPage /></ProtectedRoute>} />

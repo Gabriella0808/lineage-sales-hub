@@ -51,7 +51,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Catalog & Inventory",
     items: [
       { title: "Product Catalog", url: "/catalog", icon: Package, roles: ["admin", "manager", "rep", "dealer"] },
-      { title: "Quote Cart", url: "/cart", icon: ShoppingCart, roles: ["admin", "manager", "rep", "dealer"] },
+      { title: "Cart", url: "/cart", icon: ShoppingCart, roles: ["admin", "manager", "rep", "dealer"] },
       { title: "My Quotes", url: "/my-quotes", icon: FileText, roles: ["admin", "manager", "rep", "dealer"] },
       { title: "Customer Quotes", url: "/customer-quotes", icon: Send, roles: ["admin", "manager", "rep", "dealer"] },
       { title: "Digital Assets", url: "/digital-assets", icon: FolderOpen, roles: ["admin", "manager", "rep", "dealer"] },

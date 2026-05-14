@@ -11,7 +11,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 async function bcFetch(path: string) {
-  const url = `https://api.bigcommerce.com/stores/${STORE_HASH}/v3${path}`;
+  const hash = (STORE_HASH || "").trim();
+  const token = (ACCESS_TOKEN || "").trim();
+  console.log(`hash_len=${hash.length} token_len=${token.length} hash="${hash}"`);
+  const url = `https://api.bigcommerce.com/stores/${hash}/v3${path}`;
   const res = await fetch(url, {
     headers: {
       "X-Auth-Token": ACCESS_TOKEN!,

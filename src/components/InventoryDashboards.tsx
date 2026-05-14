@@ -262,6 +262,7 @@ function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
   const statusSplit = (() => {
     let onTime = 0, late = 0, arrived = 0;
     for (const r of filteredRows) {
+      if (r.eta.getTime() < now) arrived += 1;
       else if (r.actualShip.getTime() > r.proForma.getTime()) late += 1;
       else onTime += 1;
     }

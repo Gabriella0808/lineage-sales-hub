@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DollarSign, PackageOpen, TrendingUp, TrendingDown, Tag, Activity,
   Truck, Factory, AlertCircle, ShoppingCart, CalendarClock, Layers,
@@ -1479,7 +1480,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     return Array.from(m, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [items]);
 
-  // Closeout by SKU (top 15 by value)
+  // Closeout by SKU (all, sorted by value)
   const closeoutBySku = useMemo(() => {
     const arr = items
       .filter((it) => it.isCloseout || it.isClearance)
@@ -1487,8 +1488,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         name: it.sku,
         value: it.onHandValue ?? (it.unitCost ?? 0) * it.onHand,
       }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 15);
+      .sort((a, b) => b.value - a.value);
     return arr;
   }, [items]);
 

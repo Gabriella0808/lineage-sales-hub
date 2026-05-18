@@ -271,7 +271,7 @@ function SidebarNav() {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-sidebar-accent-foreground truncate">Lineage Collections</p>
-              <p className="text-[10px] uppercase tracking-[0.16em] text-sidebar-section truncate">{isCustomerService(user?.email) ? "Customer Service" : role} workspace</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-sidebar-section truncate">{isCustomerService(user?.email) ? "CUSTOMER SERVICE" : role} workspace</p>
             </div>
           )}
         </div>
@@ -318,7 +318,7 @@ function SignOutButton() {
         <span className="text-xs text-foreground truncate max-w-[180px]">{user.email}</span>
         {roleInfo && (
           <span className="text-[9.5px] uppercase tracking-[0.2em] text-accent font-semibold">
-            {roleInfo.role}
+            {isCustomerService(user?.email) ? "CUSTOMER SERVICE" : roleInfo.role}
           </span>
         )}
       </div>

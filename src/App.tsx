@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import EmailGuard from "@/components/EmailGuard";
 import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import SalesRepsPage from "@/pages/SalesRepsPage";

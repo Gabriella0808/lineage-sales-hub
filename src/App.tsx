@@ -30,6 +30,9 @@ import CustomerQuotesPage from "@/pages/CustomerQuotesPage";
 import CustomerQuoteBuilderPage from "@/pages/CustomerQuoteBuilderPage";
 import CustomerQuoteViewPage from "@/pages/CustomerQuoteViewPage";
 import DigitalAssetsPage from "@/pages/DigitalAssetsPage";
+import TicketsPage from "@/pages/TicketsPage";
+import ReturnsPage from "@/pages/ReturnsPage";
+import KnowledgeBasePage from "@/pages/KnowledgeBasePage";
 
 import CheckInsPage from "@/pages/CheckInsPage";
 import CheckInAnalyticsPage from "@/pages/CheckInAnalyticsPage";
@@ -87,6 +90,9 @@ const App = () => (
                       <Route path="/trade-show-leads" element={<ProtectedRoute allow={["admin", "manager"]}><TradeShowLeadsPage /></ProtectedRoute>} />
                       <Route path="/trade-show-leads/capture" element={<ProtectedRoute allow={["admin", "manager"]}><CaptureLeadsPage /></ProtectedRoute>} />
                       <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]}><OrgChartPage /></ProtectedRoute>} />
+                      <Route path="/tickets" element={<EmailGuard><TicketsPage /></EmailGuard>} />
+                      <Route path="/returns" element={<EmailGuard><ReturnsPage /></EmailGuard>} />
+                      <Route path="/knowledge-base" element={<EmailGuard><KnowledgeBasePage /></EmailGuard>} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

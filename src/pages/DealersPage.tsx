@@ -85,8 +85,8 @@ export default function DealersPage() {
             </p>
             <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="bg-muted px-2 py-0.5 rounded-full truncate">{getTerritoryName(territories, d.territory_id)}</span>
-                <span className="text-muted-foreground truncate">{getRepName(reps, d.rep_id)}</span>
+                <span className="bg-muted px-2 py-0.5 rounded-full truncate">{getTerritoryName(territories, d.territory_id) || (d as any).territory || '—'}</span>
+                <span className="text-muted-foreground truncate">{getRepName(reps, d.rep_id) || (d as any).salesperson || '—'}</span>
               </div>
               <span className="font-medium tabular-nums shrink-0">{formatCurrency(d.revenue)}</span>
             </div>
@@ -121,8 +121,14 @@ export default function DealersPage() {
               <tr key={d.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelected(d.id)}>
                 <td className="p-3 font-medium">{d.name}</td>
                 <td className="p-3 text-muted-foreground">{d.city || ''}{d.city && d.state ? ', ' : ''}{d.state || ''}</td>
-                <td className="p-3 hidden lg:table-cell"><span className="text-xs bg-muted px-2 py-0.5 rounded-full">{getTerritoryName(territories, d.territory_id)}</span></td>
-                <td className="p-3 hidden lg:table-cell text-muted-foreground">{getRepName(reps, d.rep_id)}</td>
+                <td className="p-3 hidden lg:table-cell">
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
+                    {getTerritoryName(territories, d.territory_id) || (d as any).territory || '—'}
+                  </span>
+                </td>
+                <td className="p-3 hidden lg:table-cell text-muted-foreground">
+                  {getRepName(reps, d.rep_id) || (d as any).salesperson || '—'}
+                </td>
                 <td className="p-3"><StatusBadge status={d.status} /></td>
                 <td className="p-3"><StatusBadge status={d.engagement ?? 'medium'} /></td>
                 <td className="p-3 text-right hidden lg:table-cell font-medium">{formatCurrency(d.revenue)}</td>
@@ -161,8 +167,8 @@ export default function DealersPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Territory</p><p className="text-sm">{getTerritoryName(territories, dealer.territory_id)}</p></div>
-                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Assigned Rep</p><p className="text-sm">{getRepName(reps, dealer.rep_id)}</p></div>
+                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Territory</p><p className="text-sm">{getTerritoryName(territories, dealer.territory_id) || (dealer as any).territory || '—'}</p></div>
+                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Salesperson</p><p className="text-sm">{getRepName(reps, dealer.rep_id) || (dealer as any).salesperson || '—'}</p></div>
                   {dealer.phone && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Phone</p><p className="text-sm">{dealer.phone}</p></div>}
                   {dealer.email && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Email</p><p className="text-sm">{dealer.email}</p></div>}
                   {dealer.website && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Website</p>

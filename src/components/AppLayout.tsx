@@ -189,14 +189,21 @@ function SidebarNav() {
   const location = useLocation();
   const { user } = useAuth();
 
+  const cs = isCustomerService(user?.email);
+  const CS_ALLOWED = new Set(["/", "/tasks", "/dealers", "/settings"]);
+
   const sections = NAV_SECTIONS
     .filter((s) => {
-      if (s.id === "catalog") {
-        return isAllowedEmail(user?.email);
-      }
+      if (cs) return true;
+      if (s.id === "catalog") return isAllowedEmail(user?.email);
       return true;
     })
-    .map((s) => ({ ...s, items: s.items.filter((i) => i.roles.includes(role)) }))
+    .map((s) => ({
+      ...s,
+      items: s.items
+        .filter((i) => (cs ? CS_ALLOWED.has(i.url) : i.roles.includes(role)))
+        .map((i) => (cs ? { ...i, children: undefined } : i)),
+    }))
     .filter((s) => s.items.length > 0);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {

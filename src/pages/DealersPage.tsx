@@ -167,8 +167,8 @@ export default function DealersPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Territory</p><p className="text-sm">{getTerritoryName(territories, dealer.territory_id)}</p></div>
-                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Assigned Rep</p><p className="text-sm">{getRepName(reps, dealer.rep_id)}</p></div>
+                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Territory</p><p className="text-sm">{getTerritoryName(territories, dealer.territory_id) || (dealer as any).territory || '—'}</p></div>
+                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Salesperson</p><p className="text-sm">{getRepName(reps, dealer.rep_id) || (dealer as any).salesperson || '—'}</p></div>
                   {dealer.phone && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Phone</p><p className="text-sm">{dealer.phone}</p></div>}
                   {dealer.email && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Email</p><p className="text-sm">{dealer.email}</p></div>}
                   {dealer.website && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Website</p>

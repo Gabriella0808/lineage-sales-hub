@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, LayoutGrid, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
-  FileText, Send, FolderOpen,
+  FileText, Send, FolderOpen, LifeBuoy, Undo2, BookMarked,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,15 @@ const NAV_SECTIONS: NavSection[] = [
       { title: "My Quotes", url: "/my-quotes", icon: FileText, roles: ["admin", "manager", "rep", "dealer"] },
       { title: "Customer Quotes", url: "/customer-quotes", icon: Send, roles: ["admin", "manager", "rep", "dealer"] },
       { title: "Digital Assets", url: "/digital-assets", icon: FolderOpen, roles: ["admin", "manager", "rep", "dealer"] },
+    ],
+  },
+  {
+    id: "support",
+    label: "Customer Service",
+    items: [
+      { title: "Tickets & Cases", url: "/tickets", icon: LifeBuoy, roles: ["admin", "manager", "rep", "dealer"] },
+      { title: "Returns & RMAs", url: "/returns", icon: Undo2, roles: ["admin", "manager", "rep", "dealer"] },
+      { title: "Knowledge Base", url: "/knowledge-base", icon: BookMarked, roles: ["admin", "manager", "rep", "dealer"] },
     ],
   },
   {
@@ -189,12 +198,13 @@ function SidebarNav() {
   const { user } = useAuth();
 
   const cs = isCustomerService(user?.email);
-  const CS_ALLOWED = new Set(["/", "/tasks", "/dealers", "/settings"]);
+  const CS_ALLOWED = new Set(["/", "/tasks", "/dealers", "/settings", "/tickets", "/returns", "/knowledge-base"]);
 
   const sections = NAV_SECTIONS
     .filter((s) => {
       if (cs) return true;
       if (s.id === "catalog") return isAllowedEmail(user?.email);
+      if (s.id === "support") return isCustomerService(user?.email);
       return true;
     })
     .map((s) => ({

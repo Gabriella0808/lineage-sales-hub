@@ -120,6 +120,7 @@ export default function TaskBoardsView() {
   const [shareDlgOpen, setShareDlgOpen] = useState(false);
   const [members, setMembers] = useState<{ user_id: string }[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<{ user_id: string; full_name: string | null; email: string | null }[]>([]);
+  const [taskAssignees, setTaskAssignees] = useState<Record<string, string[]>>({});
   const [addUserId, setAddUserId] = useState<string>("");
 
   const load = async () => {

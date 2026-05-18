@@ -170,6 +170,44 @@ export default function TaskBoardsView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  // Realtime: new/updated/deleted board tasks appear immediately for everyone
+  // viewing the board (including this user adding from other places like the
+  // global "+ Item" button on TasksPage).
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("task-boards-tasks")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "manager_tasks" },
+        (payload) => {
+          const newRow: any = (payload as any).new;
+          const oldRow: any = (payload as any).old;
+          if (payload.eventType === "INSERT") {
+            if (!newRow?.board_id) return;
+            setTasks((prev) =>
+              prev.some((t) => t.id === newRow.id) ? prev : [...prev, newRow as BoardTask]
+            );
+          } else if (payload.eventType === "UPDATE") {
+            setTasks((prev) => {
+              const exists = prev.some((t) => t.id === newRow.id);
+              if (!exists) {
+                return newRow?.board_id ? [...prev, newRow as BoardTask] : prev;
+              }
+              if (!newRow?.board_id) return prev.filter((t) => t.id !== newRow.id);
+              return prev.map((t) => (t.id === newRow.id ? { ...t, ...newRow } : t));
+            });
+          } else if (payload.eventType === "DELETE") {
+            setTasks((prev) => prev.filter((t) => t.id !== oldRow?.id));
+          }
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   // Persist active board so other parts of the page (e.g. the global "+ Item"
   // button in TasksPage) can target the currently-viewed board.
   useEffect(() => {

@@ -188,12 +188,11 @@ function SidebarNav() {
   const role: AppRole = roleInfo?.role ?? "rep";
   const location = useLocation();
   const { user } = useAuth();
-  const allowedEmail = "gabriella@lineage-collections.com";
 
   const sections = NAV_SECTIONS
     .filter((s) => {
       if (s.id === "catalog") {
-        return user?.email?.toLowerCase() === allowedEmail.toLowerCase();
+        return isAllowedEmail(user?.email);
       }
       return true;
     })

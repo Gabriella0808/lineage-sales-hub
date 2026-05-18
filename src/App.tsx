@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import EmailGuard from "@/components/EmailGuard";
 import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import SalesRepsPage from "@/pages/SalesRepsPage";
@@ -72,14 +73,14 @@ const App = () => (
                       <Route path="/tasks" element={<TasksPage />} />
                       <Route path="/sales-targets" element={<ProtectedRoute allow={["admin","manager"]}><SalesTargetsPage /></ProtectedRoute>} />
                       <Route path="/inventory" element={<ProtectedRoute allow={["admin"]}><InventoryPage /></ProtectedRoute>} />
-                      <Route path="/catalog" element={<CatalogPage />} />
-                      <Route path="/catalog/:sku" element={<ProductDetailPage />} />
-                      <Route path="/cart" element={<CartPage />} />
-                      <Route path="/my-quotes" element={<MyQuotesPage />} />
-                      <Route path="/customer-quotes" element={<CustomerQuotesPage />} />
-                      <Route path="/customer-quotes/new" element={<CustomerQuoteBuilderPage />} />
-                      <Route path="/customer-quotes/:id" element={<CustomerQuoteBuilderPage />} />
-                      <Route path="/digital-assets" element={<DigitalAssetsPage />} />
+                      <Route path="/catalog" element={<EmailGuard><CatalogPage /></EmailGuard>} />
+                      <Route path="/catalog/:sku" element={<EmailGuard><ProductDetailPage /></EmailGuard>} />
+                      <Route path="/cart" element={<EmailGuard><CartPage /></EmailGuard>} />
+                      <Route path="/my-quotes" element={<EmailGuard><MyQuotesPage /></EmailGuard>} />
+                      <Route path="/customer-quotes" element={<EmailGuard><CustomerQuotesPage /></EmailGuard>} />
+                      <Route path="/customer-quotes/new" element={<EmailGuard><CustomerQuoteBuilderPage /></EmailGuard>} />
+                      <Route path="/customer-quotes/:id" element={<EmailGuard><CustomerQuoteBuilderPage /></EmailGuard>} />
+                      <Route path="/digital-assets" element={<EmailGuard><DigitalAssetsPage /></EmailGuard>} />
                       <Route path="/check-ins" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInsPage /></ProtectedRoute>} />
                       <Route path="/check-ins/analytics" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInAnalyticsPage /></ProtectedRoute>} />
                       <Route path="/travel-log" element={<ProtectedRoute allow={["admin", "manager"]}><TravelLogPage /></ProtectedRoute>} />

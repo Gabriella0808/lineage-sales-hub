@@ -186,8 +186,16 @@ function SidebarNav() {
   const { data: roleInfo } = useUserRole();
   const role: AppRole = roleInfo?.role ?? "rep";
   const location = useLocation();
+  const { user } = useAuth();
+  const allowedEmail = "gabriella@lineage-collections.com";
 
   const sections = NAV_SECTIONS
+    .filter((s) => {
+      if (s.id === "catalog") {
+        return user?.email?.toLowerCase() === allowedEmail.toLowerCase();
+      }
+      return true;
+    })
     .map((s) => ({ ...s, items: s.items.filter((i) => i.roles.includes(role)) }))
     .filter((s) => s.items.length > 0);
 

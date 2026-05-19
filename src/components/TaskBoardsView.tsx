@@ -112,7 +112,8 @@ export default function TaskBoardsView() {
     status: Status;
     due_date: string;
     group_id: string | null;
-  }>({ title: "", description: "", status: "todo", due_date: "", group_id: null });
+    assignee_ids: string[];
+  }>({ title: "", description: "", status: "todo", due_date: "", group_id: null, assignee_ids: [] });
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 

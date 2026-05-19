@@ -1026,7 +1026,7 @@ export default function TasksPage() {
                                 {t.due_date && (
                                   <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                                     <Calendar className="h-3 w-3" />
-                                    {format(new Date(t.due_date), "MMM d")}
+                                    {format(parseDateOnly(t.due_date)!, "MMM d")}
                                   </span>
                                 )}
                               </div>
@@ -1099,7 +1099,7 @@ export default function TasksPage() {
                               {t.due_date ? (
                                 <span className="inline-flex items-center gap-1">
                                   <Calendar className="h-3.5 w-3.5" />
-                                  {format(new Date(t.due_date), "MMM d, yyyy")}
+                                  {format(parseDateOnly(t.due_date)!, "MMM d, yyyy")}
                                 </span>
                               ) : (
                                 <span className="italic">—</span>
@@ -1292,7 +1292,7 @@ export default function TasksPage() {
                         <Calendar className="h-3 w-3" /> Due date
                       </p>
                       <p className="text-sm">
-                        {t.due_date ? format(new Date(t.due_date), "MMM d, yyyy") : <span className="italic text-muted-foreground">—</span>}
+                        {t.due_date ? format(parseDateOnly(t.due_date)!, "MMM d, yyyy") : <span className="italic text-muted-foreground">—</span>}
                       </p>
                     </div>
                     <div>

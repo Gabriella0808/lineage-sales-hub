@@ -112,7 +112,8 @@ export default function TaskBoardsView() {
     status: Status;
     due_date: string;
     group_id: string | null;
-  }>({ title: "", description: "", status: "todo", due_date: "", group_id: null });
+    assignee_ids: string[];
+  }>({ title: "", description: "", status: "todo", due_date: "", group_id: null, assignee_ids: [] });
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
@@ -392,17 +393,21 @@ export default function TaskBoardsView() {
   // --- Task CRUD ---
   const openNewTask = (groupId: string | null, status: Status = "todo") => {
     setEditingTask(null);
-    setTaskForm({ title: "", description: "", status, due_date: "", group_id: groupId });
+    setTaskForm({ title: "", description: "", status, due_date: "", group_id: groupId, assignee_ids: [] });
     setTaskDlgOpen(true);
   };
   const openEditTask = (t: BoardTask) => {
     setEditingTask(t);
+    const existing = new Set<string>();
+    if (t.assigned_user_id) existing.add(t.assigned_user_id);
+    (taskAssignees[t.id] ?? []).forEach((id) => existing.add(id));
     setTaskForm({
       title: t.title,
       description: t.description ?? "",
       status: t.status,
       due_date: t.due_date ?? "",
       group_id: t.group_id,
+      assignee_ids: Array.from(existing),
     });
     setTaskDlgOpen(true);
   };
@@ -419,12 +424,14 @@ export default function TaskBoardsView() {
       board_id: activeBoardId,
       group_id: taskForm.group_id,
     };
+    let taskId: string | null = null;
     if (editingTask) {
       const { error } = await supabase.from("manager_tasks").update(payload).eq("id", editingTask.id);
       if (error) {
         console.error("[TaskBoards] update task failed", error);
         return toast({ title: "Update failed", description: error.message, variant: "destructive" });
       }
+      taskId = editingTask.id;
     } else {
       const { data, error } = await supabase
         .from("manager_tasks")
@@ -439,10 +446,20 @@ export default function TaskBoardsView() {
           variant: "destructive",
         });
       }
-      // Optimistic insert so the new task appears immediately, even if the
-      // refetch is delayed or filtered.
+      taskId = (data as any).id;
       setTasks((prev) => [...prev, data as unknown as BoardTask]);
     }
+
+    // Sync assignees
+    if (taskId) {
+      await supabase.from("manager_task_assignees").delete().eq("task_id", taskId);
+      if (taskForm.assignee_ids.length) {
+        const rows = taskForm.assignee_ids.map((uid) => ({ task_id: taskId!, user_id: uid }));
+        const { error: aErr } = await supabase.from("manager_task_assignees").insert(rows);
+        if (aErr) console.error("[TaskBoards] assignee sync failed", aErr);
+      }
+    }
+
     setTaskDlgOpen(false);
     load();
   };
@@ -1030,6 +1047,63 @@ export default function TaskBoardsView() {
                 ))}
               </SelectContent>
             </Select>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Assignees
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {taskForm.assignee_ids.length} selected
+                </p>
+              </div>
+              <div className="max-h-48 overflow-y-auto rounded-md border border-border divide-y">
+                {Array.from(
+                  new Map(assignableUsers.map((u) => [u.user_id, u])).values()
+                )
+                  .sort((a, b) =>
+                    (a.full_name || a.email || "").localeCompare(b.full_name || b.email || "")
+                  )
+                  .map((u) => {
+                    const checked = taskForm.assignee_ids.includes(u.user_id);
+                    return (
+                      <label
+                        key={u.user_id}
+                        className="flex items-center gap-2 px-2.5 py-1.5 text-sm cursor-pointer hover:bg-muted/40"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) =>
+                            setTaskForm((f) => ({
+                              ...f,
+                              assignee_ids: e.target.checked
+                                ? [...f.assignee_ids, u.user_id]
+                                : f.assignee_ids.filter((id) => id !== u.user_id),
+                            }))
+                          }
+                          className="h-3.5 w-3.5"
+                        />
+                        <span className="flex-1 min-w-0">
+                          <span className="block truncate">
+                            {u.full_name || u.email || u.user_id.slice(0, 8)}
+                          </span>
+                          {u.email && u.full_name && u.full_name !== u.email && (
+                            <span className="block text-xs text-muted-foreground truncate">
+                              {u.email}
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
+                {assignableUsers.length === 0 && (
+                  <div className="px-2.5 py-3 text-xs italic text-muted-foreground">
+                    No assignable users found.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setTaskDlgOpen(false)}>Cancel</Button>

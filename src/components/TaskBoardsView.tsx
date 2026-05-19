@@ -35,6 +35,7 @@ import {
   X,
 } from "lucide-react";
 import { format } from "date-fns";
+import { parseDateOnly } from "@/lib/utils";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
 

@@ -24,6 +24,7 @@
 [CmdletBinding()]
 param(
   [string]$ConfigPath = (Join-Path $PSScriptRoot 'sync.config.json'),
+  [Parameter(ValueFromRemainingArguments = $true)]
   [string[]]$Tables
 )
 
@@ -182,7 +183,11 @@ GROUP BY i.ProductID, p.ProductCode
 }
 
 # ---------- Run ----------
-$enabled = if ($Tables) { $Tables } else { $config.enabledTables }
+$enabled = if ($Tables) {
+  $Tables | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim(" '`") } | Where-Object { $_ }
+} else {
+  $config.enabledTables
+}
 if (-not $enabled -or $enabled.Count -eq 0) {
   $enabled = $queries.Keys
 }

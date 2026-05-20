@@ -145,7 +145,7 @@ FROM dbo.Territory
   dealers = @"
 SELECT
   CAST(c.CustId AS NVARCHAR(64))  AS acctivate_id,
-  c.CompanyName                   AS name,
+  COALESCE(NULLIF(LTRIM(RTRIM(c.CompanyName)), ''), 'Customer ' + CAST(c.CustId AS NVARCHAR(64))) AS name,
   c.Email                         AS email,
   c.Phone                         AS phone,
   c.Address                       AS street_address,
@@ -155,7 +155,8 @@ SELECT
   c._Territory                    AS territory,
   c._SalesManager                 AS sales_manager
 FROM dbo.Customer c
-WHERE c.Status IS NULL OR c.Status = 0
+WHERE (c.Status IS NULL OR c.Status = 0)
+  AND c.CustID IS NOT NULL
 "@
 
   products = @"

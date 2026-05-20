@@ -184,7 +184,7 @@ GROUP BY i.ProductID, p.ProductCode
 
 # ---------- Run ----------
 $enabled = if ($Tables) {
-  $Tables | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim().Trim("'").Trim('"') } | Where-Object { $_ }
+  $Tables | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim().Trim([char]39).Trim([char]34) } | Where-Object { $_ }
 } else {
   $config.enabledTables
 }

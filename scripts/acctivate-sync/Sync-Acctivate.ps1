@@ -155,7 +155,7 @@ SELECT
   c._Territory                    AS territory,
   c._SalesManager                 AS sales_manager
 FROM dbo.Customer c
-WHERE ISNULL(c.Status, 'A') = 'A'
+WHERE c.Status IS NULL OR c.Status = 0
 "@
 
   products = @"

@@ -151,13 +151,15 @@ SELECT
   c.Address                       AS street_address,
   c.City                          AS city,
   c.State                         AS state,
-  c.SalespersonName               AS salesperson,
+  c._Rep1                         AS salesperson,
   c._Territory                    AS territory,
   c._SalesManager                 AS sales_manager
-FROM dbo.Customer c
+FROM dbo.tbCustomer c
 WHERE (c.Status IS NULL OR c.Status = 0)
   AND c.CustID IS NOT NULL
+  AND c.CustID NOT LIKE 'Z%'
 "@
+
 
   products = @"
 SELECT

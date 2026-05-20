@@ -16,6 +16,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -117,6 +124,7 @@ export default function TaskBoardsView() {
   }>({ title: "", description: "", status: "todo", due_date: "", group_id: null, assignee_ids: [] });
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [detailsTask, setDetailsTask] = useState<BoardTask | null>(null);
 
   // members / subscribers
   const [shareDlgOpen, setShareDlgOpen] = useState(false);
@@ -703,12 +711,16 @@ export default function TaskBoardsView() {
                   <div className="flex items-center justify-center text-muted-foreground/40">
                     <GripVertical className="h-3.5 w-3.5" />
                   </div>
-                  <div className="px-2 py-2 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => setDetailsTask(t)}
+                    className="px-2 py-2 min-w-0 text-left hover:underline underline-offset-2 decoration-muted-foreground/40"
+                  >
                     <p className="text-sm font-medium leading-snug break-words">{t.title}</p>
                     {t.description && (
                       <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                     )}
-                  </div>
+                  </button>
                   <div className="hidden md:flex items-center px-2">
                     <Select value={t.status} onValueChange={(v: Status) => updateTaskStatus(t.id, v)}>
                       <SelectTrigger
@@ -1189,6 +1201,175 @@ export default function TaskBoardsView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Task details sheet */}
+      <Sheet open={!!detailsTask} onOpenChange={(o) => !o && setDetailsTask(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          {detailsTask && (() => {
+            const live = tasks.find((t) => t.id === detailsTask.id) ?? detailsTask;
+            const meta = STATUS_META[live.status];
+            const group = groups.find((g) => g.id === live.group_id);
+            const board = boards.find((b) => b.id === live.board_id);
+            const ids = new Set<string>();
+            if (live.assigned_user_id) ids.add(live.assigned_user_id);
+            (taskAssignees[live.id] ?? []).forEach((id) => ids.add(id));
+            const assignees = Array.from(ids)
+              .map((id) => assignableUsers.find((u) => u.user_id === id))
+              .filter(Boolean) as { user_id: string; full_name: string | null; email: string | null }[];
+            const creator = assignableUsers.find((u) => u.user_id === live.user_id);
+            const isMine = !!user && live.user_id === user.id;
+            return (
+              <>
+                <SheetHeader>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge className={`${meta.pillBg} ${meta.pillText} border-0 text-[10px]`}>
+                      {meta.label}
+                    </Badge>
+                    {board && (
+                      <span className="text-xs text-muted-foreground">{board.name}</span>
+                    )}
+                  </div>
+                  <SheetTitle className="font-display text-2xl leading-tight pr-6">
+                    {live.title}
+                  </SheetTitle>
+                  {group && (
+                    <SheetDescription className="flex items-center gap-1.5">
+                      <span
+                        className="inline-block h-2 w-2 rounded-full"
+                        style={{ backgroundColor: group.color ?? "#6366f1" }}
+                      />
+                      {group.name}
+                    </SheetDescription>
+                  )}
+                </SheetHeader>
+
+                <div className="mt-6 space-y-5 text-sm">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                      Description
+                    </p>
+                    {live.description ? (
+                      <p className="whitespace-pre-wrap leading-relaxed">{live.description}</p>
+                    ) : (
+                      <p className="italic text-muted-foreground">No description.</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                        Status
+                      </p>
+                      <Select
+                        value={live.status}
+                        onValueChange={(v: Status) => updateTaskStatus(live.id, v)}
+                      >
+                        <SelectTrigger
+                          className={`h-8 px-3 text-xs font-semibold border-0 ${meta.pillBg} ${meta.pillText} rounded-md justify-center gap-1 shadow-sm`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(STATUS_META) as Status[]).map((s) => (
+                            <SelectItem key={s} value={s} className="text-xs">
+                              {STATUS_META[s].label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                        Due date
+                      </p>
+                      <p className="inline-flex items-center gap-1.5">
+                        {live.due_date ? (
+                          <>
+                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                            {format(parseDateOnly(live.due_date)!, "EEE, MMM d, yyyy")}
+                          </>
+                        ) : (
+                          <span className="italic text-muted-foreground">—</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                      Assignees ({assignees.length})
+                    </p>
+                    {assignees.length === 0 ? (
+                      <p className="italic text-muted-foreground">Unassigned</p>
+                    ) : (
+                      <ul className="space-y-1.5">
+                        {assignees.map((a) => {
+                          const name = a.full_name || a.email || a.user_id.slice(0, 8);
+                          const initials = name
+                            .split(/\s+/)
+                            .filter(Boolean)
+                            .map((p) => p[0])
+                            .join("")
+                            .slice(0, 2)
+                            .toUpperCase();
+                          return (
+                            <li key={a.user_id} className="flex items-center gap-2">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold">
+                                {initials}
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block truncate">{name}</span>
+                                {a.email && a.full_name && a.full_name !== a.email && (
+                                  <span className="block text-xs text-muted-foreground truncate">
+                                    {a.email}
+                                  </span>
+                                )}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+
+                  {creator && (
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+                        Created by
+                      </p>
+                      <p>{creator.full_name || creator.email || creator.user_id.slice(0, 8)}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 flex items-center justify-end gap-2 border-t pt-4">
+                  {isMine && (
+                    <Button
+                      variant="ghost"
+                      className="text-destructive"
+                      onClick={async () => {
+                        await deleteTask(live);
+                        setDetailsTask(null);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setDetailsTask(null);
+                      openEditTask(live);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" /> Edit
+                  </Button>
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

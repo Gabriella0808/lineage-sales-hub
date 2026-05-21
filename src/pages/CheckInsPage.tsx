@@ -1391,10 +1391,7 @@ export default function CheckInsPage() {
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Account Owner</dt>
                       <dd className="mt-0.5">
                         {(() => {
-                          const owner = (selected.rep_owner ?? "").trim().toLowerCase();
-                          const member = TEAM_MEMBERS.find((m) =>
-                            m.repOwners.some((r) => r.toLowerCase() === owner)
-                          );
+                          const member = TEAM_MEMBERS.find((m) => dealerMatchesTeam(selected, m));
                           return member ? (
                             <span className="font-medium">{member.name}</span>
                           ) : (

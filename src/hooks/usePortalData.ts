@@ -196,13 +196,16 @@ async function fetchAllRows<T>(table: string, pageSize = 1000): Promise<T[]> {
 
 export function useDealers() {
   return useQuery({
-    queryKey: ["dealers"],
+    queryKey: ["dealers", "commercial"],
     queryFn: async () => {
       const rows = await fetchAllRows<DbDealer>("dealers");
-      return rows.sort((a, b) => a.name.localeCompare(b.name));
+      // Exclude field-only leads from all portal views (field check-ins fetches separately).
+      const commercial = rows.filter((d) => (d.source ?? "acctivate") !== "field_only");
+      return commercial.sort((a, b) => a.name.localeCompare(b.name));
     },
   });
 }
+
 
 export function useManagers() {
   return useQuery({

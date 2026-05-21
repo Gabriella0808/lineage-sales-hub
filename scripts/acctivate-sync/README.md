@@ -65,28 +65,38 @@ Allowed target tables (defined server-side in `sync-acctivate`):
 kpi_records, activities, tasks, dealer_sales, dealer_sales_lines,
 products, inventory`.
 
-## 4. Schedule it (Task Scheduler)
+## 4. Schedule it (daily 3:00 PM Eastern)
 
-Run every night at 2 AM:
+A helper script registers a Windows Scheduled Task that runs the full sync
+every day at **3:00 PM America/New_York** (follows DST automatically),
+whether the user is logged in or not, and writes output to `last-run.log`.
+
+Open an **elevated PowerShell 7** prompt (Run as Administrator) and run:
 
 ```powershell
-$action  = New-ScheduledTaskAction `
-  -Execute 'pwsh.exe' `
-  -Argument '-NoProfile -File C:\LineageSync\Sync-Acctivate.ps1' `
-  -WorkingDirectory 'C:\LineageSync'
-
-$trigger = New-ScheduledTaskTrigger -Daily -At 2am
-
-Register-ScheduledTask `
-  -TaskName 'Lineage Acctivate Sync' `
-  -Action $action `
-  -Trigger $trigger `
-  -RunLevel Highest `
-  -Description 'Pushes Acctivate data to Lovable Cloud nightly.'
+cd C:\LineageSync
+pwsh .\Register-SyncTask.ps1
 ```
 
-Logs: add `*> C:\LineageSync\last-run.log` to the argument string to capture
-output for troubleshooting.
+That's it — the task is now registered as **Lineage Acctivate Sync**.
+
+Useful follow-ups:
+
+```powershell
+# Trigger an immediate run to smoke-test
+Start-ScheduledTask -TaskName 'Lineage Acctivate Sync'
+
+# Tail the log
+Get-Content C:\LineageSync\last-run.log -Wait
+
+# Inspect / remove the task
+Get-ScheduledTask -TaskName 'Lineage Acctivate Sync'
+Unregister-ScheduledTask -TaskName 'Lineage Acctivate Sync' -Confirm:$false
+```
+
+> **About "live" data:** Acctivate runs on your on-prem SQL Server, which the
+> cloud cannot reach directly. The portal is as fresh as the last sync — with
+> this setup, that's once a day at 3 PM Eastern.
 
 ## 5. Troubleshooting
 

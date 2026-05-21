@@ -199,18 +199,46 @@ async function fetchAllRows<T>(table: string, pageSize = 1000): Promise<T[]> {
 
 export function useDealers() {
   return useQuery({
-    queryKey: ["dealers", "commercial"],
+    queryKey: ["dealers", "commercial", "ytd_invoices"],
     queryFn: async () => {
       const rows = await fetchAllRows<DbDealer>("dealers");
-      // Commercial dealers only: exclude field-only leads (fetched separately by check-ins)
-      // and exclude preserved/historical Acctivate rows without a salesperson or territory.
       const commercial = rows.filter((d) => {
         if ((d.source ?? "acctivate") === "field_only") return false;
         const salesperson = ((d as any).salesperson ?? "").trim();
         const territory = ((d as any).territory ?? "").trim();
         return Boolean(salesperson || territory);
       });
-      return commercial.sort((a, b) => a.name.localeCompare(b.name));
+
+      // Overlay YTD invoice totals from dealer_invoices onto dealer.revenue
+      // so dealer cards and the detail panel show live Acctivate revenue.
+      const currentYear = new Date().getFullYear();
+      const startOfYear = `${currentYear}-01-01`;
+      const invRows: { dealer_id: string | null; total: number | null }[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("dealer_id, total")
+          .gte("invoice_date", startOfYear)
+          .not("dealer_id", "is", null)
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as { dealer_id: string | null; total: number | null }[];
+        invRows.push(...batch);
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+      const ytdByDealer = new Map<string, number>();
+      for (const r of invRows) {
+        if (!r.dealer_id) continue;
+        ytdByDealer.set(r.dealer_id, (ytdByDealer.get(r.dealer_id) ?? 0) + Number(r.total ?? 0));
+      }
+
+      return commercial
+        .map((d) => ({ ...d, revenue: ytdByDealer.get(d.id) ?? d.revenue ?? 0 }))
+        .sort((a, b) => a.name.localeCompare(b.name));
     },
   });
 }
@@ -259,36 +287,70 @@ export function useContacts() {
   });
 }
 
+const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
 export function useDealerSales() {
   return useQuery({
-    queryKey: ["dealer_sales", "agg_from_lines"],
+    queryKey: ["dealer_sales", "from_invoices_and_lines"],
     queryFn: async () => {
-      // Aggregate from dealer_sales_lines since the dealer_sales rollup table is not populated.
-      const lines = await fetchAllRows<DbDealerSalesLine>("dealer_sales_lines");
+      // Bookings come from dealer_sales_lines (sparse). Invoices + revenue come from
+      // the live dealer_invoices table synced from Acctivate.
+      const [lines, invoices] = await Promise.all([
+        fetchAllRows<DbDealerSalesLine>("dealer_sales_lines"),
+        (async () => {
+          const out: { dealer_id: string | null; invoice_date: string | null; total: number | null }[] = [];
+          let from = 0;
+          const pageSize = 1000;
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            const { data, error } = await supabase
+              .from("dealer_invoices")
+              .select("dealer_id, invoice_date, total")
+              .not("dealer_id", "is", null)
+              .range(from, from + pageSize - 1);
+            if (error) throw error;
+            const batch = (data ?? []) as typeof out;
+            out.push(...batch);
+            if (batch.length < pageSize) break;
+            from += pageSize;
+          }
+          return out;
+        })(),
+      ]);
+
       const map = new Map<string, DbDealerSale>();
+      const ensure = (dealer_id: string, year: number, month: string): DbDealerSale => {
+        const key = `${dealer_id}|${year}|${month}`;
+        let cur = map.get(key);
+        if (!cur) {
+          cur = { id: key, dealer_id, year, month, revenue: 0, order_count: 0, bookings: 0, invoices: 0, booking_count: 0, invoice_count: 0 };
+          map.set(key, cur);
+        }
+        return cur;
+      };
+
       for (const l of lines) {
-        const key = `${l.dealer_id}|${l.year}|${l.month}`;
-        const cur = map.get(key) ?? {
-          id: key,
-          dealer_id: l.dealer_id,
-          year: l.year,
-          month: l.month,
-          revenue: 0,
-          order_count: 0,
-          bookings: 0,
-          invoices: 0,
-          booking_count: 0,
-          invoice_count: 0,
-        };
+        const cur = ensure(l.dealer_id, l.year, l.month);
         cur.bookings = (cur.bookings ?? 0) + (l.bookings ?? 0);
-        cur.invoices = (cur.invoices ?? 0) + (l.invoices ?? 0);
         cur.booking_count = (cur.booking_count ?? 0) + (l.booking_count ?? 0);
-        cur.invoice_count = (cur.invoice_count ?? 0) + (l.invoice_count ?? 0);
-        // Revenue = invoiced dollars; orders = invoice count (fallback to bookings).
-        cur.revenue = cur.invoices && cur.invoices > 0 ? cur.invoices : cur.bookings;
-        cur.order_count = (cur.invoice_count ?? 0) > 0 ? cur.invoice_count : cur.booking_count;
-        map.set(key, cur);
       }
+
+      for (const inv of invoices) {
+        if (!inv.dealer_id || !inv.invoice_date) continue;
+        const d = new Date(inv.invoice_date);
+        if (Number.isNaN(d.getTime())) continue;
+        const year = d.getUTCFullYear();
+        const month = MONTH_ABBR[d.getUTCMonth()];
+        const cur = ensure(inv.dealer_id, year, month);
+        cur.invoices = (cur.invoices ?? 0) + Number(inv.total ?? 0);
+        cur.invoice_count = (cur.invoice_count ?? 0) + 1;
+      }
+
+      for (const cur of map.values()) {
+        cur.revenue = (cur.invoices ?? 0) > 0 ? cur.invoices : cur.bookings;
+        cur.order_count = (cur.invoice_count ?? 0) > 0 ? cur.invoice_count : cur.booking_count;
+      }
+
       return Array.from(map.values());
     },
   });

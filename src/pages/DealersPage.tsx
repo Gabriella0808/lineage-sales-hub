@@ -57,9 +57,12 @@ export default function DealersPage() {
   const visibleDealers = useMemo(() => dealers.filter(d => {
     // Hide field-only imports — they exist solely for Field Check-ins
     if ((d as any).source === 'field_only') return false;
-    const hasAcctivateAssignment = Boolean((d as any).territory || (d as any).sales_manager);
-    return hasAcctivateAssignment || !dealerIdsWithCheckIns.has(d.id);
-  }), [dealers, dealerIdsWithCheckIns]);
+    // Only show commercially-active Acctivate dealers (real salesperson or territory assignment).
+    // Lead-style records without these stay in the DB for Field Check-ins but are hidden here.
+    const salesperson = ((d as any).salesperson ?? '').trim();
+    const territory = ((d as any).territory ?? '').trim();
+    return Boolean(salesperson || territory);
+  }), [dealers]);
 
   const filtered = useMemo(() => visibleDealers.filter(d => {
     if (isRep && myRepId && d.rep_id !== myRepId) return false;

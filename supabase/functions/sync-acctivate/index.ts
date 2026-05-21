@@ -147,9 +147,28 @@ Deno.serve(async (req: Request) => {
         from += pageSize;
       }
 
-      const toDeleteIds = (existing ?? [])
+      let toDeleteIds = (existing ?? [])
         .filter((r: { id: string; acctivate_id: string | null }) => !r.acctivate_id || !keepSet.has(r.acctivate_id))
         .map((r: { id: string }) => r.id);
+
+      let preservedWithHistory = 0;
+      if (table === "dealers" && toDeleteIds.length > 0) {
+        const protectedDealerIds = new Set<string>();
+        const checkBatchSize = 500;
+        for (let i = 0; i < toDeleteIds.length; i += checkBatchSize) {
+          const batch = toDeleteIds.slice(i, i + checkBatchSize);
+          const { data: historyRows, error: historyErr } = await supabase
+            .from("dealer_check_ins")
+            .select("dealer_id")
+            .in("dealer_id", batch);
+          if (historyErr) throw historyErr;
+          for (const row of (historyRows ?? []) as { dealer_id: string | null }[]) {
+            if (row.dealer_id) protectedDealerIds.add(row.dealer_id);
+          }
+        }
+        preservedWithHistory = protectedDealerIds.size;
+        toDeleteIds = toDeleteIds.filter((id) => !protectedDealerIds.has(id));
+      }
 
       let deleted = 0;
       const batchSize = 200;
@@ -161,7 +180,7 @@ Deno.serve(async (req: Request) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, pruned: deleted, total_existing: existing?.length ?? 0 }),
+        JSON.stringify({ success: true, pruned: deleted, preserved_with_history: preservedWithHistory, total_existing: existing?.length ?? 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }

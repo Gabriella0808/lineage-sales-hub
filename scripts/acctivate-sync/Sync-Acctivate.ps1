@@ -223,7 +223,8 @@ foreach ($table in $enabled) {
       -Uri $FunctionUrl `
       -Headers @{ Authorization = "Bearer $SyncToken"; 'Content-Type' = 'application/json' } `
       -Body $prunePayload
-    Write-Host "  [dealers] pruned $($pruneResp.pruned) stale rows" -ForegroundColor DarkMagenta
+    $preserved = if ($null -ne $pruneResp.preserved_with_history) { [int]$pruneResp.preserved_with_history } else { 0 }
+    Write-Host "  [dealers] pruned $($pruneResp.pruned) stale rows; preserved $preserved stale dealers with check-in history" -ForegroundColor DarkMagenta
   }
 }
 

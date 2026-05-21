@@ -211,9 +211,9 @@ function New-DealerInvoiceLinesQuery {
 
   $skuExpr        = if ($skuCol) { "CAST(d.$(Quote-SqlIdentifier $skuCol) AS NVARCHAR(128)) AS sku" } else { "NULL AS sku" }
   $nameExpr       = New-SelectExpression -Columns $detailCols -Candidates @('Description', 'ProductDescription', 'ItemDescription', 'Name') -Alias 'product_name' -Cast 'NVARCHAR(512)' -TableAlias 'd'
-  $qtyExpr        = New-SelectExpression -Columns $detailCols -Candidates @('Quantity', 'Qty', 'QuantityShipped', 'QtyShipped', 'QuantityInvoiced') -Alias 'qty' -Default '0' -TableAlias 'd'
-  $unitPriceExpr  = New-SelectExpression -Columns $detailCols -Candidates @('UnitPrice', 'Price', 'SalesPrice', 'SellingPrice') -Alias 'unit_price' -Default '0' -TableAlias 'd'
-  $extPriceExpr   = New-SelectExpression -Columns $detailCols -Candidates @('ExtendedPrice', 'ExtPrice', 'LineTotal', 'Amount', 'NetAmount', 'TotalPrice') -Alias 'extended_price' -Default '0' -TableAlias 'd'
+  $qtyExpr        = New-SelectExpression -Columns $detailCols -Candidates @('QtyInvoiced', 'QuantityInvoiced', 'QtyShipped', 'QuantityShipped', 'Quantity', 'Qty') -Alias 'qty' -Default '0' -TableAlias 'd'
+  $unitPriceExpr  = New-SelectExpression -Columns $detailCols -Candidates @('Price', 'UnitPrice', 'SalesPrice', 'SellingPrice', 'DisplayPrice') -Alias 'unit_price' -Default '0' -TableAlias 'd'
+  $extPriceExpr   = New-SelectExpression -Columns $detailCols -Candidates @('Amount', 'ExtendedPrice', 'ExtPrice', 'LineTotal', 'NetAmount', 'TotalPrice', 'DisplayAmount') -Alias 'extended_price' -Default '0' -TableAlias 'd'
   $dateExpr       = "CONVERT(VARCHAR(10), inv.$(Quote-SqlIdentifier $hdrDateCol), 23) AS invoice_date"
 
   return @"

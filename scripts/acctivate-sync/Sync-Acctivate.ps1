@@ -16,14 +16,20 @@
   Optional list of table keys to sync (managers, sales_reps, territories,
   dealers, products, inventory). Defaults to all enabled in config.
 
+.PARAMETER Prune
+  After syncing dealers, remove stale dealer rows that are no longer in
+  Acctivate. Dealers with field check-in history are preserved by the backend.
+
 .EXAMPLE
   pwsh ./Sync-Acctivate.ps1
   pwsh ./Sync-Acctivate.ps1 -Tables dealers,products
+  pwsh ./Sync-Acctivate.ps1 -Tables dealers -Prune
 #>
 
 [CmdletBinding()]
 param(
   [string]$ConfigPath = (Join-Path $PSScriptRoot 'sync.config.json'),
+  [switch]$Prune,
   [Parameter(ValueFromRemainingArguments = $true)]
   [string[]]$Tables
 )
@@ -199,6 +205,9 @@ if (-not $enabled -or $enabled.Count -eq 0) {
 
 Write-Host "Acctivate sync starting -> $FunctionUrl" -ForegroundColor Cyan
 Write-Host "Tables: $($enabled -join ', ')" -ForegroundColor Cyan
+if ($Prune) {
+  Write-Host "Prune: enabled for dealers; field check-in history is protected" -ForegroundColor Cyan
+}
 
 foreach ($table in $enabled) {
   if (-not $queries.ContainsKey($table)) {
@@ -210,8 +219,9 @@ foreach ($table in $enabled) {
   Write-Host "  pulled $($rows.Count) rows from SQL"
   Send-Batch -Table $table -Rows $rows -OnConflict 'acctivate_id'
 
-  # Prune stale rows for dealers (remove anything no longer in Acctivate)
-  if ($table -eq 'dealers') {
+  # Optional prune for dealers (remove anything no longer in Acctivate).
+  # The backend preserves dealers that have field check-in history.
+  if ($Prune -and $table -eq 'dealers') {
     $keepIds = @($rows | ForEach-Object { [string]$_.acctivate_id } | Where-Object { $_ })
     $prunePayload = @{
       action             = 'prune'

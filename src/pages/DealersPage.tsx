@@ -16,6 +16,7 @@ export default function DealersPage() {
 
   const { data: reps = [] } = useSalesReps();
   const { data: territories = [] } = useTerritories();
+  const { data: managers = [] } = useManagers();
   const { data: dealers = [], isLoading } = useDealers();
 
   const [search, setSearch] = useState("");

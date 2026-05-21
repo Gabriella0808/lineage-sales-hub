@@ -134,6 +134,8 @@ interface CheckIn {
   created_at: string;
 }
 
+type LoadError = { message?: string } | null;
+
 const LOG_TYPES = [
   { value: "meeting", label: "Meeting" },
   { value: "phone_call", label: "Phone call" },
@@ -350,7 +352,7 @@ export default function CheckInsPage() {
   const load = async () => {
     setLoading(true);
     // Fetch all dealers in pages of 1000 (Supabase default cap per request)
-    const fetchAllDealers = async (): Promise<{ data: Dealer[] | null; error: any }> => {
+    const fetchAllDealers = async (): Promise<{ data: Dealer[] | null; error: LoadError }> => {
       const PAGE = 1000;
       let from = 0;
       const all: Dealer[] = [];
@@ -369,7 +371,7 @@ export default function CheckInsPage() {
       return { data: all, error: null };
     };
 
-    const fetchAllCheckIns = async (): Promise<{ data: CheckIn[] | null; error: any }> => {
+    const fetchAllCheckIns = async (): Promise<{ data: CheckIn[] | null; error: LoadError }> => {
       const PAGE = 1000;
       let from = 0;
       const all: CheckIn[] = [];
@@ -410,7 +412,7 @@ export default function CheckInsPage() {
             .select("user_id, full_name")
             .in("user_id", ids);
           const map: Record<string, string> = {};
-          (profs ?? []).forEach((p: any) => {
+          (profs ?? []).forEach((p: { user_id: string | null; full_name: string | null }) => {
             if (p.user_id) map[p.user_id] = p.full_name || "Unknown";
           });
           setUserNames(map);
@@ -418,10 +420,10 @@ export default function CheckInsPage() {
           setUserNames({});
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Failed to load check-ins",
-        description: error?.message || "Please refresh and try again.",
+        description: error instanceof Error ? error.message : "Please refresh and try again.",
         variant: "destructive",
       });
     } finally {

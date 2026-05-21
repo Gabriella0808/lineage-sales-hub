@@ -1226,15 +1226,13 @@ export default function CheckInsPage() {
           </div>
         </div>
         {(() => {
-          // Filter by selected teammate via the dealer's rep_owner.
+          // Filter by selected teammate via the dealer's manager_id / rep_owner.
           const team = teamFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === teamFilter);
-          const ownerSet = team ? new Set(team.repOwners.map((s) => s.toLowerCase())) : null;
           const dealerById = new Map(dealers.map((d) => [d.id, d]));
           const teamScoped = checkIns.filter((c) => {
-            if (!team || !ownerSet) return true;
+            if (!team) return true;
             const d = dealerById.get(c.dealer_id);
-            const owner = (d?.rep_owner ?? "").trim().toLowerCase();
-            return !!owner && ownerSet.has(owner);
+            return !!d && dealerMatchesTeam(d, team);
           });
           const filtered = teamScoped.filter((c) => {
             const d = c.visit_date.slice(0, 10);

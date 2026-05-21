@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   format, startOfYear, endOfMonth, subYears, subMonths, startOfMonth, startOfDay,
   startOfQuarter, subDays, differenceInCalendarDays,
@@ -12,10 +13,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useDealers, useSalesReps, useTerritories, useRepTerritories,
   useProducts, useDealerSalesLines, useDealerSales, formatCurrency,
 } from "@/hooks/usePortalData";
+
+
+/** Day-precise fetch of dealer_invoices in a combined date window. */
+function useDealerInvoicesInRange(from: Date, to: Date) {
+  const fromStr = format(from, "yyyy-MM-dd");
+  const toStr = format(to, "yyyy-MM-dd");
+  return useQuery({
+    queryKey: ["dealer_invoices_range", fromStr, toStr],
+    queryFn: async () => {
+      const out: { dealer_id: string | null; invoice_date: string | null; total: number | null }[] = [];
+      let start = 0;
+      const pageSize = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("dealer_id, invoice_date, total")
+          .not("dealer_id", "is", null)
+          .gte("invoice_date", fromStr)
+          .lte("invoice_date", toStr)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as typeof out;
+        out.push(...batch);
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      return out;
+    },
+  });
+}
 
 type GroupBy = "dealer" | "rep" | "territory";
 type Metric = "bookings" | "invoices";
@@ -236,6 +269,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const { data: lines = [] } = useDealerSalesLines();
   const { data: aggregates = [] } = useDealerSales();
 
+  // Day-precise invoices for the full window covered by primary + comparative.
+  const invoiceWindow = useMemo(() => {
+    const lo = compareMode === "none"
+      ? primary.from
+      : (primary.from < comparative.from ? primary.from : comparative.from);
+    const hi = compareMode === "none"
+      ? primary.to
+      : (primary.to > comparative.to ? primary.to : comparative.to);
+    return { from: lo, to: hi };
+  }, [primary, comparative, compareMode]);
+  const { data: rangeInvoices = [] } = useDealerInvoicesInRange(invoiceWindow.from, invoiceWindow.to);
+
   // Use aggregate dealer_sales when no product-level filter is active.
   // dealer_sales_lines is sparsely populated; aggregates have full totals.
   const useAggregates = brands.length === 0 && categories.length === 0 && collections.length === 0 && skus.length === 0;
@@ -319,31 +364,57 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
     const rows = new Map<Key, { primary: number; comparative: number; byMonth: Map<string, number> }>();
 
-    const source = useAggregates ? aggregates : lines;
-    for (const line of source) {
-      if (!dealerIdSet.has(line.dealer_id)) continue;
-      if (!useAggregates && !filteredProductIds.has((line as { product_id: string }).product_id)) continue;
-      // Normalize month: dealer_sales uses "01"-"12", lines/keys use month names
-      const mNum = parseInt(String(line.month), 10);
-      const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(line.month);
-      const monthKey = `${line.year}-${monthName}`;
-      const inPrim = primKeys.has(monthKey);
-      const inComp = compKeys.has(monthKey);
-      if (!inPrim && !inComp) continue;
+    // For invoices with no product filter, use day-precise dealer_invoices.
+    const useDayPreciseInvoices = metric === "invoices" && useAggregates;
 
-      const k = rowKey(line);
-      if (!k) continue;
-      const val = (metric === "bookings" ? line.bookings : line.invoices) ?? 0;
-      if (val === 0) continue;
-
-      let row = rows.get(k);
-      if (!row) {
-        row = { primary: 0, comparative: 0, byMonth: new Map() };
-        rows.set(k, row);
+    if (useDayPreciseInvoices) {
+      const primFromMs = startOfDay(primary.from).getTime();
+      const primToMs = startOfDay(primary.to).getTime();
+      const compFromMs = startOfDay(comparative.from).getTime();
+      const compToMs = startOfDay(comparative.to).getTime();
+      for (const inv of rangeInvoices) {
+        if (!inv.dealer_id || !inv.invoice_date) continue;
+        if (!dealerIdSet.has(inv.dealer_id)) continue;
+        const d = new Date(inv.invoice_date + "T00:00:00");
+        const ms = d.getTime();
+        if (Number.isNaN(ms)) continue;
+        const inPrim = ms >= primFromMs && ms <= primToMs;
+        const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
+        if (!inPrim && !inComp) continue;
+        const k = rowKey({ dealer_id: inv.dealer_id });
+        if (!k) continue;
+        const val = Number(inv.total ?? 0);
+        if (val === 0) continue;
+        const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
+        let row = rows.get(k);
+        if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
+        if (inPrim) row.primary += val;
+        if (inComp) row.comparative += val;
+        row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
       }
-      if (inPrim) row.primary += val;
-      if (inComp) row.comparative += val;
-      row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
+    } else {
+      const source = useAggregates ? aggregates : lines;
+      for (const line of source) {
+        if (!dealerIdSet.has(line.dealer_id)) continue;
+        if (!useAggregates && !filteredProductIds.has((line as { product_id: string }).product_id)) continue;
+        const mNum = parseInt(String(line.month), 10);
+        const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(line.month);
+        const monthKey = `${line.year}-${monthName}`;
+        const inPrim = primKeys.has(monthKey);
+        const inComp = compKeys.has(monthKey);
+        if (!inPrim && !inComp) continue;
+
+        const k = rowKey(line);
+        if (!k) continue;
+        const val = (metric === "bookings" ? line.bookings : line.invoices) ?? 0;
+        if (val === 0) continue;
+
+        let row = rows.get(k);
+        if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
+        if (inPrim) row.primary += val;
+        if (inComp) row.comparative += val;
+        row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
+      }
     }
 
     const sorted = Array.from(rows.entries())
@@ -351,7 +422,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       .sort((a, b) => b.primary - a.primary);
 
     return { rows: sorted, primMonths, compMonths };
-  }, [lines, aggregates, useAggregates, dealers, reps, territories, dealerIdSet, filteredProductIds, primary, comparative, metric, groupBy]);
+  }, [lines, aggregates, useAggregates, rangeInvoices, dealers, reps, territories, dealerIdSet, filteredProductIds, primary, comparative, compareMode, metric, groupBy]);
 
   const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
   const noData = useAggregates ? aggregates.length === 0 : lines.length === 0;
@@ -369,10 +440,21 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(line.month);
       if (!primKeys.has(`${line.year}-${monthName}`)) continue;
       bookings += line.bookings ?? 0;
-      invoices += line.invoices ?? 0;
+      if (!useAggregates) invoices += line.invoices ?? 0;
+    }
+    if (useAggregates) {
+      const primFromMs = startOfDay(primary.from).getTime();
+      const primToMs = startOfDay(primary.to).getTime();
+      for (const inv of rangeInvoices) {
+        if (!inv.dealer_id || !inv.invoice_date) continue;
+        if (!dealerIdSet.has(inv.dealer_id)) continue;
+        const ms = new Date(inv.invoice_date + "T00:00:00").getTime();
+        if (Number.isNaN(ms) || ms < primFromMs || ms > primToMs) continue;
+        invoices += Number(inv.total ?? 0);
+      }
     }
     return { bookings, invoices };
-  }, [primary, useAggregates, aggregates, lines, dealerIdSet, filteredProductIds]);
+  }, [primary, useAggregates, aggregates, lines, rangeInvoices, dealerIdSet, filteredProductIds]);
 
   // Warn when a product-level filter is active but dealer_sales_lines has no rows
   // overlapping the primary date range — common right now since line sync is sparse.

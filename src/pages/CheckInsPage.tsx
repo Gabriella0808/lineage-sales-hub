@@ -850,6 +850,7 @@ export default function CheckInsPage() {
         notes: newDealer.notes.trim() || null,
         buying_group: newDealer.buying_group || null,
         status: "active",
+        source: "field_only",
         rep_owner: owner,
         rep_id: newDealer.rep_id || null,
       })

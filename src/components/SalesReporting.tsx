@@ -356,6 +356,24 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
   const noData = useAggregates ? aggregates.length === 0 : lines.length === 0;
 
+  // Totals for BOTH metrics over the primary date range, so users always see
+  // total Bookings and total Invoices regardless of the active metric.
+  const summaryTotals = useMemo(() => {
+    const primKeys = new Set(monthsInRange(primary).map((m) => m.key));
+    let bookings = 0; let invoices = 0;
+    const source = useAggregates ? aggregates : lines;
+    for (const line of source) {
+      if (!dealerIdSet.has(line.dealer_id)) continue;
+      if (!useAggregates && !filteredProductIds.has((line as { product_id: string }).product_id)) continue;
+      const mNum = parseInt(String(line.month), 10);
+      const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(line.month);
+      if (!primKeys.has(`${line.year}-${monthName}`)) continue;
+      bookings += line.bookings ?? 0;
+      invoices += line.invoices ?? 0;
+    }
+    return { bookings, invoices };
+  }, [primary, useAggregates, aggregates, lines, dealerIdSet, filteredProductIds]);
+
   // Warn when a product-level filter is active but dealer_sales_lines has no rows
   // overlapping the primary date range — common right now since line sync is sparse.
   const productFilterActive = !useAggregates;

@@ -895,13 +895,14 @@ function TotalTable({
 }
 
 function MonthlyTable({
-  rows, primMonths, compMonths, leftHeader, showComparison,
+  rows, primMonths, compMonths, leftHeader, showComparison, onRowClick,
 }: {
   rows: { key: string; label: string; primary: number; comparative: number; byMonth: Map<string, number> }[];
   primMonths: { key: string; label: string }[];
   compMonths: { key: string; label: string }[];
   leftHeader: string;
   showComparison?: boolean;
+  onRowClick?: (key: string, label: string) => void;
 }) {
   // Interleave primary then comparative pairs by month index
   const interleaved: { key: string; label: string }[] = [];

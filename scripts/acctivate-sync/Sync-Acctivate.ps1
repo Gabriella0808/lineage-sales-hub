@@ -151,12 +151,14 @@ SELECT
   c.Address                       AS street_address,
   c.City                          AS city,
   c.State                         AS state,
-  c._Rep1                         AS salesperson,
+  s.Name                          AS salesperson,
   c._Territory                    AS territory,
   c._SalesManager                 AS sales_manager,
   CASE WHEN c.Status = 1 THEN 'inactive' ELSE 'active' END AS status
 FROM dbo.tbCustomer c
+LEFT JOIN dbo.tbSalespersonInfo s ON s.GUIDSalesperson = c.GUIDSalesperson
 WHERE c.CustID IS NOT NULL
+  AND c.CustID NOT LIKE '%(deleted)%'
 "@
 
 

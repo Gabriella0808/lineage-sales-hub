@@ -144,21 +144,22 @@ FROM dbo.Territory
 
   dealers = @"
 SELECT
-  CAST(c.CustId AS NVARCHAR(64))  AS acctivate_id,
-  COALESCE(NULLIF(LTRIM(RTRIM(c.CompanyName)), ''), 'Customer ' + CAST(c.CustId AS NVARCHAR(64))) AS name,
-  c.Email                         AS email,
-  c.Phone                         AS phone,
-  c.Address                       AS street_address,
-  c.City                          AS city,
-  c.State                         AS state,
-  s.Name                          AS salesperson,
-  c._Territory                    AS territory,
-  c._SalesManager                 AS sales_manager,
-  CASE WHEN c.Status = 1 THEN 'inactive' ELSE 'active' END AS status
-FROM dbo.tbCustomer c
-LEFT JOIN dbo.tbSalespersonInfo s ON s.GUIDSalesperson = c.GUIDSalesperson
-WHERE c.CustID IS NOT NULL
-  AND c.CustID NOT LIKE '%(deleted)%'
+  CAST(cv.CustId AS NVARCHAR(64)) AS acctivate_id,
+  COALESCE(NULLIF(LTRIM(RTRIM(cv.CompanyName)), ''), NULLIF(LTRIM(RTRIM(cv.Name)), ''), 'Customer ' + CAST(cv.CustId AS NVARCHAR(64))) AS name,
+  cv.Email                        AS email,
+  cv.Phone                        AS phone,
+  cv.Address                      AS street_address,
+  cv.City                         AS city,
+  cv.State                        AS state,
+  cv.SalespersonName              AS salesperson,
+  CAST(cv.SalespersonID AS NVARCHAR(64)) AS rep_owner,
+  tc._Territory                   AS territory,
+  tc._SalesManager                AS sales_manager,
+  CASE WHEN cv.Status = 'Inactive' THEN 'inactive' ELSE 'active' END AS status
+FROM dbo.Customer cv
+LEFT JOIN dbo.tbCustomer tc ON tc.CustID = cv.CustID
+WHERE cv.CustID IS NOT NULL
+  AND cv.CustID NOT LIKE '%(deleted)%'
 "@
 
 

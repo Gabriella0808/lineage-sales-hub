@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Mail, Phone, ExternalLink } from "lucide-react";
 import { FilterBar } from "@/components/FilterBar";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useSalesReps, useTerritories, useDealers, formatCurrency, getRepName, getTerritoryName } from "@/hooks/usePortalData";
+import { useSalesReps, useTerritories, useDealers, useManagers, formatCurrency, getRepName, getTerritoryName } from "@/hooks/usePortalData";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -16,12 +16,13 @@ export default function DealersPage() {
 
   const { data: reps = [] } = useSalesReps();
   const { data: territories = [] } = useTerritories();
+  const { data: managers = [] } = useManagers();
   const { data: dealers = [], isLoading } = useDealers();
 
   const [search, setSearch] = useState("");
   const [territoryFilter, setTerritoryFilter] = useState("all");
   const [repFilter, setRepFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [managerFilter, setManagerFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
@@ -31,12 +32,12 @@ export default function DealersPage() {
     if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (territoryFilter !== "all" && d.territory_id !== territoryFilter) return false;
     if (!isRep && repFilter !== "all" && d.rep_id !== repFilter) return false;
-    if (statusFilter !== "all" && d.status !== statusFilter) return false;
+    if (managerFilter !== "all" && (d as any).manager_id !== managerFilter) return false;
     return true;
-  }), [dealers, isRep, myRepId, search, territoryFilter, repFilter, statusFilter]);
+  }), [dealers, isRep, myRepId, search, territoryFilter, repFilter, managerFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  useEffect(() => { setPage(1); }, [search, territoryFilter, repFilter, statusFilter]);
+  useEffect(() => { setPage(1); }, [search, territoryFilter, repFilter, managerFilter]);
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
@@ -70,7 +71,7 @@ export default function DealersPage() {
         filters={[
           { label: "Territory", value: territoryFilter, onChange: setTerritoryFilter, options: territories.map(t => ({ label: t.name, value: t.id })) },
           ...(isRep ? [] : [{ label: "Rep", value: repFilter, onChange: setRepFilter, options: reps.map(r => ({ label: r.name, value: r.id })) }]),
-          { label: "Status", value: statusFilter, onChange: setStatusFilter, options: [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }, { label: 'Prospect', value: 'prospect' }, { label: 'At Risk', value: 'at-risk' }] },
+          { label: "Manager", value: managerFilter, onChange: setManagerFilter, options: managers.map(m => ({ label: m.name, value: m.id })) },
         ]}
       />
 

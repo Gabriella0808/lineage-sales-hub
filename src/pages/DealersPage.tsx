@@ -32,12 +32,12 @@ export default function DealersPage() {
     if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (territoryFilter !== "all" && d.territory_id !== territoryFilter) return false;
     if (!isRep && repFilter !== "all" && d.rep_id !== repFilter) return false;
-    if (statusFilter !== "all" && d.status !== statusFilter) return false;
+    if (managerFilter !== "all" && (d as any).manager_id !== managerFilter) return false;
     return true;
-  }), [dealers, isRep, myRepId, search, territoryFilter, repFilter, statusFilter]);
+  }), [dealers, isRep, myRepId, search, territoryFilter, repFilter, managerFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  useEffect(() => { setPage(1); }, [search, territoryFilter, repFilter, statusFilter]);
+  useEffect(() => { setPage(1); }, [search, territoryFilter, repFilter, managerFilter]);
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 

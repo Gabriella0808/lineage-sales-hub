@@ -330,13 +330,23 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // dealer_sales_lines is sparsely populated; aggregates have full totals.
   const useAggregates = brands.length === 0 && categories.length === 0 && collections.length === 0 && skus.length === 0;
 
+  // Filtered product set for product-level invoice line queries and value lookups.
+  const filteredProductIds = useMemo(() => {
+    let list = products;
+    if (brands.length > 0) list = list.filter((p) => p.brand && brands.includes(p.brand));
+    if (categories.length > 0) list = list.filter((p) => p.category && categories.includes(p.category));
+    if (collections.length > 0) list = list.filter((p) => p.collection && collections.includes(p.collection));
+    if (skus.length > 0) list = list.filter((p) => skus.includes(p.id));
+    return new Set(list.map((p) => p.id));
+  }, [products, brands, categories, collections, skus]);
+
   // When product filters are active we always pull from dealer_invoice_lines:
   // it's the only product-linked source with real data (dealer_sales_lines is
   // sparsely populated). For metric=bookings under a product filter, we surface
   // invoice line revenue as a proxy (a banner explains this below).
   const useInvoiceLines = !useAggregates;
   const { data: rangeInvoiceLines = [] } = useDealerInvoiceLinesInRange(
-    invoiceWindow.from, invoiceWindow.to, useInvoiceLines,
+    invoiceWindow.from, invoiceWindow.to, Array.from(filteredProductIds), useInvoiceLines,
   );
 
   // Hierarchical filter dependencies
@@ -377,16 +387,6 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     if (collections.length > 0) list = list.filter((p) => p.collection && collections.includes(p.collection));
     return list;
   }, [products, brands, categories, collections]);
-
-  // Filtered product set for value lookups
-  const filteredProductIds = useMemo(() => {
-    let list = products;
-    if (brands.length > 0) list = list.filter((p) => p.brand && brands.includes(p.brand));
-    if (categories.length > 0) list = list.filter((p) => p.category && categories.includes(p.category));
-    if (collections.length > 0) list = list.filter((p) => p.collection && collections.includes(p.collection));
-    if (skus.length > 0) list = list.filter((p) => skus.includes(p.id));
-    return new Set(list.map((p) => p.id));
-  }, [products, brands, categories, collections, skus]);
 
   const dealerIdSet = useMemo(() => {
     if (dealerIds.length > 0) return new Set(dealerIds);

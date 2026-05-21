@@ -471,6 +471,7 @@ export type Database = {
           revenue: number | null
           sales_manager: string | null
           salesperson: string | null
+          source: string
           state: string | null
           status: string
           street_address: string | null
@@ -501,6 +502,7 @@ export type Database = {
           revenue?: number | null
           sales_manager?: string | null
           salesperson?: string | null
+          source?: string
           state?: string | null
           status?: string
           street_address?: string | null
@@ -531,6 +533,7 @@ export type Database = {
           revenue?: number | null
           sales_manager?: string | null
           salesperson?: string | null
+          source?: string
           state?: string | null
           status?: string
           street_address?: string | null

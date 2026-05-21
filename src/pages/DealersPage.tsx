@@ -55,6 +55,8 @@ export default function DealersPage() {
   const PAGE_SIZE = 100;
 
   const visibleDealers = useMemo(() => dealers.filter(d => {
+    // Hide field-only imports — they exist solely for Field Check-ins
+    if ((d as any).source === 'field_only') return false;
     const hasAcctivateAssignment = Boolean((d as any).territory || (d as any).sales_manager);
     return hasAcctivateAssignment || !dealerIdsWithCheckIns.has(d.id);
   }), [dealers, dealerIdsWithCheckIns]);

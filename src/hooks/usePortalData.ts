@@ -199,18 +199,46 @@ async function fetchAllRows<T>(table: string, pageSize = 1000): Promise<T[]> {
 
 export function useDealers() {
   return useQuery({
-    queryKey: ["dealers", "commercial"],
+    queryKey: ["dealers", "commercial", "ytd_invoices"],
     queryFn: async () => {
       const rows = await fetchAllRows<DbDealer>("dealers");
-      // Commercial dealers only: exclude field-only leads (fetched separately by check-ins)
-      // and exclude preserved/historical Acctivate rows without a salesperson or territory.
       const commercial = rows.filter((d) => {
         if ((d.source ?? "acctivate") === "field_only") return false;
         const salesperson = ((d as any).salesperson ?? "").trim();
         const territory = ((d as any).territory ?? "").trim();
         return Boolean(salesperson || territory);
       });
-      return commercial.sort((a, b) => a.name.localeCompare(b.name));
+
+      // Overlay YTD invoice totals from dealer_invoices onto dealer.revenue
+      // so dealer cards and the detail panel show live Acctivate revenue.
+      const currentYear = new Date().getFullYear();
+      const startOfYear = `${currentYear}-01-01`;
+      const invRows: { dealer_id: string | null; total: number | null }[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("dealer_id, total")
+          .gte("invoice_date", startOfYear)
+          .not("dealer_id", "is", null)
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as { dealer_id: string | null; total: number | null }[];
+        invRows.push(...batch);
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+      const ytdByDealer = new Map<string, number>();
+      for (const r of invRows) {
+        if (!r.dealer_id) continue;
+        ytdByDealer.set(r.dealer_id, (ytdByDealer.get(r.dealer_id) ?? 0) + Number(r.total ?? 0));
+      }
+
+      return commercial
+        .map((d) => ({ ...d, revenue: ytdByDealer.get(d.id) ?? d.revenue ?? 0 }))
+        .sort((a, b) => a.name.localeCompare(b.name));
     },
   });
 }

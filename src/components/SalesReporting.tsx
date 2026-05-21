@@ -275,6 +275,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const [compareMode, setCompareMode] = useState<CompareMode>("prev-year");
   const [metric, setMetric] = useState<Metric>("bookings");
   const [display, setDisplay] = useState<Display>("total");
+  const [drillRow, setDrillRow] = useState<{ key: string; label: string } | null>(null);
 
   // Apply a preset to primary range AND auto-sync comparative based on compareMode.
   const applyPrimary = (from: Date, to: Date, mode: CompareMode = compareMode) => {

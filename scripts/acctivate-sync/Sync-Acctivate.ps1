@@ -340,8 +340,8 @@ GROUP BY i.ProductID, p.ProductCode
 "@
 }
 
-$queries.dealer_invoices      = New-DealerInvoicesQuery
-$queries.dealer_invoice_lines = New-DealerInvoiceLinesQuery
+$queries['dealer_invoices']      = New-DealerInvoicesQuery
+$queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
 
 # ---------- Run ----------
 $enabled = if ($Tables) {

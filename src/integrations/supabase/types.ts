@@ -353,6 +353,60 @@ export type Database = {
         }
         Relationships: []
       }
+      dealer_invoice_lines: {
+        Row: {
+          acctivate_id: string
+          created_at: string
+          dealer_acctivate_id: string | null
+          dealer_id: string | null
+          extended_price: number | null
+          id: string
+          invoice_acctivate_id: string | null
+          invoice_date: string | null
+          invoice_id: string | null
+          product_id: string | null
+          product_name: string | null
+          qty: number | null
+          sku: string | null
+          unit_price: number | null
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id: string
+          created_at?: string
+          dealer_acctivate_id?: string | null
+          dealer_id?: string | null
+          extended_price?: number | null
+          id?: string
+          invoice_acctivate_id?: string | null
+          invoice_date?: string | null
+          invoice_id?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          qty?: number | null
+          sku?: string | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string
+          created_at?: string
+          dealer_acctivate_id?: string | null
+          dealer_id?: string | null
+          extended_price?: number | null
+          id?: string
+          invoice_acctivate_id?: string | null
+          invoice_date?: string | null
+          invoice_id?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          qty?: number | null
+          sku?: string | null
+          unit_price?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dealer_invoices: {
         Row: {
           acctivate_id: string

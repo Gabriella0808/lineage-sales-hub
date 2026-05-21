@@ -155,7 +155,7 @@ SELECT
   CAST(cv.SalespersonID AS NVARCHAR(64)) AS rep_owner,
   tc._Territory                   AS territory,
   tc._SalesManager                AS sales_manager,
-  CASE WHEN cv.Status = 'Inactive' THEN 'inactive' ELSE 'active' END AS status
+  CASE WHEN LOWER(CAST(cv.Status AS NVARCHAR(32))) IN ('1', 'inactive') THEN 'inactive' ELSE 'active' END AS status
 FROM dbo.Customer cv
 LEFT JOIN dbo.tbCustomer tc ON tc.CustID = cv.CustID
 WHERE cv.CustID IS NOT NULL

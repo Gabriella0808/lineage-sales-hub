@@ -462,12 +462,14 @@ export type Database = {
           last_name: string | null
           lat: number | null
           lng: number | null
+          manager_id: string | null
           name: string
           notes: string | null
           phone: string | null
           rep_id: string | null
           rep_owner: string | null
           revenue: number | null
+          sales_manager: string | null
           salesperson: string | null
           state: string | null
           status: string
@@ -490,12 +492,14 @@ export type Database = {
           last_name?: string | null
           lat?: number | null
           lng?: number | null
+          manager_id?: string | null
           name: string
           notes?: string | null
           phone?: string | null
           rep_id?: string | null
           rep_owner?: string | null
           revenue?: number | null
+          sales_manager?: string | null
           salesperson?: string | null
           state?: string | null
           status?: string
@@ -518,12 +522,14 @@ export type Database = {
           last_name?: string | null
           lat?: number | null
           lng?: number | null
+          manager_id?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
           rep_id?: string | null
           rep_owner?: string | null
           revenue?: number | null
+          sales_manager?: string | null
           salesperson?: string | null
           state?: string | null
           status?: string
@@ -534,6 +540,13 @@ export type Database = {
           website?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "dealers_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dealers_rep_id_fkey"
             columns: ["rep_id"]

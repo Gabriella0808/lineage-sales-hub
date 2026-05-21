@@ -107,19 +107,19 @@ function Get-FirstColumn {
 }
 
 function New-SelectExpression {
-  param([string[]]$Columns, [string[]]$Candidates, [string]$Alias, [string]$Cast = '', [string]$Default = 'NULL')
+  param([string[]]$Columns, [string[]]$Candidates, [string]$Alias, [string]$Cast = '', [string]$Default = 'NULL', [string]$TableAlias = 'inv')
   $column = Get-FirstColumn -Columns $Columns -Candidates $Candidates
   if (-not $column) { return "$Default AS $Alias" }
-  $ref = "inv.$(Quote-SqlIdentifier $column)"
+  $ref = "$TableAlias.$(Quote-SqlIdentifier $column)"
   if ($Cast) { return "CAST($ref AS $Cast) AS $Alias" }
   return "$ref AS $Alias"
 }
 
 function New-DateSelectExpression {
-  param([string[]]$Columns, [string[]]$Candidates, [string]$Alias)
+  param([string[]]$Columns, [string[]]$Candidates, [string]$Alias, [string]$TableAlias = 'inv')
   $column = Get-FirstColumn -Columns $Columns -Candidates $Candidates
   if (-not $column) { return "NULL AS $Alias" }
-  return "CONVERT(VARCHAR(10), inv.$(Quote-SqlIdentifier $column), 23) AS $Alias"
+  return "CONVERT(VARCHAR(10), $TableAlias.$(Quote-SqlIdentifier $column), 23) AS $Alias"
 }
 
 function New-DealerInvoicesQuery {

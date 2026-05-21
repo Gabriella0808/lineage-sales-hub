@@ -789,13 +789,33 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 compMonths={aggregation.compMonths}
                 leftHeader={leftHeader}
                 showComparison={compareMode !== "none"}
+                onRowClick={(key, label) => setDrillRow({ key, label })}
               />
             ) : (
-              <TotalTable rows={aggregation.rows} leftHeader={leftHeader} showComparison={compareMode !== "none"} />
+              <TotalTable
+                rows={aggregation.rows}
+                leftHeader={leftHeader}
+                showComparison={compareMode !== "none"}
+                onRowClick={(key, label) => setDrillRow({ key, label })}
+              />
             )}
           </div>
         </CardContent>
       </Card>
+
+      <InvoiceDetailSheet
+        open={!!drillRow}
+        onOpenChange={(o) => { if (!o) setDrillRow(null); }}
+        groupBy={groupBy}
+        rowKey={drillRow?.key ?? ""}
+        rowLabel={drillRow?.label ?? ""}
+        from={primary.from}
+        to={primary.to}
+        dealers={dealers}
+        reps={reps}
+        territories={territories}
+        products={products}
+      />
     </div>
   );
 }

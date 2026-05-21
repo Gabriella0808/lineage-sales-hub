@@ -23,15 +23,22 @@ export default function DealersPage() {
   const [repFilter, setRepFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
 
-  const filtered = dealers.filter(d => {
+  const filtered = useMemo(() => dealers.filter(d => {
     if (isRep && myRepId && d.rep_id !== myRepId) return false;
     if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (territoryFilter !== "all" && d.territory_id !== territoryFilter) return false;
     if (!isRep && repFilter !== "all" && d.rep_id !== repFilter) return false;
     if (statusFilter !== "all" && d.status !== statusFilter) return false;
     return true;
-  });
+  }), [dealers, isRep, myRepId, search, territoryFilter, repFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  useEffect(() => { setPage(1); }, [search, territoryFilter, repFilter, statusFilter]);
+  const currentPage = Math.min(page, totalPages);
+  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const dealer = dealers.find(d => d.id === selected);
 

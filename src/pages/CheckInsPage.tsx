@@ -72,15 +72,15 @@ type TeamMemberId = "will" | "mateo" | "chris";
 const TEAM_MEMBERS: {
   id: TeamMemberId;
   name: string;
-  repOwners: string[]; // matched case-insensitively against dealers.rep_owner
-  states: string[]; // kept for reference; unused while ownerOnly is true
-  // Strict ownership: only dealers with matching rep_owner are shown.
-  // This guarantees no account appears in more than one teammate's section.
+  managerIds: string[]; // matched against dealers.manager_id (authoritative)
+  repOwners: string[]; // legacy fallback: matched case-insensitively against dealers.rep_owner
+  states: string[];
   ownerOnly: true;
 }[] = [
   {
     id: "will",
     name: "Will Grisack",
+    managerIds: ["fc3184b3-848c-4921-8770-46127a2821bf"],
     repOwners: ["will"],
     states: [],
     ownerOnly: true,
@@ -88,6 +88,7 @@ const TEAM_MEMBERS: {
   {
     id: "mateo",
     name: "Mateo De Lisa",
+    managerIds: ["b291385c-e5db-470c-93d3-9e034361b3d4"],
     repOwners: ["mateo"],
     states: [],
     ownerOnly: true,
@@ -95,11 +96,24 @@ const TEAM_MEMBERS: {
   {
     id: "chris",
     name: "Chris De Lisa",
+    managerIds: ["b09a100d-4ea4-42b2-bcbf-97f1f4538310"],
     repOwners: ["chris"],
     states: [],
     ownerOnly: true,
   },
 ];
+
+// Returns true when a dealer belongs to the given team member, matching by
+// manager_id (set during sync/import) OR legacy rep_owner string.
+const dealerMatchesTeam = (
+  d: { manager_id?: string | null; rep_owner?: string | null },
+  m: { managerIds: string[]; repOwners: string[] },
+) => {
+  const mid = (d.manager_id ?? "").trim();
+  if (mid && m.managerIds.includes(mid)) return true;
+  const owner = (d.rep_owner ?? "").trim().toLowerCase();
+  return !!owner && m.repOwners.some((r) => r.toLowerCase() === owner);
+};
 
 interface Dealer {
   id: string;

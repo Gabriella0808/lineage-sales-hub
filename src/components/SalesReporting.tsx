@@ -593,6 +593,28 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         </Card>
       )}
 
+      {/* Totals summary */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Bookings</p>
+            <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.bookings)}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Invoices</p>
+            <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.invoices)}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Result table */}
       <Card>
         <CardHeader className="pb-3 flex flex-row items-center justify-between">

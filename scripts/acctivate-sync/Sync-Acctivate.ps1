@@ -193,16 +193,16 @@ function New-DealerInvoiceLinesQuery {
     throw "Could not read columns for dbo.$detailTable."
   }
 
-  $detailIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('InvoiceDetailID', 'InvoiceDetailId', 'InvoiceLineID', 'InvoiceLineId', 'LineID', 'LineId', 'DetailID', 'DetailId', 'ID')
-  $invIdCol    = Get-FirstColumn -Columns $detailCols -Candidates @('InvoiceID', 'InvoiceId', 'InvoiceGUID', 'InvoiceGuid')
-  $skuCol      = Get-FirstColumn -Columns $detailCols -Candidates @('ProductCode', 'ItemCode', 'SKU', 'ItemNumber', 'PartNumber')
-  $productIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('ProductID', 'ProductId', 'ItemID', 'ItemId')
+  $detailIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDInvoiceDetail', 'InvoiceDetailID', 'InvoiceDetailId', 'InvoiceLineID', 'InvoiceLineId', 'LineID', 'LineId', 'DetailID', 'DetailId', 'ID')
+  $invIdCol    = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDInvoice', 'InvoiceID', 'InvoiceId', 'InvoiceGUID', 'InvoiceGuid')
+  $skuCol      = Get-FirstColumn -Columns $detailCols -Candidates @('ProductID', 'ProductCode', 'ItemCode', 'SKU', 'ItemNumber', 'PartNumber')
+  $productIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDProduct', 'ProductGUID', 'ItemID', 'ItemId')
 
   if (-not $detailIdCol -or -not $invIdCol) {
     throw "Could not map dbo.$detailTable line/invoice id columns. Found: $($detailCols -join ', ')"
   }
 
-  $hdrInvIdCol     = Get-FirstColumn -Columns $hdrCols -Candidates @('InvoiceID', 'InvoiceId', 'InvoiceGUID', 'InvoiceGuid', 'ID')
+  $hdrInvIdCol     = Get-FirstColumn -Columns $hdrCols -Candidates @('GUIDInvoice', 'InvoiceID', 'InvoiceId', 'InvoiceGUID', 'InvoiceGuid', 'ID')
   $hdrCustomerCol  = Get-FirstColumn -Columns $hdrCols -Candidates @('CustID', 'CustId', 'CustomerID', 'CustomerId', 'CustomerNumber', 'CustNo', 'Customer', 'BillToCustID', 'BillToCustomerID')
   $hdrDateCol      = Get-FirstColumn -Columns $hdrCols -Candidates @('InvoiceDate', 'Date', 'DocDate', 'PostDate')
   if (-not $hdrInvIdCol -or -not $hdrCustomerCol) {

@@ -322,6 +322,14 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // dealer_sales_lines is sparsely populated; aggregates have full totals.
   const useAggregates = brands.length === 0 && categories.length === 0 && collections.length === 0 && skus.length === 0;
 
+  // When product filters are active AND metric is invoices, pull from
+  // dealer_invoice_lines (day-precise, product-linked) instead of the sparse
+  // dealer_sales_lines monthly rollup.
+  const useInvoiceLines = !useAggregates && metric === "invoices";
+  const { data: rangeInvoiceLines = [] } = useDealerInvoiceLinesInRange(
+    invoiceWindow.from, invoiceWindow.to, useInvoiceLines,
+  );
+
   // Hierarchical filter dependencies
   const visibleReps = useMemo(() => {
     let list = reps;

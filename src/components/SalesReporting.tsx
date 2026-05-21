@@ -53,11 +53,11 @@ function useDealerInvoicesInRange(from: Date, to: Date) {
 
 /** Day-precise fetch of dealer_invoice_lines in a date window, used when a
  *  brand / collection / category / SKU filter is active with metric = invoices. */
-function useDealerInvoiceLinesInRange(from: Date, to: Date, enabled: boolean) {
+function useDealerInvoiceLinesInRange(from: Date, to: Date, productIds: string[], enabled: boolean) {
   const fromStr = format(from, "yyyy-MM-dd");
   const toStr = format(to, "yyyy-MM-dd");
   return useQuery({
-    queryKey: ["dealer_invoice_lines_range", fromStr, toStr],
+    queryKey: ["dealer_invoice_lines_range", fromStr, toStr, productIds.join(",")],
     enabled,
     queryFn: async () => {
       const out: {
@@ -66,22 +66,28 @@ function useDealerInvoiceLinesInRange(from: Date, to: Date, enabled: boolean) {
         invoice_date: string | null;
         extended_price: number | null;
       }[] = [];
-      let start = 0;
+      if (productIds.length === 0) return out;
       const pageSize = 1000;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .from("dealer_invoice_lines")
-          .select("dealer_id, product_id, invoice_date, extended_price")
-          .not("dealer_id", "is", null)
-          .gte("invoice_date", fromStr)
-          .lte("invoice_date", toStr)
-          .range(start, start + pageSize - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as typeof out;
-        out.push(...batch);
-        if (batch.length < pageSize) break;
-        start += pageSize;
+      const chunkSize = 200;
+      for (let i = 0; i < productIds.length; i += chunkSize) {
+        const chunk = productIds.slice(i, i + chunkSize);
+        let start = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await supabase
+            .from("dealer_invoice_lines")
+            .select("dealer_id, product_id, invoice_date, extended_price")
+            .not("dealer_id", "is", null)
+            .in("product_id", chunk)
+            .gte("invoice_date", fromStr)
+            .lte("invoice_date", toStr)
+            .range(start, start + pageSize - 1);
+          if (error) throw error;
+          const batch = (data ?? []) as typeof out;
+          out.push(...batch);
+          if (batch.length < pageSize) break;
+          start += pageSize;
+        }
       }
       return out;
     },

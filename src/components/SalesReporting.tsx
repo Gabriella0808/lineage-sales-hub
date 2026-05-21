@@ -68,7 +68,7 @@ function useDealerInvoiceLinesInRange(from: Date, to: Date, productIds: string[]
       }[] = [];
       if (productIds.length === 0) return out;
       const pageSize = 1000;
-      const chunkSize = 200;
+      const chunkSize = 75;
       for (let i = 0; i < productIds.length; i += chunkSize) {
         const chunk = productIds.slice(i, i + chunkSize);
         let start = 0;

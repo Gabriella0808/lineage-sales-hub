@@ -542,13 +542,14 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const productFilterActive = !useAggregates;
   const lineCoverageMissing = useMemo(() => {
     if (!productFilterActive) return false;
+    if (useInvoiceLines) return rangeInvoiceLines.length === 0;
     const primKeys = new Set(monthsInRange(primary).map((m) => m.key));
     return !lines.some((l) => {
       const mNum = parseInt(String(l.month), 10);
       const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(l.month);
       return primKeys.has(`${l.year}-${monthName}`);
     });
-  }, [productFilterActive, lines, primary]);
+  }, [productFilterActive, useInvoiceLines, rangeInvoiceLines, lines, primary]);
 
   return (
     <div className="space-y-4">

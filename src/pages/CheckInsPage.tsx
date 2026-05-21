@@ -407,11 +407,15 @@ export default function CheckInsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Geocode missing dealers
+  // Geocode missing dealers (each id attempted at most once per session)
+  const attemptedGeocodeRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!token || dealers.length === 0) return;
     const missing = dealers.filter(
-      (d) => (d.lat == null || d.lng == null) && (d.street_address || d.city || d.state),
+      (d) =>
+        (d.lat == null || d.lng == null) &&
+        (d.street_address || d.city || d.state) &&
+        !attemptedGeocodeRef.current.has(d.id),
     );
     if (missing.length === 0) return;
 
@@ -419,9 +423,9 @@ export default function CheckInsPage() {
     setGeocoding(true);
     (async () => {
       const updates: Array<{ id: string; lat: number; lng: number }> = [];
-      // Throttle ~5 req/s
       for (const d of missing) {
         if (cancelled) break;
+        attemptedGeocodeRef.current.add(d.id);
         const q = encodeURIComponent(
           [d.street_address, d.city, d.state, "USA"].filter(Boolean).join(", "),
         );
@@ -434,7 +438,6 @@ export default function CheckInsPage() {
           if (Array.isArray(center) && center.length === 2) {
             const [lng, lat] = center;
             updates.push({ id: d.id, lat, lng });
-            // persist (RLS allows manager/admin)
             await supabase.from("dealers").update({ lat, lng }).eq("id", d.id);
           }
         } catch {

@@ -407,59 +407,10 @@ export default function CheckInsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Geocode missing dealers (each id attempted at most once per session)
-  const attemptedGeocodeRef = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (!token || dealers.length === 0) return;
-    const missing = dealers.filter(
-      (d) =>
-        (d.lat == null || d.lng == null) &&
-        (d.street_address || d.city || d.state) &&
-        !attemptedGeocodeRef.current.has(d.id),
-    );
-    if (missing.length === 0) return;
-
-    let cancelled = false;
-    setGeocoding(true);
-    (async () => {
-      const updates: Array<{ id: string; lat: number; lng: number }> = [];
-      for (const d of missing) {
-        if (cancelled) break;
-        attemptedGeocodeRef.current.add(d.id);
-        const q = encodeURIComponent(
-          [d.street_address, d.city, d.state, "USA"].filter(Boolean).join(", "),
-        );
-        try {
-          const res = await fetch(
-            `https://api.mapbox.com/geocoding/v5/mapbox.places/${q}.json?access_token=${token}&country=US&limit=1`,
-          );
-          const json = await res.json();
-          const center = json?.features?.[0]?.center;
-          if (Array.isArray(center) && center.length === 2) {
-            const [lng, lat] = center;
-            updates.push({ id: d.id, lat, lng });
-            await supabase.from("dealers").update({ lat, lng }).eq("id", d.id);
-          }
-        } catch {
-          // ignore individual failures
-        }
-        await new Promise((r) => setTimeout(r, 220));
-      }
-      if (!cancelled && updates.length > 0) {
-        setDealers((prev) =>
-          prev.map((d) => {
-            const u = updates.find((x) => x.id === d.id);
-            return u ? { ...d, lat: u.lat, lng: u.lng } : d;
-          }),
-        );
-      }
-      if (!cancelled) setGeocoding(false);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token, dealers]);
+  // Client-side geocoding disabled — too slow at this volume and many
+  // street_address values contain business names rather than real streets.
+  // Geocoding should be done server-side during the Acctivate sync.
+  // (Keeping the state var so existing UI references still work.)
 
   // Init map
   useEffect(() => {

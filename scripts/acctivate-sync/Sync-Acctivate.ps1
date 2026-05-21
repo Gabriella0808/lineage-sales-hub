@@ -153,11 +153,10 @@ SELECT
   c.State                         AS state,
   c._Rep1                         AS salesperson,
   c._Territory                    AS territory,
-  c._SalesManager                 AS sales_manager
+  c._SalesManager                 AS sales_manager,
+  CASE WHEN c.Status = 1 THEN 'inactive' ELSE 'active' END AS status
 FROM dbo.tbCustomer c
-WHERE (c.Status IS NULL OR c.Status = 0)
-  AND c.CustID IS NOT NULL
-  AND c.CustID NOT LIKE 'Z%'
+WHERE c.CustID IS NOT NULL
 "@
 
 

@@ -50,6 +50,43 @@ function useDealerInvoicesInRange(from: Date, to: Date) {
   });
 }
 
+/** Day-precise fetch of dealer_invoice_lines in a date window, used when a
+ *  brand / collection / category / SKU filter is active with metric = invoices. */
+function useDealerInvoiceLinesInRange(from: Date, to: Date, enabled: boolean) {
+  const fromStr = format(from, "yyyy-MM-dd");
+  const toStr = format(to, "yyyy-MM-dd");
+  return useQuery({
+    queryKey: ["dealer_invoice_lines_range", fromStr, toStr],
+    enabled,
+    queryFn: async () => {
+      const out: {
+        dealer_id: string | null;
+        product_id: string | null;
+        invoice_date: string | null;
+        extended_price: number | null;
+      }[] = [];
+      let start = 0;
+      const pageSize = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoice_lines")
+          .select("dealer_id, product_id, invoice_date, extended_price")
+          .not("dealer_id", "is", null)
+          .gte("invoice_date", fromStr)
+          .lte("invoice_date", toStr)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as typeof out;
+        out.push(...batch);
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      return out;
+    },
+  });
+}
+
 type GroupBy = "dealer" | "rep" | "territory";
 type Metric = "bookings" | "invoices";
 type Display = "total" | "monthly";

@@ -104,7 +104,7 @@ export default function DealersPage() {
             </div>
           </button>
         ))}
-        {filtered.length > 100 && <p className="text-center text-muted-foreground py-3 text-xs">Showing 100 of {filtered.length} dealers.</p>}
+        <PaginationBar page={currentPage} totalPages={totalPages} total={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
         {filtered.length === 0 && <p className="text-center text-muted-foreground py-12 text-sm">No dealers match your filters.</p>}
       </div>
 

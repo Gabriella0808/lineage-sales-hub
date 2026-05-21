@@ -124,7 +124,7 @@ export default function DealersPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, 100).map(d => (
+            {paged.map(d => (
               <tr key={d.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelected(d.id)}>
                 <td className="p-3 font-medium">{d.name}</td>
                 <td className="p-3 text-muted-foreground">{d.city || ''}{d.city && d.state ? ', ' : ''}{d.state || ''}</td>

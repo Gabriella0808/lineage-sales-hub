@@ -353,6 +353,77 @@ export type Database = {
         }
         Relationships: []
       }
+      dealer_invoices: {
+        Row: {
+          acctivate_id: string
+          balance: number | null
+          created_at: string
+          dealer_acctivate_id: string | null
+          dealer_id: string | null
+          due_date: string | null
+          freight: number | null
+          id: string
+          invoice_date: string | null
+          invoice_number: string | null
+          po_number: string | null
+          salesperson: string | null
+          status: string | null
+          subtotal: number | null
+          tax: number | null
+          terms: string | null
+          total: number | null
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id: string
+          balance?: number | null
+          created_at?: string
+          dealer_acctivate_id?: string | null
+          dealer_id?: string | null
+          due_date?: string | null
+          freight?: number | null
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          po_number?: string | null
+          salesperson?: string | null
+          status?: string | null
+          subtotal?: number | null
+          tax?: number | null
+          terms?: string | null
+          total?: number | null
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string
+          balance?: number | null
+          created_at?: string
+          dealer_acctivate_id?: string | null
+          dealer_id?: string | null
+          due_date?: string | null
+          freight?: number | null
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          po_number?: string | null
+          salesperson?: string | null
+          status?: string | null
+          subtotal?: number | null
+          tax?: number | null
+          terms?: string | null
+          total?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealer_invoices_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dealer_sales: {
         Row: {
           booking_count: number | null

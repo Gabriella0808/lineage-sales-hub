@@ -324,10 +324,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // dealer_sales_lines is sparsely populated; aggregates have full totals.
   const useAggregates = brands.length === 0 && categories.length === 0 && collections.length === 0 && skus.length === 0;
 
-  // When product filters are active AND metric is invoices, pull from
-  // dealer_invoice_lines (day-precise, product-linked) instead of the sparse
-  // dealer_sales_lines monthly rollup.
-  const useInvoiceLines = !useAggregates && metric === "invoices";
+  // When product filters are active we always pull from dealer_invoice_lines:
+  // it's the only product-linked source with real data (dealer_sales_lines is
+  // sparsely populated). For metric=bookings under a product filter, we surface
+  // invoice line revenue as a proxy (a banner explains this below).
+  const useInvoiceLines = !useAggregates;
   const { data: rangeInvoiceLines = [] } = useDealerInvoiceLinesInRange(
     invoiceWindow.from, invoiceWindow.to, useInvoiceLines,
   );

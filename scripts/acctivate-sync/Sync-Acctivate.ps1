@@ -191,6 +191,30 @@ FROM dbo.Inventory i
 JOIN dbo.Product p ON p.ProductID = i.ProductID
 GROUP BY i.ProductID, p.ProductCode
 "@
+
+  dealer_invoices = @"
+SELECT
+  CAST(inv.InvoiceID AS NVARCHAR(64))     AS acctivate_id,
+  CAST(inv.CustID AS NVARCHAR(64))        AS dealer_acctivate_id,
+  CAST(inv.InvoiceNumber AS NVARCHAR(64)) AS invoice_number,
+  CONVERT(VARCHAR(10), inv.InvoiceDate, 23) AS invoice_date,
+  CONVERT(VARCHAR(10), inv.DueDate, 23)     AS due_date,
+  inv.SubTotal                            AS subtotal,
+  inv.TaxAmount                           AS tax,
+  inv.FreightAmount                       AS freight,
+  inv.InvoiceTotal                        AS total,
+  inv.BalanceDue                          AS balance,
+  CASE
+    WHEN inv.BalanceDue <= 0 THEN 'paid'
+    WHEN inv.DueDate < CAST(GETDATE() AS DATE) THEN 'overdue'
+    ELSE 'open'
+  END                                     AS status,
+  inv.TermsCode                           AS terms,
+  inv.SalespersonName                     AS salesperson,
+  inv.PONumber                            AS po_number
+FROM dbo.Invoice inv
+WHERE inv.CustID IS NOT NULL
+"@
 }
 
 # ---------- Run ----------

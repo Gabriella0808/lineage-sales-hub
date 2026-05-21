@@ -72,15 +72,15 @@ type TeamMemberId = "will" | "mateo" | "chris";
 const TEAM_MEMBERS: {
   id: TeamMemberId;
   name: string;
-  repOwners: string[]; // matched case-insensitively against dealers.rep_owner
-  states: string[]; // kept for reference; unused while ownerOnly is true
-  // Strict ownership: only dealers with matching rep_owner are shown.
-  // This guarantees no account appears in more than one teammate's section.
+  managerIds: string[]; // matched against dealers.manager_id (authoritative)
+  repOwners: string[]; // legacy fallback: matched case-insensitively against dealers.rep_owner
+  states: string[];
   ownerOnly: true;
 }[] = [
   {
     id: "will",
     name: "Will Grisack",
+    managerIds: ["fc3184b3-848c-4921-8770-46127a2821bf"],
     repOwners: ["will"],
     states: [],
     ownerOnly: true,
@@ -88,6 +88,7 @@ const TEAM_MEMBERS: {
   {
     id: "mateo",
     name: "Mateo De Lisa",
+    managerIds: ["b291385c-e5db-470c-93d3-9e034361b3d4"],
     repOwners: ["mateo"],
     states: [],
     ownerOnly: true,
@@ -95,11 +96,24 @@ const TEAM_MEMBERS: {
   {
     id: "chris",
     name: "Chris De Lisa",
+    managerIds: ["b09a100d-4ea4-42b2-bcbf-97f1f4538310"],
     repOwners: ["chris"],
     states: [],
     ownerOnly: true,
   },
 ];
+
+// Returns true when a dealer belongs to the given team member, matching by
+// manager_id (set during sync/import) OR legacy rep_owner string.
+const dealerMatchesTeam = (
+  d: { manager_id?: string | null; rep_owner?: string | null },
+  m: { managerIds: string[]; repOwners: string[] },
+) => {
+  const mid = (d.manager_id ?? "").trim();
+  if (mid && m.managerIds.includes(mid)) return true;
+  const owner = (d.rep_owner ?? "").trim().toLowerCase();
+  return !!owner && m.repOwners.some((r) => r.toLowerCase() === owner);
+};
 
 interface Dealer {
   id: string;
@@ -112,6 +126,7 @@ interface Dealer {
   status: string;
   rep_id: string | null;
   rep_owner?: string | null;
+  manager_id?: string | null;
   phone?: string | null;
   email?: string | null;
   website?: string | null;
@@ -307,22 +322,8 @@ export default function CheckInsPage() {
   const filteredDealers = useMemo(() => {
     const q = search.trim().toLowerCase();
     const team = teamFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === teamFilter);
-    const stateSet = team ? new Set(team.states) : null;
-    const ownerSet = team ? new Set(team.repOwners.map((s) => s.toLowerCase())) : null;
     return dealersWithMeta.filter((d) => {
-      if (team && stateSet && ownerSet) {
-        const owner = (d.rep_owner ?? "").trim().toLowerCase();
-        const code = (d.state ?? "").trim().toUpperCase();
-        const ownerMatch = owner && ownerSet.has(owner);
-        const stateMatch = code && stateSet.has(code);
-        if (team.ownerOnly) {
-          // Restrict strictly to rep_owner matches (e.g. Mateo, fully tagged).
-          if (!ownerMatch) return false;
-        } else if (!ownerMatch && !stateMatch) {
-          // Match if EITHER signal points to this teammate.
-          return false;
-        }
-      }
+      if (team && !dealerMatchesTeam(d, team)) return false;
       if (!q) return true;
       return (
         d.name.toLowerCase().includes(q) ||
@@ -359,7 +360,7 @@ export default function CheckInsPage() {
       while (true) {
         const { data, error } = await supabase
           .from("dealers")
-          .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, phone, email, website, notes, buying_group, lat, lng")
+          .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, lat, lng")
           .order("name")
           .range(from, from + PAGE - 1);
         if (error) return { data: null, error };
@@ -852,7 +853,7 @@ export default function CheckInsPage() {
         rep_owner: owner,
         rep_id: newDealer.rep_id || null,
       })
-      .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, phone, email, website, notes, buying_group, lat, lng")
+      .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, lat, lng")
       .single();
     setAddSaving(false);
     if (error) {
@@ -1149,15 +1150,7 @@ export default function CheckInsPage() {
             </Button>
             {TEAM_MEMBERS.map((m) => {
               const active = teamFilter === m.id;
-              const owners = new Set(m.repOwners.map((s) => s.toLowerCase()));
-              const states = new Set(m.states);
-              const count = dealersWithMeta.filter((d) => {
-                const owner = (d.rep_owner ?? "").trim().toLowerCase();
-                const code = (d.state ?? "").trim().toUpperCase();
-                const ownerMatch = owner && owners.has(owner);
-                const stateMatch = code && states.has(code);
-                return m.ownerOnly ? ownerMatch : ownerMatch || stateMatch;
-              }).length;
+              const count = dealersWithMeta.filter((d) => dealerMatchesTeam(d, m)).length;
               return (
                 <Button
                   key={m.id}
@@ -1233,15 +1226,13 @@ export default function CheckInsPage() {
           </div>
         </div>
         {(() => {
-          // Filter by selected teammate via the dealer's rep_owner.
+          // Filter by selected teammate via the dealer's manager_id / rep_owner.
           const team = teamFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === teamFilter);
-          const ownerSet = team ? new Set(team.repOwners.map((s) => s.toLowerCase())) : null;
           const dealerById = new Map(dealers.map((d) => [d.id, d]));
           const teamScoped = checkIns.filter((c) => {
-            if (!team || !ownerSet) return true;
+            if (!team) return true;
             const d = dealerById.get(c.dealer_id);
-            const owner = (d?.rep_owner ?? "").trim().toLowerCase();
-            return !!owner && ownerSet.has(owner);
+            return !!d && dealerMatchesTeam(d, team);
           });
           const filtered = teamScoped.filter((c) => {
             const d = c.visit_date.slice(0, 10);
@@ -1400,10 +1391,7 @@ export default function CheckInsPage() {
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Account Owner</dt>
                       <dd className="mt-0.5">
                         {(() => {
-                          const owner = (selected.rep_owner ?? "").trim().toLowerCase();
-                          const member = TEAM_MEMBERS.find((m) =>
-                            m.repOwners.some((r) => r.toLowerCase() === owner)
-                          );
+                          const member = TEAM_MEMBERS.find((m) => dealerMatchesTeam(selected, m));
                           return member ? (
                             <span className="font-medium">{member.name}</span>
                           ) : (

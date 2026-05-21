@@ -22,7 +22,7 @@ export default function DealersPage() {
   const [search, setSearch] = useState("");
   const [territoryFilter, setTerritoryFilter] = useState("all");
   const [repFilter, setRepFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [managerFilter, setManagerFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;

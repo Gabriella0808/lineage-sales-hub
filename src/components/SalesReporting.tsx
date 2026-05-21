@@ -737,9 +737,22 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           <CardContent className="p-4 flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-sm font-medium">No SKU-level data in this date range</p>
+              <p className="text-sm font-medium">No invoice line items in this date range</p>
               <p className="text-xs text-muted-foreground">
-                You've filtered by brand, category, collection, or SKU — those filters use the per-SKU sales table, which doesn't have rows in the selected date range yet. Clear the product filters to see totals from the aggregate sales table, or pick a date range covered by the SKU-level sync.
+                Brand, category, collection, and SKU filters use the per-SKU invoice line table. There are no matching rows in the selected window — try a wider date range or clear the product filters to see aggregate totals.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {!noData && !lineCoverageMissing && useInvoiceLines && metric === "bookings" && (
+        <Card className="border-dashed border-amber-500/40 bg-amber-500/5">
+          <CardContent className="p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Showing invoiced revenue as a proxy for bookings</p>
+              <p className="text-xs text-muted-foreground">
+                Per-SKU booking data isn't synced yet. With product filters active, the values below come from invoice line items. Switch the metric to Invoices for the equivalent label, or clear product filters to see true booking totals.
               </p>
             </div>
           </CardContent>

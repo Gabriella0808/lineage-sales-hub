@@ -39,7 +39,7 @@ $config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
 $SupabaseUrl  = $config.supabaseUrl.TrimEnd('/')
 $SyncToken    = $config.syncToken
 $FunctionUrl  = "$SupabaseUrl/functions/v1/sync-acctivate"
-$BatchSize    = if ($config.batchSize) { [int]$config.batchSize } else { 500 }
+$BatchSize    = if ($config.batchSize) { [int]$config.batchSize } else { 100 }
 
 if (-not $SupabaseUrl -or -not $SyncToken) {
   throw "supabaseUrl and syncToken are required in $ConfigPath"

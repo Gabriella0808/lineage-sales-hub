@@ -71,7 +71,7 @@ export default function DealersPage() {
         filters={[
           { label: "Territory", value: territoryFilter, onChange: setTerritoryFilter, options: territories.map(t => ({ label: t.name, value: t.id })) },
           ...(isRep ? [] : [{ label: "Rep", value: repFilter, onChange: setRepFilter, options: reps.map(r => ({ label: r.name, value: r.id })) }]),
-          { label: "Status", value: statusFilter, onChange: setStatusFilter, options: [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }, { label: 'Prospect', value: 'prospect' }, { label: 'At Risk', value: 'at-risk' }] },
+          { label: "Manager", value: managerFilter, onChange: setManagerFilter, options: managers.map(m => ({ label: m.name, value: m.id })) },
         ]}
       />
 

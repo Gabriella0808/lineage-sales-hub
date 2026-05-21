@@ -822,11 +822,12 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 }
 
 function TotalTable({
-  rows, leftHeader, showComparison,
+  rows, leftHeader, showComparison, onRowClick,
 }: {
   rows: { key: string; label: string; primary: number; comparative: number }[];
   leftHeader: string;
   showComparison?: boolean;
+  onRowClick?: (key: string, label: string) => void;
 }) {
   const totalP = rows.reduce((s, r) => s + r.primary, 0);
   const totalC = rows.reduce((s, r) => s + r.comparative, 0);

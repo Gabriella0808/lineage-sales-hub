@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { REP_MONTHLY, type RepMonthRow } from "@/data/repMonthly";
 import { useDealerSalesAggregates } from "@/hooks/useDealerSalesAggregates";
+import { MtdInvoicingCard } from "@/components/MtdInvoicingCard";
 
 const PROJ_STORAGE_KEY = "kpi_projections_2026_v1";
 
@@ -452,6 +453,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
 
   return (
     <div className="space-y-6">
+      <MtdInvoicingCard allowedRepNames={allowedRepNames} />
       {/* Global filter + header strip */}
       <div className="glass-card p-4 space-y-4">
         <div className="flex flex-wrap items-center gap-3 pb-3 border-b">

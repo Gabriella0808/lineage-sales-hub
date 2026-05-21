@@ -306,12 +306,12 @@ export function useDealerSalesLines() {
 // ── Display helpers ───────────────────────────────────────────────
 
 export function getRepName(reps: DbSalesRep[], id: string | null): string {
-  if (!id) return "Unassigned";
+  if (!id) return "";
   return reps.find((r) => r.id === id)?.name || "Unknown";
 }
 
 export function getTerritoryName(territories: DbTerritory[], id: string | null): string {
-  if (!id) return "Unassigned";
+  if (!id) return "";
   return territories.find((t) => t.id === id)?.name || "Unknown";
 }
 

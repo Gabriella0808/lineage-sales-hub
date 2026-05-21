@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Mail, Phone, ExternalLink } from "lucide-react";
 import { FilterBar } from "@/components/FilterBar";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useSalesReps, useTerritories, useDealers, formatCurrency, getRepName, getTerritoryName } from "@/hooks/usePortalData";
+import { useSalesReps, useTerritories, useDealers, useManagers, formatCurrency, getRepName, getTerritoryName } from "@/hooks/usePortalData";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";

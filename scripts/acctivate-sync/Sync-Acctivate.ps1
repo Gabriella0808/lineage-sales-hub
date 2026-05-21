@@ -193,16 +193,16 @@ function New-DealerInvoiceLinesQuery {
     throw "Could not read columns for dbo.$detailTable."
   }
 
-  $detailIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('InvoiceDetailID', 'InvoiceDetailId', 'InvoiceLineID', 'InvoiceLineId', 'LineID', 'LineId', 'DetailID', 'DetailId', 'ID')
-  $invIdCol    = Get-FirstColumn -Columns $detailCols -Candidates @('InvoiceID', 'InvoiceId', 'InvoiceGUID', 'InvoiceGuid')
-  $skuCol      = Get-FirstColumn -Columns $detailCols -Candidates @('ProductCode', 'ItemCode', 'SKU', 'ItemNumber', 'PartNumber')
-  $productIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('ProductID', 'ProductId', 'ItemID', 'ItemId')
+  $detailIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDInvoiceDetail', 'InvoiceDetailID', 'InvoiceDetailId', 'InvoiceLineID', 'InvoiceLineId', 'LineID', 'LineId', 'DetailID', 'DetailId', 'ID')
+  $invIdCol    = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDInvoice', 'InvoiceID', 'InvoiceId', 'InvoiceGUID', 'InvoiceGuid')
+  $skuCol      = Get-FirstColumn -Columns $detailCols -Candidates @('ProductID', 'ProductCode', 'ItemCode', 'SKU', 'ItemNumber', 'PartNumber')
+  $productIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDProduct', 'ProductGUID', 'ItemID', 'ItemId')
 
   if (-not $detailIdCol -or -not $invIdCol) {
     throw "Could not map dbo.$detailTable line/invoice id columns. Found: $($detailCols -join ', ')"
   }
 
-  $hdrInvIdCol     = Get-FirstColumn -Columns $hdrCols -Candidates @('InvoiceID', 'InvoiceId', 'InvoiceGUID', 'InvoiceGuid', 'ID')
+  $hdrInvIdCol     = Get-FirstColumn -Columns $hdrCols -Candidates @('GUIDInvoice', 'InvoiceID', 'InvoiceId', 'InvoiceGUID', 'InvoiceGuid', 'ID')
   $hdrCustomerCol  = Get-FirstColumn -Columns $hdrCols -Candidates @('CustID', 'CustId', 'CustomerID', 'CustomerId', 'CustomerNumber', 'CustNo', 'Customer', 'BillToCustID', 'BillToCustomerID')
   $hdrDateCol      = Get-FirstColumn -Columns $hdrCols -Candidates @('InvoiceDate', 'Date', 'DocDate', 'PostDate')
   if (-not $hdrInvIdCol -or -not $hdrCustomerCol) {
@@ -211,9 +211,9 @@ function New-DealerInvoiceLinesQuery {
 
   $skuExpr        = if ($skuCol) { "CAST(d.$(Quote-SqlIdentifier $skuCol) AS NVARCHAR(128)) AS sku" } else { "NULL AS sku" }
   $nameExpr       = New-SelectExpression -Columns $detailCols -Candidates @('Description', 'ProductDescription', 'ItemDescription', 'Name') -Alias 'product_name' -Cast 'NVARCHAR(512)' -TableAlias 'd'
-  $qtyExpr        = New-SelectExpression -Columns $detailCols -Candidates @('Quantity', 'Qty', 'QuantityShipped', 'QtyShipped', 'QuantityInvoiced') -Alias 'qty' -Default '0' -TableAlias 'd'
-  $unitPriceExpr  = New-SelectExpression -Columns $detailCols -Candidates @('UnitPrice', 'Price', 'SalesPrice', 'SellingPrice') -Alias 'unit_price' -Default '0' -TableAlias 'd'
-  $extPriceExpr   = New-SelectExpression -Columns $detailCols -Candidates @('ExtendedPrice', 'ExtPrice', 'LineTotal', 'Amount', 'NetAmount', 'TotalPrice') -Alias 'extended_price' -Default '0' -TableAlias 'd'
+  $qtyExpr        = New-SelectExpression -Columns $detailCols -Candidates @('QtyInvoiced', 'QuantityInvoiced', 'QtyShipped', 'QuantityShipped', 'Quantity', 'Qty') -Alias 'qty' -Default '0' -TableAlias 'd'
+  $unitPriceExpr  = New-SelectExpression -Columns $detailCols -Candidates @('Price', 'UnitPrice', 'SalesPrice', 'SellingPrice', 'DisplayPrice') -Alias 'unit_price' -Default '0' -TableAlias 'd'
+  $extPriceExpr   = New-SelectExpression -Columns $detailCols -Candidates @('Amount', 'ExtendedPrice', 'ExtPrice', 'LineTotal', 'NetAmount', 'TotalPrice', 'DisplayAmount') -Alias 'extended_price' -Default '0' -TableAlias 'd'
   $dateExpr       = "CONVERT(VARCHAR(10), inv.$(Quote-SqlIdentifier $hdrDateCol), 23) AS invoice_date"
 
   return @"

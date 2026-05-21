@@ -368,31 +368,57 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
     const rows = new Map<Key, { primary: number; comparative: number; byMonth: Map<string, number> }>();
 
-    const source = useAggregates ? aggregates : lines;
-    for (const line of source) {
-      if (!dealerIdSet.has(line.dealer_id)) continue;
-      if (!useAggregates && !filteredProductIds.has((line as { product_id: string }).product_id)) continue;
-      // Normalize month: dealer_sales uses "01"-"12", lines/keys use month names
-      const mNum = parseInt(String(line.month), 10);
-      const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(line.month);
-      const monthKey = `${line.year}-${monthName}`;
-      const inPrim = primKeys.has(monthKey);
-      const inComp = compKeys.has(monthKey);
-      if (!inPrim && !inComp) continue;
+    // For invoices with no product filter, use day-precise dealer_invoices.
+    const useDayPreciseInvoices = metric === "invoices" && useAggregates;
 
-      const k = rowKey(line);
-      if (!k) continue;
-      const val = (metric === "bookings" ? line.bookings : line.invoices) ?? 0;
-      if (val === 0) continue;
-
-      let row = rows.get(k);
-      if (!row) {
-        row = { primary: 0, comparative: 0, byMonth: new Map() };
-        rows.set(k, row);
+    if (useDayPreciseInvoices) {
+      const primFromMs = startOfDay(primary.from).getTime();
+      const primToMs = startOfDay(primary.to).getTime();
+      const compFromMs = startOfDay(comparative.from).getTime();
+      const compToMs = startOfDay(comparative.to).getTime();
+      for (const inv of rangeInvoices) {
+        if (!inv.dealer_id || !inv.invoice_date) continue;
+        if (!dealerIdSet.has(inv.dealer_id)) continue;
+        const d = new Date(inv.invoice_date + "T00:00:00");
+        const ms = d.getTime();
+        if (Number.isNaN(ms)) continue;
+        const inPrim = ms >= primFromMs && ms <= primToMs;
+        const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
+        if (!inPrim && !inComp) continue;
+        const k = rowKey({ dealer_id: inv.dealer_id });
+        if (!k) continue;
+        const val = Number(inv.total ?? 0);
+        if (val === 0) continue;
+        const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
+        let row = rows.get(k);
+        if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
+        if (inPrim) row.primary += val;
+        if (inComp) row.comparative += val;
+        row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
       }
-      if (inPrim) row.primary += val;
-      if (inComp) row.comparative += val;
-      row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
+    } else {
+      const source = useAggregates ? aggregates : lines;
+      for (const line of source) {
+        if (!dealerIdSet.has(line.dealer_id)) continue;
+        if (!useAggregates && !filteredProductIds.has((line as { product_id: string }).product_id)) continue;
+        const mNum = parseInt(String(line.month), 10);
+        const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(line.month);
+        const monthKey = `${line.year}-${monthName}`;
+        const inPrim = primKeys.has(monthKey);
+        const inComp = compKeys.has(monthKey);
+        if (!inPrim && !inComp) continue;
+
+        const k = rowKey(line);
+        if (!k) continue;
+        const val = (metric === "bookings" ? line.bookings : line.invoices) ?? 0;
+        if (val === 0) continue;
+
+        let row = rows.get(k);
+        if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
+        if (inPrim) row.primary += val;
+        if (inComp) row.comparative += val;
+        row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
+      }
     }
 
     const sorted = Array.from(rows.entries())
@@ -400,7 +426,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       .sort((a, b) => b.primary - a.primary);
 
     return { rows: sorted, primMonths, compMonths };
-  }, [lines, aggregates, useAggregates, dealers, reps, territories, dealerIdSet, filteredProductIds, primary, comparative, metric, groupBy]);
+  }, [lines, aggregates, useAggregates, rangeInvoices, dealers, reps, territories, dealerIdSet, filteredProductIds, primary, comparative, compareMode, metric, groupBy]);
 
   const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
   const noData = useAggregates ? aggregates.length === 0 : lines.length === 0;

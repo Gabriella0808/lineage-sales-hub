@@ -273,6 +273,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const { data: lines = [] } = useDealerSalesLines();
   const { data: aggregates = [] } = useDealerSales();
 
+  // Day-precise invoices for the full window covered by primary + comparative.
+  const invoiceWindow = useMemo(() => {
+    const lo = compareMode === "none"
+      ? primary.from
+      : (primary.from < comparative.from ? primary.from : comparative.from);
+    const hi = compareMode === "none"
+      ? primary.to
+      : (primary.to > comparative.to ? primary.to : comparative.to);
+    return { from: lo, to: hi };
+  }, [primary, comparative, compareMode]);
+  const { data: rangeInvoices = [] } = useDealerInvoicesInRange(invoiceWindow.from, invoiceWindow.to);
+
   // Use aggregate dealer_sales when no product-level filter is active.
   // dealer_sales_lines is sparsely populated; aggregates have full totals.
   const useAggregates = brands.length === 0 && categories.length === 0 && collections.length === 0 && skus.length === 0;

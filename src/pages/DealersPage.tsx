@@ -76,7 +76,7 @@ export default function DealersPage() {
 
       {/* Mobile card list */}
       <div className="lg:hidden space-y-2">
-        {filtered.slice(0, 100).map(d => (
+        {paged.map(d => (
           <button
             key={d.id}
             onClick={() => setSelected(d.id)}

@@ -1150,15 +1150,7 @@ export default function CheckInsPage() {
             </Button>
             {TEAM_MEMBERS.map((m) => {
               const active = teamFilter === m.id;
-              const owners = new Set(m.repOwners.map((s) => s.toLowerCase()));
-              const states = new Set(m.states);
-              const count = dealersWithMeta.filter((d) => {
-                const owner = (d.rep_owner ?? "").trim().toLowerCase();
-                const code = (d.state ?? "").trim().toUpperCase();
-                const ownerMatch = owner && owners.has(owner);
-                const stateMatch = code && states.has(code);
-                return m.ownerOnly ? ownerMatch : ownerMatch || stateMatch;
-              }).length;
+              const count = dealersWithMeta.filter((d) => dealerMatchesTeam(d, m)).length;
               return (
                 <Button
                   key={m.id}

@@ -49,7 +49,10 @@ export interface DbDealer {
   engagement: string | null;
   last_contact: string | null;
   revenue: number | null;
+  source: string | null;
+  manager_id: string | null;
   created_at: string;
+
 }
 
 export interface DbManager {
@@ -196,13 +199,16 @@ async function fetchAllRows<T>(table: string, pageSize = 1000): Promise<T[]> {
 
 export function useDealers() {
   return useQuery({
-    queryKey: ["dealers"],
+    queryKey: ["dealers", "commercial"],
     queryFn: async () => {
       const rows = await fetchAllRows<DbDealer>("dealers");
-      return rows.sort((a, b) => a.name.localeCompare(b.name));
+      // Exclude field-only leads from all portal views (field check-ins fetches separately).
+      const commercial = rows.filter((d) => (d.source ?? "acctivate") !== "field_only");
+      return commercial.sort((a, b) => a.name.localeCompare(b.name));
     },
   });
 }
+
 
 export function useManagers() {
   return useQuery({
@@ -249,10 +255,39 @@ export function useContacts() {
 
 export function useDealerSales() {
   return useQuery({
-    queryKey: ["dealer_sales"],
-    queryFn: async () => fetchAllRows<DbDealerSale>("dealer_sales"),
+    queryKey: ["dealer_sales", "agg_from_lines"],
+    queryFn: async () => {
+      // Aggregate from dealer_sales_lines since the dealer_sales rollup table is not populated.
+      const lines = await fetchAllRows<DbDealerSalesLine>("dealer_sales_lines");
+      const map = new Map<string, DbDealerSale>();
+      for (const l of lines) {
+        const key = `${l.dealer_id}|${l.year}|${l.month}`;
+        const cur = map.get(key) ?? {
+          id: key,
+          dealer_id: l.dealer_id,
+          year: l.year,
+          month: l.month,
+          revenue: 0,
+          order_count: 0,
+          bookings: 0,
+          invoices: 0,
+          booking_count: 0,
+          invoice_count: 0,
+        };
+        cur.bookings = (cur.bookings ?? 0) + (l.bookings ?? 0);
+        cur.invoices = (cur.invoices ?? 0) + (l.invoices ?? 0);
+        cur.booking_count = (cur.booking_count ?? 0) + (l.booking_count ?? 0);
+        cur.invoice_count = (cur.invoice_count ?? 0) + (l.invoice_count ?? 0);
+        // Revenue = invoiced dollars; orders = invoice count (fallback to bookings).
+        cur.revenue = cur.invoices && cur.invoices > 0 ? cur.invoices : cur.bookings;
+        cur.order_count = (cur.invoice_count ?? 0) > 0 ? cur.invoice_count : cur.booking_count;
+        map.set(key, cur);
+      }
+      return Array.from(map.values());
+    },
   });
 }
+
 
 export function useRepTerritories() {
   return useQuery({

@@ -41,7 +41,14 @@ You should see something like:
 Done.
 ```
 
-Then run a full sync:
+To remove stale dealers after syncing, run:
+```powershell
+pwsh .\Sync-Acctivate.ps1 -Tables dealers -Prune
+```
+
+The prune step is protected: dealers with field check-in history are kept.
+
+Then run a full sync without pruning:
 ```powershell
 pwsh .\Sync-Acctivate.ps1
 ```

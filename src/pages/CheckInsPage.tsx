@@ -134,6 +134,8 @@ interface CheckIn {
   created_at: string;
 }
 
+type LoadError = { message?: string } | null;
+
 const LOG_TYPES = [
   { value: "meeting", label: "Meeting" },
   { value: "phone_call", label: "Phone call" },
@@ -350,7 +352,7 @@ export default function CheckInsPage() {
   const load = async () => {
     setLoading(true);
     // Fetch all dealers in pages of 1000 (Supabase default cap per request)
-    const fetchAllDealers = async (): Promise<{ data: Dealer[] | null; error: any }> => {
+    const fetchAllDealers = async (): Promise<{ data: Dealer[] | null; error: LoadError }> => {
       const PAGE = 1000;
       let from = 0;
       const all: Dealer[] = [];
@@ -369,37 +371,64 @@ export default function CheckInsPage() {
       return { data: all, error: null };
     };
 
-    const [dealersRes, checkInsRes] = await Promise.all([
-      fetchAllDealers(),
-      supabase
-        .from("dealer_check_ins")
-        .select("*")
-        .order("visit_date", { ascending: false }),
-    ]);
-    if (dealersRes.error) {
-      toast({ title: "Failed to load dealers", description: dealersRes.error.message, variant: "destructive" });
-    } else {
-      setDealers((dealersRes.data ?? []) as Dealer[]);
-    }
-    if (checkInsRes.error) {
-      toast({ title: "Failed to load check-ins", description: checkInsRes.error.message, variant: "destructive" });
-    } else {
-      const ci = (checkInsRes.data ?? []) as CheckIn[];
-      setCheckIns(ci);
-      const ids = Array.from(new Set(ci.map((c) => c.user_id).filter(Boolean)));
-      if (ids.length > 0) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("user_id, full_name")
-          .in("user_id", ids);
-        const map: Record<string, string> = {};
-        (profs ?? []).forEach((p: any) => {
-          if (p.user_id) map[p.user_id] = p.full_name || "Unknown";
-        });
-        setUserNames(map);
+    const fetchAllCheckIns = async (): Promise<{ data: CheckIn[] | null; error: LoadError }> => {
+      const PAGE = 1000;
+      let from = 0;
+      const all: CheckIn[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_check_ins")
+          .select("id, dealer_id, user_id, visit_date, notes, outcome, log_type, brand, new_placement, created_at")
+          .order("visit_date", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) return { data: null, error };
+        const batch = (data ?? []) as CheckIn[];
+        all.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
       }
+      return { data: all, error: null };
+    };
+
+    try {
+      const [dealersRes, checkInsRes] = await Promise.all([
+        fetchAllDealers(),
+        fetchAllCheckIns(),
+      ]);
+      if (dealersRes.error) {
+        toast({ title: "Failed to load dealers", description: dealersRes.error.message, variant: "destructive" });
+      } else {
+        setDealers((dealersRes.data ?? []) as Dealer[]);
+      }
+      if (checkInsRes.error) {
+        toast({ title: "Failed to load check-ins", description: checkInsRes.error.message, variant: "destructive" });
+      } else {
+        const ci = (checkInsRes.data ?? []) as CheckIn[];
+        setCheckIns(ci);
+        const ids = Array.from(new Set(ci.map((c) => c.user_id).filter(Boolean)));
+        if (ids.length > 0) {
+          const { data: profs } = await supabase
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", ids);
+          const map: Record<string, string> = {};
+          (profs ?? []).forEach((p: { user_id: string | null; full_name: string | null }) => {
+            if (p.user_id) map[p.user_id] = p.full_name || "Unknown";
+          });
+          setUserNames(map);
+        } else {
+          setUserNames({});
+        }
+      }
+    } catch (error: unknown) {
+      toast({
+        title: "Failed to load check-ins",
+        description: error instanceof Error ? error.message : "Please refresh and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {

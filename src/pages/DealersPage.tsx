@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Mail, Phone, ExternalLink } from "lucide-react";
 import { FilterBar } from "@/components/FilterBar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -23,15 +23,22 @@ export default function DealersPage() {
   const [repFilter, setRepFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 100;
 
-  const filtered = dealers.filter(d => {
+  const filtered = useMemo(() => dealers.filter(d => {
     if (isRep && myRepId && d.rep_id !== myRepId) return false;
     if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (territoryFilter !== "all" && d.territory_id !== territoryFilter) return false;
     if (!isRep && repFilter !== "all" && d.rep_id !== repFilter) return false;
     if (statusFilter !== "all" && d.status !== statusFilter) return false;
     return true;
-  });
+  }), [dealers, isRep, myRepId, search, territoryFilter, repFilter, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  useEffect(() => { setPage(1); }, [search, territoryFilter, repFilter, statusFilter]);
+  const currentPage = Math.min(page, totalPages);
+  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const dealer = dealers.find(d => d.id === selected);
 
@@ -69,7 +76,7 @@ export default function DealersPage() {
 
       {/* Mobile card list */}
       <div className="lg:hidden space-y-2">
-        {filtered.slice(0, 100).map(d => (
+        {paged.map(d => (
           <button
             key={d.id}
             onClick={() => setSelected(d.id)}
@@ -97,7 +104,7 @@ export default function DealersPage() {
             </div>
           </button>
         ))}
-        {filtered.length > 100 && <p className="text-center text-muted-foreground py-3 text-xs">Showing 100 of {filtered.length} dealers.</p>}
+        <PaginationBar page={currentPage} totalPages={totalPages} total={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
         {filtered.length === 0 && <p className="text-center text-muted-foreground py-12 text-sm">No dealers match your filters.</p>}
       </div>
 
@@ -117,7 +124,7 @@ export default function DealersPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, 100).map(d => (
+            {paged.map(d => (
               <tr key={d.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors cursor-pointer" onClick={() => setSelected(d.id)}>
                 <td className="p-3 font-medium">{d.name}</td>
                 <td className="p-3 text-muted-foreground">{d.city || ''}{d.city && d.state ? ', ' : ''}{d.state || ''}</td>
@@ -142,7 +149,7 @@ export default function DealersPage() {
             ))}
           </tbody>
         </table>
-        {filtered.length > 100 && <p className="text-center text-muted-foreground py-3 text-xs">Showing 100 of {filtered.length} dealers. Use search or filters to narrow results.</p>}
+        <PaginationBar page={currentPage} totalPages={totalPages} total={filtered.length} pageSize={PAGE_SIZE} onPageChange={setPage} />
         {filtered.length === 0 && <p className="text-center text-muted-foreground py-12 text-sm">No dealers match your filters.</p>}
       </div>
 
@@ -192,6 +199,49 @@ export default function DealersPage() {
           )}
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+function PaginationBar({ page, totalPages, total, pageSize, onPageChange }: {
+  page: number; totalPages: number; total: number; pageSize: number; onPageChange: (p: number) => void;
+}) {
+  if (total === 0) return null;
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+
+  const pages: (number | "…")[] = [];
+  const add = (n: number | "…") => pages.push(n);
+  const window = 1;
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= page - window && i <= page + window)) add(i);
+    else if (pages[pages.length - 1] !== "…") add("…");
+  }
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 px-1">
+      <p className="text-xs text-muted-foreground">
+        Showing <span className="font-medium">{from}–{to}</span> of <span className="font-medium">{total}</span> dealers
+      </p>
+      {totalPages > 1 && (
+        <div className="flex items-center gap-1 flex-wrap justify-center">
+          <Button variant="outline" size="sm" className="h-8" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Previous</Button>
+          {pages.map((p, i) => p === "…" ? (
+            <span key={`e${i}`} className="px-2 text-muted-foreground text-sm">…</span>
+          ) : (
+            <Button
+              key={p}
+              variant={p === page ? "default" : "outline"}
+              size="sm"
+              className="h-8 min-w-8 px-2"
+              onClick={() => onPageChange(p)}
+            >
+              {p}
+            </Button>
+          ))}
+          <Button variant="outline" size="sm" className="h-8" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>Next</Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,1 @@
+DELETE FROM public.dealers WHERE acctivate_id IS NULL;

@@ -202,8 +202,14 @@ export function useDealers() {
     queryKey: ["dealers", "commercial"],
     queryFn: async () => {
       const rows = await fetchAllRows<DbDealer>("dealers");
-      // Exclude field-only leads from all portal views (field check-ins fetches separately).
-      const commercial = rows.filter((d) => (d.source ?? "acctivate") !== "field_only");
+      // Commercial dealers only: exclude field-only leads (fetched separately by check-ins)
+      // and exclude preserved/historical Acctivate rows without a salesperson or territory.
+      const commercial = rows.filter((d) => {
+        if ((d.source ?? "acctivate") === "field_only") return false;
+        const salesperson = ((d as any).salesperson ?? "").trim();
+        const territory = ((d as any).territory ?? "").trim();
+        return Boolean(salesperson || territory);
+      });
       return commercial.sort((a, b) => a.name.localeCompare(b.name));
     },
   });

@@ -19,10 +19,6 @@ import {
   useProducts, useDealerSalesLines, useDealerSales, formatCurrency,
 } from "@/hooks/usePortalData";
 
-const MONTH_ABBR_TO_NAME: Record<string, string> = {
-  Jan: "January", Feb: "February", Mar: "March", Apr: "April", May: "May", Jun: "June",
-  Jul: "July", Aug: "August", Sep: "September", Oct: "October", Nov: "November", Dec: "December",
-};
 
 /** Day-precise fetch of dealer_invoices in a combined date window. */
 function useDealerInvoicesInRange(from: Date, to: Date) {

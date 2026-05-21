@@ -86,6 +86,96 @@ function Invoke-Sql {
   }
 }
 
+function Get-SqlColumns {
+  param([string]$Schema = 'dbo', [string]$Table)
+  $rows = Invoke-Sql -Query "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '$Schema' AND TABLE_NAME = '$Table' ORDER BY ORDINAL_POSITION"
+  return @($rows | ForEach-Object { [string]$_['COLUMN_NAME'] })
+}
+
+function Quote-SqlIdentifier {
+  param([string]$Name)
+  return '[' + $Name.Replace(']', ']]') + ']'
+}
+
+function Get-FirstColumn {
+  param([string[]]$Columns, [string[]]$Candidates)
+  foreach ($candidate in $Candidates) {
+    $match = $Columns | Where-Object { $_ -ieq $candidate } | Select-Object -First 1
+    if ($match) { return [string]$match }
+  }
+  return $null
+}
+
+function New-SelectExpression {
+  param([string[]]$Columns, [string[]]$Candidates, [string]$Alias, [string]$Cast = '', [string]$Default = 'NULL')
+  $column = Get-FirstColumn -Columns $Columns -Candidates $Candidates
+  if (-not $column) { return "$Default AS $Alias" }
+  $ref = "inv.$(Quote-SqlIdentifier $column)"
+  if ($Cast) { return "CAST($ref AS $Cast) AS $Alias" }
+  return "$ref AS $Alias"
+}
+
+function New-DateSelectExpression {
+  param([string[]]$Columns, [string[]]$Candidates, [string]$Alias)
+  $column = Get-FirstColumn -Columns $Columns -Candidates $Candidates
+  if (-not $column) { return "NULL AS $Alias" }
+  return "CONVERT(VARCHAR(10), inv.$(Quote-SqlIdentifier $column), 23) AS $Alias"
+}
+
+function New-DealerInvoicesQuery {
+  $columns = Get-SqlColumns -Table 'Invoice'
+  if (-not $columns -or $columns.Count -eq 0) {
+    throw "Could not read columns for dbo.Invoice. Confirm the invoice table name in Acctivate."
+  }
+
+  $invoiceIdCol = Get-FirstColumn -Columns $columns -Candidates @('InvoiceID', 'InvoiceId', 'InvoiceGUID', 'InvoiceGuid', 'ID', 'InvoiceNumber')
+  $customerCol = Get-FirstColumn -Columns $columns -Candidates @('CustID', 'CustId', 'CustomerID', 'CustomerId', 'CustomerNumber', 'CustomerNo', 'CustNo', 'Customer', 'BillToCustID', 'BillToCustomerID')
+  if (-not $invoiceIdCol -or -not $customerCol) {
+    throw "Could not map dbo.Invoice invoice/customer columns. Found columns: $($columns -join ', ')"
+  }
+
+  $invoiceNumberExpr = New-SelectExpression -Columns $columns -Candidates @('InvoiceNumber', 'InvoiceNo', 'InvoiceNum', 'Number') -Alias 'invoice_number' -Cast 'NVARCHAR(64)' -Default "CAST(inv.$(Quote-SqlIdentifier $invoiceIdCol) AS NVARCHAR(64))"
+  $invoiceDateExpr = New-DateSelectExpression -Columns $columns -Candidates @('InvoiceDate', 'Date', 'DocDate', 'PostDate') -Alias 'invoice_date'
+  $dueDateExpr = New-DateSelectExpression -Columns $columns -Candidates @('DueDate', 'InvoiceDueDate') -Alias 'due_date'
+  $subtotalExpr = New-SelectExpression -Columns $columns -Candidates @('SubTotal', 'Subtotal', 'MerchandiseTotal', 'ProductTotal') -Alias 'subtotal' -Default '0'
+  $taxExpr = New-SelectExpression -Columns $columns -Candidates @('TaxAmount', 'SalesTax', 'Tax', 'TaxTotal') -Alias 'tax' -Default '0'
+  $freightExpr = New-SelectExpression -Columns $columns -Candidates @('FreightAmount', 'Freight', 'FreightTotal', 'ShippingAmount', 'Shipping') -Alias 'freight' -Default '0'
+  $totalExpr = New-SelectExpression -Columns $columns -Candidates @('InvoiceTotal', 'Total', 'TotalAmount', 'InvoiceAmount', 'GrandTotal') -Alias 'total' -Default '0'
+  $balanceCol = Get-FirstColumn -Columns $columns -Candidates @('BalanceDue', 'Balance', 'AmountDue', 'OpenBalance')
+  $balanceExpr = if ($balanceCol) { "inv.$(Quote-SqlIdentifier $balanceCol) AS balance" } else { "NULL AS balance" }
+  $dueDateCol = Get-FirstColumn -Columns $columns -Candidates @('DueDate', 'InvoiceDueDate')
+  $statusExpr = if ($balanceCol -and $dueDateCol) {
+    "CASE WHEN inv.$(Quote-SqlIdentifier $balanceCol) <= 0 THEN 'paid' WHEN inv.$(Quote-SqlIdentifier $dueDateCol) < CAST(GETDATE() AS DATE) THEN 'overdue' ELSE 'open' END AS status"
+  } elseif ($balanceCol) {
+    "CASE WHEN inv.$(Quote-SqlIdentifier $balanceCol) <= 0 THEN 'paid' ELSE 'open' END AS status"
+  } else {
+    "'open' AS status"
+  }
+  $termsExpr = New-SelectExpression -Columns $columns -Candidates @('TermsCode', 'Terms', 'PaymentTerms') -Alias 'terms' -Cast 'NVARCHAR(128)'
+  $salespersonExpr = New-SelectExpression -Columns $columns -Candidates @('SalespersonName', 'Salesperson', 'SalesPerson', 'SalesRep') -Alias 'salesperson' -Cast 'NVARCHAR(255)'
+  $poExpr = New-SelectExpression -Columns $columns -Candidates @('PONumber', 'PONo', 'CustomerPONumber', 'CustomerPO', 'CustPONumber', 'CustPO', 'PO') -Alias 'po_number' -Cast 'NVARCHAR(128)'
+
+  return @"
+SELECT
+  CAST(inv.$(Quote-SqlIdentifier $invoiceIdCol) AS NVARCHAR(64)) AS acctivate_id,
+  CAST(inv.$(Quote-SqlIdentifier $customerCol) AS NVARCHAR(64)) AS dealer_acctivate_id,
+  $invoiceNumberExpr,
+  $invoiceDateExpr,
+  $dueDateExpr,
+  $subtotalExpr,
+  $taxExpr,
+  $freightExpr,
+  $totalExpr,
+  $balanceExpr,
+  $statusExpr,
+  $termsExpr,
+  $salespersonExpr,
+  $poExpr
+FROM dbo.Invoice inv
+WHERE inv.$(Quote-SqlIdentifier $customerCol) IS NOT NULL
+"@
+}
+
 function Send-Batch {
   param([string]$Table, [array]$Rows, [string]$OnConflict = 'acctivate_id')
   if (-not $Rows -or $Rows.Count -eq 0) {
@@ -191,31 +281,9 @@ FROM dbo.Inventory i
 JOIN dbo.Product p ON p.ProductID = i.ProductID
 GROUP BY i.ProductID, p.ProductCode
 "@
-
-  dealer_invoices = @"
-SELECT
-  CAST(inv.InvoiceID AS NVARCHAR(64))     AS acctivate_id,
-  CAST(inv.CustID AS NVARCHAR(64))        AS dealer_acctivate_id,
-  CAST(inv.InvoiceNumber AS NVARCHAR(64)) AS invoice_number,
-  CONVERT(VARCHAR(10), inv.InvoiceDate, 23) AS invoice_date,
-  CONVERT(VARCHAR(10), inv.DueDate, 23)     AS due_date,
-  inv.SubTotal                            AS subtotal,
-  inv.TaxAmount                           AS tax,
-  inv.FreightAmount                       AS freight,
-  inv.InvoiceTotal                        AS total,
-  inv.BalanceDue                          AS balance,
-  CASE
-    WHEN inv.BalanceDue <= 0 THEN 'paid'
-    WHEN inv.DueDate < CAST(GETDATE() AS DATE) THEN 'overdue'
-    ELSE 'open'
-  END                                     AS status,
-  inv.TermsCode                           AS terms,
-  inv.SalespersonName                     AS salesperson,
-  inv.PONumber                            AS po_number
-FROM dbo.Invoice inv
-WHERE inv.CustID IS NOT NULL
-"@
 }
+
+$queries.dealer_invoices = New-DealerInvoicesQuery
 
 # ---------- Run ----------
 $enabled = if ($Tables) {

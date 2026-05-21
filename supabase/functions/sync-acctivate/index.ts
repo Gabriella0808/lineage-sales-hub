@@ -148,7 +148,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const toDeleteIds = (existing ?? [])
-        .filter((r: { id: string; acctivate_id: string | null }) => r.acctivate_id && !keepSet.has(r.acctivate_id))
+        .filter((r: { id: string; acctivate_id: string | null }) => !r.acctivate_id || !keepSet.has(r.acctivate_id))
         .map((r: { id: string }) => r.id);
 
       let deleted = 0;

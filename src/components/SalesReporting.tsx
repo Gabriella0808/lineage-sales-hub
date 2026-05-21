@@ -728,20 +728,6 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         </CardContent>
       </Card>
 
-      {noData && (
-        <Card className="border-dashed">
-          <CardContent className="p-6 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">No SKU-level sales data yet</p>
-              <p className="text-xs text-muted-foreground">
-                The SKU-level sync from Acctivate hasn't populated <span className="font-mono">products</span> or{" "}
-                <span className="font-mono">dealer_sales_lines</span> yet. Once the sync brings in dealer × SKU × month rows, this report will fill in automatically.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {!noData && lineCoverageMissing && (
         <Card className="border-dashed border-amber-500/40 bg-amber-500/5">

@@ -1,13 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Mail, Phone, ExternalLink } from "lucide-react";
 import { FilterBar } from "@/components/FilterBar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useSalesReps, useTerritories, useDealers, useManagers, formatCurrency, getRepName, getTerritoryName } from "@/hooks/usePortalData";
 import { useUserRole } from "@/hooks/useUserRole";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NoteToTask } from "@/components/NoteToTask";
+
+async function fetchDealerIdsWithCheckIns(): Promise<Set<string>> {
+  const ids = new Set<string>();
+  const pageSize = 1000;
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("dealer_check_ins")
+      .select("dealer_id")
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+    const rows = data ?? [];
+    rows.forEach((row) => row.dealer_id && ids.add(row.dealer_id));
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return ids;
+}
 
 export default function DealersPage() {
   const { data: roleInfo } = useUserRole();
@@ -18,6 +41,10 @@ export default function DealersPage() {
   const { data: territories = [] } = useTerritories();
   const { data: managers = [] } = useManagers();
   const { data: dealers = [], isLoading } = useDealers();
+  const { data: dealerIdsWithCheckIns = new Set<string>() } = useQuery({
+    queryKey: ["dealer_check_in_dealer_ids"],
+    queryFn: fetchDealerIdsWithCheckIns,
+  });
 
   const [search, setSearch] = useState("");
   const [territoryFilter, setTerritoryFilter] = useState("all");
@@ -27,21 +54,26 @@ export default function DealersPage() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
 
-  const filtered = useMemo(() => dealers.filter(d => {
+  const visibleDealers = useMemo(() => dealers.filter(d => {
+    const hasAcctivateAssignment = Boolean((d as any).territory || (d as any).sales_manager);
+    return hasAcctivateAssignment || !dealerIdsWithCheckIns.has(d.id);
+  }), [dealers, dealerIdsWithCheckIns]);
+
+  const filtered = useMemo(() => visibleDealers.filter(d => {
     if (isRep && myRepId && d.rep_id !== myRepId) return false;
     if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (territoryFilter !== "all" && d.territory_id !== territoryFilter) return false;
     if (!isRep && repFilter !== "all" && d.rep_id !== repFilter) return false;
     if (managerFilter !== "all" && (d as any).manager_id !== managerFilter) return false;
     return true;
-  }), [dealers, isRep, myRepId, search, territoryFilter, repFilter, managerFilter]);
+  }), [visibleDealers, isRep, myRepId, search, territoryFilter, repFilter, managerFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   useEffect(() => { setPage(1); }, [search, territoryFilter, repFilter, managerFilter]);
   const currentPage = Math.min(page, totalPages);
   const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const dealer = dealers.find(d => d.id === selected);
+  const dealer = visibleDealers.find(d => d.id === selected);
 
   if (isLoading) {
     return (
@@ -60,7 +92,7 @@ export default function DealersPage() {
         <p className="page-subtitle">
           {isRep
             ? `${filtered.length} assigned dealer${filtered.length === 1 ? "" : "s"}`
-            : `${dealers.length} dealers synced from Acctivate`}
+            : `${visibleDealers.length} dealers synced from Acctivate`}
         </p>
       </div>
 

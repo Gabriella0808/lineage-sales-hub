@@ -208,6 +208,22 @@ foreach ($table in $enabled) {
   $rows = Invoke-Sql -Query $queries[$table]
   Write-Host "  pulled $($rows.Count) rows from SQL"
   Send-Batch -Table $table -Rows $rows -OnConflict 'acctivate_id'
+
+  # Prune stale rows for dealers (remove anything no longer in Acctivate)
+  if ($table -eq 'dealers') {
+    $keepIds = @($rows | ForEach-Object { [string]$_.acctivate_id } | Where-Object { $_ })
+    $prunePayload = @{
+      action             = 'prune'
+      table              = 'dealers'
+      keep_acctivate_ids = $keepIds
+    } | ConvertTo-Json -Depth 4 -Compress
+    $pruneResp = Invoke-RestMethod `
+      -Method Post `
+      -Uri $FunctionUrl `
+      -Headers @{ Authorization = "Bearer $SyncToken"; 'Content-Type' = 'application/json' } `
+      -Body $prunePayload
+    Write-Host "  [dealers] pruned $($pruneResp.pruned) stale rows" -ForegroundColor DarkMagenta
+  }
 }
 
 Write-Host "Done." -ForegroundColor Green

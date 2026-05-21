@@ -444,10 +444,21 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(line.month);
       if (!primKeys.has(`${line.year}-${monthName}`)) continue;
       bookings += line.bookings ?? 0;
-      invoices += line.invoices ?? 0;
+      if (!useAggregates) invoices += line.invoices ?? 0;
+    }
+    if (useAggregates) {
+      const primFromMs = startOfDay(primary.from).getTime();
+      const primToMs = startOfDay(primary.to).getTime();
+      for (const inv of rangeInvoices) {
+        if (!inv.dealer_id || !inv.invoice_date) continue;
+        if (!dealerIdSet.has(inv.dealer_id)) continue;
+        const ms = new Date(inv.invoice_date + "T00:00:00").getTime();
+        if (Number.isNaN(ms) || ms < primFromMs || ms > primToMs) continue;
+        invoices += Number(inv.total ?? 0);
+      }
     }
     return { bookings, invoices };
-  }, [primary, useAggregates, aggregates, lines, dealerIdSet, filteredProductIds]);
+  }, [primary, useAggregates, aggregates, lines, rangeInvoices, dealerIdSet, filteredProductIds]);
 
   // Warn when a product-level filter is active but dealer_sales_lines has no rows
   // overlapping the primary date range — common right now since line sync is sparse.

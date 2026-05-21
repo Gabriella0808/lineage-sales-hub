@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   format, startOfYear, endOfMonth, subYears, subMonths, startOfMonth, startOfDay,
   startOfQuarter, subDays, differenceInCalendarDays,
@@ -12,10 +13,46 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useDealers, useSalesReps, useTerritories, useRepTerritories,
   useProducts, useDealerSalesLines, useDealerSales, formatCurrency,
 } from "@/hooks/usePortalData";
+
+const MONTH_ABBR_TO_NAME: Record<string, string> = {
+  Jan: "January", Feb: "February", Mar: "March", Apr: "April", May: "May", Jun: "June",
+  Jul: "July", Aug: "August", Sep: "September", Oct: "October", Nov: "November", Dec: "December",
+};
+
+/** Day-precise fetch of dealer_invoices in a combined date window. */
+function useDealerInvoicesInRange(from: Date, to: Date) {
+  const fromStr = format(from, "yyyy-MM-dd");
+  const toStr = format(to, "yyyy-MM-dd");
+  return useQuery({
+    queryKey: ["dealer_invoices_range", fromStr, toStr],
+    queryFn: async () => {
+      const out: { dealer_id: string | null; invoice_date: string | null; total: number | null }[] = [];
+      let start = 0;
+      const pageSize = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("dealer_id, invoice_date, total")
+          .not("dealer_id", "is", null)
+          .gte("invoice_date", fromStr)
+          .lte("invoice_date", toStr)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as typeof out;
+        out.push(...batch);
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      return out;
+    },
+  });
+}
 
 type GroupBy = "dealer" | "rep" | "territory";
 type Metric = "bookings" | "invoices";

@@ -437,6 +437,33 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         if (inComp) row.comparative += val;
         row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
       }
+    } else if (useInvoiceLines) {
+      // Day-precise + product-filtered invoice line items
+      const primFromMs = startOfDay(primary.from).getTime();
+      const primToMs = startOfDay(primary.to).getTime();
+      const compFromMs = startOfDay(comparative.from).getTime();
+      const compToMs = startOfDay(comparative.to).getTime();
+      for (const il of rangeInvoiceLines) {
+        if (!il.dealer_id || !il.invoice_date) continue;
+        if (!dealerIdSet.has(il.dealer_id)) continue;
+        if (!il.product_id || !filteredProductIds.has(il.product_id)) continue;
+        const d = new Date(il.invoice_date + "T00:00:00");
+        const ms = d.getTime();
+        if (Number.isNaN(ms)) continue;
+        const inPrim = ms >= primFromMs && ms <= primToMs;
+        const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
+        if (!inPrim && !inComp) continue;
+        const k = rowKey({ dealer_id: il.dealer_id });
+        if (!k) continue;
+        const val = Number(il.extended_price ?? 0);
+        if (val === 0) continue;
+        const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
+        let row = rows.get(k);
+        if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
+        if (inPrim) row.primary += val;
+        if (inComp) row.comparative += val;
+        row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
+      }
     } else {
       const source = useAggregates ? aggregates : lines;
       for (const line of source) {

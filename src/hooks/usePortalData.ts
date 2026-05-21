@@ -49,7 +49,10 @@ export interface DbDealer {
   engagement: string | null;
   last_contact: string | null;
   revenue: number | null;
+  source: string | null;
+  manager_id: string | null;
   created_at: string;
+
 }
 
 export interface DbManager {

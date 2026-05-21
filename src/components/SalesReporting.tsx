@@ -18,6 +18,7 @@ import {
   useDealers, useSalesReps, useTerritories, useRepTerritories,
   useProducts, useDealerSalesLines, useDealerSales, formatCurrency,
 } from "@/hooks/usePortalData";
+import { InvoiceDetailSheet } from "@/components/InvoiceDetailSheet";
 
 
 /** Day-precise fetch of dealer_invoices in a combined date window. */

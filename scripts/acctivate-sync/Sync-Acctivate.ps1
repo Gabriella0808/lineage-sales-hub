@@ -343,11 +343,26 @@ GROUP BY i.ProductID, p.ProductCode
 $queries['dealer_invoices']      = New-DealerInvoicesQuery
 $queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
 
+$tableAliases = @{
+  dealer_invoice_line  = 'dealer_invoice_lines'
+  invoice_line         = 'dealer_invoice_lines'
+  invoice_lines        = 'dealer_invoice_lines'
+  invoice_detail       = 'dealer_invoice_lines'
+  invoice_details      = 'dealer_invoice_lines'
+}
+
+function Normalize-TableKey {
+  param([string]$Table)
+  $key = $Table.Trim().Trim([char]39).Trim([char]34).ToLowerInvariant()
+  if ($tableAliases.ContainsKey($key)) { return $tableAliases[$key] }
+  return $key
+}
+
 # ---------- Run ----------
 $enabled = if ($Tables) {
-  @($Tables) | ForEach-Object { $_ -split '[,\s]+' } | ForEach-Object { $_.Trim().Trim([char]39).Trim([char]34) } | Where-Object { $_ }
+  @($Tables) | ForEach-Object { $_ -split '[,\s]+' } | ForEach-Object { Normalize-TableKey $_ } | Where-Object { $_ }
 } else {
-  $config.enabledTables
+  @($config.enabledTables) | ForEach-Object { Normalize-TableKey $_ } | Where-Object { $_ }
 }
 if (-not $enabled -or $enabled.Count -eq 0) {
   $enabled = $queries.Keys
@@ -361,7 +376,7 @@ if ($Prune) {
 
 foreach ($table in $enabled) {
   if (-not $queries.ContainsKey($table)) {
-    Write-Warning "No query defined for '$table' — skipping."
+    Write-Warning "No query defined for '$table' — skipping. Available: $($queries.Keys -join ', ')"
     continue
   }
   Write-Host "==> $table" -ForegroundColor Yellow

@@ -137,9 +137,12 @@ export function InvoiceDetailSheet({
       const category = p?.category ?? null;
 
       const skuKey = sku;
-      const sCur = bySku.get(skuKey) ?? { sku, name, qty: 0, total: 0, brand, collection };
-      sCur.qty += qty; sCur.total += ext;
-      bySku.set(skuKey, sCur);
+      const isFeeLike = /tariff|surcharge|freight|shipping|pass[- ]?through/i.test(`${sku} ${name}`);
+      if (!isFeeLike) {
+        const sCur = bySku.get(skuKey) ?? { sku, name, qty: 0, total: 0, brand, collection };
+        sCur.qty += qty; sCur.total += ext;
+        bySku.set(skuKey, sCur);
+      }
 
       const bKey = brand ?? "Unknown";
       const bCur = byBrand.get(bKey) ?? { qty: 0, total: 0 };

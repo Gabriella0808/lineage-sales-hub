@@ -432,6 +432,10 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   const sumI25 = sum(monthly, "i25");
   const sumI26P = sum(monthly, "i26p");
   const sumYtdI = sum(monthly, "ytdI");
+  const sumYtdICont = monthly.reduce((s, r: any) => s + (r.ytdIContainer ?? 0), 0);
+  const sumYtdIWh = monthly.reduce((s, r: any) => s + (r.ytdIWarehouse ?? 0), 0);
+  const sumI25Cont = monthly.reduce((s, r: any) => s + (r.i25Container ?? 0), 0);
+  const sumI25Wh = monthly.reduce((s, r: any) => s + (r.i25Warehouse ?? 0), 0);
   const dayOfYear = Math.floor((TODAY.getTime() - new Date(TODAY.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
   const annualB = sumYtdB / dayOfYear * 365;
   const annualI = sumYtdI / dayOfYear * 365;

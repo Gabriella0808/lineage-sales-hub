@@ -131,6 +131,14 @@ const REP_NAME_TO_MONTHLY_KEYS: Record<string, string[]> = {
   "WI/IL":            ["WI/IL"],
 };
 
+// Maps Live KPI display rep names → matching name(s) in the sales_reps table
+// (used to pull `rep_targets` for the 26 Proj column). Names not listed fall
+// back to an exact match against the display name.
+const REP_NAME_TO_DB_NAMES: Record<string, string[]> = {
+  "Hospitality":     ["Sergio - Hospitality"],
+  "Jordan Shindell": ["Jordan Shindell", "Shindell - PA/OH"],
+};
+
 function sumRepMonthly(keys: string[]): RepMonthRow[] | null {
   const tabs = keys.map((k) => REP_MONTHLY[k]).filter(Boolean);
   if (tabs.length === 0) return null;
@@ -397,9 +405,12 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     else if (territoryFilter.length > 0) scopedRepNames = visibleReps.map(r => r.name);
     else if (allowedRepNames && allowedRepNames.length > 0) scopedRepNames = allowedRepNames;
 
-    const repIds = scopedRepNames === null
+    const expandedDbNames = scopedRepNames === null
+      ? null
+      : new Set(scopedRepNames.flatMap(n => REP_NAME_TO_DB_NAMES[n] ?? [n]));
+    const repIds = expandedDbNames === null
       ? dbReps.map(r => r.id)
-      : dbReps.filter(r => scopedRepNames!.includes(r.name)).map(r => r.id);
+      : dbReps.filter(r => expandedDbNames.has(r.name)).map(r => r.id);
     const repIdSet = new Set(repIds);
     const scoped = targets2026.filter(t => repIdSet.has(t.rep_id));
 

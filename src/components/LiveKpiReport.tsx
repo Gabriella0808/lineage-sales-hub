@@ -301,10 +301,22 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     }));
   };
 
+  // Determine the rep scope for live aggregates (rep > territory > manager > all).
+  // This mirrors the logic used for targets/scaledMonthly so live invoiced data
+  // narrows down when a specific rep is viewed.
+  const scopedDbRepNames = useMemo<string[] | null>(() => {
+    let scoped: string[] | null = null;
+    if (repFilter.length > 0) scoped = repFilter;
+    else if (territoryFilter.length > 0) scoped = visibleReps.map((r) => r.name);
+    else if (allowedRepNames && allowedRepNames.length > 0) scoped = allowedRepNames;
+    if (scoped === null) return null;
+    return Array.from(new Set(scoped.flatMap((n) => REP_NAME_TO_DB_NAMES[n] ?? [n])));
+  }, [repFilter, territoryFilter, visibleReps, allowedRepNames]);
+
   // Live actuals from dealer_sales (current year YTD + prior year). Projections
   // (b26p / i26p) remain seeded from the spreadsheet defaults below and are
   // user-editable via inline cells.
-  const { data: liveAgg } = useDealerSalesAggregates();
+  const { data: liveAgg } = useDealerSalesAggregates(scopedDbRepNames);
 
   const baseMonthly = useMemo(() => MONTHLY.map((seed) => {
     const live = liveAgg.find((r) => r.m === seed.m);

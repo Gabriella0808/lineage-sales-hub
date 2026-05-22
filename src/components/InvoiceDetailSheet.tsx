@@ -126,6 +126,7 @@ export function InvoiceDetailSheet({
       const ext = Number(l.extended_price ?? 0);
       const qty = Number(l.qty ?? 0);
       totalAmt += ext;
+      totalQty += qty;
       if (l.invoice_acctivate_id) invoiceIds.add(l.invoice_acctivate_id);
 
       const p = l.product_id ? productById.get(l.product_id) : null;
@@ -138,12 +139,10 @@ export function InvoiceDetailSheet({
       const skuKey = sku;
       const isFeeLike = /tariff|surcharge|freight|shipping|pass[- ]?through/i.test(`${sku} ${name}`);
       if (!isFeeLike) {
-        totalQty += qty;
         const sCur = bySku.get(skuKey) ?? { sku, name, qty: 0, total: 0, brand, collection };
         sCur.qty += qty; sCur.total += ext;
         bySku.set(skuKey, sCur);
       }
-
 
       const bKey = brand ?? "Unknown";
       const bCur = byBrand.get(bKey) ?? { qty: 0, total: 0 };

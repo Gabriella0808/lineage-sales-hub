@@ -860,11 +860,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
                     {showB && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdB)}</td>
-                      <td className="p-2 text-right">
-                        {hasRepSelection
-                          ? formatCurrency(r.b26p)
-                          : <EditableCurrency value={r.b26p} onSave={(v) => saveMonthly(r.m, "b26p", v)} />}
-                      </td>
+                      <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdB / r.b26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.b25)}</td>
                       <td className="p-2 text-right text-muted-foreground">—</td>
@@ -872,11 +868,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                     </>}
                     {showI && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
-                      <td className="p-2 text-right">
-                        {hasRepSelection
-                          ? formatCurrency(r.i26p)
-                          : <EditableCurrency value={r.i26p} onSave={(v) => saveMonthly(r.m, "i26p", v)} />}
-                      </td>
+                      <td className="p-2 text-right">{formatCurrency(r.i26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.i25)}</td>
                       <td className="p-2 text-right">{fmtPct((ytdICont + i25Cont) / Math.max(r.ytdI + r.i25, 1))}</td>

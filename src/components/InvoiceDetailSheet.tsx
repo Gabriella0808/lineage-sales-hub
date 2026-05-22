@@ -88,6 +88,38 @@ export function InvoiceDetailSheet({
     },
   });
 
+  // Fetch invoice headers (for branch) for the same scope.
+  const { data: headers = [] } = useQuery({
+    queryKey: ["invoice_headers_branch", groupBy, rowKey, fromStr, toStr, dealerIds.join(",")],
+    enabled: open && dealerIds.length > 0,
+    queryFn: async () => {
+      const out: { acctivate_id: string | null; total: number | null; branch: string | null }[] = [];
+      const chunkSize = 200;
+      for (let i = 0; i < dealerIds.length; i += chunkSize) {
+        const chunk = dealerIds.slice(i, i + chunkSize);
+        let start = 0;
+        const pageSize = 1000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await supabase
+            .from("dealer_invoices")
+            .select("acctivate_id, total, branch")
+            .in("dealer_id", chunk)
+            .gte("invoice_date", fromStr)
+            .lte("invoice_date", toStr)
+            .range(start, start + pageSize - 1);
+          if (error) throw error;
+          const batch = (data ?? []) as typeof out;
+          out.push(...batch);
+          if (batch.length < pageSize) break;
+          start += pageSize;
+        }
+      }
+      return out;
+    },
+  });
+
+
   const productById = useMemo(() => {
     const m = new Map<string, DbProduct>();
     for (const p of products) m.set(p.id, p);
@@ -197,6 +229,29 @@ export function InvoiceDetailSheet({
     };
   }, [lines, productById, dealerById, repById, territoryById]);
 
+  const branchSummary = useMemo(() => {
+    const buckets = new Map<string, { total: number; count: number }>();
+    let grand = 0;
+    for (const h of headers) {
+      const raw = (h.branch ?? "").trim();
+      const lower = raw.toLowerCase();
+      let label: string;
+      if (lower.includes("container")) label = "Container";
+      else if (lower.includes("warehouse")) label = "Warehouse";
+      else if (lower.includes("direct")) label = "Direct Shipping";
+      else label = raw || "Unknown";
+      const v = Number(h.total) || 0;
+      const cur = buckets.get(label) ?? { total: 0, count: 0 };
+      cur.total += v; cur.count += 1;
+      buckets.set(label, cur);
+      grand += v;
+    }
+    const rows = Array.from(buckets.entries())
+      .map(([label, v]) => ({ label, ...v, pct: grand > 0 ? v.total / grand : 0 }))
+      .sort((a, b) => b.total - a.total);
+    return { rows, grand };
+  }, [headers]);
+
   const showDealerBreakdown = groupBy !== "dealer";
   const showRepBreakdown = groupBy !== "rep";
   const showTerritoryBreakdown = groupBy !== "territory";
@@ -236,6 +291,23 @@ export function InvoiceDetailSheet({
 
         {!isLoading && lines.length > 0 && (
           <div className="mt-6 space-y-6">
+            {branchSummary.rows.length > 0 && (
+              <Section title="By Branch" count={branchSummary.rows.length}>
+                <table className="w-full text-xs">
+                  <tbody>
+                    {branchSummary.rows.map((b) => (
+                      <tr key={b.label} className="border-b last:border-0">
+                        <td className="py-1.5">{b.label}</td>
+                        <td className="py-1.5 text-right tabular-nums text-muted-foreground">{b.count.toLocaleString()} inv</td>
+                        <td className="py-1.5 text-right tabular-nums">{(b.pct * 100).toFixed(1)}%</td>
+                        <td className="py-1.5 text-right tabular-nums">{formatCurrency(b.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Section>
+            )}
+
             <div className="grid sm:grid-cols-2 gap-6">
               <Section title="By Brand" count={summary.byBrand.length}>
                 <BreakdownList rows={summary.byBrand.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />

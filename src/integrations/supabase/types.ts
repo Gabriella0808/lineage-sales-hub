@@ -411,6 +411,7 @@ export type Database = {
         Row: {
           acctivate_id: string
           balance: number | null
+          branch: string | null
           created_at: string
           dealer_acctivate_id: string | null
           dealer_id: string | null
@@ -431,6 +432,7 @@ export type Database = {
         Insert: {
           acctivate_id: string
           balance?: number | null
+          branch?: string | null
           created_at?: string
           dealer_acctivate_id?: string | null
           dealer_id?: string | null
@@ -451,6 +453,7 @@ export type Database = {
         Update: {
           acctivate_id?: string
           balance?: number | null
+          branch?: string | null
           created_at?: string
           dealer_acctivate_id?: string | null
           dealer_id?: string | null

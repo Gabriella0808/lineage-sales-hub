@@ -291,6 +291,23 @@ export function InvoiceDetailSheet({
 
         {!isLoading && lines.length > 0 && (
           <div className="mt-6 space-y-6">
+            {branchSummary.rows.length > 0 && (
+              <Section title="By Branch" count={branchSummary.rows.length}>
+                <table className="w-full text-xs">
+                  <tbody>
+                    {branchSummary.rows.map((b) => (
+                      <tr key={b.label} className="border-b last:border-0">
+                        <td className="py-1.5">{b.label}</td>
+                        <td className="py-1.5 text-right tabular-nums text-muted-foreground">{b.count.toLocaleString()} inv</td>
+                        <td className="py-1.5 text-right tabular-nums">{(b.pct * 100).toFixed(1)}%</td>
+                        <td className="py-1.5 text-right tabular-nums">{formatCurrency(b.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Section>
+            )}
+
             <div className="grid sm:grid-cols-2 gap-6">
               <Section title="By Brand" count={summary.byBrand.length}>
                 <BreakdownList rows={summary.byBrand.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />

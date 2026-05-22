@@ -154,6 +154,7 @@ function New-DealerInvoicesQuery {
   $termsExpr = New-SelectExpression -Columns $columns -Candidates @('TermsCode', 'Terms', 'PaymentTerms') -Alias 'terms' -Cast 'NVARCHAR(128)'
   $salespersonExpr = New-SelectExpression -Columns $columns -Candidates @('SalespersonName', 'Salesperson', 'SalesPerson', 'SalesRep') -Alias 'salesperson' -Cast 'NVARCHAR(255)'
   $poExpr = New-SelectExpression -Columns $columns -Candidates @('PONumber', 'PONo', 'CustomerPONumber', 'CustomerPO', 'CustPONumber', 'CustPO', 'PO') -Alias 'po_number' -Cast 'NVARCHAR(128)'
+  $branchExpr = New-SelectExpression -Columns $columns -Candidates @('Branch', 'BranchID', 'BranchId', 'BranchName', 'Branch_Description', 'BranchDescription', 'WarehouseID', 'WarehouseId', 'Warehouse', 'WarehouseName', 'WarehouseCode', 'Location', 'LocationID', 'LocationId', 'LocationName') -Alias 'branch' -Cast 'NVARCHAR(128)'
 
   return @"
 SELECT
@@ -170,7 +171,8 @@ SELECT
   $statusExpr,
   $termsExpr,
   $salespersonExpr,
-  $poExpr
+  $poExpr,
+  $branchExpr
 FROM dbo.Invoice inv
 WHERE inv.$(Quote-SqlIdentifier $customerCol) IS NOT NULL
 "@

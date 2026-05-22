@@ -455,7 +455,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     });
   };
 
-  const chartMonthly = useMemo(() => applyBrandFilter(scaledMonthly), [scaledMonthly, monthlyLineFilter, scaledLine]);
+  const chartMonthly = useMemo(() => applyBrandFilter(scaledMonthlyWithTargets), [scaledMonthlyWithTargets, monthlyLineFilter, scaledLine]);
   const monthly = useMemo(() => {
     return monthFilter === "All" ? chartMonthly : chartMonthly.filter((r) => r.m === monthFilter);
   }, [monthFilter, chartMonthly]);

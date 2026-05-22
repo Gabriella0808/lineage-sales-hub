@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { formatCurrency, useSalesReps } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Pencil, ChevronsUpDown, Check, X } from "lucide-react";
+import { ChevronsUpDown, Check, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -26,49 +26,6 @@ function loadOverrides(): ProjOverrides {
   }
 }
 
-/** Inline editable currency cell. Calls onSave with the new numeric value. */
-function EditableCurrency({ value, onSave }: { value: number; onSave: (v: number) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(Math.round(value)));
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { if (!editing) setDraft(String(Math.round(value))); }, [value, editing]);
-  useEffect(() => { if (editing) inputRef.current?.select(); }, [editing]);
-
-  const commit = () => {
-    const n = Number(draft.replace(/[^0-9.\-]/g, ""));
-    if (!Number.isNaN(n)) onSave(n);
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <input
-        ref={inputRef}
-        type="number"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
-          if (e.key === "Escape") { setDraft(String(Math.round(value))); setEditing(false); }
-        }}
-        className="w-28 h-7 px-1 text-right text-xs border border-primary rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-      />
-    );
-  }
-
-  return (
-    <button
-      onClick={() => setEditing(true)}
-      className="group inline-flex items-center gap-1 px-1 py-0.5 -mx-1 rounded hover:bg-primary/10 transition-colors"
-      title="Click to edit projection"
-    >
-      <span>{formatCurrency(value)}</span>
-      <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-60 text-primary" />
-    </button>
-  );
-}
 
 // Static seed data mirroring KPI_2026.01.15_Live.xlsx → Summary tab
 // Wire to live aggregates once monthly_projections + bookings_by_line tables exist.
@@ -288,12 +245,6 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     try { localStorage.setItem(PROJ_STORAGE_KEY, JSON.stringify(overrides)); } catch { /* ignore */ }
   }, [overrides]);
 
-  const updateMonthly = (month: string, key: "b26p" | "i26p", val: number) => {
-    setOverrides((prev) => ({
-      ...prev,
-      monthly: { ...(prev.monthly ?? {}), [month]: { ...(prev.monthly?.[month] ?? {}), [key]: val } },
-    }));
-  };
   const updateLine = (month: string, key: "luxP" | "swP" | "flP", val: number) => {
     setOverrides((prev) => ({
       ...prev,
@@ -332,7 +283,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       i25Warehouse:  live?.i25Warehouse  ?? 0,
       ytdIContainer: live?.ytdIContainer ?? 0,
       ytdIWarehouse: live?.ytdIWarehouse ?? 0,
-      // Projection cells stay editable; apply overrides on top of seed.
+      // Apply overrides on top of seed (line-level only; monthly projections are no longer editable).
       b26p: overrides.monthly?.[seed.m]?.b26p ?? seed.b26p,
       i26p: overrides.monthly?.[seed.m]?.i26p ?? seed.i26p,
     };
@@ -364,12 +315,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     ? (totalRepBook > 0 ? selectedRepBook / totalRepBook : 0)
     : (allowedRepNames === null ? 1 : (totalRepBook > 0 ? managerRepBook / totalRepBook : 0));
 
-  // Edits to per-rep projections aren't persisted back to the team total (real per-rep
-  // numbers come from the spreadsheet). For "All" view we still write through to MONTHLY.
-  const saveMonthly = (month: string, key: "b26p" | "i26p", displayedVal: number) => {
-    if (hasRepSelection) return; // editing disabled when viewing specific rep(s)
-    updateMonthly(month, key, displayedVal);
-  };
+  // Line-level projections remain editable.
   const saveLine = (month: string, key: "luxP" | "swP" | "flP", displayedVal: number) => {
     const base = repShare > 0 ? displayedVal / repShare : displayedVal;
     updateLine(month, key, base);
@@ -812,7 +758,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
           Bookings & Invoiced — 2025 actual vs 2026 projection vs YTD
           {hasRepSelection
             ? <span className="ml-1">· live data from <span className="font-medium text-foreground">{repFilter.length === 1 ? `${repFilter[0]} tab` : `${repFilter.length} reps`}</span></span>
-            : <> · <span className="text-primary">Click any 2026 P value to edit</span></>}
+            : <> · all reps</>}
         </p>
 
 
@@ -860,11 +806,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
                     {showB && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdB)}</td>
-                      <td className="p-2 text-right">
-                        {hasRepSelection
-                          ? formatCurrency(r.b26p)
-                          : <EditableCurrency value={r.b26p} onSave={(v) => saveMonthly(r.m, "b26p", v)} />}
-                      </td>
+                      <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdB / r.b26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.b25)}</td>
                       <td className="p-2 text-right text-muted-foreground">—</td>
@@ -872,11 +814,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                     </>}
                     {showI && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
-                      <td className="p-2 text-right">
-                        {hasRepSelection
-                          ? formatCurrency(r.i26p)
-                          : <EditableCurrency value={r.i26p} onSave={(v) => saveMonthly(r.m, "i26p", v)} />}
-                      </td>
+                      <td className="p-2 text-right">{formatCurrency(r.i26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.i25)}</td>
                       <td className="p-2 text-right">{fmtPct((ytdICont + i25Cont) / Math.max(r.ytdI + r.i25, 1))}</td>

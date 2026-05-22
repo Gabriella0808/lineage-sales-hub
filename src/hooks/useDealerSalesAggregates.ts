@@ -33,12 +33,18 @@ export function classifyBranch(raw: string | null | undefined): "container" | "w
 
 /**
  * Fetches dealer_sales rows for the current and previous calendar year and
- * aggregates them by month.
+ * aggregates them by month. When `repNames` is provided (and non-empty), the
+ * aggregates are scoped to dealers whose `rep_id` resolves to one of those
+ * sales_reps names. Pass `null`/`undefined` for company-wide totals.
  */
-export function useDealerSalesAggregates() {
+export function useDealerSalesAggregates(repNames?: string[] | null) {
   const [data, setData] = useState<MonthlyAgg[]>(() => emptyYear());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const repKey = !repNames
+    ? "__all__"
+    : [...repNames].map((s) => s.toLowerCase()).sort().join("|");
 
   useEffect(() => {
     let cancelled = false;
@@ -56,40 +62,77 @@ export function useDealerSalesAggregates() {
         }]),
       );
 
+      // Resolve rep scope → dealer ids.
+      let dealerIds: string[] | null = null;
+      if (repNames && repNames.length > 0) {
+        const { data: repRows, error: repErr } = await supabase
+          .from("sales_reps")
+          .select("id")
+          .in("name", repNames);
+        if (repErr) { if (!cancelled) { setError(repErr.message); setLoading(false); } return; }
+        const repIds = (repRows ?? []).map((r: any) => r.id);
+        if (repIds.length === 0) {
+          if (!cancelled) { setData(MONTH_NAMES.map((m) => agg[m])); setLoading(false); }
+          return;
+        }
+        const { data: dealerRows, error: dealerErr } = await supabase
+          .from("dealers")
+          .select("id")
+          .in("rep_id", repIds);
+        if (dealerErr) { if (!cancelled) { setError(dealerErr.message); setLoading(false); } return; }
+        dealerIds = (dealerRows ?? []).map((d: any) => d.id);
+        if (dealerIds.length === 0) {
+          if (!cancelled) { setData(MONTH_NAMES.map((m) => agg[m])); setLoading(false); }
+          return;
+        }
+      }
+
       // Bookings still come from dealer_sales rollup if populated.
-      const { data: salesRows, error: salesErr } = await supabase
-        .from("dealer_sales")
-        .select("year, month, bookings")
-        .in("year", [currentYear, prevYear]);
-      if (salesErr) { if (!cancelled) { setError(salesErr.message); setLoading(false); } return; }
-      for (const r of salesRows ?? []) {
-        const monthIdx = parseInt(String(r.month), 10) - 1;
-        if (monthIdx < 0 || monthIdx > 11) continue;
-        const name = MONTH_NAMES[monthIdx];
-        const bk = Number(r.bookings) || 0;
-        if (r.year === currentYear) agg[name].ytdB += bk;
-        else if (r.year === prevYear) agg[name].b25 += bk;
+      {
+        const dealerChunks: (string[] | null)[] = dealerIds ? chunk(dealerIds, 200) : [null];
+        for (const ch of dealerChunks) {
+          let q = supabase
+            .from("dealer_sales")
+            .select("year, month, bookings, dealer_id")
+            .in("year", [currentYear, prevYear]);
+          if (ch) q = q.in("dealer_id", ch);
+          const { data: salesRows, error: salesErr } = await q;
+          if (salesErr) { if (!cancelled) { setError(salesErr.message); setLoading(false); } return; }
+          for (const r of salesRows ?? []) {
+            const monthIdx = parseInt(String(r.month), 10) - 1;
+            if (monthIdx < 0 || monthIdx > 11) continue;
+            const name = MONTH_NAMES[monthIdx];
+            const bk = Number(r.bookings) || 0;
+            if (r.year === currentYear) agg[name].ytdB += bk;
+            else if (r.year === prevYear) agg[name].b25 += bk;
+          }
+        }
       }
 
       // Invoices come from dealer_invoices (live Acctivate sync).
       const start = `${prevYear}-01-01`;
       const end = `${currentYear + 1}-01-01`;
       const invoices: { invoice_date: string | null; total: number | null; branch: string | null }[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .from("dealer_invoices")
-          .select("invoice_date, total, branch")
-          .gte("invoice_date", start)
-          .lt("invoice_date", end)
-          .range(from, from + pageSize - 1);
-        if (error) { if (!cancelled) { setError(error.message); setLoading(false); } return; }
-        const batch = (data ?? []) as typeof invoices;
-        invoices.push(...batch);
-        if (batch.length < pageSize) break;
-        from += pageSize;
+      const dealerChunks: (string[] | null)[] = dealerIds ? chunk(dealerIds, 200) : [null];
+      for (const ch of dealerChunks) {
+        let from = 0;
+        const pageSize = 1000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          let q = supabase
+            .from("dealer_invoices")
+            .select("invoice_date, total, branch")
+            .gte("invoice_date", start)
+            .lt("invoice_date", end)
+            .range(from, from + pageSize - 1);
+          if (ch) q = q.in("dealer_id", ch);
+          const { data, error } = await q;
+          if (error) { if (!cancelled) { setError(error.message); setLoading(false); } return; }
+          const batch = (data ?? []) as typeof invoices;
+          invoices.push(...batch);
+          if (batch.length < pageSize) break;
+          from += pageSize;
+        }
       }
       for (const r of invoices) {
         if (!r.invoice_date) continue;
@@ -116,9 +159,16 @@ export function useDealerSalesAggregates() {
     })();
 
     return () => { cancelled = true; };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repKey]);
 
   return { data, loading, error };
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
 function emptyYear(): MonthlyAgg[] {

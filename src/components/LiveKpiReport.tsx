@@ -131,6 +131,14 @@ const REP_NAME_TO_MONTHLY_KEYS: Record<string, string[]> = {
   "WI/IL":            ["WI/IL"],
 };
 
+// Maps Live KPI display rep names → matching name(s) in the sales_reps table
+// (used to pull `rep_targets` for the 26 Proj column). Names not listed fall
+// back to an exact match against the display name.
+const REP_NAME_TO_DB_NAMES: Record<string, string[]> = {
+  "Hospitality":     ["Sergio - Hospitality"],
+  "Jordan Shindell": ["Jordan Shindell", "Shindell - PA/OH"],
+};
+
 function sumRepMonthly(keys: string[]): RepMonthRow[] | null {
   const tabs = keys.map((k) => REP_MONTHLY[k]).filter(Boolean);
   if (tabs.length === 0) return null;

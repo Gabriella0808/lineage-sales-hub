@@ -233,6 +233,33 @@ export function InvoiceDetailSheet({
 
         {!isLoading && lines.length > 0 && (
           <div className="mt-6 space-y-6">
+            <div className="grid sm:grid-cols-2 gap-6">
+              <Section title="By Brand" count={summary.byBrand.length}>
+                <BreakdownList rows={summary.byBrand.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />
+              </Section>
+              <Section title="By Collection" count={summary.byCollection.length}>
+                <BreakdownList rows={summary.byCollection.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />
+              </Section>
+              <Section title="By Category" count={summary.byCategory.length}>
+                <BreakdownList rows={summary.byCategory.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />
+              </Section>
+              {showRepBreakdown && (
+                <Section title="By Rep" count={summary.byRep.length}>
+                  <BreakdownList rows={summary.byRep.map((b) => ({ label: b.name, total: b.total }))} />
+                </Section>
+              )}
+              {showTerritoryBreakdown && (
+                <Section title="By Territory" count={summary.byTerritory.length}>
+                  <BreakdownList rows={summary.byTerritory.map((b) => ({ label: b.name, total: b.total }))} />
+                </Section>
+              )}
+              {showDealerBreakdown && (
+                <Section title="By Dealer" count={summary.byDealer.length}>
+                  <BreakdownList rows={summary.byDealer.map((b) => ({ label: b.name, total: b.total }))} />
+                </Section>
+              )}
+            </div>
+
             <Section title="Top SKUs" count={summary.bySku.length}>
               <table className="w-full text-xs">
                 <thead className="text-muted-foreground">
@@ -261,33 +288,6 @@ export function InvoiceDetailSheet({
                 <p className="text-[11px] text-muted-foreground mt-1">Showing top 50 of {summary.bySku.length} SKUs</p>
               )}
             </Section>
-
-            <div className="grid sm:grid-cols-2 gap-6">
-              <Section title="By Brand" count={summary.byBrand.length}>
-                <BreakdownList rows={summary.byBrand.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />
-              </Section>
-              <Section title="By Collection" count={summary.byCollection.length}>
-                <BreakdownList rows={summary.byCollection.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />
-              </Section>
-              <Section title="By Category" count={summary.byCategory.length}>
-                <BreakdownList rows={summary.byCategory.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />
-              </Section>
-              {showRepBreakdown && (
-                <Section title="By Rep" count={summary.byRep.length}>
-                  <BreakdownList rows={summary.byRep.map((b) => ({ label: b.name, total: b.total }))} />
-                </Section>
-              )}
-              {showTerritoryBreakdown && (
-                <Section title="By Territory" count={summary.byTerritory.length}>
-                  <BreakdownList rows={summary.byTerritory.map((b) => ({ label: b.name, total: b.total }))} />
-                </Section>
-              )}
-              {showDealerBreakdown && (
-                <Section title="By Dealer" count={summary.byDealer.length}>
-                  <BreakdownList rows={summary.byDealer.map((b) => ({ label: b.name, total: b.total }))} />
-                </Section>
-              )}
-            </div>
           </div>
         )}
       </SheetContent>

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { REP_MONTHLY, type RepMonthRow } from "@/data/repMonthly";
 import { useDealerSalesAggregates } from "@/hooks/useDealerSalesAggregates";
 import { MtdInvoicingCard } from "@/components/MtdInvoicingCard";
+import { useRepTargets, MONTH_LABEL_TO_KEY, type RepTarget } from "@/hooks/useRepTargets";
 
 const PROJ_STORAGE_KEY = "kpi_projections_2026_v1";
 

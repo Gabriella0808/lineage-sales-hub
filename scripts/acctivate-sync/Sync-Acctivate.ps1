@@ -154,7 +154,28 @@ function New-DealerInvoicesQuery {
   $termsExpr = New-SelectExpression -Columns $columns -Candidates @('TermsCode', 'Terms', 'PaymentTerms') -Alias 'terms' -Cast 'NVARCHAR(128)'
   $salespersonExpr = New-SelectExpression -Columns $columns -Candidates @('SalespersonName', 'Salesperson', 'SalesPerson', 'SalesRep') -Alias 'salesperson' -Cast 'NVARCHAR(255)'
   $poExpr = New-SelectExpression -Columns $columns -Candidates @('PONumber', 'PONo', 'CustomerPONumber', 'CustomerPO', 'CustPONumber', 'CustPO', 'PO') -Alias 'po_number' -Cast 'NVARCHAR(128)'
-  $branchExpr = New-SelectExpression -Columns $columns -Candidates @('Branch', 'BranchID', 'BranchId', 'BranchName', 'Branch_Description', 'BranchDescription', 'WarehouseID', 'WarehouseId', 'Warehouse', 'WarehouseName', 'WarehouseCode', 'Location', 'LocationID', 'LocationId', 'LocationName') -Alias 'branch' -Cast 'NVARCHAR(128)'
+  # Acctivate stores branch as a short code in dbo.Invoice.BranchID
+  # (e.g. DIRECT, WHSALES, CONTAINER). Map those to readable labels the
+  # UI groups on (substring match: container / warehouse / direct).
+  $branchCol = Get-FirstColumn -Columns $columns -Candidates @('BranchID', 'BranchId', 'Branch', 'BranchCode', 'BranchName', 'WarehouseID', 'WarehouseId', 'Warehouse', 'LocationID', 'LocationId', 'Location')
+  if ($branchCol) {
+    $bref = "inv.$(Quote-SqlIdentifier $branchCol)"
+    $branchExpr = @"
+CASE UPPER(LTRIM(RTRIM(CAST($bref AS NVARCHAR(128)))))
+  WHEN 'WHSALES'   THEN 'Warehouse'
+  WHEN 'WH'        THEN 'Warehouse'
+  WHEN 'WAREHOUSE' THEN 'Warehouse'
+  WHEN 'CONTAINER' THEN 'Container'
+  WHEN 'CONT'      THEN 'Container'
+  WHEN 'DIRECT'    THEN 'Direct Shipping'
+  WHEN 'DIRECTSHIP' THEN 'Direct Shipping'
+  WHEN 'DS'        THEN 'Direct Shipping'
+  ELSE CAST($bref AS NVARCHAR(128))
+END AS branch
+"@
+  } else {
+    $branchExpr = 'NULL AS branch'
+  }
 
   return @"
 SELECT

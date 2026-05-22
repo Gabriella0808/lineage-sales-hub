@@ -745,11 +745,15 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
         </div>
       </div>
 
-      {/* Bookings — Actual vs Goal chart */}
+      {/* Actual vs Goal chart — mirrors the Monthly Results table below */}
       <div className="glass-card p-5">
         <div className="flex items-baseline justify-between mb-3">
           <div>
-            <h3 className="text-base font-semibold">Bookings — Actual vs Goal</h3>
+            <h3 className="text-base font-semibold">
+              {showB && showI ? "Bookings & Invoiced — Actual vs Goal"
+                : showI ? "Invoiced — Actual vs Goal"
+                : "Bookings — Actual vs Goal"}
+            </h3>
             <p className="text-xs text-muted-foreground">
               Monthly 2026 projection (goal) vs YTD actual
               {hasRepSelection
@@ -757,14 +761,20 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                 : <> · all reps</>}
             </p>
           </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-primary/70" />2026 Goal</span>
-            <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-accent" />YTD 2026</span>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap justify-end">
+            {showB && <>
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-primary/70" />Bookings Goal</span>
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-accent" />Bookings YTD</span>
+            </>}
+            {showI && <>
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-primary/40" />Invoiced Goal</span>
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-accent/60" />Invoiced YTD</span>
+            </>}
           </div>
         </div>
         <div style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartMonthly} margin={{ top: 8, right: 16, left: 8, bottom: 8 }} barCategoryGap="20%">
+            <BarChart data={monthly} margin={{ top: 8, right: 16, left: 8, bottom: 8 }} barCategoryGap="20%">
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="m"
@@ -785,12 +795,15 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                 }}
                 formatter={(v: number, name: string) => [formatCurrency(v), name]}
               />
-              <Bar dataKey="b26p" name="2026 Goal" fill="hsl(var(--primary) / 0.7)" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="ytdB" name="YTD 2026" fill="hsl(var(--accent))" radius={[3, 3, 0, 0]} />
+              {showB && <Bar dataKey="b26p" name="Bookings Goal" fill="hsl(var(--primary) / 0.7)" radius={[3, 3, 0, 0]} />}
+              {showB && <Bar dataKey="ytdB" name="Bookings YTD" fill="hsl(var(--accent))" radius={[3, 3, 0, 0]} />}
+              {showI && <Bar dataKey="i26p" name="Invoiced Goal" fill="hsl(var(--primary) / 0.4)" radius={[3, 3, 0, 0]} />}
+              {showI && <Bar dataKey="ytdI" name="Invoiced YTD" fill="hsl(var(--accent) / 0.6)" radius={[3, 3, 0, 0]} />}
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
+
 
       {/* Monthly Results */}
       <div className="glass-card p-5">

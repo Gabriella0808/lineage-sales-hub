@@ -229,6 +229,29 @@ export function InvoiceDetailSheet({
     };
   }, [lines, productById, dealerById, repById, territoryById]);
 
+  const branchSummary = useMemo(() => {
+    const buckets = new Map<string, { total: number; count: number }>();
+    let grand = 0;
+    for (const h of headers) {
+      const raw = (h.branch ?? "").trim();
+      const lower = raw.toLowerCase();
+      let label: string;
+      if (lower.includes("container")) label = "Container";
+      else if (lower.includes("warehouse")) label = "Warehouse";
+      else if (lower.includes("direct")) label = "Direct Shipping";
+      else label = raw || "Unknown";
+      const v = Number(h.total) || 0;
+      const cur = buckets.get(label) ?? { total: 0, count: 0 };
+      cur.total += v; cur.count += 1;
+      buckets.set(label, cur);
+      grand += v;
+    }
+    const rows = Array.from(buckets.entries())
+      .map(([label, v]) => ({ label, ...v, pct: grand > 0 ? v.total / grand : 0 }))
+      .sort((a, b) => b.total - a.total);
+    return { rows, grand };
+  }, [headers]);
+
   const showDealerBreakdown = groupBy !== "dealer";
   const showRepBreakdown = groupBy !== "rep";
   const showTerritoryBreakdown = groupBy !== "territory";

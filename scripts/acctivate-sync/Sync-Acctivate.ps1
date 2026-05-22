@@ -154,23 +154,41 @@ function New-DealerInvoicesQuery {
   $termsExpr = New-SelectExpression -Columns $columns -Candidates @('TermsCode', 'Terms', 'PaymentTerms') -Alias 'terms' -Cast 'NVARCHAR(128)'
   $salespersonExpr = New-SelectExpression -Columns $columns -Candidates @('SalespersonName', 'Salesperson', 'SalesPerson', 'SalesRep') -Alias 'salesperson' -Cast 'NVARCHAR(255)'
   $poExpr = New-SelectExpression -Columns $columns -Candidates @('PONumber', 'PONo', 'CustomerPONumber', 'CustomerPO', 'CustPONumber', 'CustPO', 'PO') -Alias 'po_number' -Cast 'NVARCHAR(128)'
-  # Acctivate stores branch as a short code in dbo.Invoice.BranchID
-  # (e.g. DIRECT, WHSALES, CONTAINER). Map those to readable labels the
-  # UI groups on (substring match: container / warehouse / direct).
-  $branchCol = Get-FirstColumn -Columns $columns -Candidates @('BranchID', 'BranchId', 'Branch', 'BranchCode', 'BranchName', 'WarehouseID', 'WarehouseId', 'Warehouse', 'LocationID', 'LocationId', 'Location')
-  if ($branchCol) {
-    $bref = "inv.$(Quote-SqlIdentifier $branchCol)"
+  # Acctivate stores the branch link as GUIDBranch on dbo.Invoice and joins
+  # to dbo.Branch (BranchID short code + Name). The plain BranchID column on
+  # dbo.Invoice is almost always NULL, so resolve through the join and fall
+  # back to the header column only when the lookup is unavailable.
+  $hasGuidBranch = $columns -contains 'GUIDBranch'
+  $fallbackBranchCol = Get-FirstColumn -Columns $columns -Candidates @('BranchID', 'BranchId', 'Branch', 'BranchCode', 'BranchName', 'WarehouseID', 'WarehouseId', 'Warehouse', 'LocationID', 'LocationId', 'Location')
+  $branchJoin = ''
+  $bref = $null
+  $nameRef = $null
+  if ($hasGuidBranch) {
+    $branchJoin = 'LEFT JOIN dbo.Branch br ON br.GUIDBranch = inv.GUIDBranch'
+    if ($fallbackBranchCol) {
+      $bref = "COALESCE(br.BranchID, CAST(inv.$(Quote-SqlIdentifier $fallbackBranchCol) AS NVARCHAR(128)))"
+      $nameRef = "COALESCE(br.Name, CAST(inv.$(Quote-SqlIdentifier $fallbackBranchCol) AS NVARCHAR(128)))"
+    } else {
+      $bref = 'br.BranchID'
+      $nameRef = 'br.Name'
+    }
+  } elseif ($fallbackBranchCol) {
+    $bref = "CAST(inv.$(Quote-SqlIdentifier $fallbackBranchCol) AS NVARCHAR(128))"
+    $nameRef = $bref
+  }
+
+  if ($bref) {
     $branchExpr = @"
-CASE UPPER(LTRIM(RTRIM(CAST($bref AS NVARCHAR(128)))))
-  WHEN 'WHSALES'   THEN 'Warehouse'
-  WHEN 'WH'        THEN 'Warehouse'
-  WHEN 'WAREHOUSE' THEN 'Warehouse'
-  WHEN 'CONTAINER' THEN 'Container'
-  WHEN 'CONT'      THEN 'Container'
-  WHEN 'DIRECT'    THEN 'Direct Shipping'
+CASE UPPER(LTRIM(RTRIM($bref)))
+  WHEN 'WHSALES'    THEN 'Warehouse'
+  WHEN 'WH'         THEN 'Warehouse'
+  WHEN 'WAREHOUSE'  THEN 'Warehouse'
+  WHEN 'CONTAINER'  THEN 'Container'
+  WHEN 'CONT'       THEN 'Container'
+  WHEN 'DIRECT'     THEN 'Direct Shipping'
   WHEN 'DIRECTSHIP' THEN 'Direct Shipping'
-  WHEN 'DS'        THEN 'Direct Shipping'
-  ELSE CAST($bref AS NVARCHAR(128))
+  WHEN 'DS'         THEN 'Direct Shipping'
+  ELSE LTRIM(RTRIM($nameRef))
 END AS branch
 "@
   } else {
@@ -195,6 +213,7 @@ SELECT
   $poExpr,
   $branchExpr
 FROM dbo.Invoice inv
+$branchJoin
 WHERE inv.$(Quote-SqlIdentifier $customerCol) IS NOT NULL
 "@
 }

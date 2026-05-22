@@ -8,6 +8,12 @@ export type MonthlyAgg = {
   i25: number;
   ytdB: number;
   ytdI: number;
+  /** Prior-year invoice totals split by branch */
+  i25Container: number;
+  i25Warehouse: number;
+  /** Current-year YTD invoice totals split by branch */
+  ytdIContainer: number;
+  ytdIWarehouse: number;
 };
 
 const MONTH_NAMES = [
@@ -15,11 +21,19 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
+/** Normalizes the raw branch string from Acctivate into a coarse bucket. */
+export function classifyBranch(raw: string | null | undefined): "container" | "warehouse" | "direct" | "other" {
+  if (!raw) return "other";
+  const s = raw.toLowerCase();
+  if (s.includes("container")) return "container";
+  if (s.includes("warehouse")) return "warehouse";
+  if (s.includes("direct")) return "direct";
+  return "other";
+}
+
 /**
  * Fetches dealer_sales rows for the current and previous calendar year and
- * aggregates them by month. Returns one row per month with:
- *   - b25 / i25  → previous-year bookings & invoices actuals
- *   - ytdB / ytdI → current-year YTD bookings & invoices actuals
+ * aggregates them by month.
  */
 export function useDealerSalesAggregates() {
   const [data, setData] = useState<MonthlyAgg[]>(() => emptyYear());
@@ -35,7 +49,11 @@ export function useDealerSalesAggregates() {
       setLoading(true);
 
       const agg: Record<string, MonthlyAgg> = Object.fromEntries(
-        MONTH_NAMES.map((m) => [m, { m, b25: 0, i25: 0, ytdB: 0, ytdI: 0 }]),
+        MONTH_NAMES.map((m) => [m, {
+          m, b25: 0, i25: 0, ytdB: 0, ytdI: 0,
+          i25Container: 0, i25Warehouse: 0,
+          ytdIContainer: 0, ytdIWarehouse: 0,
+        }]),
       );
 
       // Bookings still come from dealer_sales rollup if populated.
@@ -56,14 +74,14 @@ export function useDealerSalesAggregates() {
       // Invoices come from dealer_invoices (live Acctivate sync).
       const start = `${prevYear}-01-01`;
       const end = `${currentYear + 1}-01-01`;
-      const invoices: { invoice_date: string | null; total: number | null }[] = [];
+      const invoices: { invoice_date: string | null; total: number | null; branch: string | null }[] = [];
       let from = 0;
       const pageSize = 1000;
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const { data, error } = await supabase
           .from("dealer_invoices")
-          .select("invoice_date, total")
+          .select("invoice_date, total, branch")
           .gte("invoice_date", start)
           .lt("invoice_date", end)
           .range(from, from + pageSize - 1);
@@ -80,8 +98,16 @@ export function useDealerSalesAggregates() {
         const y = d.getUTCFullYear();
         const name = MONTH_NAMES[d.getUTCMonth()];
         const v = Number(r.total) || 0;
-        if (y === currentYear) agg[name].ytdI += v;
-        else if (y === prevYear) agg[name].i25 += v;
+        const bucket = classifyBranch(r.branch);
+        if (y === currentYear) {
+          agg[name].ytdI += v;
+          if (bucket === "container") agg[name].ytdIContainer += v;
+          else if (bucket === "warehouse") agg[name].ytdIWarehouse += v;
+        } else if (y === prevYear) {
+          agg[name].i25 += v;
+          if (bucket === "container") agg[name].i25Container += v;
+          else if (bucket === "warehouse") agg[name].i25Warehouse += v;
+        }
       }
 
       if (cancelled) return;
@@ -96,5 +122,9 @@ export function useDealerSalesAggregates() {
 }
 
 function emptyYear(): MonthlyAgg[] {
-  return MONTH_NAMES.map((m) => ({ m, b25: 0, i25: 0, ytdB: 0, ytdI: 0 }));
+  return MONTH_NAMES.map((m) => ({
+    m, b25: 0, i25: 0, ytdB: 0, ytdI: 0,
+    i25Container: 0, i25Warehouse: 0,
+    ytdIContainer: 0, ytdIWarehouse: 0,
+  }));
 }

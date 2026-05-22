@@ -88,6 +88,38 @@ export function InvoiceDetailSheet({
     },
   });
 
+  // Fetch invoice headers (for branch) for the same scope.
+  const { data: headers = [] } = useQuery({
+    queryKey: ["invoice_headers_branch", groupBy, rowKey, fromStr, toStr, dealerIds.join(",")],
+    enabled: open && dealerIds.length > 0,
+    queryFn: async () => {
+      const out: { acctivate_id: string | null; total: number | null; branch: string | null }[] = [];
+      const chunkSize = 200;
+      for (let i = 0; i < dealerIds.length; i += chunkSize) {
+        const chunk = dealerIds.slice(i, i + chunkSize);
+        let start = 0;
+        const pageSize = 1000;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await supabase
+            .from("dealer_invoices")
+            .select("acctivate_id, total, branch")
+            .in("dealer_id", chunk)
+            .gte("invoice_date", fromStr)
+            .lte("invoice_date", toStr)
+            .range(start, start + pageSize - 1);
+          if (error) throw error;
+          const batch = (data ?? []) as typeof out;
+          out.push(...batch);
+          if (batch.length < pageSize) break;
+          start += pageSize;
+        }
+      }
+      return out;
+    },
+  });
+
+
   const productById = useMemo(() => {
     const m = new Map<string, DbProduct>();
     for (const p of products) m.set(p.id, p);

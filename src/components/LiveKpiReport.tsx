@@ -301,10 +301,22 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     }));
   };
 
+  // Determine the rep scope for live aggregates (rep > territory > manager > all).
+  // This mirrors the logic used for targets/scaledMonthly so live invoiced data
+  // narrows down when a specific rep is viewed.
+  const scopedDbRepNames = useMemo<string[] | null>(() => {
+    let scoped: string[] | null = null;
+    if (repFilter.length > 0) scoped = repFilter;
+    else if (territoryFilter.length > 0) scoped = visibleReps.map((r) => r.name);
+    else if (allowedRepNames && allowedRepNames.length > 0) scoped = allowedRepNames;
+    if (scoped === null) return null;
+    return Array.from(new Set(scoped.flatMap((n) => REP_NAME_TO_DB_NAMES[n] ?? [n])));
+  }, [repFilter, territoryFilter, visibleReps, allowedRepNames]);
+
   // Live actuals from dealer_sales (current year YTD + prior year). Projections
   // (b26p / i26p) remain seeded from the spreadsheet defaults below and are
   // user-editable via inline cells.
-  const { data: liveAgg } = useDealerSalesAggregates();
+  const { data: liveAgg } = useDealerSalesAggregates(scopedDbRepNames);
 
   const baseMonthly = useMemo(() => MONTHLY.map((seed) => {
     const live = liveAgg.find((r) => r.m === seed.m);
@@ -378,7 +390,23 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     if (repNames) {
       const allKeys = repNames.flatMap((n) => REP_NAME_TO_MONTHLY_KEYS[n] ?? []);
       const rows = allKeys.length > 0 ? sumRepMonthly(allKeys) : null;
-      if (rows) return rows;
+      // Overlay live invoiced totals (filtered by rep scope) onto whichever
+      // base we use, so the "25 Act", YTD-invoiced and branch-split columns
+      // reflect the rep's actual Acctivate billing.
+      const liveByMonth = new Map(baseMonthly.map((r) => [r.m, r]));
+      const overlay = (row: { m: string; b25: number; b26p: number; ytdB: number; i25: number; i26p: number; ytdI: number }) => {
+        const live = liveByMonth.get(row.m);
+        return {
+          ...row,
+          i25:           live ? live.i25  : row.i25,
+          ytdI:          live ? live.ytdI : row.ytdI,
+          i25Container:  live?.i25Container  ?? 0,
+          i25Warehouse:  live?.i25Warehouse  ?? 0,
+          ytdIContainer: live?.ytdIContainer ?? 0,
+          ytdIWarehouse: live?.ytdIWarehouse ?? 0,
+        };
+      };
+      if (rows) return rows.map(overlay);
       // Fallback: scale team totals by share (or zeros if no share).
       if (allowedRepNames && !hasRepSelection && territoryFilter.length === 0) {
         return baseMonthly.map((r) => ({
@@ -387,7 +415,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
           i25: r.i25 * repShare, i26p: r.i26p * repShare, ytdI: r.ytdI * repShare,
         }));
       }
-      return baseMonthly.map((r) => ({ m: r.m, b25: 0, b26p: 0, ytdB: 0, i25: 0, i26p: 0, ytdI: 0 }));
+      return baseMonthly.map((r) => overlay({ m: r.m, b25: 0, b26p: 0, ytdB: 0, i25: 0, i26p: 0, ytdI: 0 }));
     }
     return baseMonthly;
   }, [hasRepSelection, repFilter, territoryFilter, visibleReps, baseMonthly, allowedRepNames, repShare]);

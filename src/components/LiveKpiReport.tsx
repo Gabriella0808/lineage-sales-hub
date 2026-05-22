@@ -754,6 +754,14 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
             <tbody>
               {monthly.map((r) => {
                 const idx = MONTHLY.findIndex((m) => m.m === r.m);
+                const rAny = r as typeof r & {
+                  ytdIContainer?: number; ytdIWarehouse?: number;
+                  i25Container?: number; i25Warehouse?: number;
+                };
+                const ytdICont = rAny.ytdIContainer ?? 0;
+                const ytdIWh = rAny.ytdIWarehouse ?? 0;
+                const i25Cont = rAny.i25Container ?? 0;
+                const i25Wh = rAny.i25Warehouse ?? 0;
                 return (
                   <tr key={r.m} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
@@ -778,8 +786,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                       </td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.i25)}</td>
-                      <td className="p-2 text-right text-muted-foreground">—</td>
-                      <td className="p-2 text-right text-muted-foreground">—</td>
+                      <td className="p-2 text-right">{fmtPct((ytdICont + i25Cont) / Math.max(r.ytdI + r.i25, 1))}</td>
+                      <td className="p-2 text-right">{fmtPct((ytdIWh + i25Wh) / Math.max(r.ytdI + r.i25, 1))}</td>
                     </>}
                   </tr>
                 );
@@ -799,8 +807,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                   <td className="p-2 text-right">{formatCurrency(sumI26P)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdI / sumI26P)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumI25)}</td>
-                  <td className="p-2 text-right text-muted-foreground">—</td>
-                  <td className="p-2 text-right text-muted-foreground">—</td>
+                  <td className="p-2 text-right">{fmtPct((sumYtdICont + sumI25Cont) / Math.max(sumYtdI + sumI25, 1))}</td>
+                  <td className="p-2 text-right">{fmtPct((sumYtdIWh + sumI25Wh) / Math.max(sumYtdI + sumI25, 1))}</td>
                 </>}
               </tr>
               {monthFilter === "All" && (

@@ -755,7 +755,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                 : "Bookings — Actual vs Goal"}
             </h3>
             <p className="text-xs text-muted-foreground">
-              Monthly 2026 projection (goal) vs YTD actual
+              Monthly 2026 projection (goal) vs MTD actual
               {hasRepSelection
                 ? <> · <span className="font-medium text-foreground">{repFilter.length === 1 ? repFilter[0] : `${repFilter.length} reps`}</span></>
                 : <> · all reps</>}
@@ -764,11 +764,11 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
           <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap justify-end">
             {showB && <>
               <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-primary/70" />Bookings Goal</span>
-              <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-accent" />Bookings YTD</span>
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-accent" />Bookings MTD</span>
             </>}
             {showI && <>
               <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-primary/40" />Invoiced Goal</span>
-              <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-accent/60" />Invoiced YTD</span>
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block w-3 h-3 rounded-sm bg-accent/60" />Invoiced MTD</span>
             </>}
           </div>
         </div>
@@ -796,9 +796,9 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                 formatter={(v: number, name: string) => [formatCurrency(v), name]}
               />
               {showB && <Bar dataKey="b26p" name="Bookings Goal" fill="hsl(var(--primary) / 0.7)" radius={[3, 3, 0, 0]} />}
-              {showB && <Bar dataKey="ytdB" name="Bookings YTD" fill="hsl(var(--accent))" radius={[3, 3, 0, 0]} />}
+              {showB && <Bar dataKey="ytdB" name="Bookings MTD" fill="hsl(var(--accent))" radius={[3, 3, 0, 0]} />}
               {showI && <Bar dataKey="i26p" name="Invoiced Goal" fill="hsl(var(--primary) / 0.4)" radius={[3, 3, 0, 0]} />}
-              {showI && <Bar dataKey="ytdI" name="Invoiced YTD" fill="hsl(var(--accent) / 0.6)" radius={[3, 3, 0, 0]} />}
+              {showI && <Bar dataKey="ytdI" name="Invoiced MTD" fill="hsl(var(--accent) / 0.6)" radius={[3, 3, 0, 0]} />}
             </BarChart>
           </ResponsiveContainer>
         </div>

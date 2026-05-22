@@ -405,9 +405,12 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     else if (territoryFilter.length > 0) scopedRepNames = visibleReps.map(r => r.name);
     else if (allowedRepNames && allowedRepNames.length > 0) scopedRepNames = allowedRepNames;
 
-    const repIds = scopedRepNames === null
+    const expandedDbNames = scopedRepNames === null
+      ? null
+      : new Set(scopedRepNames.flatMap(n => REP_NAME_TO_DB_NAMES[n] ?? [n]));
+    const repIds = expandedDbNames === null
       ? dbReps.map(r => r.id)
-      : dbReps.filter(r => scopedRepNames!.includes(r.name)).map(r => r.id);
+      : dbReps.filter(r => expandedDbNames.has(r.name)).map(r => r.id);
     const repIdSet = new Set(repIds);
     const scoped = targets2026.filter(t => repIdSet.has(t.rep_id));
 

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { REP_MONTHLY, type RepMonthRow } from "@/data/repMonthly";
 import { useDealerSalesAggregates } from "@/hooks/useDealerSalesAggregates";
 import { MtdInvoicingCard } from "@/components/MtdInvoicingCard";
+import { useRepTargets, MONTH_LABEL_TO_KEY, type RepTarget } from "@/hooks/useRepTargets";
 
 const PROJ_STORAGE_KEY = "kpi_projections_2026_v1";
 
@@ -382,6 +383,42 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     }
     return baseMonthly;
   }, [hasRepSelection, repFilter, territoryFilter, visibleReps, baseMonthly, allowedRepNames, repShare]);
+
+  // 26 Proj is sourced from the Sales Targets section (rep_targets table).
+  // Sum targets for the reps currently in scope; fall back to seed projections only when no targets exist.
+  const { data: targets2026 = [] } = useRepTargets(2026);
+  const MONTH_FULL_TO_SHORT: Record<string, string> = {
+    January:"Jan", February:"Feb", March:"Mar", April:"Apr", May:"May", June:"Jun",
+    July:"Jul", August:"Aug", September:"Sep", October:"Oct", November:"Nov", December:"Dec",
+  };
+  const targetByMonth = useMemo(() => {
+    let scopedRepNames: string[] | null = null;
+    if (hasRepSelection) scopedRepNames = repFilter;
+    else if (territoryFilter.length > 0) scopedRepNames = visibleReps.map(r => r.name);
+    else if (allowedRepNames && allowedRepNames.length > 0) scopedRepNames = allowedRepNames;
+
+    const repIds = scopedRepNames === null
+      ? dbReps.map(r => r.id)
+      : dbReps.filter(r => scopedRepNames!.includes(r.name)).map(r => r.id);
+    const repIdSet = new Set(repIds);
+    const scoped = targets2026.filter(t => repIdSet.has(t.rep_id));
+
+    const sums: Record<string, number> = {};
+    for (const row of MONTHLY) {
+      const key = MONTH_LABEL_TO_KEY[MONTH_FULL_TO_SHORT[row.m]] as keyof RepTarget;
+      let total = 0;
+      for (const t of scoped) total += Number(t[key]) || 0;
+      sums[row.m] = total;
+    }
+    return sums;
+  }, [targets2026, dbReps, hasRepSelection, repFilter, territoryFilter, visibleReps, allowedRepNames]);
+
+  const scaledMonthlyWithTargets = useMemo(() => scaledMonthly.map(r => {
+    const tgt = targetByMonth[r.m] ?? 0;
+    if (tgt > 0) return { ...r, b26p: tgt, i26p: tgt };
+    return r;
+  }), [scaledMonthly, targetByMonth]);
+
   
 
   const scaledLine = useMemo(() => baseLine.map((r) => ({
@@ -418,7 +455,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     });
   };
 
-  const chartMonthly = useMemo(() => applyBrandFilter(scaledMonthly), [scaledMonthly, monthlyLineFilter, scaledLine]);
+  const chartMonthly = useMemo(() => applyBrandFilter(scaledMonthlyWithTargets), [scaledMonthlyWithTargets, monthlyLineFilter, scaledLine]);
   const monthly = useMemo(() => {
     return monthFilter === "All" ? chartMonthly : chartMonthly.filter((r) => r.m === monthFilter);
   }, [monthFilter, chartMonthly]);

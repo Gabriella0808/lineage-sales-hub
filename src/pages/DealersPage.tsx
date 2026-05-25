@@ -48,22 +48,25 @@ export default function DealersPage() {
 
   const currentYear = new Date().getFullYear();
   const { data: ytdRevenueByDealer = new Map<string, number>() } = useQuery({
-    queryKey: ["dealer_ytd_revenue", currentYear],
+    queryKey: ["dealer_ytd_revenue_invoices", currentYear],
     queryFn: async () => {
       const map = new Map<string, number>();
       const pageSize = 1000;
       let from = 0;
+      const startDate = `${currentYear}-01-01`;
+      const endDate = `${currentYear + 1}-01-01`;
       while (true) {
         const { data, error } = await supabase
-          .from("dealer_sales")
-          .select("dealer_id,revenue")
-          .eq("year", currentYear)
+          .from("dealer_invoices")
+          .select("dealer_id,total,invoice_date")
+          .gte("invoice_date", startDate)
+          .lt("invoice_date", endDate)
           .range(from, from + pageSize - 1);
         if (error) throw error;
         const rows = data ?? [];
         rows.forEach((r: any) => {
           if (!r.dealer_id) return;
-          map.set(r.dealer_id, (map.get(r.dealer_id) ?? 0) + Number(r.revenue ?? 0));
+          map.set(r.dealer_id, (map.get(r.dealer_id) ?? 0) + Number(r.total ?? 0));
         });
         if (rows.length < pageSize) break;
         from += pageSize;

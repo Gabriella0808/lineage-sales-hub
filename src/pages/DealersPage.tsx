@@ -184,7 +184,7 @@ export default function DealersPage() {
               <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Rep</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Engagement</th>
-              <th className="text-right p-3 font-medium text-muted-foreground hidden lg:table-cell">Revenue</th>
+              <th className="text-right p-3 font-medium text-muted-foreground hidden lg:table-cell">YTD Revenue</th>
               <th className="text-center p-3 font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>

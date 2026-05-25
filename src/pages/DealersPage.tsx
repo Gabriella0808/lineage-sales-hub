@@ -160,7 +160,7 @@ export default function DealersPage() {
                 <span className="bg-muted px-2 py-0.5 rounded-full truncate">{getTerritoryName(territories, d.territory_id) || (d as any).territory || '—'}</span>
                 <span className="text-muted-foreground truncate">{getRepName(reps, d.rep_id) || (d as any).salesperson || '—'}</span>
               </div>
-              <span className="font-medium tabular-nums shrink-0">{formatCurrency(d.revenue)}</span>
+              <span className="font-medium tabular-nums shrink-0">{formatCurrency(getYtd(d.id))}</span>
             </div>
             <div className="flex items-center gap-1 mt-2 pt-2 border-t" onClick={e => e.stopPropagation()}>
               {d.email && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { window.location.href = `mailto:${d.email}`; }}><Mail className="h-3.5 w-3.5" /></Button>}

@@ -2451,7 +2451,15 @@ export type Database = {
           month: number | null
           year: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dealer_invoices_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {

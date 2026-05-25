@@ -46,6 +46,33 @@ export default function DealersPage() {
     queryFn: fetchDealerIdsWithCheckIns,
   });
 
+  const currentYear = new Date().getFullYear();
+  const { data: ytdRevenueByDealer = new Map<string, number>() } = useQuery({
+    queryKey: ["dealer_ytd_revenue", currentYear],
+    queryFn: async () => {
+      const map = new Map<string, number>();
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_sales")
+          .select("dealer_id,revenue")
+          .eq("year", currentYear)
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const rows = data ?? [];
+        rows.forEach((r: any) => {
+          if (!r.dealer_id) return;
+          map.set(r.dealer_id, (map.get(r.dealer_id) ?? 0) + Number(r.revenue ?? 0));
+        });
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+      return map;
+    },
+  });
+  const getYtd = (id: string) => ytdRevenueByDealer.get(id) ?? 0;
+
   const [search, setSearch] = useState("");
   const [territoryFilter, setTerritoryFilter] = useState("all");
   const [repFilter, setRepFilter] = useState("all");
@@ -133,7 +160,7 @@ export default function DealersPage() {
                 <span className="bg-muted px-2 py-0.5 rounded-full truncate">{getTerritoryName(territories, d.territory_id) || (d as any).territory || '—'}</span>
                 <span className="text-muted-foreground truncate">{getRepName(reps, d.rep_id) || (d as any).salesperson || '—'}</span>
               </div>
-              <span className="font-medium tabular-nums shrink-0">{formatCurrency(d.revenue)}</span>
+              <span className="font-medium tabular-nums shrink-0">{formatCurrency(getYtd(d.id))}</span>
             </div>
             <div className="flex items-center gap-1 mt-2 pt-2 border-t" onClick={e => e.stopPropagation()}>
               {d.email && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { window.location.href = `mailto:${d.email}`; }}><Mail className="h-3.5 w-3.5" /></Button>}
@@ -157,7 +184,7 @@ export default function DealersPage() {
               <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Rep</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Engagement</th>
-              <th className="text-right p-3 font-medium text-muted-foreground hidden lg:table-cell">Revenue</th>
+              <th className="text-right p-3 font-medium text-muted-foreground hidden lg:table-cell">YTD Revenue</th>
               <th className="text-center p-3 font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
@@ -176,7 +203,7 @@ export default function DealersPage() {
                 </td>
                 <td className="p-3"><StatusBadge status={d.status} /></td>
                 <td className="p-3"><StatusBadge status={d.engagement ?? 'medium'} /></td>
-                <td className="p-3 text-right hidden lg:table-cell font-medium">{formatCurrency(d.revenue)}</td>
+                <td className="p-3 text-right hidden lg:table-cell font-medium">{formatCurrency(getYtd(d.id))}</td>
                 <td className="p-3">
                   <div className="flex items-center justify-center gap-1">
                     {d.email && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); window.location.href = `mailto:${d.email}`; }}><Mail className="h-3.5 w-3.5" /></Button>}
@@ -207,7 +234,7 @@ export default function DealersPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">Revenue</p><p className="text-lg font-semibold">{formatCurrency(dealer.revenue)}</p></div>
+                  <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">YTD Revenue</p><p className="text-lg font-semibold">{formatCurrency(getYtd(dealer.id))}</p></div>
                   <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">Last Contact</p><p className="text-lg font-semibold">{dealer.last_contact ? new Date(dealer.last_contact).toLocaleDateString() : '—'}</p></div>
                 </div>
 

@@ -34,10 +34,12 @@ type InvoiceLineFallbackRow = {
   product_name: string | null;
 };
 
-type InvoiceBranchRow = {
+type InvoiceHeaderFallbackRow = {
   acctivate_id: string;
+  dealer_id: string | null;
   branch: string | null;
   invoice_date: string | null;
+  subtotal: number | null;
 };
 
 const MONTH_NAMES = [
@@ -219,55 +221,75 @@ async function fetchInvoiceAggregateFallbackRows(
   prevYear: number,
   dealerIds: string[] | null,
 ): Promise<ViewRow[] | null> {
-  const invoiceBranchMap = new Map<string, string | null>();
-  const invoiceRows: InvoiceBranchRow[] = [];
-  let invoiceFrom = 0;
-  const pageSize = 1000;
-
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const { data, error } = await supabase
-      .from("dealer_invoices")
-      .select("acctivate_id, branch, invoice_date")
-      .gte("invoice_date", `${prevYear}-01-01`)
-      .lt("invoice_date", `${currentYear + 1}-01-01`)
-      .range(invoiceFrom, invoiceFrom + pageSize - 1);
-    if (error) return null;
-    const batch = (data ?? []) as InvoiceBranchRow[];
-    invoiceRows.push(...batch);
-    if (batch.length < pageSize) break;
-    invoiceFrom += pageSize;
-  }
-
-  for (const invoice of invoiceRows) {
-    invoiceBranchMap.set(invoice.acctivate_id, invoice.branch ?? null);
-  }
-
   const monthly = new Map<string, ViewRow>();
+  const invoiceHeaders = new Map<string, InvoiceHeaderFallbackRow>();
+  const pageSize = 1000;
   const dealerChunks: (string[] | null)[] = dealerIds ? chunk(dealerIds, 200) : [null];
+
   for (const ch of dealerChunks) {
-    let from = 0;
+    let invoiceFrom = 0;
     // eslint-disable-next-line no-constant-condition
     while (true) {
       let q = supabase
+        .from("dealer_invoices")
+        .select("acctivate_id, dealer_id, branch, invoice_date, subtotal")
+        .gte("invoice_date", `${prevYear}-01-01`)
+        .lt("invoice_date", `${currentYear + 1}-01-01`)
+        .range(invoiceFrom, invoiceFrom + pageSize - 1);
+      if (ch) q = q.in("dealer_id", ch);
+      const { data, error } = await q;
+      if (error) return null;
+      const batch = (data ?? []) as InvoiceHeaderFallbackRow[];
+      for (const invoice of batch) {
+        if (!invoice.invoice_date || !invoice.dealer_id) continue;
+        const date = new Date(`${invoice.invoice_date}T00:00:00`);
+        if (Number.isNaN(date.getTime())) continue;
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const key = `${year}-${month}-${invoice.dealer_id}`;
+        const branch = classifyBranch(invoice.branch ?? null);
+        const amount = Number(invoice.subtotal) || 0;
+        const row = monthly.get(key) ?? {
+          year,
+          month,
+          dealer_id: invoice.dealer_id,
+          invoiced: 0,
+          invoiced_container: 0,
+          invoiced_warehouse: 0,
+        };
+        row.invoiced = (Number(row.invoiced) || 0) + amount;
+        if (branch === "container") row.invoiced_container = (Number(row.invoiced_container) || 0) + amount;
+        if (branch === "warehouse") row.invoiced_warehouse = (Number(row.invoiced_warehouse) || 0) + amount;
+        monthly.set(key, row);
+        invoiceHeaders.set(invoice.acctivate_id, invoice);
+      }
+      if (batch.length < pageSize) break;
+      invoiceFrom += pageSize;
+    }
+
+    let excludedFrom = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let excludedQuery = supabase
         .from("dealer_invoice_lines")
         .select("dealer_id, invoice_date, invoice_acctivate_id, extended_price, sku, product_name")
         .gte("invoice_date", `${prevYear}-01-01`)
         .lt("invoice_date", `${currentYear + 1}-01-01`)
-        .range(from, from + pageSize - 1);
-      if (ch) q = q.in("dealer_id", ch);
-      const { data, error } = await q;
+        .or("sku.ilike.%tariff%,product_name.ilike.%tariff%,sku.ilike.%freight%,product_name.ilike.%freight%")
+        .range(excludedFrom, excludedFrom + pageSize - 1);
+      if (ch) excludedQuery = excludedQuery.in("dealer_id", ch);
+      const { data, error } = await excludedQuery;
       if (error) return null;
       const batch = (data ?? []) as InvoiceLineFallbackRow[];
       for (const line of batch) {
-        if (!line.invoice_date || !line.dealer_id) continue;
-        if (shouldExcludeInvoiceLine(line)) continue;
+        if (!line.invoice_date || !line.dealer_id || !shouldExcludeInvoiceLine(line)) continue;
         const date = new Date(`${line.invoice_date}T00:00:00`);
         if (Number.isNaN(date.getTime())) continue;
         const year = date.getFullYear();
         const month = date.getMonth() + 1;
         const key = `${year}-${month}-${line.dealer_id}`;
-        const branch = classifyBranch(invoiceBranchMap.get(line.invoice_acctivate_id ?? "") ?? null);
+        const invoice = invoiceHeaders.get(line.invoice_acctivate_id ?? "");
+        const branch = classifyBranch(invoice?.branch ?? null);
         const amount = Number(line.extended_price) || 0;
         const row = monthly.get(key) ?? {
           year,
@@ -277,13 +299,13 @@ async function fetchInvoiceAggregateFallbackRows(
           invoiced_container: 0,
           invoiced_warehouse: 0,
         };
-        row.invoiced = (Number(row.invoiced) || 0) + amount;
-        if (branch === "container") row.invoiced_container = (Number(row.invoiced_container) || 0) + amount;
-        if (branch === "warehouse") row.invoiced_warehouse = (Number(row.invoiced_warehouse) || 0) + amount;
+        row.invoiced = (Number(row.invoiced) || 0) - amount;
+        if (branch === "container") row.invoiced_container = (Number(row.invoiced_container) || 0) - amount;
+        if (branch === "warehouse") row.invoiced_warehouse = (Number(row.invoiced_warehouse) || 0) - amount;
         monthly.set(key, row);
       }
       if (batch.length < pageSize) break;
-      from += pageSize;
+      excludedFrom += pageSize;
     }
   }
 

@@ -260,7 +260,7 @@ async function fetchAdjustedInvoiceRows(opts: { fromDate?: string; toDate?: stri
 
 export function useDealers() {
   return useQuery({
-    queryKey: ["dealers", "commercial", "ytd_invoices_v2"],
+    queryKey: ["dealers", "commercial", "ytd_invoices_v3_rpc"],
     queryFn: async () => {
       const rows = await fetchAllRows<DbDealer>("dealers");
       const commercial = rows.filter((d) => {
@@ -270,14 +270,18 @@ export function useDealers() {
         return Boolean(salesperson || territory);
       });
 
-      // YTD invoice totals (excluding tariff, freight, ECSUR, CC processing fees)
+      // YTD invoice totals per dealer via server-side rollup (single round-trip).
       const currentYear = new Date().getFullYear();
-      const startOfYear = `${currentYear}-01-01`;
-      const invRows = await fetchAdjustedInvoiceRows({ fromDate: startOfYear });
       const ytdByDealer = new Map<string, number>();
-      for (const r of invRows) {
-        if (!r.dealer_id) continue;
-        ytdByDealer.set(r.dealer_id, (ytdByDealer.get(r.dealer_id) ?? 0) + Number(r.total ?? 0));
+      const { data: ytdRows, error: ytdErr } = await (supabase as any).rpc(
+        "kpi_dealer_monthly_invoiced",
+        { p_years: [currentYear] },
+      );
+      if (!ytdErr) {
+        for (const r of (ytdRows ?? []) as any[]) {
+          if (!r.dealer_id) continue;
+          ytdByDealer.set(r.dealer_id, (ytdByDealer.get(r.dealer_id) ?? 0) + Number(r.invoiced ?? 0));
+        }
       }
 
       return commercial
@@ -335,14 +339,28 @@ const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct",
 
 export function useDealerSales() {
   return useQuery({
-    queryKey: ["dealer_sales", "from_invoices_and_lines_v2"],
+    queryKey: ["dealer_sales", "rpc_two_year_window_v1"],
     queryFn: async () => {
-      // Bookings come from dealer_sales_lines (sparse). Invoices + revenue come from
-      // dealer_invoices, with tariffs/freight/ECSUR/CC processing fees excluded.
-      const [lines, invoices] = await Promise.all([
-        fetchAllRows<DbDealerSalesLine>("dealer_sales_lines"),
-        fetchAdjustedInvoiceRows(),
+      // Only the current and previous calendar year are needed by the Overview.
+      // Bookings come from dealer_sales_lines (sparse, date-bounded).
+      // Invoices come from the server-side per-dealer monthly rollup (RPC).
+      const currentYear = new Date().getFullYear();
+      const prevYear = currentYear - 1;
+
+      const [linesRes, invoicedRes] = await Promise.all([
+        supabase
+          .from("dealer_sales_lines")
+          .select("dealer_id, year, month, bookings, booking_count")
+          .in("year", [currentYear, prevYear]),
+        (supabase as any).rpc("kpi_dealer_monthly_invoiced", {
+          p_years: [currentYear, prevYear],
+        }),
       ]);
+
+      const lines = (linesRes.data ?? []) as DbDealerSalesLine[];
+      const invoiced = (invoicedRes.data ?? []) as Array<{
+        dealer_id: string; year: number; month: number; invoiced: number;
+      }>;
 
       const map = new Map<string, DbDealerSale>();
       const ensure = (dealer_id: string, year: number, month: string): DbDealerSale => {
@@ -361,15 +379,12 @@ export function useDealerSales() {
         cur.booking_count = (cur.booking_count ?? 0) + (l.booking_count ?? 0);
       }
 
-      for (const inv of invoices) {
-        if (!inv.dealer_id || !inv.invoice_date) continue;
-        const d = new Date(inv.invoice_date);
-        if (Number.isNaN(d.getTime())) continue;
-        const year = d.getUTCFullYear();
-        const month = MONTH_ABBR[d.getUTCMonth()];
-        const cur = ensure(inv.dealer_id, year, month);
-        cur.invoices = (cur.invoices ?? 0) + Number(inv.total ?? 0);
-        if (Number(inv.total ?? 0) >= 0) cur.invoice_count = (cur.invoice_count ?? 0) + 1;
+      for (const r of invoiced) {
+        if (!r.dealer_id) continue;
+        const monthIdx = (Number(r.month) || 0) - 1;
+        if (monthIdx < 0 || monthIdx > 11) continue;
+        const cur = ensure(r.dealer_id, Number(r.year), MONTH_ABBR[monthIdx]);
+        cur.invoices = (cur.invoices ?? 0) + Number(r.invoiced ?? 0);
       }
 
       for (const cur of map.values()) {

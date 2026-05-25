@@ -2524,6 +2524,15 @@ export type Database = {
       is_manager_task_creator: { Args: { _task_id: string }; Returns: boolean }
       is_task_board_creator: { Args: { _board_id: string }; Returns: boolean }
       is_trade_show_task: { Args: { _task_id: string }; Returns: boolean }
+      kpi_dealer_monthly_invoiced: {
+        Args: { p_years: number[] }
+        Returns: {
+          dealer_id: string
+          invoiced: number
+          month: number
+          year: number
+        }[]
+      }
       kpi_monthly_invoice_rollup: {
         Args: { p_dealer_ids?: string[]; p_years: number[] }
         Returns: {

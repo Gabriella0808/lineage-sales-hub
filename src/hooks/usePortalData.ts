@@ -335,31 +335,13 @@ const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct",
 
 export function useDealerSales() {
   return useQuery({
-    queryKey: ["dealer_sales", "from_invoices_and_lines"],
+    queryKey: ["dealer_sales", "from_invoices_and_lines_v2"],
     queryFn: async () => {
       // Bookings come from dealer_sales_lines (sparse). Invoices + revenue come from
-      // the live dealer_invoices table synced from Acctivate.
+      // dealer_invoices, with tariffs/freight/ECSUR/CC processing fees excluded.
       const [lines, invoices] = await Promise.all([
         fetchAllRows<DbDealerSalesLine>("dealer_sales_lines"),
-        (async () => {
-          const out: { dealer_id: string | null; invoice_date: string | null; total: number | null }[] = [];
-          let from = 0;
-          const pageSize = 1000;
-          // eslint-disable-next-line no-constant-condition
-          while (true) {
-            const { data, error } = await supabase
-              .from("dealer_invoices")
-              .select("dealer_id, invoice_date, total")
-              .not("dealer_id", "is", null)
-              .range(from, from + pageSize - 1);
-            if (error) throw error;
-            const batch = (data ?? []) as typeof out;
-            out.push(...batch);
-            if (batch.length < pageSize) break;
-            from += pageSize;
-          }
-          return out;
-        })(),
+        fetchAdjustedInvoiceRows(),
       ]);
 
       const map = new Map<string, DbDealerSale>();

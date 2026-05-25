@@ -335,34 +335,6 @@ export function InvoiceDetailSheet({
               )}
             </div>
 
-            <Section title="Top SKUs" count={summary.bySku.length}>
-              <table className="w-full text-xs">
-                <thead className="text-muted-foreground">
-                  <tr className="border-b">
-                    <th className="text-left py-1.5 font-medium">SKU</th>
-                    <th className="text-left py-1.5 font-medium">Name</th>
-                    <th className="text-right py-1.5 font-medium">Qty</th>
-                    <th className="text-right py-1.5 font-medium">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {summary.bySku.slice(0, 50).map((r) => (
-                    <tr key={r.sku} className="border-b last:border-0">
-                      <td className="py-1.5 font-mono">{r.sku}</td>
-                      <td className="py-1.5 truncate max-w-[220px]">
-                        {r.name}
-                        {r.brand && <span className="text-muted-foreground"> · {r.brand}</span>}
-                      </td>
-                      <td className="py-1.5 text-right tabular-nums">{r.qty.toLocaleString()}</td>
-                      <td className="py-1.5 text-right tabular-nums">{formatCurrency(r.total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {summary.bySku.length > 50 && (
-                <p className="text-[11px] text-muted-foreground mt-1">Showing top 50 of {summary.bySku.length} SKUs</p>
-              )}
-            </Section>
           </div>
         )}
       </SheetContent>

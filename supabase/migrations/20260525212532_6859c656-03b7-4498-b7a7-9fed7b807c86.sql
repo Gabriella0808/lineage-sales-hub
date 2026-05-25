@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Authenticated users can read kpi_records" ON public.kpi_records;

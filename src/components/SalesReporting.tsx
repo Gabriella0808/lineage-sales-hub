@@ -26,26 +26,59 @@ function useDealerInvoicesInRange(from: Date, to: Date) {
   const fromStr = format(from, "yyyy-MM-dd");
   const toStr = format(to, "yyyy-MM-dd");
   return useQuery({
-    queryKey: ["dealer_invoices_range", fromStr, toStr],
+    queryKey: ["dealer_invoices_range_v2", fromStr, toStr],
     queryFn: async () => {
       const out: { dealer_id: string | null; invoice_date: string | null; total: number | null }[] = [];
-      let start = 0;
       const pageSize = 1000;
+
+      // Header subtotals
+      let start = 0;
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const { data, error } = await supabase
           .from("dealer_invoices")
-          .select("dealer_id, invoice_date, total")
+          .select("dealer_id, invoice_date, subtotal")
           .not("dealer_id", "is", null)
           .gte("invoice_date", fromStr)
           .lte("invoice_date", toStr)
           .range(start, start + pageSize - 1);
         if (error) throw error;
-        const batch = (data ?? []) as typeof out;
-        out.push(...batch);
+        const batch = (data ?? []) as { dealer_id: string | null; invoice_date: string | null; subtotal: number | null }[];
+        for (const r of batch) {
+          out.push({ dealer_id: r.dealer_id, invoice_date: r.invoice_date, total: Number(r.subtotal ?? 0) });
+        }
         if (batch.length < pageSize) break;
         start += pageSize;
       }
+
+      // Subtract tariff/freight/ECSUR/processing fee lines
+      let exFrom = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoice_lines")
+          .select("dealer_id, invoice_date, extended_price, sku, product_name")
+          .not("dealer_id", "is", null)
+          .gte("invoice_date", fromStr)
+          .lte("invoice_date", toStr)
+          .or(
+            "sku.ilike.%tariff%,product_name.ilike.%tariff%," +
+            "sku.ilike.%freight%,product_name.ilike.%freight%," +
+            "sku.ilike.%ecsur%,product_name.ilike.%ecsur%," +
+            "sku.ilike.%processing fee%,product_name.ilike.%processing fee%",
+          )
+          .range(exFrom, exFrom + pageSize - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as { dealer_id: string | null; invoice_date: string | null; extended_price: number | null; sku: string | null; product_name: string | null }[];
+        for (const r of batch) {
+          const hay = `${r.sku ?? ""} ${r.product_name ?? ""}`.toLowerCase();
+          if (!/tariff|freight|ecsur|processing fee/.test(hay)) continue;
+          out.push({ dealer_id: r.dealer_id, invoice_date: r.invoice_date, total: -Number(r.extended_price ?? 0) });
+        }
+        if (batch.length < pageSize) break;
+        exFrom += pageSize;
+      }
+
       return out;
     },
   });

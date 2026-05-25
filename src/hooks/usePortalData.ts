@@ -197,6 +197,67 @@ async function fetchAllRows<T>(table: string, pageSize = 1000): Promise<T[]> {
   return out;
 }
 
+// Fetches invoice rows expressed as (dealer_id, invoice_date, total) where `total`
+// is the header subtotal MINUS any tariff/freight/ECSUR/processing-fee line items.
+// Excluded lines are emitted as additional rows with a negative total so callers
+// that group/sum by dealer or month produce the correct net figure.
+async function fetchAdjustedInvoiceRows(opts: { fromDate?: string; toDate?: string } = {}) {
+  const out: { dealer_id: string | null; invoice_date: string | null; total: number | null }[] = [];
+  const pageSize = 1000;
+
+  // Headers
+  let start = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    let q = supabase
+      .from("dealer_invoices")
+      .select("dealer_id, invoice_date, subtotal")
+      .not("dealer_id", "is", null)
+      .range(start, start + pageSize - 1);
+    if (opts.fromDate) q = q.gte("invoice_date", opts.fromDate);
+    if (opts.toDate) q = q.lte("invoice_date", opts.toDate);
+    const { data, error } = await q;
+    if (error) throw error;
+    const batch = (data ?? []) as { dealer_id: string | null; invoice_date: string | null; subtotal: number | null }[];
+    for (const r of batch) {
+      out.push({ dealer_id: r.dealer_id, invoice_date: r.invoice_date, total: Number(r.subtotal ?? 0) });
+    }
+    if (batch.length < pageSize) break;
+    start += pageSize;
+  }
+
+  // Excluded lines (subtract)
+  let exFrom = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    let eq = supabase
+      .from("dealer_invoice_lines")
+      .select("dealer_id, invoice_date, extended_price, sku, product_name")
+      .not("dealer_id", "is", null)
+      .or(
+        "sku.ilike.%tariff%,product_name.ilike.%tariff%," +
+        "sku.ilike.%freight%,product_name.ilike.%freight%," +
+        "sku.ilike.%ecsur%,product_name.ilike.%ecsur%," +
+        "sku.ilike.%processing fee%,product_name.ilike.%processing fee%",
+      )
+      .range(exFrom, exFrom + pageSize - 1);
+    if (opts.fromDate) eq = eq.gte("invoice_date", opts.fromDate);
+    if (opts.toDate) eq = eq.lte("invoice_date", opts.toDate);
+    const { data, error } = await eq;
+    if (error) throw error;
+    const batch = (data ?? []) as { dealer_id: string | null; invoice_date: string | null; extended_price: number | null; sku: string | null; product_name: string | null }[];
+    for (const r of batch) {
+      const hay = `${r.sku ?? ""} ${r.product_name ?? ""}`.toLowerCase();
+      if (!/tariff|freight|ecsur|processing fee/.test(hay)) continue;
+      out.push({ dealer_id: r.dealer_id, invoice_date: r.invoice_date, total: -Number(r.extended_price ?? 0) });
+    }
+    if (batch.length < pageSize) break;
+    exFrom += pageSize;
+  }
+
+  return out;
+}
+
 export function useDealers() {
   return useQuery({
     queryKey: ["dealers", "commercial", "ytd_invoices"],

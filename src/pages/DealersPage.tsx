@@ -46,6 +46,33 @@ export default function DealersPage() {
     queryFn: fetchDealerIdsWithCheckIns,
   });
 
+  const currentYear = new Date().getFullYear();
+  const { data: ytdRevenueByDealer = new Map<string, number>() } = useQuery({
+    queryKey: ["dealer_ytd_revenue", currentYear],
+    queryFn: async () => {
+      const map = new Map<string, number>();
+      const pageSize = 1000;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_sales")
+          .select("dealer_id,revenue")
+          .eq("year", currentYear)
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        const rows = data ?? [];
+        rows.forEach((r: any) => {
+          if (!r.dealer_id) return;
+          map.set(r.dealer_id, (map.get(r.dealer_id) ?? 0) + Number(r.revenue ?? 0));
+        });
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+      return map;
+    },
+  });
+  const getYtd = (id: string) => ytdRevenueByDealer.get(id) ?? 0;
+
   const [search, setSearch] = useState("");
   const [territoryFilter, setTerritoryFilter] = useState("all");
   const [repFilter, setRepFilter] = useState("all");

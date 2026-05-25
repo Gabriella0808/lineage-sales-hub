@@ -281,7 +281,7 @@ export function useDealers() {
       }
 
       return commercial
-        .map((d) => ({ ...d, revenue: ytdByDealer.get(d.id) ?? d.revenue ?? 0 }))
+        .map((d) => ({ ...d, status: "active", revenue: ytdByDealer.get(d.id) ?? d.revenue ?? 0 }))
         .sort((a, b) => a.name.localeCompare(b.name));
     },
   });

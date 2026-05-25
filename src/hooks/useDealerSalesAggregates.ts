@@ -109,10 +109,47 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
         }
       }
 
-      // Invoices come from dealer_invoices (live Acctivate sync).
+      // Invoices come from dealer_invoice_lines (live Acctivate sync), so we can
+      // exclude freight/tariff/surcharge "charge" lines (Acctivate product code C)
+      // and only count product/dropship items (codes P and D).
       const start = `${prevYear}-01-01`;
       const end = `${currentYear + 1}-01-01`;
-      const invoices: { invoice_date: string | null; total: number | null; branch: string | null }[] = [];
+
+      // Branch lookup: invoice acctivate_id -> branch bucket
+      const branchByInvoice = new Map<string, "container" | "warehouse" | "direct" | "other">();
+      {
+        const dealerChunks: (string[] | null)[] = dealerIds ? chunk(dealerIds, 200) : [null];
+        for (const ch of dealerChunks) {
+          let from = 0;
+          const pageSize = 1000;
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            let q = supabase
+              .from("dealer_invoices")
+              .select("acctivate_id, branch")
+              .gte("invoice_date", start)
+              .lt("invoice_date", end)
+              .range(from, from + pageSize - 1);
+            if (ch) q = q.in("dealer_id", ch);
+            const { data, error } = await q;
+            if (error) { if (!cancelled) { setError(error.message); setLoading(false); } return; }
+            const batch = (data ?? []) as { acctivate_id: string | null; branch: string | null }[];
+            for (const inv of batch) {
+              if (inv.acctivate_id) branchByInvoice.set(inv.acctivate_id, classifyBranch(inv.branch));
+            }
+            if (batch.length < pageSize) break;
+            from += pageSize;
+          }
+        }
+      }
+
+      // Pattern matching "C" (charges) lines we want to exclude.
+      const isChargeLine = (sku: string | null, name: string | null) => {
+        const s = `${sku ?? ""} ${name ?? ""}`.toLowerCase();
+        return /freight|tariff|surcharge|shipping|avatax|delivery\s*charge|processing\s*fee|pass[- ]?through/.test(s);
+      };
+
+      const lines: { invoice_date: string | null; extended_price: number | null; sku: string | null; product_name: string | null; invoice_acctivate_id: string | null }[] = [];
       const dealerChunks: (string[] | null)[] = dealerIds ? chunk(dealerIds, 200) : [null];
       for (const ch of dealerChunks) {
         let from = 0;
@@ -120,28 +157,29 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
         // eslint-disable-next-line no-constant-condition
         while (true) {
           let q = supabase
-            .from("dealer_invoices")
-            .select("invoice_date, total, branch")
+            .from("dealer_invoice_lines")
+            .select("invoice_date, extended_price, sku, product_name, invoice_acctivate_id")
             .gte("invoice_date", start)
             .lt("invoice_date", end)
             .range(from, from + pageSize - 1);
           if (ch) q = q.in("dealer_id", ch);
           const { data, error } = await q;
           if (error) { if (!cancelled) { setError(error.message); setLoading(false); } return; }
-          const batch = (data ?? []) as typeof invoices;
-          invoices.push(...batch);
+          const batch = (data ?? []) as typeof lines;
+          lines.push(...batch);
           if (batch.length < pageSize) break;
           from += pageSize;
         }
       }
-      for (const r of invoices) {
+      for (const r of lines) {
         if (!r.invoice_date) continue;
+        if (isChargeLine(r.sku, r.product_name)) continue;
         const d = new Date(r.invoice_date);
         if (Number.isNaN(d.getTime())) continue;
         const y = d.getUTCFullYear();
         const name = MONTH_NAMES[d.getUTCMonth()];
-        const v = Number(r.total) || 0;
-        const bucket = classifyBranch(r.branch);
+        const v = Number(r.extended_price) || 0;
+        const bucket = r.invoice_acctivate_id ? (branchByInvoice.get(r.invoice_acctivate_id) ?? "other") : "other";
         if (y === currentYear) {
           agg[name].ytdI += v;
           if (bucket === "container") agg[name].ytdIContainer += v;
@@ -152,6 +190,7 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
           else if (bucket === "warehouse") agg[name].i25Warehouse += v;
         }
       }
+
 
       if (cancelled) return;
       setData(MONTH_NAMES.map((m) => agg[m]));

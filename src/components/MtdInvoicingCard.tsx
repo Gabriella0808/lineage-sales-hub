@@ -53,28 +53,60 @@ export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string
     enabled: scopeReady,
     queryFn: async () => {
       const totals = { total: 0, count: 0 };
-      let start = 0;
       const pageSize = 1000;
+      const scopeFilter = allowedRepNames && allowedRepNames.length > 0;
+      if (scopeFilter && (!scopedDealerIds || scopedDealerIds.length === 0)) return totals;
+
+      // Sum header subtotals
+      let start = 0;
       // eslint-disable-next-line no-constant-condition
       while (true) {
         let q = supabase
           .from("dealer_invoices")
-          .select("total, dealer_id")
+          .select("subtotal, dealer_id")
           .gte("invoice_date", from)
           .lte("invoice_date", to)
           .range(start, start + pageSize - 1);
-        if (allowedRepNames && allowedRepNames.length > 0) {
-          if (!scopedDealerIds || scopedDealerIds.length === 0) return totals;
-          q = q.in("dealer_id", scopedDealerIds);
-        }
+        if (scopeFilter) q = q.in("dealer_id", scopedDealerIds!);
         const { data, error } = await q;
         if (error) throw error;
-        const batch = (data ?? []) as { total: number | null }[];
-        for (const r of batch) totals.total += Number(r.total ?? 0);
+        const batch = (data ?? []) as { subtotal: number | null }[];
+        for (const r of batch) totals.total += Number(r.subtotal ?? 0);
         totals.count += batch.length;
         if (batch.length < pageSize) break;
         start += pageSize;
       }
+
+      // Subtract tariff/freight/ECSUR/processing fee lines in the same window
+      let exFrom = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        let eq = supabase
+          .from("dealer_invoice_lines")
+          .select("extended_price, dealer_id, sku, product_name")
+          .gte("invoice_date", from)
+          .lte("invoice_date", to)
+          .or(
+            "sku.ilike.%tariff%,product_name.ilike.%tariff%," +
+            "sku.ilike.%freight%,product_name.ilike.%freight%," +
+            "sku.ilike.%ecsur%,product_name.ilike.%ecsur%," +
+            "sku.ilike.%processing fee%,product_name.ilike.%processing fee%",
+          )
+          .range(exFrom, exFrom + pageSize - 1);
+        if (scopeFilter) eq = eq.in("dealer_id", scopedDealerIds!);
+        const { data, error } = await eq;
+        if (error) throw error;
+        const batch = (data ?? []) as { extended_price: number | null; sku: string | null; product_name: string | null }[];
+        for (const r of batch) {
+          const hay = `${r.sku ?? ""} ${r.product_name ?? ""}`.toLowerCase();
+          if (/tariff|freight|ecsur|processing fee/.test(hay)) {
+            totals.total -= Number(r.extended_price ?? 0);
+          }
+        }
+        if (batch.length < pageSize) break;
+        exFrom += pageSize;
+      }
+
       return totals;
     },
   });

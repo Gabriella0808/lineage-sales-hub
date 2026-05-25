@@ -197,9 +197,70 @@ async function fetchAllRows<T>(table: string, pageSize = 1000): Promise<T[]> {
   return out;
 }
 
+// Fetches invoice rows expressed as (dealer_id, invoice_date, total) where `total`
+// is the header subtotal MINUS any tariff/freight/ECSUR/processing-fee line items.
+// Excluded lines are emitted as additional rows with a negative total so callers
+// that group/sum by dealer or month produce the correct net figure.
+async function fetchAdjustedInvoiceRows(opts: { fromDate?: string; toDate?: string } = {}) {
+  const out: { dealer_id: string | null; invoice_date: string | null; total: number | null }[] = [];
+  const pageSize = 1000;
+
+  // Headers
+  let start = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    let q = supabase
+      .from("dealer_invoices")
+      .select("dealer_id, invoice_date, subtotal")
+      .not("dealer_id", "is", null)
+      .range(start, start + pageSize - 1);
+    if (opts.fromDate) q = q.gte("invoice_date", opts.fromDate);
+    if (opts.toDate) q = q.lte("invoice_date", opts.toDate);
+    const { data, error } = await q;
+    if (error) throw error;
+    const batch = (data ?? []) as { dealer_id: string | null; invoice_date: string | null; subtotal: number | null }[];
+    for (const r of batch) {
+      out.push({ dealer_id: r.dealer_id, invoice_date: r.invoice_date, total: Number(r.subtotal ?? 0) });
+    }
+    if (batch.length < pageSize) break;
+    start += pageSize;
+  }
+
+  // Excluded lines (subtract)
+  let exFrom = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    let eq = supabase
+      .from("dealer_invoice_lines")
+      .select("dealer_id, invoice_date, extended_price, sku, product_name")
+      .not("dealer_id", "is", null)
+      .or(
+        "sku.ilike.%tariff%,product_name.ilike.%tariff%," +
+        "sku.ilike.%freight%,product_name.ilike.%freight%," +
+        "sku.ilike.%ecsur%,product_name.ilike.%ecsur%," +
+        "sku.ilike.%processing fee%,product_name.ilike.%processing fee%",
+      )
+      .range(exFrom, exFrom + pageSize - 1);
+    if (opts.fromDate) eq = eq.gte("invoice_date", opts.fromDate);
+    if (opts.toDate) eq = eq.lte("invoice_date", opts.toDate);
+    const { data, error } = await eq;
+    if (error) throw error;
+    const batch = (data ?? []) as { dealer_id: string | null; invoice_date: string | null; extended_price: number | null; sku: string | null; product_name: string | null }[];
+    for (const r of batch) {
+      const hay = `${r.sku ?? ""} ${r.product_name ?? ""}`.toLowerCase();
+      if (!/tariff|freight|ecsur|processing fee/.test(hay)) continue;
+      out.push({ dealer_id: r.dealer_id, invoice_date: r.invoice_date, total: -Number(r.extended_price ?? 0) });
+    }
+    if (batch.length < pageSize) break;
+    exFrom += pageSize;
+  }
+
+  return out;
+}
+
 export function useDealers() {
   return useQuery({
-    queryKey: ["dealers", "commercial", "ytd_invoices"],
+    queryKey: ["dealers", "commercial", "ytd_invoices_v2"],
     queryFn: async () => {
       const rows = await fetchAllRows<DbDealer>("dealers");
       const commercial = rows.filter((d) => {
@@ -209,27 +270,10 @@ export function useDealers() {
         return Boolean(salesperson || territory);
       });
 
-      // Overlay YTD invoice totals from dealer_invoices onto dealer.revenue
-      // so dealer cards and the detail panel show live Acctivate revenue.
+      // YTD invoice totals (excluding tariff, freight, ECSUR, CC processing fees)
       const currentYear = new Date().getFullYear();
       const startOfYear = `${currentYear}-01-01`;
-      const invRows: { dealer_id: string | null; total: number | null }[] = [];
-      let from = 0;
-      const pageSize = 1000;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .from("dealer_invoices")
-          .select("dealer_id, total")
-          .gte("invoice_date", startOfYear)
-          .not("dealer_id", "is", null)
-          .range(from, from + pageSize - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as { dealer_id: string | null; total: number | null }[];
-        invRows.push(...batch);
-        if (batch.length < pageSize) break;
-        from += pageSize;
-      }
+      const invRows = await fetchAdjustedInvoiceRows({ fromDate: startOfYear });
       const ytdByDealer = new Map<string, number>();
       for (const r of invRows) {
         if (!r.dealer_id) continue;
@@ -291,31 +335,13 @@ const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct",
 
 export function useDealerSales() {
   return useQuery({
-    queryKey: ["dealer_sales", "from_invoices_and_lines"],
+    queryKey: ["dealer_sales", "from_invoices_and_lines_v2"],
     queryFn: async () => {
       // Bookings come from dealer_sales_lines (sparse). Invoices + revenue come from
-      // the live dealer_invoices table synced from Acctivate.
+      // dealer_invoices, with tariffs/freight/ECSUR/CC processing fees excluded.
       const [lines, invoices] = await Promise.all([
         fetchAllRows<DbDealerSalesLine>("dealer_sales_lines"),
-        (async () => {
-          const out: { dealer_id: string | null; invoice_date: string | null; total: number | null }[] = [];
-          let from = 0;
-          const pageSize = 1000;
-          // eslint-disable-next-line no-constant-condition
-          while (true) {
-            const { data, error } = await supabase
-              .from("dealer_invoices")
-              .select("dealer_id, invoice_date, total")
-              .not("dealer_id", "is", null)
-              .range(from, from + pageSize - 1);
-            if (error) throw error;
-            const batch = (data ?? []) as typeof out;
-            out.push(...batch);
-            if (batch.length < pageSize) break;
-            from += pageSize;
-          }
-          return out;
-        })(),
+        fetchAdjustedInvoiceRows(),
       ]);
 
       const map = new Map<string, DbDealerSale>();
@@ -343,7 +369,7 @@ export function useDealerSales() {
         const month = MONTH_ABBR[d.getUTCMonth()];
         const cur = ensure(inv.dealer_id, year, month);
         cur.invoices = (cur.invoices ?? 0) + Number(inv.total ?? 0);
-        cur.invoice_count = (cur.invoice_count ?? 0) + 1;
+        if (Number(inv.total ?? 0) >= 0) cur.invoice_count = (cur.invoice_count ?? 0) + 1;
       }
 
       for (const cur of map.values()) {

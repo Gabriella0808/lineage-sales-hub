@@ -2533,6 +2533,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      refresh_dealer_monthly_invoice_totals: { Args: never; Returns: undefined }
       user_id_for_manager: { Args: { _manager_id: string }; Returns: string }
       user_id_for_rep: { Args: { _rep_id: string }; Returns: string }
       user_id_for_rep_with_email_fallback: {

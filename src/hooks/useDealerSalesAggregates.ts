@@ -139,7 +139,7 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
           if (ch) q = q.in("dealer_id", ch);
           const { data, error } = await q;
           if (error) { if (!cancelled) { setError(error.message); setLoading(false); } return; }
-          const batch = (data ?? []) as ViewRow[];
+          const batch = (data ?? []) as unknown as ViewRow[];
           viewRows.push(...batch);
           if (batch.length < pageSize) break;
           from += pageSize;

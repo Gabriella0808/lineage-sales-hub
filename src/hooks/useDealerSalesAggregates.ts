@@ -32,10 +32,16 @@ export function classifyBranch(raw: string | null | undefined): "container" | "w
 }
 
 /**
- * Fetches dealer_sales rows for the current and previous calendar year and
- * aggregates them by month. When `repNames` is provided (and non-empty), the
- * aggregates are scoped to dealers whose `rep_id` resolves to one of those
- * sales_reps names. Pass `null`/`undefined` for company-wide totals.
+ * Fetches monthly bookings + invoicing aggregates for the current and previous
+ * calendar year. When `repNames` is provided (non-empty), the aggregates are
+ * scoped to dealers owned by those reps. Pass `null`/`undefined` for
+ * company-wide totals.
+ *
+ * Invoicing totals come from the server-side view
+ * `dealer_monthly_invoice_totals`, which already excludes Acctivate "C" charge
+ * lines (freight, tariffs, surcharges, AvaTax, etc.) and pre-aggregates by
+ * month + dealer + branch — so the browser fetches a few hundred summary rows
+ * instead of paginating tens of thousands of invoice lines.
  */
 export function useDealerSalesAggregates(repNames?: string[] | null) {
   const [data, setData] = useState<MonthlyAgg[]>(() => emptyYear());
@@ -87,7 +93,7 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
         }
       }
 
-      // Bookings still come from dealer_sales rollup if populated.
+      // ---------- Bookings (dealer_sales monthly rollup) ----------
       {
         const dealerChunks: (string[] | null)[] = dealerIds ? chunk(dealerIds, 200) : [null];
         for (const ch of dealerChunks) {
@@ -109,47 +115,16 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
         }
       }
 
-      // Invoices come from dealer_invoice_lines (live Acctivate sync), so we can
-      // exclude freight/tariff/surcharge "charge" lines (Acctivate product code C)
-      // and only count product/dropship items (codes P and D).
-      const start = `${prevYear}-01-01`;
-      const end = `${currentYear + 1}-01-01`;
-
-      // Branch lookup: invoice acctivate_id -> branch bucket
-      const branchByInvoice = new Map<string, "container" | "warehouse" | "direct" | "other">();
-      {
-        const dealerChunks: (string[] | null)[] = dealerIds ? chunk(dealerIds, 200) : [null];
-        for (const ch of dealerChunks) {
-          let from = 0;
-          const pageSize = 1000;
-          // eslint-disable-next-line no-constant-condition
-          while (true) {
-            let q = supabase
-              .from("dealer_invoices")
-              .select("acctivate_id, branch")
-              .gte("invoice_date", start)
-              .lt("invoice_date", end)
-              .range(from, from + pageSize - 1);
-            if (ch) q = q.in("dealer_id", ch);
-            const { data, error } = await q;
-            if (error) { if (!cancelled) { setError(error.message); setLoading(false); } return; }
-            const batch = (data ?? []) as { acctivate_id: string | null; branch: string | null }[];
-            for (const inv of batch) {
-              if (inv.acctivate_id) branchByInvoice.set(inv.acctivate_id, classifyBranch(inv.branch));
-            }
-            if (batch.length < pageSize) break;
-            from += pageSize;
-          }
-        }
-      }
-
-      // Pattern matching "C" (charges) lines we want to exclude.
-      const isChargeLine = (sku: string | null, name: string | null) => {
-        const s = `${sku ?? ""} ${name ?? ""}`.toLowerCase();
-        return /freight|tariff|surcharge|shipping|avatax|delivery\s*charge|processing\s*fee|pass[- ]?through/.test(s);
+      // ---------- Invoicing (server-side view, freight/tariff already excluded) ----------
+      type ViewRow = {
+        year: number;
+        month: number;
+        dealer_id: string | null;
+        invoiced: number | null;
+        invoiced_container: number | null;
+        invoiced_warehouse: number | null;
       };
-
-      const lines: { invoice_date: string | null; extended_price: number | null; sku: string | null; product_name: string | null; invoice_acctivate_id: string | null }[] = [];
+      const viewRows: ViewRow[] = [];
       const dealerChunks: (string[] | null)[] = dealerIds ? chunk(dealerIds, 200) : [null];
       for (const ch of dealerChunks) {
         let from = 0;
@@ -157,40 +132,36 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
         // eslint-disable-next-line no-constant-condition
         while (true) {
           let q = supabase
-            .from("dealer_invoice_lines")
-            .select("invoice_date, extended_price, sku, product_name, invoice_acctivate_id")
-            .gte("invoice_date", start)
-            .lt("invoice_date", end)
+            .from("dealer_monthly_invoice_totals" as any)
+            .select("year, month, dealer_id, invoiced, invoiced_container, invoiced_warehouse")
+            .in("year", [currentYear, prevYear])
             .range(from, from + pageSize - 1);
           if (ch) q = q.in("dealer_id", ch);
           const { data, error } = await q;
           if (error) { if (!cancelled) { setError(error.message); setLoading(false); } return; }
-          const batch = (data ?? []) as typeof lines;
-          lines.push(...batch);
+          const batch = (data ?? []) as unknown as ViewRow[];
+          viewRows.push(...batch);
           if (batch.length < pageSize) break;
           from += pageSize;
         }
       }
-      for (const r of lines) {
-        if (!r.invoice_date) continue;
-        if (isChargeLine(r.sku, r.product_name)) continue;
-        const d = new Date(r.invoice_date);
-        if (Number.isNaN(d.getTime())) continue;
-        const y = d.getUTCFullYear();
-        const name = MONTH_NAMES[d.getUTCMonth()];
-        const v = Number(r.extended_price) || 0;
-        const bucket = r.invoice_acctivate_id ? (branchByInvoice.get(r.invoice_acctivate_id) ?? "other") : "other";
-        if (y === currentYear) {
+      for (const r of viewRows) {
+        const monthIdx = (Number(r.month) || 0) - 1;
+        if (monthIdx < 0 || monthIdx > 11) continue;
+        const name = MONTH_NAMES[monthIdx];
+        const v = Number(r.invoiced) || 0;
+        const vC = Number(r.invoiced_container) || 0;
+        const vW = Number(r.invoiced_warehouse) || 0;
+        if (Number(r.year) === currentYear) {
           agg[name].ytdI += v;
-          if (bucket === "container") agg[name].ytdIContainer += v;
-          else if (bucket === "warehouse") agg[name].ytdIWarehouse += v;
-        } else if (y === prevYear) {
+          agg[name].ytdIContainer += vC;
+          agg[name].ytdIWarehouse += vW;
+        } else if (Number(r.year) === prevYear) {
           agg[name].i25 += v;
-          if (bucket === "container") agg[name].i25Container += v;
-          else if (bucket === "warehouse") agg[name].i25Warehouse += v;
+          agg[name].i25Container += vC;
+          agg[name].i25Warehouse += vW;
         }
       }
-
 
       if (cancelled) return;
       setData(MONTH_NAMES.map((m) => agg[m]));

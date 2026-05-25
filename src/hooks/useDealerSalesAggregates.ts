@@ -275,7 +275,12 @@ async function fetchInvoiceAggregateFallbackRows(
         .select("dealer_id, invoice_date, invoice_acctivate_id, extended_price, sku, product_name")
         .gte("invoice_date", `${prevYear}-01-01`)
         .lt("invoice_date", `${currentYear + 1}-01-01`)
-        .or("sku.ilike.%tariff%,product_name.ilike.%tariff%,sku.ilike.%freight%,product_name.ilike.%freight%")
+        .or(
+          "sku.ilike.%tariff%,product_name.ilike.%tariff%," +
+          "sku.ilike.%freight%,product_name.ilike.%freight%," +
+          "sku.ilike.%ecsur%,product_name.ilike.%ecsur%," +
+          "sku.ilike.%processing fee%,product_name.ilike.%processing fee%",
+        )
         .range(excludedFrom, excludedFrom + pageSize - 1);
       if (ch) excludedQuery = excludedQuery.in("dealer_id", ch);
       const { data, error } = await excludedQuery;

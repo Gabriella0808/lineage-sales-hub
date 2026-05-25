@@ -2442,7 +2442,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      dealer_monthly_invoice_totals: {
+        Row: {
+          dealer_id: string | null
+          invoiced: number | null
+          invoiced_container: number | null
+          invoiced_warehouse: number | null
+          month: number | null
+          year: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _post_task_assigned_email: {

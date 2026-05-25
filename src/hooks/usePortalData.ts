@@ -260,7 +260,7 @@ async function fetchAdjustedInvoiceRows(opts: { fromDate?: string; toDate?: stri
 
 export function useDealers() {
   return useQuery({
-    queryKey: ["dealers", "commercial", "ytd_invoices_v2"],
+    queryKey: ["dealers", "commercial", "ytd_invoices_v3_rpc"],
     queryFn: async () => {
       const rows = await fetchAllRows<DbDealer>("dealers");
       const commercial = rows.filter((d) => {
@@ -270,14 +270,18 @@ export function useDealers() {
         return Boolean(salesperson || territory);
       });
 
-      // YTD invoice totals (excluding tariff, freight, ECSUR, CC processing fees)
+      // YTD invoice totals per dealer via server-side rollup (single round-trip).
       const currentYear = new Date().getFullYear();
-      const startOfYear = `${currentYear}-01-01`;
-      const invRows = await fetchAdjustedInvoiceRows({ fromDate: startOfYear });
       const ytdByDealer = new Map<string, number>();
-      for (const r of invRows) {
-        if (!r.dealer_id) continue;
-        ytdByDealer.set(r.dealer_id, (ytdByDealer.get(r.dealer_id) ?? 0) + Number(r.total ?? 0));
+      const { data: ytdRows, error: ytdErr } = await (supabase as any).rpc(
+        "kpi_dealer_monthly_invoiced",
+        { p_years: [currentYear] },
+      );
+      if (!ytdErr) {
+        for (const r of (ytdRows ?? []) as any[]) {
+          if (!r.dealer_id) continue;
+          ytdByDealer.set(r.dealer_id, (ytdByDealer.get(r.dealer_id) ?? 0) + Number(r.invoiced ?? 0));
+        }
       }
 
       return commercial

@@ -369,7 +369,7 @@ export function useDealerSales() {
         const month = MONTH_ABBR[d.getUTCMonth()];
         const cur = ensure(inv.dealer_id, year, month);
         cur.invoices = (cur.invoices ?? 0) + Number(inv.total ?? 0);
-        cur.invoice_count = (cur.invoice_count ?? 0) + 1;
+        if (Number(inv.total ?? 0) >= 0) cur.invoice_count = (cur.invoice_count ?? 0) + 1;
       }
 
       for (const cur of map.values()) {

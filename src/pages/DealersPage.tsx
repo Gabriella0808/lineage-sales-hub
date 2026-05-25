@@ -203,7 +203,7 @@ export default function DealersPage() {
                 </td>
                 <td className="p-3"><StatusBadge status={d.status} /></td>
                 <td className="p-3"><StatusBadge status={d.engagement ?? 'medium'} /></td>
-                <td className="p-3 text-right hidden lg:table-cell font-medium">{formatCurrency(d.revenue)}</td>
+                <td className="p-3 text-right hidden lg:table-cell font-medium">{formatCurrency(getYtd(d.id))}</td>
                 <td className="p-3">
                   <div className="flex items-center justify-center gap-1">
                     {d.email && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); window.location.href = `mailto:${d.email}`; }}><Mail className="h-3.5 w-3.5" /></Button>}

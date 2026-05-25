@@ -319,7 +319,7 @@ async function fetchInvoiceAggregateFallbackRows(
 
 function shouldExcludeInvoiceLine(line: Pick<InvoiceLineFallbackRow, "sku" | "product_name">) {
   const haystack = `${line.sku ?? ""} ${line.product_name ?? ""}`.toLowerCase();
-  return /tariff|freight/.test(haystack);
+  return /tariff|freight|ecsur|processing fee/.test(haystack);
 }
 
 function emptyYear(): MonthlyAgg[] {

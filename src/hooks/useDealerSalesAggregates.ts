@@ -192,28 +192,21 @@ async function fetchInvoiceAggregateViewRows(
   prevYear: number,
   dealerIds: string[] | null,
 ): Promise<ViewRow[] | null> {
-  const viewRows: ViewRow[] = [];
-  const dealerChunks: (string[] | null)[] = dealerIds ? chunk(dealerIds, 200) : [null];
-  for (const ch of dealerChunks) {
-    let from = 0;
-    const pageSize = 1000;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      let q = supabase
-        .from("dealer_monthly_invoice_totals" as any)
-        .select("year, month, dealer_id, invoiced, invoiced_container, invoiced_warehouse")
-        .in("year", [currentYear, prevYear])
-        .range(from, from + pageSize - 1);
-      if (ch) q = q.in("dealer_id", ch);
-      const { data, error } = await q;
-      if (error) return null;
-      const batch = (data ?? []) as unknown as ViewRow[];
-      viewRows.push(...batch);
-      if (batch.length < pageSize) break;
-      from += pageSize;
-    }
-  }
-  return viewRows;
+  // Server-side rollup: returns 24 rows max (year × month), regardless of
+  // dealer count. Much faster than paginating per-dealer rows.
+  const { data, error } = await (supabase as any).rpc("kpi_monthly_invoice_rollup", {
+    p_years: [currentYear, prevYear],
+    p_dealer_ids: dealerIds,
+  });
+  if (error) return null;
+  return ((data ?? []) as any[]).map((r) => ({
+    year: Number(r.year),
+    month: Number(r.month),
+    dealer_id: null,
+    invoiced: Number(r.invoiced) || 0,
+    invoiced_container: Number(r.invoiced_container) || 0,
+    invoiced_warehouse: Number(r.invoiced_warehouse) || 0,
+  }));
 }
 
 async function fetchInvoiceAggregateFallbackRows(

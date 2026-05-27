@@ -51,10 +51,12 @@ export function useCrmAccounts() {
       if (error) throw error;
       return (data ?? []) as CrmAccount[];
     },
+    staleTime: CRM_STALE_TIME,
   });
 }
 
 export function useCrmAccount(id: string | undefined) {
+  const qc = useQueryClient();
   return useQuery({
     queryKey: ["crm_account", id],
     enabled: !!id,
@@ -66,6 +68,11 @@ export function useCrmAccount(id: string | undefined) {
         .maybeSingle();
       if (error) throw error;
       return data as CrmAccount | null;
+    },
+    staleTime: CRM_STALE_TIME,
+    placeholderData: () => {
+      const list = qc.getQueryData<CrmAccount[]>(["crm_accounts"]);
+      return list?.find((a) => a.id === id) ?? undefined;
     },
   });
 }

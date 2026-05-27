@@ -156,24 +156,23 @@ function RoleAdminPanel() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
 
+  const [newEmail, setNewEmail] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState<AppRole>("rep");
+  const [creating, setCreating] = useState(false);
+
   const load = async () => {
     setLoading(true);
-    const [profilesRes, rolesRes, umRes, urRes, mgrRes, repRes] = await Promise.all([
+    const [profilesRes, rolesRes, umRes, urRes, mgrRes, repRes, emailsRes] = await Promise.all([
       supabase.from("profiles").select("user_id, full_name"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("user_managers").select("user_id, manager_id"),
       supabase.from("user_reps").select("user_id, rep_id"),
       supabase.from("managers").select("id, name").order("name"),
       supabase.from("sales_reps").select("id, name").order("name"),
+      supabase.functions.invoke("admin-manage-users", { body: { action: "list_emails" } }),
     ]);
-
-    // Get emails from sign_in_log (admins can read it) — fallback to profiles only
-    const { data: emails } = await supabase
-      .from("sign_in_log")
-      .select("user_id")
-      .order("signed_in_at", { ascending: false });
-    // Note: emails for users live in auth.users which we can't query directly from client.
-    // We'll show full_name + first email partial via profile. Admins can identify users by name.
 
     const profilesMap = new Map((profilesRes.data ?? []).map((p) => [p.user_id, p.full_name]));
     const rolesMap = new Map<string, AppRole[]>();
@@ -184,27 +183,59 @@ function RoleAdminPanel() {
     });
     const umMap = new Map((umRes.data ?? []).map((r) => [r.user_id, r.manager_id]));
     const urMap = new Map((urRes.data ?? []).map((r) => [r.user_id, r.rep_id]));
+    const emails: Record<string, string> = (emailsRes.data as any)?.emails ?? {};
 
     const allUserIds = new Set<string>([
-      ...profilesMap.keys(),
-      ...rolesMap.keys(),
-      ...umMap.keys(),
-      ...urMap.keys(),
+      ...profilesMap.keys(), ...rolesMap.keys(), ...umMap.keys(), ...urMap.keys(), ...Object.keys(emails),
     ]);
 
     const rows: UserRow[] = Array.from(allUserIds).map((uid) => ({
       user_id: uid,
       full_name: profilesMap.get(uid) ?? null,
-      email: "",
+      email: emails[uid] ?? "",
       roles: rolesMap.get(uid) ?? [],
       manager_id: umMap.get(uid) ?? null,
       rep_id: urMap.get(uid) ?? null,
-    })).sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
+    })).sort((a, b) => (a.full_name ?? a.email ?? "").localeCompare(b.full_name ?? b.email ?? ""));
 
     setUsers(rows);
     setManagers((mgrRes.data ?? []) as ManagerOpt[]);
     setReps((repRes.data ?? []) as RepOpt[]);
     setLoading(false);
+  };
+
+  const createUser = async () => {
+    if (!newEmail || newPassword.length < 8) {
+      toast({ title: "Missing info", description: "Email and password (min 8 chars) required.", variant: "destructive" });
+      return;
+    }
+    setCreating(true);
+    const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+      body: { action: "create_user", email: newEmail, password: newPassword, full_name: newName, role: newRole },
+    });
+    setCreating(false);
+    if (error || (data as any)?.error) {
+      toast({ title: "Couldn't create user", description: error?.message ?? (data as any)?.error, variant: "destructive" });
+      return;
+    }
+    toast({ title: "User created", description: `${newEmail} added as ${newRole}.` });
+    setNewEmail(""); setNewName(""); setNewPassword(""); setNewRole("rep");
+    load();
+  };
+
+  const deleteUser = async (userId: string, label: string) => {
+    if (!confirm(`Delete ${label}? This removes their access permanently.`)) return;
+    setSavingId(userId);
+    const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+      body: { action: "delete_user", user_id: userId },
+    });
+    setSavingId(null);
+    if (error || (data as any)?.error) {
+      toast({ title: "Couldn't delete user", description: error?.message ?? (data as any)?.error, variant: "destructive" });
+      return;
+    }
+    toast({ title: "User deleted" });
+    load();
   };
 
   useEffect(() => { load(); }, []);

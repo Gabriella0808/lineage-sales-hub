@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, LayoutGrid, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
+  Briefcase, KanbanSquare, Contact,
   FileText, Send, FolderOpen,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
@@ -45,6 +46,17 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Overview",  url: "/",      icon: Compass,     roles: ["admin", "manager", "rep"] },
       { title: "My Tasks", url: "/tasks", icon: ListChecks, roles: ["admin", "manager", "rep"] },
+    ],
+  },
+  {
+    id: "crm",
+    label: "CRM",
+    items: [
+      { title: "CRM Overview", url: "/crm", icon: Briefcase, roles: ["admin", "manager"] },
+      { title: "Accounts", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
+      { title: "Pipeline", url: "/crm/pipeline", icon: KanbanSquare, roles: ["admin", "manager"] },
+      { title: "Accounts by Rep", url: "/crm/reps", icon: Users, roles: ["admin", "manager"] },
+      { title: "Directory", url: "/crm/directory", icon: Contact, roles: ["admin", "manager"] },
     ],
   },
   {

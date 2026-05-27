@@ -40,6 +40,13 @@ import OrgChartPage from "@/pages/OrgChartPage";
 import AuthPage from "@/pages/AuthPage";
 import UnsubscribePage from "@/pages/UnsubscribePage";
 import NotFound from "@/pages/NotFound";
+import CrmDashboardPage from "@/pages/crm/CrmDashboardPage";
+import CrmAccountsPage from "@/pages/crm/CrmAccountsPage";
+import CrmPipelinePage from "@/pages/crm/CrmPipelinePage";
+import CrmAccountDetailPage from "@/pages/crm/CrmAccountDetailPage";
+import CrmNewAccountPage from "@/pages/crm/CrmNewAccountPage";
+import CrmRepsPage from "@/pages/crm/CrmRepsPage";
+import CrmDirectoryPage from "@/pages/crm/CrmDirectoryPage";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +94,13 @@ const App = () => (
                       <Route path="/trade-show-leads" element={<ProtectedRoute allow={["admin", "manager"]}><TradeShowLeadsPage /></ProtectedRoute>} />
                       <Route path="/trade-show-leads/capture" element={<ProtectedRoute allow={["admin", "manager"]}><CaptureLeadsPage /></ProtectedRoute>} />
                       <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]}><OrgChartPage /></ProtectedRoute>} />
+                      <Route path="/crm" element={<ProtectedRoute allow={["admin","manager"]}><CrmDashboardPage /></ProtectedRoute>} />
+                      <Route path="/crm/accounts" element={<ProtectedRoute allow={["admin","manager"]}><CrmAccountsPage /></ProtectedRoute>} />
+                      <Route path="/crm/accounts/new" element={<ProtectedRoute allow={["admin","manager"]}><CrmNewAccountPage /></ProtectedRoute>} />
+                      <Route path="/crm/accounts/:id" element={<ProtectedRoute allow={["admin","manager"]}><CrmAccountDetailPage /></ProtectedRoute>} />
+                      <Route path="/crm/pipeline" element={<ProtectedRoute allow={["admin","manager"]}><CrmPipelinePage /></ProtectedRoute>} />
+                      <Route path="/crm/reps" element={<ProtectedRoute allow={["admin","manager"]}><CrmRepsPage /></ProtectedRoute>} />
+                      <Route path="/crm/directory" element={<ProtectedRoute allow={["admin","manager"]}><CrmDirectoryPage /></ProtectedRoute>} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

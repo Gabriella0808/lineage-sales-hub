@@ -136,6 +136,144 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_account_notes: {
+        Row: {
+          account_id: string
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+        }
+        Insert: {
+          account_id: string
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Update: {
+          account_id?: string
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_account_notes_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "crm_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_account_stage_history: {
+        Row: {
+          account_id: string
+          changed_at: string
+          changed_by: string | null
+          from_stage: string | null
+          id: string
+          to_stage: string
+        }
+        Insert: {
+          account_id: string
+          changed_at?: string
+          changed_by?: string | null
+          from_stage?: string | null
+          id?: string
+          to_stage: string
+        }
+        Update: {
+          account_id?: string
+          changed_at?: string
+          changed_by?: string | null
+          from_stage?: string | null
+          id?: string
+          to_stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_account_stage_history_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "crm_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_accounts: {
+        Row: {
+          assigned_rep_id: string | null
+          city: string | null
+          company_name: string
+          contact_first_name: string | null
+          contact_last_name: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          lifecycle_stage: string
+          main_phone: string | null
+          notes: string | null
+          state: string | null
+          status: string
+          street_1: string | null
+          updated_at: string
+          website: string | null
+          zip: string | null
+        }
+        Insert: {
+          assigned_rep_id?: string | null
+          city?: string | null
+          company_name: string
+          contact_first_name?: string | null
+          contact_last_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          lifecycle_stage?: string
+          main_phone?: string | null
+          notes?: string | null
+          state?: string | null
+          status?: string
+          street_1?: string | null
+          updated_at?: string
+          website?: string | null
+          zip?: string | null
+        }
+        Update: {
+          assigned_rep_id?: string | null
+          city?: string | null
+          company_name?: string
+          contact_first_name?: string | null
+          contact_last_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          lifecycle_stage?: string
+          main_phone?: string | null
+          notes?: string | null
+          state?: string | null
+          status?: string
+          street_1?: string | null
+          updated_at?: string
+          website?: string | null
+          zip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_accounts_assigned_rep_id_fkey"
+            columns: ["assigned_rep_id"]
+            isOneToOne: false
+            referencedRelation: "sales_reps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_quote_items: {
         Row: {
           created_at: string

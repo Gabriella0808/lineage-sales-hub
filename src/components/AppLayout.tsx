@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, LayoutGrid, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
+  Briefcase, KanbanSquare, Contact,
   FileText, Send, FolderOpen,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";

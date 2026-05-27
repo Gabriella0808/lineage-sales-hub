@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+const CRM_STALE_TIME = 60_000;
+
 export const LIFECYCLE_STAGES = [
   { id: "lead", label: "Lead", color: "bg-slate-100 text-slate-700 border-slate-200" },
   { id: "prospect", label: "Prospect", color: "bg-blue-100 text-blue-700 border-blue-200" },

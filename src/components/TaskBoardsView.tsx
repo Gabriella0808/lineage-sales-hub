@@ -425,13 +425,25 @@ export default function TaskBoardsView() {
       toast({ title: "Title is required", variant: "destructive" });
       return;
     }
+    // Auto-route group_id from status: if the chosen status maps to one of this
+    // board's groups (by name) and the user didn't pick a different matching
+    // group, move the task into the status-matching group automatically.
+    let effectiveGroupId = taskForm.group_id;
+    const currentGroup = effectiveGroupId
+      ? groups.find((g) => g.id === effectiveGroupId)
+      : null;
+    const currentGroupStatus = inferStatusFromGroupName(currentGroup?.name);
+    if (!currentGroup || (currentGroupStatus && currentGroupStatus !== taskForm.status)) {
+      const matchedGroupId = findGroupForStatus(activeBoardId, taskForm.status);
+      if (matchedGroupId) effectiveGroupId = matchedGroupId;
+    }
     const payload: any = {
       title: taskForm.title.trim(),
       description: taskForm.description.trim() || null,
       status: taskForm.status,
       due_date: taskForm.due_date || null,
       board_id: activeBoardId,
-      group_id: taskForm.group_id,
+      group_id: effectiveGroupId,
     };
     let taskId: string | null = null;
     if (editingTask) {

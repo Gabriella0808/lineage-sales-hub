@@ -137,7 +137,7 @@ export default function TaskBoardsView() {
     if (!user) return;
     setLoading(true);
     const [bRes, gRes, tRes, uRes] = await Promise.all([
-      supabase.from("task_boards" as any).select("*").order("created_at", { ascending: true }),
+      supabase.from("task_boards" as any).select("*").order("updated_at", { ascending: false }),
       supabase.from("task_board_groups" as any).select("*").order("position", { ascending: true }),
       supabase
         .from("manager_tasks")

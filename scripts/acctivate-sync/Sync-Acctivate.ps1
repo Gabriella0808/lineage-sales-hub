@@ -46,6 +46,10 @@ $SupabaseUrl  = $config.supabaseUrl.TrimEnd('/')
 $SyncToken    = $config.syncToken
 $FunctionUrl  = "$SupabaseUrl/functions/v1/sync-acctivate"
 $BatchSize    = if ($config.batchSize) { [int]$config.batchSize } else { 100 }
+$RequestTimeoutSeconds = if ($config.requestTimeoutSeconds) { [int]$config.requestTimeoutSeconds } else { 120 }
+$MaxRetries = if ($config.maxRetries) { [int]$config.maxRetries } else { 3 }
+$RetryDelaySeconds = if ($config.retryDelaySeconds) { [int]$config.retryDelaySeconds } else { 5 }
+$SqlCommandTimeoutSeconds = if ($config.sql.commandTimeoutSeconds) { [int]$config.sql.commandTimeoutSeconds } else { 300 }
 
 if (-not $SupabaseUrl -or -not $SyncToken) {
   throw "supabaseUrl and syncToken are required in $ConfigPath"
@@ -63,11 +67,12 @@ $sqlConnStr += "Encrypt=False;TrustServerCertificate=True;"
 function Invoke-Sql {
   param([string]$Query)
   $conn = New-Object System.Data.SqlClient.SqlConnection $sqlConnStr
+  $conn.ConnectionString += "Connection Timeout=30;"
   $conn.Open()
   try {
     $cmd = $conn.CreateCommand()
     $cmd.CommandText = $Query
-    $cmd.CommandTimeout = 300
+    $cmd.CommandTimeout = $SqlCommandTimeoutSeconds
     $reader = $cmd.ExecuteReader()
     $rows = New-Object System.Collections.Generic.List[hashtable]
     while ($reader.Read()) {

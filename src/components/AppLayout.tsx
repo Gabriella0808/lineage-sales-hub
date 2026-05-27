@@ -56,7 +56,6 @@ const NAV_SECTIONS: NavSection[] = [
       { title: "Accounts", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
       { title: "Pipeline", url: "/crm/pipeline", icon: KanbanSquare, roles: ["admin", "manager"] },
       { title: "Accounts by Rep", url: "/crm/reps", icon: Users, roles: ["admin", "manager"] },
-      { title: "Directory", url: "/crm/directory", icon: Contact, roles: ["admin", "manager"] },
     ],
   },
   {

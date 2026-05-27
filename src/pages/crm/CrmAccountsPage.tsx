@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useCrmAccounts, useCrmReps, useUpdateAccount, LIFECYCLE_STAGES, type LifecycleStage } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -14,8 +14,15 @@ export default function CrmAccountsPage() {
   const { data: reps = [] } = useCrmReps();
   const update = useUpdateAccount();
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const repParam = searchParams.get("rep") ?? "all";
   const [q, setQ] = useState("");
-  const [repFilter, setRepFilter] = useState<string>("all");
+  const repFilter = repParam;
+  const setRepFilter = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("rep"); else next.set("rep", v);
+    setSearchParams(next, { replace: true });
+  };
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("all");
 

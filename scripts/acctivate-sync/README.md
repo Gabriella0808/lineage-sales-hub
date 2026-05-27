@@ -106,3 +106,18 @@ Unregister-ScheduledTask -TaskName 'Lineage Acctivate Sync' -Confirm:$false
 | `Login failed for user` | Wrong SQL credentials — toggle `integratedSecurity` or fix user/password. |
 | `Invalid object name 'dbo.Customer'` | Your Acctivate schema differs — edit the SQL in `$queries`. |
 | HTTP 400 with column errors | A returned column isn't in the target table. Adjust the SELECT aliases. |
+| Sync stops after `==> inventory` | The inventory SQL query or HTTP upload is timing out/retrying. The script now logs timestamps and exits after configured timeouts instead of wedging the scheduled task. |
+| Remote desktop disconnects mid-sync | Reconnect and check `C:\LineageSync\last-run.log`; scheduled runs continue in the background and should now either finish or fail cleanly. |
+
+Optional timeout settings in `sync.config.json`:
+
+```json
+{
+  "requestTimeoutSeconds": 120,
+  "maxRetries": 3,
+  "retryDelaySeconds": 5,
+  "sql": {
+    "commandTimeoutSeconds": 300
+  }
+}
+```

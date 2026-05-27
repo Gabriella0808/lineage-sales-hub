@@ -46,6 +46,10 @@ $SupabaseUrl  = $config.supabaseUrl.TrimEnd('/')
 $SyncToken    = $config.syncToken
 $FunctionUrl  = "$SupabaseUrl/functions/v1/sync-acctivate"
 $BatchSize    = if ($config.batchSize) { [int]$config.batchSize } else { 100 }
+$RequestTimeoutSeconds = if ($config.requestTimeoutSeconds) { [int]$config.requestTimeoutSeconds } else { 120 }
+$MaxRetries = if ($config.maxRetries) { [int]$config.maxRetries } else { 3 }
+$RetryDelaySeconds = if ($config.retryDelaySeconds) { [int]$config.retryDelaySeconds } else { 5 }
+$SqlCommandTimeoutSeconds = if ($config.sql.commandTimeoutSeconds) { [int]$config.sql.commandTimeoutSeconds } else { 300 }
 
 if (-not $SupabaseUrl -or -not $SyncToken) {
   throw "supabaseUrl and syncToken are required in $ConfigPath"
@@ -63,11 +67,12 @@ $sqlConnStr += "Encrypt=False;TrustServerCertificate=True;"
 function Invoke-Sql {
   param([string]$Query)
   $conn = New-Object System.Data.SqlClient.SqlConnection $sqlConnStr
+  $conn.ConnectionString += "Connection Timeout=30;"
   $conn.Open()
   try {
     $cmd = $conn.CreateCommand()
     $cmd.CommandText = $Query
-    $cmd.CommandTimeout = 300
+    $cmd.CommandTimeout = $SqlCommandTimeoutSeconds
     $reader = $cmd.ExecuteReader()
     $rows = New-Object System.Collections.Generic.List[hashtable]
     while ($reader.Read()) {
@@ -291,17 +296,31 @@ function Send-Batch {
       on_conflict  = $OnConflict
     } | ConvertTo-Json -Depth 8 -Compress
 
-    $resp = Invoke-RestMethod `
-      -Method Post `
-      -Uri $FunctionUrl `
-      -Headers @{ Authorization = "Bearer $SyncToken"; 'Content-Type' = 'application/json' } `
-      -Body $payload
+    $attempt = 0
+    while ($true) {
+      $attempt++
+      try {
+        $resp = Invoke-RestMethod `
+          -Method Post `
+          -Uri $FunctionUrl `
+          -Headers @{ Authorization = "Bearer $SyncToken"; 'Content-Type' = 'application/json' } `
+          -Body $payload `
+          -TimeoutSec $RequestTimeoutSeconds
+        break
+      } catch {
+        if ($attempt -ge $MaxRetries) {
+          throw "Sync failed for $Table batch starting $i after $attempt attempts: $($_.Exception.Message)"
+        }
+        Write-Warning "[$Table] batch starting $i failed on attempt $attempt/$MaxRetries; retrying in $RetryDelaySeconds seconds: $($_.Exception.Message)"
+        Start-Sleep -Seconds $RetryDelaySeconds
+      }
+    }
 
     if (-not $resp.success) {
       throw "Sync failed for $Table batch starting $i : $($resp.error)"
     }
     $sent += $chunk.Count
-    Write-Host "  [$Table] $sent / $total" -ForegroundColor DarkCyan
+    Write-Host "  [$Table] $sent / $total at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor DarkCyan
   }
 }
 
@@ -371,6 +390,7 @@ WHERE p.Inactive = 0
 "@
 
   inventory = @"
+SET LOCK_TIMEOUT 30000;
 SELECT
   CAST(i.ProductID AS NVARCHAR(64)) AS acctivate_id,
   p.ProductCode                     AS sku,
@@ -421,7 +441,7 @@ foreach ($table in $enabled) {
     Write-Warning "No query defined for '$table' — skipping. Available: $($queries.Keys -join ', ')"
     continue
   }
-  Write-Host "==> $table" -ForegroundColor Yellow
+  Write-Host "==> $table at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Yellow
   $rows = Invoke-Sql -Query $queries[$table]
   Write-Host "  pulled $($rows.Count) rows from SQL"
   Send-Batch -Table $table -Rows $rows -OnConflict 'acctivate_id'

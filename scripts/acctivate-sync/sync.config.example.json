@@ -2,10 +2,14 @@
   "supabaseUrl": "https://tsbrvpgzawbbmuloxlkz.supabase.co",
   "syncToken": "PASTE_YOUR_SYNC_API_TOKEN_HERE",
   "batchSize": 500,
+  "requestTimeoutSeconds": 120,
+  "maxRetries": 3,
+  "retryDelaySeconds": 5,
   "enabledTables": ["managers", "sales_reps", "territories", "dealers", "products", "inventory", "dealer_invoices"],
   "sql": {
     "server": "YOUR-SQL-HOST\\ACCTIVATE",
     "database": "Acctivate",
+    "commandTimeoutSeconds": 300,
     "integratedSecurity": true,
     "user": "",
     "password": ""

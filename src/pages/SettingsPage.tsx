@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, UserCog, Users, KeyRound } from "lucide-react";
+import { Loader2, ShieldCheck, UserCog, Users, KeyRound, Trash2, UserPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -156,24 +156,23 @@ function RoleAdminPanel() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
 
+  const [newEmail, setNewEmail] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newRole, setNewRole] = useState<AppRole>("rep");
+  const [creating, setCreating] = useState(false);
+
   const load = async () => {
     setLoading(true);
-    const [profilesRes, rolesRes, umRes, urRes, mgrRes, repRes] = await Promise.all([
+    const [profilesRes, rolesRes, umRes, urRes, mgrRes, repRes, emailsRes] = await Promise.all([
       supabase.from("profiles").select("user_id, full_name"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("user_managers").select("user_id, manager_id"),
       supabase.from("user_reps").select("user_id, rep_id"),
       supabase.from("managers").select("id, name").order("name"),
       supabase.from("sales_reps").select("id, name").order("name"),
+      supabase.functions.invoke("admin-manage-users", { body: { action: "list_emails" } }),
     ]);
-
-    // Get emails from sign_in_log (admins can read it) — fallback to profiles only
-    const { data: emails } = await supabase
-      .from("sign_in_log")
-      .select("user_id")
-      .order("signed_in_at", { ascending: false });
-    // Note: emails for users live in auth.users which we can't query directly from client.
-    // We'll show full_name + first email partial via profile. Admins can identify users by name.
 
     const profilesMap = new Map((profilesRes.data ?? []).map((p) => [p.user_id, p.full_name]));
     const rolesMap = new Map<string, AppRole[]>();
@@ -184,27 +183,59 @@ function RoleAdminPanel() {
     });
     const umMap = new Map((umRes.data ?? []).map((r) => [r.user_id, r.manager_id]));
     const urMap = new Map((urRes.data ?? []).map((r) => [r.user_id, r.rep_id]));
+    const emails: Record<string, string> = (emailsRes.data as any)?.emails ?? {};
 
     const allUserIds = new Set<string>([
-      ...profilesMap.keys(),
-      ...rolesMap.keys(),
-      ...umMap.keys(),
-      ...urMap.keys(),
+      ...profilesMap.keys(), ...rolesMap.keys(), ...umMap.keys(), ...urMap.keys(), ...Object.keys(emails),
     ]);
 
     const rows: UserRow[] = Array.from(allUserIds).map((uid) => ({
       user_id: uid,
       full_name: profilesMap.get(uid) ?? null,
-      email: "",
+      email: emails[uid] ?? "",
       roles: rolesMap.get(uid) ?? [],
       manager_id: umMap.get(uid) ?? null,
       rep_id: urMap.get(uid) ?? null,
-    })).sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
+    })).sort((a, b) => (a.full_name ?? a.email ?? "").localeCompare(b.full_name ?? b.email ?? ""));
 
     setUsers(rows);
     setManagers((mgrRes.data ?? []) as ManagerOpt[]);
     setReps((repRes.data ?? []) as RepOpt[]);
     setLoading(false);
+  };
+
+  const createUser = async () => {
+    if (!newEmail || newPassword.length < 8) {
+      toast({ title: "Missing info", description: "Email and password (min 8 chars) required.", variant: "destructive" });
+      return;
+    }
+    setCreating(true);
+    const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+      body: { action: "create_user", email: newEmail, password: newPassword, full_name: newName, role: newRole },
+    });
+    setCreating(false);
+    if (error || (data as any)?.error) {
+      toast({ title: "Couldn't create user", description: error?.message ?? (data as any)?.error, variant: "destructive" });
+      return;
+    }
+    toast({ title: "User created", description: `${newEmail} added as ${newRole}.` });
+    setNewEmail(""); setNewName(""); setNewPassword(""); setNewRole("rep");
+    load();
+  };
+
+  const deleteUser = async (userId: string, label: string) => {
+    if (!confirm(`Delete ${label}? This removes their access permanently.`)) return;
+    setSavingId(userId);
+    const { data, error } = await supabase.functions.invoke("admin-manage-users", {
+      body: { action: "delete_user", user_id: userId },
+    });
+    setSavingId(null);
+    if (error || (data as any)?.error) {
+      toast({ title: "Couldn't delete user", description: error?.message ?? (data as any)?.error, variant: "destructive" });
+      return;
+    }
+    toast({ title: "User deleted" });
+    load();
   };
 
   useEffect(() => { load(); }, []);
@@ -253,7 +284,27 @@ function RoleAdminPanel() {
           Assign each user a role and link them to their manager or rep record.
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-5">
+        <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+          <div className="flex items-center gap-2 text-sm font-medium"><UserPlus className="h-4 w-4 text-primary" /> Add new user</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+            <Input placeholder="Email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="h-8" />
+            <Input placeholder="Full name" value={newName} onChange={(e) => setNewName(e.target.value)} className="h-8" />
+            <Input type="password" placeholder="Password (min 8)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-8" />
+            <Select value={newRole} onValueChange={(v: AppRole) => setNewRole(v)}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="rep">Rep</SelectItem>
+                <SelectItem value="dealer">Dealer</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" onClick={createUser} disabled={creating}>
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add user"}
+            </Button>
+          </div>
+        </div>
         {loading ? (
           <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
             <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading users…
@@ -269,6 +320,7 @@ function RoleAdminPanel() {
                   <th className="py-2">Role</th>
                   <th className="py-2">Manager link</th>
                   <th className="py-2">Rep link</th>
+                  <th className="py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -277,10 +329,13 @@ function RoleAdminPanel() {
                     ? "admin"
                     : u.roles.includes("manager")
                       ? "manager"
-                      : u.roles.includes("rep")
-                        ? "rep"
-                        : (u.manager_id ? "manager" : u.rep_id ? "rep" : "rep");
+                      : u.roles.includes("dealer")
+                        ? "dealer"
+                        : u.roles.includes("rep")
+                          ? "rep"
+                          : (u.manager_id ? "manager" : u.rep_id ? "rep" : "rep");
                   const busy = savingId === u.user_id;
+                  const label = u.full_name ?? u.email ?? "Unnamed user";
                   return (
                     <tr key={u.user_id} className="border-b last:border-0">
                       <td className="py-2 pr-3">
@@ -289,8 +344,8 @@ function RoleAdminPanel() {
                             <Users className="h-3.5 w-3.5 text-muted-foreground" />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium truncate">{u.full_name ?? "Unnamed user"}</p>
-                            <p className="text-[11px] text-muted-foreground truncate font-mono">{u.user_id.slice(0, 8)}…</p>
+                            <p className="font-medium truncate">{label}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{u.email || `${u.user_id.slice(0, 8)}…`}</p>
                           </div>
                         </div>
                       </td>
@@ -301,6 +356,7 @@ function RoleAdminPanel() {
                             <SelectItem value="admin">Admin</SelectItem>
                             <SelectItem value="manager">Manager</SelectItem>
                             <SelectItem value="rep">Rep</SelectItem>
+                            <SelectItem value="dealer">Dealer</SelectItem>
                           </SelectContent>
                         </Select>
                       </td>
@@ -317,7 +373,7 @@ function RoleAdminPanel() {
                           </SelectContent>
                         </Select>
                       </td>
-                      <td className="py-2">
+                      <td className="py-2 pr-3">
                         <Select
                           value={u.rep_id ?? "none"}
                           onValueChange={(v) => linkRep(u.user_id, v === "none" ? null : v)}
@@ -329,6 +385,11 @@ function RoleAdminPanel() {
                             {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                      </td>
+                      <td className="py-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteUser(u.user_id, label)} disabled={busy} title="Delete user">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   );

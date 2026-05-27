@@ -53,10 +53,11 @@ const NAV_SECTIONS: NavSection[] = [
     label: "CRM",
     items: [
       { title: "CRM Overview", url: "/crm", icon: Briefcase, roles: ["admin", "manager"] },
-      { title: "Accounts", url: "/crm/accounts", icon: Building2Icon, roles: ["admin", "manager"] },
+      { title: "Accounts", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
       { title: "Pipeline", url: "/crm/pipeline", icon: KanbanSquare, roles: ["admin", "manager"] },
       { title: "Accounts by Rep", url: "/crm/reps", icon: Users, roles: ["admin", "manager"] },
       { title: "Directory", url: "/crm/directory", icon: Contact, roles: ["admin", "manager"] },
+    ],
   },
   {
     id: "catalog",

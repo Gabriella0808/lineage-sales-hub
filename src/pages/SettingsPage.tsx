@@ -284,7 +284,27 @@ function RoleAdminPanel() {
           Assign each user a role and link them to their manager or rep record.
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-5">
+        <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+          <div className="flex items-center gap-2 text-sm font-medium"><UserPlus className="h-4 w-4 text-primary" /> Add new user</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+            <Input placeholder="Email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} className="h-8" />
+            <Input placeholder="Full name" value={newName} onChange={(e) => setNewName(e.target.value)} className="h-8" />
+            <Input type="password" placeholder="Password (min 8)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="h-8" />
+            <Select value={newRole} onValueChange={(v: AppRole) => setNewRole(v)}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="rep">Rep</SelectItem>
+                <SelectItem value="dealer">Dealer</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" onClick={createUser} disabled={creating}>
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add user"}
+            </Button>
+          </div>
+        </div>
         {loading ? (
           <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
             <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading users…

@@ -320,6 +320,7 @@ function RoleAdminPanel() {
                   <th className="py-2">Role</th>
                   <th className="py-2">Manager link</th>
                   <th className="py-2">Rep link</th>
+                  <th className="py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -328,10 +329,13 @@ function RoleAdminPanel() {
                     ? "admin"
                     : u.roles.includes("manager")
                       ? "manager"
-                      : u.roles.includes("rep")
-                        ? "rep"
-                        : (u.manager_id ? "manager" : u.rep_id ? "rep" : "rep");
+                      : u.roles.includes("dealer")
+                        ? "dealer"
+                        : u.roles.includes("rep")
+                          ? "rep"
+                          : (u.manager_id ? "manager" : u.rep_id ? "rep" : "rep");
                   const busy = savingId === u.user_id;
+                  const label = u.full_name ?? u.email ?? "Unnamed user";
                   return (
                     <tr key={u.user_id} className="border-b last:border-0">
                       <td className="py-2 pr-3">
@@ -340,8 +344,8 @@ function RoleAdminPanel() {
                             <Users className="h-3.5 w-3.5 text-muted-foreground" />
                           </div>
                           <div className="min-w-0">
-                            <p className="font-medium truncate">{u.full_name ?? "Unnamed user"}</p>
-                            <p className="text-[11px] text-muted-foreground truncate font-mono">{u.user_id.slice(0, 8)}…</p>
+                            <p className="font-medium truncate">{label}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{u.email || `${u.user_id.slice(0, 8)}…`}</p>
                           </div>
                         </div>
                       </td>
@@ -352,6 +356,7 @@ function RoleAdminPanel() {
                             <SelectItem value="admin">Admin</SelectItem>
                             <SelectItem value="manager">Manager</SelectItem>
                             <SelectItem value="rep">Rep</SelectItem>
+                            <SelectItem value="dealer">Dealer</SelectItem>
                           </SelectContent>
                         </Select>
                       </td>
@@ -368,7 +373,7 @@ function RoleAdminPanel() {
                           </SelectContent>
                         </Select>
                       </td>
-                      <td className="py-2">
+                      <td className="py-2 pr-3">
                         <Select
                           value={u.rep_id ?? "none"}
                           onValueChange={(v) => linkRep(u.user_id, v === "none" ? null : v)}
@@ -380,6 +385,11 @@ function RoleAdminPanel() {
                             {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                      </td>
+                      <td className="py-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteUser(u.user_id, label)} disabled={busy} title="Delete user">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </td>
                     </tr>
                   );

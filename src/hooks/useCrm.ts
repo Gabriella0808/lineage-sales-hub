@@ -137,6 +137,7 @@ export function useStageHistory(accountId: string | undefined) {
       if (error) throw error;
       return data ?? [];
     },
+    staleTime: CRM_STALE_TIME,
   });
 }
 

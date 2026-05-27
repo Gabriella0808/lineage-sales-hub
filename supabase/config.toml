@@ -53,3 +53,9 @@ verify_jwt = false
 
 [functions.resurrect-failed-lead-emails]
 verify_jwt = false
+
+[functions.seed-andrew-admin]
+verify_jwt = false
+
+[functions.admin-manage-users]
+verify_jwt = false

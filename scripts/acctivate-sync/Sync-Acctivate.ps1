@@ -390,6 +390,7 @@ WHERE p.Inactive = 0
 "@
 
   inventory = @"
+SET LOCK_TIMEOUT 30000;
 SELECT
   CAST(i.ProductID AS NVARCHAR(64)) AS acctivate_id,
   p.ProductCode                     AS sku,
@@ -440,7 +441,7 @@ foreach ($table in $enabled) {
     Write-Warning "No query defined for '$table' — skipping. Available: $($queries.Keys -join ', ')"
     continue
   }
-  Write-Host "==> $table" -ForegroundColor Yellow
+  Write-Host "==> $table at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Yellow
   $rows = Invoke-Sql -Query $queries[$table]
   Write-Host "  pulled $($rows.Count) rows from SQL"
   Send-Batch -Table $table -Rows $rows -OnConflict 'acctivate_id'

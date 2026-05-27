@@ -296,17 +296,31 @@ function Send-Batch {
       on_conflict  = $OnConflict
     } | ConvertTo-Json -Depth 8 -Compress
 
-    $resp = Invoke-RestMethod `
-      -Method Post `
-      -Uri $FunctionUrl `
-      -Headers @{ Authorization = "Bearer $SyncToken"; 'Content-Type' = 'application/json' } `
-      -Body $payload
+    $attempt = 0
+    while ($true) {
+      $attempt++
+      try {
+        $resp = Invoke-RestMethod `
+          -Method Post `
+          -Uri $FunctionUrl `
+          -Headers @{ Authorization = "Bearer $SyncToken"; 'Content-Type' = 'application/json' } `
+          -Body $payload `
+          -TimeoutSec $RequestTimeoutSeconds
+        break
+      } catch {
+        if ($attempt -ge $MaxRetries) {
+          throw "Sync failed for $Table batch starting $i after $attempt attempts: $($_.Exception.Message)"
+        }
+        Write-Warning "[$Table] batch starting $i failed on attempt $attempt/$MaxRetries; retrying in $RetryDelaySeconds seconds: $($_.Exception.Message)"
+        Start-Sleep -Seconds $RetryDelaySeconds
+      }
+    }
 
     if (-not $resp.success) {
       throw "Sync failed for $Table batch starting $i : $($resp.error)"
     }
     $sent += $chunk.Count
-    Write-Host "  [$Table] $sent / $total" -ForegroundColor DarkCyan
+    Write-Host "  [$Table] $sent / $total at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor DarkCyan
   }
 }
 

@@ -46,7 +46,7 @@ import CrmPipelinePage from "@/pages/crm/CrmPipelinePage";
 import CrmAccountDetailPage from "@/pages/crm/CrmAccountDetailPage";
 import CrmNewAccountPage from "@/pages/crm/CrmNewAccountPage";
 import CrmRepsPage from "@/pages/crm/CrmRepsPage";
-import CrmDirectoryPage from "@/pages/crm/CrmDirectoryPage";
+
 
 const queryClient = new QueryClient();
 
@@ -100,7 +100,6 @@ const App = () => (
                       <Route path="/crm/accounts/:id" element={<ProtectedRoute allow={["admin","manager"]}><CrmAccountDetailPage /></ProtectedRoute>} />
                       <Route path="/crm/pipeline" element={<ProtectedRoute allow={["admin","manager"]}><CrmPipelinePage /></ProtectedRoute>} />
                       <Route path="/crm/reps" element={<ProtectedRoute allow={["admin","manager"]}><CrmRepsPage /></ProtectedRoute>} />
-                      <Route path="/crm/directory" element={<ProtectedRoute allow={["admin","manager"]}><CrmDirectoryPage /></ProtectedRoute>} />
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

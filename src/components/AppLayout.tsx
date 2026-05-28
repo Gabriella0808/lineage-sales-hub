@@ -202,8 +202,11 @@ function SidebarNav() {
   const cs = isCustomerService(user?.email);
   const CS_ALLOWED = new Set(["/", "/tasks", "/dealers", "/settings"]);
 
+  const isGabriella = user?.email?.toLowerCase() === "gabriella@lineage-collections.com";
+
   const sections = NAV_SECTIONS
     .filter((s) => {
+      if (s.id === "crm") return isGabriella;
       if (cs) return true;
       if (s.id === "catalog") return isAllowedEmail(user?.email);
       return true;

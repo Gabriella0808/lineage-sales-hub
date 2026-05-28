@@ -932,13 +932,13 @@ export default function TasksPage() {
             <div className="px-3 text-right">Actions</div>
           </div>
 
-          <div className="divide-y divide-border">
+          <div className="divide-y-2 divide-border">
             {COLUMNS.map((col) => {
               const items = filteredTasks.filter((t) => t.status === col.key);
               return (
                 <div key={col.key} className="">
                   {/* Group header — editorial style */}
-                  <div className={`flex items-center gap-3 px-4 py-2.5 ${col.headerBg} border-b border-border/70`}>
+                  <div className={`flex items-center gap-3 px-4 py-2.5 ${col.headerBg} border-b-2 border-border`}>
                     {selectMode && items.length > 0 && (
                       <Checkbox
                         checked={items.every((t) => selectedIds.has(t.id))}

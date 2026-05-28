@@ -827,7 +827,7 @@ export default function TaskBoardsView() {
                             onDrop={(e) => onDropToGroup(e, g.id)}
                           >
                             <div
-                              className="flex items-center gap-2 px-3 py-2 border-b border-border"
+                              className="flex items-center gap-2 px-3 py-2 border-b-2 border-border"
                               style={{ backgroundColor: `${g.color ?? "#6366f1"}10` }}
                             >
                               <button

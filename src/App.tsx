@@ -94,12 +94,13 @@ const App = () => (
                       <Route path="/trade-show-leads" element={<ProtectedRoute allow={["admin", "manager"]}><TradeShowLeadsPage /></ProtectedRoute>} />
                       <Route path="/trade-show-leads/capture" element={<ProtectedRoute allow={["admin", "manager"]}><CaptureLeadsPage /></ProtectedRoute>} />
                       <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]}><OrgChartPage /></ProtectedRoute>} />
-                      <Route path="/crm" element={<ProtectedRoute allow={["admin","manager"]}><CrmDashboardPage /></ProtectedRoute>} />
-                      <Route path="/crm/accounts" element={<ProtectedRoute allow={["admin","manager"]}><CrmAccountsPage /></ProtectedRoute>} />
-                      <Route path="/crm/accounts/new" element={<ProtectedRoute allow={["admin","manager"]}><CrmNewAccountPage /></ProtectedRoute>} />
-                      <Route path="/crm/accounts/:id" element={<ProtectedRoute allow={["admin","manager"]}><CrmAccountDetailPage /></ProtectedRoute>} />
-                      <Route path="/crm/pipeline" element={<ProtectedRoute allow={["admin","manager"]}><CrmPipelinePage /></ProtectedRoute>} />
-                      <Route path="/crm/reps" element={<ProtectedRoute allow={["admin","manager"]}><CrmRepsPage /></ProtectedRoute>} />
+                      <Route path="/crm" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmDashboardPage /></CrmGuard></ProtectedRoute>} />
+                      <Route path="/crm/accounts" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsPage /></CrmGuard></ProtectedRoute>} />
+                      <Route path="/crm/accounts/new" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmNewAccountPage /></CrmGuard></ProtectedRoute>} />
+                      <Route path="/crm/accounts/:id" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountDetailPage /></CrmGuard></ProtectedRoute>} />
+                      <Route path="/crm/pipeline" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmPipelinePage /></CrmGuard></ProtectedRoute>} />
+                      <Route path="/crm/reps" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmRepsPage /></CrmGuard></ProtectedRoute>} />
+
                       <Route path="/settings" element={<SettingsPage />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

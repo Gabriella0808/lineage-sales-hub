@@ -816,7 +816,7 @@ export default function TaskBoardsView() {
                         · {boardTasks.filter((t) => defaultGroups.some((g) => g.id === t.group_id)).length} tasks
                       </span>
                     </div>
-                    <div className="divide-y divide-border">
+                    <div className="divide-y-2 divide-border">
                       {defaultGroups.map((g) => {
                         const items = boardTasks.filter((t) => t.group_id === g.id);
                         const isCollapsed = collapsed[g.id];

@@ -932,7 +932,7 @@ export default function TasksPage() {
             <div className="px-3 text-right">Actions</div>
           </div>
 
-          <div className="divide-y">
+          <div className="divide-y divide-border">
             {COLUMNS.map((col) => {
               const items = filteredTasks.filter((t) => t.status === col.key);
               return (
@@ -965,7 +965,7 @@ export default function TasksPage() {
                       No items in this lane.
                     </div>
                   ) : (
-                    <ul className="divide-y">
+                    <ul className="divide-y divide-border">
                       {items.map((t) => {
                         const ownerIds = getAssigneeIds(t);
                         const owners = ownerIds.map((uid) => ({

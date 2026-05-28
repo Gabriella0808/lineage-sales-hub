@@ -809,14 +809,14 @@ export default function TaskBoardsView() {
                 {/* Main workflow — the 4 default groups treated as ONE section */}
                 {defaultGroups.length > 0 && (
                   <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
-                    <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border/60 bg-muted/30">
+                    <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30">
                       <LayoutGrid className="h-4 w-4 text-primary" />
                       <h3 className="text-sm font-semibold">Main workflow</h3>
                       <span className="text-xs text-muted-foreground">
                         · {boardTasks.filter((t) => defaultGroups.some((g) => g.id === t.group_id)).length} tasks
                       </span>
                     </div>
-                    <div className="divide-y">
+                    <div className="divide-y divide-border">
                       {defaultGroups.map((g) => {
                         const items = boardTasks.filter((t) => t.group_id === g.id);
                         const isCollapsed = collapsed[g.id];
@@ -827,7 +827,7 @@ export default function TaskBoardsView() {
                             onDrop={(e) => onDropToGroup(e, g.id)}
                           >
                             <div
-                              className="flex items-center gap-2 px-3 py-2 border-b border-border/40"
+                              className="flex items-center gap-2 px-3 py-2 border-b border-border"
                               style={{ backgroundColor: `${g.color ?? "#6366f1"}10` }}
                             >
                               <button
@@ -854,7 +854,7 @@ export default function TaskBoardsView() {
                                     Drag tasks here or click "+ Item".
                                   </div>
                                 ) : (
-                                  <ul className="divide-y">{items.map(renderTaskRow)}</ul>
+                                  <ul className="divide-y divide-border">{items.map(renderTaskRow)}</ul>
                                 )}
                               </>
                             )}
@@ -875,7 +875,7 @@ export default function TaskBoardsView() {
                       className="rounded-lg border border-border bg-card overflow-hidden shadow-sm"
                     >
                       <div
-                        className="flex items-center gap-2 px-3 py-2.5 border-b border-border/60"
+                        className="flex items-center gap-2 px-3 py-2.5 border-b border-border"
                         style={{ backgroundColor: `${g.color ?? "#6366f1"}14` }}
                       >
                         <button
@@ -917,7 +917,7 @@ export default function TaskBoardsView() {
                         )}
                       </div>
                       {!isCollapsed && (
-                        <div className="divide-y">
+                        <div className="divide-y divide-border">
                           {STATUS_ORDER.map(({ key: status, label }) => {
                             const items = groupTasks.filter((t) => t.status === status);
                             const meta = STATUS_META[status];
@@ -927,7 +927,7 @@ export default function TaskBoardsView() {
                                 onDragOver={(e) => e.preventDefault()}
                                 onDrop={(e) => onDropToCustomSubsection(e, g.id, status)}
                               >
-                                <div className="flex items-center gap-2 px-3 py-2 bg-muted/20 border-b border-border/40">
+                                <div className="flex items-center gap-2 px-3 py-2 bg-muted/20 border-b border-border">
                                   <Badge className={`${meta.pillBg} ${meta.pillText} border-0 text-[10px]`}>
                                     {label}
                                   </Badge>
@@ -940,7 +940,7 @@ export default function TaskBoardsView() {
                                     Drag tasks here or click "+ Item".
                                   </div>
                                 ) : (
-                                  <ul className="divide-y">{items.map(renderTaskRow)}</ul>
+                                  <ul className="divide-y divide-border">{items.map(renderTaskRow)}</ul>
                                 )}
                               </div>
                             );

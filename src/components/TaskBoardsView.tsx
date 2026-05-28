@@ -816,7 +816,7 @@ export default function TaskBoardsView() {
                         · {boardTasks.filter((t) => defaultGroups.some((g) => g.id === t.group_id)).length} tasks
                       </span>
                     </div>
-                    <div className="divide-y divide-border">
+                    <div className="divide-y-2 divide-border">
                       {defaultGroups.map((g) => {
                         const items = boardTasks.filter((t) => t.group_id === g.id);
                         const isCollapsed = collapsed[g.id];
@@ -827,7 +827,7 @@ export default function TaskBoardsView() {
                             onDrop={(e) => onDropToGroup(e, g.id)}
                           >
                             <div
-                              className="flex items-center gap-2 px-3 py-2 border-b border-border"
+                              className="flex items-center gap-2 px-3 py-2 border-b-2 border-border"
                               style={{ backgroundColor: `${g.color ?? "#6366f1"}10` }}
                             >
                               <button
@@ -917,7 +917,7 @@ export default function TaskBoardsView() {
                         )}
                       </div>
                       {!isCollapsed && (
-                        <div className="divide-y divide-border">
+                        <div className="divide-y-2 divide-border">
                           {STATUS_ORDER.map(({ key: status, label }) => {
                             const items = groupTasks.filter((t) => t.status === status);
                             const meta = STATUS_META[status];
@@ -927,7 +927,7 @@ export default function TaskBoardsView() {
                                 onDragOver={(e) => e.preventDefault()}
                                 onDrop={(e) => onDropToCustomSubsection(e, g.id, status)}
                               >
-                                <div className="flex items-center gap-2 px-3 py-2 bg-muted/20 border-b border-border">
+                                <div className="flex items-center gap-2 px-3 py-2 bg-muted/20 border-b-2 border-border">
                                   <Badge className={`${meta.pillBg} ${meta.pillText} border-0 text-[10px]`}>
                                     {label}
                                   </Badge>

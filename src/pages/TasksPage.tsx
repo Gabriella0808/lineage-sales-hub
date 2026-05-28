@@ -61,6 +61,7 @@ interface Task {
   assigned_user_id: string | null;
   user_id: string;
   board_id: string | null;
+  group_id?: string | null;
   visibility: "public" | "private";
 }
 

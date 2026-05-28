@@ -13,6 +13,7 @@ import { useUserRole, type AppRole } from "@/hooks/useUserRole";
 import lineageLogo from "@/assets/lineage-logo-white.png";
 import { NavLink } from "@/components/NavLink";
 import { isAllowedEmail, isCustomerService } from "@/components/EmailGuard";
+import { canViewCrm } from "@/components/CrmGuard";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -202,11 +203,9 @@ function SidebarNav() {
   const cs = isCustomerService(user?.email);
   const CS_ALLOWED = new Set(["/", "/tasks", "/dealers", "/settings"]);
 
-  const isGabriella = user?.email?.toLowerCase() === "gabriella@lineage-collections.com";
-
   const sections = NAV_SECTIONS
     .filter((s) => {
-      if (s.id === "crm") return isGabriella;
+      if (s.id === "crm") return canViewCrm(user?.email);
       if (cs) return true;
       if (s.id === "catalog") return isAllowedEmail(user?.email);
       return true;

@@ -455,10 +455,44 @@ export default function TasksPage() {
     load();
   };
 
+  const groupMatchesStatus = (name: string, status: Status) =>
+    status === "todo" ? /to.?do|backlog|not.?started|new/i.test(name)
+    : status === "in_progress" ? /progress|doing|working|wip/i.test(name)
+    : status === "done" ? /done|complete|finished/i.test(name)
+    : status === "blocked" ? /stuck|block|hold|waiting/i.test(name)
+    : false;
+
+  const findGroupIdForStatus = async (
+    board_id: string | null,
+    status: Status,
+  ): Promise<string | null | undefined> => {
+    if (!board_id) return undefined;
+    const { data: groups } = await supabase
+      .from("task_board_groups" as any)
+      .select("id,name")
+      .eq("board_id", board_id);
+    if (!groups || groups.length === 0) return undefined;
+    const match = (groups as any[]).find((g) => groupMatchesStatus(g.name, status));
+    return match ? (match.id as string) : undefined;
+  };
+
   const updateStatus = async (id: string, status: Status) => {
     const prev = tasks;
-    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, status } : t)));
-    const { error } = await supabase.from("manager_tasks").update({ status }).eq("id", id);
+    const task = tasks.find((t) => t.id === id);
+    const targetGroupId = task ? await findGroupIdForStatus(task.board_id, status) : undefined;
+    const shouldMove =
+      targetGroupId !== undefined && !!task && task.group_id !== targetGroupId;
+
+    setTasks((ts) =>
+      ts.map((t) =>
+        t.id === id
+          ? { ...t, status, ...(shouldMove ? { group_id: targetGroupId as string } : {}) }
+          : t,
+      ),
+    );
+    const payload: any = { status };
+    if (shouldMove) payload.group_id = targetGroupId;
+    const { error } = await supabase.from("manager_tasks").update(payload).eq("id", id);
     if (error) {
       setTasks(prev);
       toast({ title: "Status update failed", description: error.message, variant: "destructive" });

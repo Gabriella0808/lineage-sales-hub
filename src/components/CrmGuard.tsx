@@ -1,7 +1,10 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
-export const CRM_ALLOWED_EMAILS = ["gabriella@lineage-collections.com"];
+export const CRM_ALLOWED_EMAILS = [
+  "gabriella@lineage-collections.com",
+  "will@lineage-collections.com",
+];
 
 export function canViewCrm(email?: string | null): boolean {
   if (!email) return false;

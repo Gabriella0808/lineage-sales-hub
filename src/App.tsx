@@ -46,6 +46,7 @@ import CrmPipelinePage from "@/pages/crm/CrmPipelinePage";
 import CrmAccountDetailPage from "@/pages/crm/CrmAccountDetailPage";
 import CrmNewAccountPage from "@/pages/crm/CrmNewAccountPage";
 import CrmRepsPage from "@/pages/crm/CrmRepsPage";
+import CrmGuard from "@/components/CrmGuard";
 
 
 const queryClient = new QueryClient();

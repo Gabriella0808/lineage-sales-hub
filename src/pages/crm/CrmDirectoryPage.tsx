@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 
 export default function CrmDirectoryPage() {
+  const nav = useNavigate();
   const { data: accounts = [] } = useCrmAccounts();
   const { data: reps = [] } = useCrmReps();
   const [q, setQ] = useState("");

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCrmAccounts, useCrmReps, useUpdateAccount, LIFECYCLE_STAGES, type LifecycleStage } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search } from "lucide-react";
 
 export default function CrmAccountsPage() {
+  const nav = useNavigate();
   const { data: accounts = [], isLoading } = useCrmAccounts();
   const { data: reps = [] } = useCrmReps();
   const update = useUpdateAccount();
@@ -101,15 +102,19 @@ export default function CrmAccountsPage() {
               {filtered.map((a) => {
                 const stage = LIFECYCLE_STAGES.find((s) => s.id === a.lifecycle_stage)!;
                 return (
-                  <tr key={a.id} className="hover:bg-muted/30 transition-colors">
+                  <tr
+                    key={a.id}
+                    className="hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => nav(`/crm/accounts/${a.id}`)}
+                  >
                     <td className="px-4 py-2.5">
-                      <Link to={`/crm/accounts/${a.id}`} className="font-medium text-foreground hover:text-accent">{a.company_name}</Link>
+                      <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent">{a.company_name}</Link>
                     </td>
                     <td className="px-3 py-2.5 text-muted-foreground">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{repName(a.assigned_rep_id)}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
                     <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{a.main_phone || "—"}</td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select value={a.lifecycle_stage} onValueChange={(v) => update.mutate({ id: a.id, patch: { lifecycle_stage: v as LifecycleStage } })}>
                         <SelectTrigger className="h-7 text-xs border-0 bg-transparent hover:bg-muted/60 px-2 py-0 w-fit min-w-[120px]">
                           <Badge variant="outline" className={`text-[10px] border ${stage.color}`}>{stage.label}</Badge>

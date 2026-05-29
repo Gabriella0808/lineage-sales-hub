@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useCrmAccounts, useCrmReps, LIFECYCLE_STAGES } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 
 export default function CrmDirectoryPage() {
+  const nav = useNavigate();
   const { data: accounts = [] } = useCrmAccounts();
   const { data: reps = [] } = useCrmReps();
   const [q, setQ] = useState("");
@@ -51,8 +52,8 @@ export default function CrmDirectoryPage() {
               {filtered.map((a) => {
                 const stage = LIFECYCLE_STAGES.find((s) => s.id === a.lifecycle_stage)!;
                 return (
-                  <tr key={a.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-2"><Link to={`/crm/accounts/${a.id}`} className="font-medium hover:text-accent">{a.company_name}</Link></td>
+                  <tr key={a.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => nav(`/crm/accounts/${a.id}`)}>
+                    <td className="px-4 py-2"><Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium hover:text-accent">{a.company_name}</Link></td>
                     <td className="px-3 py-2 text-muted-foreground">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
                     <td className="px-3 py-2 text-muted-foreground tabular-nums">{a.main_phone || "—"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{a.email || "—"}</td>

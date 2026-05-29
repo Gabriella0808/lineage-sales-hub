@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, LIFECYCLE_STAGES, type LifecycleStage, type CrmAccount } from "@/hooks/useCrm";
+import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, LIFECYCLE_STAGES, type LifecycleStage, type CrmAccount } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,20 +9,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CrmAccountDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { data: account, isLoading } = useCrmAccount(id);
   const { data: reps = [] } = useCrmReps();
   const { data: history = [] } = useStageHistory(id);
   const { data: notes = [] } = useAccountNotes(id);
   const update = useUpdateAccount();
   const addNote = useAddNote();
+  const deleteNote = useDeleteNote();
 
   const [form, setForm] = useState<Partial<CrmAccount> | null>(null);
   const [newNote, setNewNote] = useState("");
@@ -125,8 +128,20 @@ export default function CrmAccountDetailPage() {
               </div>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {notes.map((n: any) => (
-                  <div key={n.id} className="text-xs border-l-2 border-accent/40 pl-2 py-1">
-                    <div className="text-foreground">{n.body}</div>
+                  <div key={n.id} className="text-xs border-l-2 border-accent/40 pl-2 py-1 group">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="text-foreground">{n.body}</div>
+                      {n.created_by === user?.id && (
+                        <button
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => deleteNote.mutate({ id: n.id, accountId: account.id })}
+                          disabled={deleteNote.isPending}
+                          title="Delete note"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}</div>
                   </div>
                 ))}

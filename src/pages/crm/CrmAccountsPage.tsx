@@ -18,6 +18,7 @@ export default function CrmAccountsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const repParam = searchParams.get("rep") ?? "all";
   const stageParam = searchParams.get("stage") ?? "all";
+  const brandParam = searchParams.get("brand") ?? "all";
   const [q, setQ] = useState("");
   const repFilter = repParam;
   const setRepFilter = (v: string) => {
@@ -29,6 +30,12 @@ export default function CrmAccountsPage() {
   const setStageFilter = (v: string) => {
     const next = new URLSearchParams(searchParams);
     if (v === "all") next.delete("stage"); else next.set("stage", v);
+    setSearchParams(next, { replace: true });
+  };
+  const brandFilter = brandParam;
+  const setBrandFilter = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("brand"); else next.set("brand", v);
     setSearchParams(next, { replace: true });
   };
   const [stateFilter, setStateFilter] = useState<string>("all");

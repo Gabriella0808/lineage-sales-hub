@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useCrmAccounts, useCrmReps, useUpdateAccount, LIFECYCLE_STAGES, type LifecycleStage } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";

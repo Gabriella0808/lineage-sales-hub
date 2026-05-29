@@ -5,11 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 const CRM_STALE_TIME = 60_000;
 
 export const LIFECYCLE_STAGES = [
-  { id: "lead", label: "Lead", color: "bg-slate-100 text-slate-700 border-slate-200" },
   { id: "prospect", label: "Prospect", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  { id: "customer", label: "Customer", color: "bg-amber-100 text-amber-800 border-amber-200" },
-  { id: "dealer", label: "Dealer", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  { id: "inactive", label: "Inactive", color: "bg-zinc-100 text-zinc-500 border-zinc-200" },
+  { id: "closed_won", label: "Closed Won", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  { id: "closed_lost", label: "Closed Lost", color: "bg-rose-100 text-rose-700 border-rose-200" },
 ] as const;
 
 export type LifecycleStage = (typeof LIFECYCLE_STAGES)[number]["id"];

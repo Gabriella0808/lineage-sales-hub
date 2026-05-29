@@ -171,3 +171,14 @@ export function useAddNote() {
     onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["crm_notes", v.accountId] }),
   });
 }
+
+export function useDeleteNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, accountId }: { id: string; accountId: string }) => {
+      const { error } = await supabase.from("crm_account_notes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ["crm_notes", v.accountId] }),
+  });
+}

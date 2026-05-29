@@ -40,7 +40,7 @@ export default function CrmDashboardPage() {
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {LIFECYCLE_STAGES.map((s) => (
           <Link key={s.id} to={`/crm/accounts?stage=${s.id}`} className="group">
             <Card className="border-border/60 transition-colors hover:border-accent/60 hover:bg-muted/30 cursor-pointer">

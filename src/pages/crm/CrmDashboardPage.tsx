@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
-import { useCrmAccounts, useCrmReps, LIFECYCLE_STAGES } from "@/hooks/useCrm";
+import { useCrmAccounts, useCrmReps, LIFECYCLE_STAGES, BRANDS, BRAND_COLORS } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,14 +14,16 @@ export default function CrmDashboardPage() {
 
   const stats = useMemo(() => {
     const byStage = Object.fromEntries(LIFECYCLE_STAGES.map((s) => [s.id, 0]));
+    const byBrand = Object.fromEntries(BRANDS.map((b) => [b, 0]));
     const byRep: Record<string, number> = {};
     const byState: Record<string, number> = {};
     for (const a of accounts) {
       byStage[a.lifecycle_stage] = (byStage[a.lifecycle_stage] ?? 0) + 1;
+      if (a.brand) byBrand[a.brand] = (byBrand[a.brand] ?? 0) + 1;
       if (a.assigned_rep_id) byRep[a.assigned_rep_id] = (byRep[a.assigned_rep_id] ?? 0) + 1;
       if (a.state) byState[a.state] = (byState[a.state] ?? 0) + 1;
     }
-    return { byStage, byRep, byState, total: accounts.length };
+    return { byStage, byBrand, byRep, byState, total: accounts.length };
   }, [accounts]);
 
   const repName = (id: string) => reps.find((r) => r.id === id)?.name ?? "Unassigned";
@@ -52,6 +54,23 @@ export default function CrmDashboardPage() {
             </Card>
           </Link>
         ))}
+      </div>
+
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-2">By Brand</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {BRANDS.map((b) => (
+            <Link key={b} to={`/crm/accounts?brand=${encodeURIComponent(b)}`} className="group">
+              <Card className="border-border/60 transition-colors hover:border-accent/60 hover:bg-muted/30 cursor-pointer">
+                <CardContent className="pt-5">
+                  <Badge variant="outline" className={`text-[10px] border ${BRAND_COLORS[b]}`}>{b}</Badge>
+                  <div className="text-3xl font-serif mt-1.5 text-foreground tabular-nums">{stats.byBrand[b] ?? 0}</div>
+                  <div className="text-[10px] text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">View accounts →</div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

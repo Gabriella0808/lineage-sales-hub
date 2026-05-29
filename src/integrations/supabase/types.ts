@@ -206,6 +206,7 @@ export type Database = {
       crm_accounts: {
         Row: {
           assigned_rep_id: string | null
+          brand: string
           city: string | null
           company_name: string
           contact_first_name: string | null
@@ -226,6 +227,7 @@ export type Database = {
         }
         Insert: {
           assigned_rep_id?: string | null
+          brand?: string
           city?: string | null
           company_name: string
           contact_first_name?: string | null
@@ -246,6 +248,7 @@ export type Database = {
         }
         Update: {
           assigned_rep_id?: string | null
+          brand?: string
           city?: string | null
           company_name?: string
           contact_first_name?: string | null

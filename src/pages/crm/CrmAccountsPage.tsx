@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useCrmAccounts, useCrmReps, useUpdateAccount, LIFECYCLE_STAGES, type LifecycleStage } from "@/hooks/useCrm";
+import { useCrmAccounts, useCrmReps, useUpdateAccount, LIFECYCLE_STAGES, BRANDS, BRAND_COLORS, type LifecycleStage, type Brand } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ export default function CrmAccountsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const repParam = searchParams.get("rep") ?? "all";
   const stageParam = searchParams.get("stage") ?? "all";
+  const brandParam = searchParams.get("brand") ?? "all";
   const [q, setQ] = useState("");
   const repFilter = repParam;
   const setRepFilter = (v: string) => {
@@ -31,6 +32,12 @@ export default function CrmAccountsPage() {
     if (v === "all") next.delete("stage"); else next.set("stage", v);
     setSearchParams(next, { replace: true });
   };
+  const brandFilter = brandParam;
+  const setBrandFilter = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("brand"); else next.set("brand", v);
+    setSearchParams(next, { replace: true });
+  };
   const [stateFilter, setStateFilter] = useState<string>("all");
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);
@@ -41,14 +48,15 @@ export default function CrmAccountsPage() {
     return accounts.filter((a) => {
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
       if (stageFilter !== "all" && a.lifecycle_stage !== stageFilter) return false;
+      if (brandFilter !== "all" && a.brand !== brandFilter) return false;
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, stageFilter, stateFilter]);
+  }, [accounts, q, repFilter, stageFilter, brandFilter, stateFilter]);
 
-  const cameFromDashboard = stageParam !== "all";
+  const cameFromDashboard = stageParam !== "all" || brandParam !== "all";
 
   return (
     <div className="space-y-6">
@@ -87,6 +95,13 @@ export default function CrmAccountsPage() {
             {LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={brandFilter} onValueChange={setBrandFilter}>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All brands</SelectItem>
+            {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={stateFilter} onValueChange={setStateFilter}>
           <SelectTrigger className="w-full sm:w-32"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -102,6 +117,7 @@ export default function CrmAccountsPage() {
             <thead className="bg-muted/40 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
               <tr>
                 <th className="text-left px-4 py-2.5 font-medium">Company</th>
+                <th className="text-left px-3 py-2.5 font-medium">Brand</th>
                 <th className="text-left px-3 py-2.5 font-medium">Contact</th>
                 <th className="text-left px-3 py-2.5 font-medium">Rep</th>
                 <th className="text-left px-3 py-2.5 font-medium">City / State</th>
@@ -110,8 +126,8 @@ export default function CrmAccountsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
+              {isLoading && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
               {filtered.map((a) => {
                 const stage = LIFECYCLE_STAGES.find((s) => s.id === a.lifecycle_stage)!;
                 return (
@@ -122,6 +138,16 @@ export default function CrmAccountsPage() {
                   >
                     <td className="px-4 py-2.5">
                       <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent">{a.company_name}</Link>
+                    </td>
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <Select value={a.brand} onValueChange={(v) => update.mutate({ id: a.id, patch: { brand: v as Brand } })}>
+                        <SelectTrigger className="h-7 text-xs border-0 bg-transparent hover:bg-muted/60 px-2 py-0 w-fit min-w-[120px]">
+                          <Badge variant="outline" className={`text-[10px] border ${BRAND_COLORS[a.brand] ?? ""}`}>{a.brand}</Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </td>
                     <td className="px-3 py-2.5 text-muted-foreground">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{repName(a.assigned_rep_id)}</td>

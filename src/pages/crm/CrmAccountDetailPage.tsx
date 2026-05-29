@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, LIFECYCLE_STAGES, type LifecycleStage, type CrmAccount } from "@/hooks/useCrm";
+import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, LIFECYCLE_STAGES, BRANDS, type LifecycleStage, type Brand, type CrmAccount } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,12 @@ export default function CrmAccountDetailPage() {
               <Select value={form.lifecycle_stage as string} onValueChange={(v) => set("lifecycle_stage", v as LifecycleStage)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+            <Field label="Brand">
+              <Select value={(form.brand as string) ?? "Cabinet Beds"} onValueChange={(v) => set("brand", v as Brand)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
             <Field label="Assigned rep">

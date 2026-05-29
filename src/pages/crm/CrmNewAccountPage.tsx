@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCreateAccount, useCrmReps, LIFECYCLE_STAGES, type LifecycleStage } from "@/hooks/useCrm";
+import { useCreateAccount, useCrmReps, LIFECYCLE_STAGES, BRANDS, type LifecycleStage, type Brand } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ export default function CrmNewAccountPage() {
   const [f, setF] = useState({
     company_name: "",
     lifecycle_stage: "prospect" as LifecycleStage,
+    brand: "Cabinet Beds" as Brand,
     assigned_rep_id: "none",
     contact_first_name: "",
     contact_last_name: "",
@@ -62,6 +63,12 @@ export default function CrmNewAccountPage() {
               <Select value={f.lifecycle_stage} onValueChange={(v) => set("lifecycle_stage", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2"><L>Brand</L>
+              <Select value={f.brand} onValueChange={(v) => set("brand", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><L>Assigned rep</L>

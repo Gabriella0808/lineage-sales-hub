@@ -56,6 +56,23 @@ export default function CrmDashboardPage() {
         ))}
       </div>
 
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-2">By Brand</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {BRANDS.map((b) => (
+            <Link key={b} to={`/crm/accounts?brand=${encodeURIComponent(b)}`} className="group">
+              <Card className="border-border/60 transition-colors hover:border-accent/60 hover:bg-muted/30 cursor-pointer">
+                <CardContent className="pt-5">
+                  <Badge variant="outline" className={`text-[10px] border ${BRAND_COLORS[b]}`}>{b}</Badge>
+                  <div className="text-3xl font-serif mt-1.5 text-foreground tabular-nums">{stats.byBrand[b] ?? 0}</div>
+                  <div className="text-[10px] text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">View accounts →</div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-accent" />Accounts by Rep</CardTitle></CardHeader>

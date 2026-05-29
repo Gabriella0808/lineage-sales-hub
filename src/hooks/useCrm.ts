@@ -13,10 +13,21 @@ export const LIFECYCLE_STAGES = [
 
 export type LifecycleStage = (typeof LIFECYCLE_STAGES)[number]["id"];
 
+export const BRANDS = ["Cabinet Beds", "Sea Winds", "Finn & Louise", "Lux Lighting"] as const;
+export type Brand = (typeof BRANDS)[number];
+
+export const BRAND_COLORS: Record<Brand, string> = {
+  "Cabinet Beds": "bg-slate-100 text-slate-700 border-slate-200",
+  "Sea Winds": "bg-cyan-100 text-cyan-700 border-cyan-200",
+  "Finn & Louise": "bg-violet-100 text-violet-700 border-violet-200",
+  "Lux Lighting": "bg-amber-100 text-amber-800 border-amber-200",
+};
+
 export interface CrmAccount {
   id: string;
   company_name: string;
   lifecycle_stage: LifecycleStage;
+  brand: Brand;
   status: string;
   assigned_rep_id: string | null;
   contact_first_name: string | null;

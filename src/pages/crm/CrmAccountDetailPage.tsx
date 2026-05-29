@@ -128,8 +128,20 @@ export default function CrmAccountDetailPage() {
               </div>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {notes.map((n: any) => (
-                  <div key={n.id} className="text-xs border-l-2 border-accent/40 pl-2 py-1">
-                    <div className="text-foreground">{n.body}</div>
+                  <div key={n.id} className="text-xs border-l-2 border-accent/40 pl-2 py-1 group">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="text-foreground">{n.body}</div>
+                      {n.created_by === user?.id && (
+                        <button
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => deleteNote.mutate({ id: n.id, accountId: account.id })}
+                          disabled={deleteNote.isPending}
+                          title="Delete note"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}</div>
                   </div>
                 ))}

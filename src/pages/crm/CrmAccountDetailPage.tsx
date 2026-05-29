@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, LIFECYCLE_STAGES, type LifecycleStage, type CrmAccount } from "@/hooks/useCrm";
+import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, LIFECYCLE_STAGES, type LifecycleStage, type CrmAccount } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,20 +9,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function CrmAccountDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { data: account, isLoading } = useCrmAccount(id);
   const { data: reps = [] } = useCrmReps();
   const { data: history = [] } = useStageHistory(id);
   const { data: notes = [] } = useAccountNotes(id);
   const update = useUpdateAccount();
   const addNote = useAddNote();
+  const deleteNote = useDeleteNote();
 
   const [form, setForm] = useState<Partial<CrmAccount> | null>(null);
   const [newNote, setNewNote] = useState("");

@@ -65,6 +65,12 @@ export default function CrmNewAccountPage() {
                 <SelectContent>{LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div className="sm:col-span-2"><L>Brand</L>
+              <Select value={f.brand} onValueChange={(v) => set("brand", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <div><L>Assigned rep</L>
               <Select value={f.assigned_rep_id} onValueChange={(v) => set("assigned_rep_id", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

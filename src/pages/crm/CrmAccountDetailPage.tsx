@@ -69,6 +69,12 @@ export default function CrmAccountDetailPage() {
                 <SelectContent>{LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
+            <Field label="Brand">
+              <Select value={(form.brand as string) ?? "Cabinet Beds"} onValueChange={(v) => set("brand", v as Brand)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
             <Field label="Assigned rep">
               <Select value={form.assigned_rep_id ?? "none"} onValueChange={(v) => set("assigned_rep_id", v === "none" ? null : v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

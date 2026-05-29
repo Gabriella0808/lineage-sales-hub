@@ -17,6 +17,7 @@ export default function CrmAccountsPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const repParam = searchParams.get("rep") ?? "all";
+  const stageParam = searchParams.get("stage") ?? "all";
   const [q, setQ] = useState("");
   const repFilter = repParam;
   const setRepFilter = (v: string) => {
@@ -24,7 +25,12 @@ export default function CrmAccountsPage() {
     if (v === "all") next.delete("rep"); else next.set("rep", v);
     setSearchParams(next, { replace: true });
   };
-  const [stageFilter, setStageFilter] = useState<string>("all");
+  const stageFilter = stageParam;
+  const setStageFilter = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("stage"); else next.set("stage", v);
+    setSearchParams(next, { replace: true });
+  };
   const [stateFilter, setStateFilter] = useState<string>("all");
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);

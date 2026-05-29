@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, ArrowLeft } from "lucide-react";
 
 export default function CrmAccountsPage() {
   const nav = useNavigate();
@@ -48,8 +48,15 @@ export default function CrmAccountsPage() {
     });
   }, [accounts, q, repFilter, stageFilter, stateFilter]);
 
+  const cameFromDashboard = stageParam !== "all";
+
   return (
     <div className="space-y-6">
+      {cameFromDashboard && (
+        <Button variant="ghost" size="sm" asChild className="-mb-2">
+          <Link to="/crm"><ArrowLeft className="h-4 w-4 mr-1.5" />Back to Overview</Link>
+        </Button>
+      )}
       <PageHeader
         eyebrow="CRM · Accounts"
         title="All Accounts"

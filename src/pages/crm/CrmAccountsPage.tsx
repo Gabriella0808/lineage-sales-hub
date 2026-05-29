@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search } from "lucide-react";
 
 export default function CrmAccountsPage() {
+  const nav = useNavigate();
   const { data: accounts = [], isLoading } = useCrmAccounts();
   const { data: reps = [] } = useCrmReps();
   const update = useUpdateAccount();

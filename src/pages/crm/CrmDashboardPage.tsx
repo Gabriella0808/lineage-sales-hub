@@ -14,14 +14,16 @@ export default function CrmDashboardPage() {
 
   const stats = useMemo(() => {
     const byStage = Object.fromEntries(LIFECYCLE_STAGES.map((s) => [s.id, 0]));
+    const byBrand = Object.fromEntries(BRANDS.map((b) => [b, 0]));
     const byRep: Record<string, number> = {};
     const byState: Record<string, number> = {};
     for (const a of accounts) {
       byStage[a.lifecycle_stage] = (byStage[a.lifecycle_stage] ?? 0) + 1;
+      if (a.brand) byBrand[a.brand] = (byBrand[a.brand] ?? 0) + 1;
       if (a.assigned_rep_id) byRep[a.assigned_rep_id] = (byRep[a.assigned_rep_id] ?? 0) + 1;
       if (a.state) byState[a.state] = (byState[a.state] ?? 0) + 1;
     }
-    return { byStage, byRep, byState, total: accounts.length };
+    return { byStage, byBrand, byRep, byState, total: accounts.length };
   }, [accounts]);
 
   const repName = (id: string) => reps.find((r) => r.id === id)?.name ?? "Unassigned";

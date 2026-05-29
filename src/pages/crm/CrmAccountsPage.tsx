@@ -48,14 +48,15 @@ export default function CrmAccountsPage() {
     return accounts.filter((a) => {
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
       if (stageFilter !== "all" && a.lifecycle_stage !== stageFilter) return false;
+      if (brandFilter !== "all" && a.brand !== brandFilter) return false;
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, stageFilter, stateFilter]);
+  }, [accounts, q, repFilter, stageFilter, brandFilter, stateFilter]);
 
-  const cameFromDashboard = stageParam !== "all";
+  const cameFromDashboard = stageParam !== "all" || brandParam !== "all";
 
   return (
     <div className="space-y-6">

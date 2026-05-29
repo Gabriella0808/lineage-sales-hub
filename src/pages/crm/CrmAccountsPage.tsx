@@ -117,6 +117,7 @@ export default function CrmAccountsPage() {
             <thead className="bg-muted/40 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
               <tr>
                 <th className="text-left px-4 py-2.5 font-medium">Company</th>
+                <th className="text-left px-3 py-2.5 font-medium">Brand</th>
                 <th className="text-left px-3 py-2.5 font-medium">Contact</th>
                 <th className="text-left px-3 py-2.5 font-medium">Rep</th>
                 <th className="text-left px-3 py-2.5 font-medium">City / State</th>
@@ -125,8 +126,8 @@ export default function CrmAccountsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
+              {isLoading && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
               {filtered.map((a) => {
                 const stage = LIFECYCLE_STAGES.find((s) => s.id === a.lifecycle_stage)!;
                 return (

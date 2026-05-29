@@ -129,7 +129,7 @@ export default function CrmAccountsPage() {
                     <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{a.main_phone || "—"}</td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select value={a.lifecycle_stage} onValueChange={(v) => update.mutate({ id: a.id, patch: { lifecycle_stage: v as LifecycleStage } })}>
-                        <SelectTrigger className="h-8 text-xs border border-border/80 bg-background hover:bg-muted/70 hover:border-border transition-all duration-150 px-2.5 py-0 w-fit min-w-[120px] cursor-pointer focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded-md shadow-sm active:scale-[0.97]">
+                        <SelectTrigger className="h-7 text-xs border-0 bg-transparent hover:bg-muted/60 px-2 py-0 w-fit min-w-[120px]">
                           <Badge variant="outline" className={`text-[10px] border ${stage.color}`}>{stage.label}</Badge>
                         </SelectTrigger>
                         <SelectContent>

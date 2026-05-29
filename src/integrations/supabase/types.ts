@@ -1765,6 +1765,196 @@ export type Database = {
         }
         Relationships: []
       }
+      qb_customers: {
+        Row: {
+          balance: number | null
+          bill_address: string | null
+          company_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean | null
+          last_synced_at: string | null
+          list_id: string
+          name: string
+          phone: string | null
+          ship_address: string | null
+          updated_at: string
+        }
+        Insert: {
+          balance?: number | null
+          bill_address?: string | null
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_synced_at?: string | null
+          list_id: string
+          name: string
+          phone?: string | null
+          ship_address?: string | null
+          updated_at?: string
+        }
+        Update: {
+          balance?: number | null
+          bill_address?: string | null
+          company_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_synced_at?: string | null
+          list_id?: string
+          name?: string
+          phone?: string | null
+          ship_address?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      qb_invoice_lines: {
+        Row: {
+          amount: number | null
+          created_at: string
+          description: string | null
+          id: string
+          invoice_txn_id: string
+          item_name: string | null
+          line_number: number | null
+          quantity: number | null
+          rate: number | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          invoice_txn_id: string
+          item_name?: string | null
+          line_number?: number | null
+          quantity?: number | null
+          rate?: number | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          invoice_txn_id?: string
+          item_name?: string | null
+          line_number?: number | null
+          quantity?: number | null
+          rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qb_invoice_lines_invoice_txn_id_fkey"
+            columns: ["invoice_txn_id"]
+            isOneToOne: false
+            referencedRelation: "qb_invoices"
+            referencedColumns: ["txn_id"]
+          },
+        ]
+      }
+      qb_invoices: {
+        Row: {
+          balance_remaining: number | null
+          created_at: string
+          customer_list_id: string | null
+          customer_name: string | null
+          due_date: string | null
+          id: string
+          is_paid: boolean | null
+          last_synced_at: string | null
+          memo: string | null
+          ref_number: string | null
+          subtotal: number | null
+          tax: number | null
+          total: number | null
+          txn_date: string | null
+          txn_id: string
+          updated_at: string
+        }
+        Insert: {
+          balance_remaining?: number | null
+          created_at?: string
+          customer_list_id?: string | null
+          customer_name?: string | null
+          due_date?: string | null
+          id?: string
+          is_paid?: boolean | null
+          last_synced_at?: string | null
+          memo?: string | null
+          ref_number?: string | null
+          subtotal?: number | null
+          tax?: number | null
+          total?: number | null
+          txn_date?: string | null
+          txn_id: string
+          updated_at?: string
+        }
+        Update: {
+          balance_remaining?: number | null
+          created_at?: string
+          customer_list_id?: string | null
+          customer_name?: string | null
+          due_date?: string | null
+          id?: string
+          is_paid?: boolean | null
+          last_synced_at?: string | null
+          memo?: string | null
+          ref_number?: string | null
+          subtotal?: number | null
+          tax?: number | null
+          total?: number | null
+          txn_date?: string | null
+          txn_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qb_invoices_customer_list_id_fkey"
+            columns: ["customer_list_id"]
+            isOneToOne: false
+            referencedRelation: "qb_customers"
+            referencedColumns: ["list_id"]
+          },
+        ]
+      }
+      qbwc_sync_log: {
+        Row: {
+          action: string | null
+          finished_at: string | null
+          id: string
+          message: string | null
+          rows_processed: number | null
+          started_at: string
+          status: string | null
+          ticket: string | null
+        }
+        Insert: {
+          action?: string | null
+          finished_at?: string | null
+          id?: string
+          message?: string | null
+          rows_processed?: number | null
+          started_at?: string
+          status?: string | null
+          ticket?: string | null
+        }
+        Update: {
+          action?: string | null
+          finished_at?: string | null
+          id?: string
+          message?: string | null
+          rows_processed?: number | null
+          started_at?: string
+          status?: string | null
+          ticket?: string | null
+        }
+        Relationships: []
+      }
       quote_items: {
         Row: {
           created_at: string

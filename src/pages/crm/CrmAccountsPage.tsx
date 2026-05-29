@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useCrmAccounts, useCrmReps, useUpdateAccount, LIFECYCLE_STAGES, type LifecycleStage } from "@/hooks/useCrm";
+import { useCrmAccounts, useCrmReps, useUpdateAccount, LIFECYCLE_STAGES, BRANDS, BRAND_COLORS, type LifecycleStage, type Brand } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

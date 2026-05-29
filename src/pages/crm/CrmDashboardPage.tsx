@@ -40,14 +40,17 @@ export default function CrmDashboardPage() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {LIFECYCLE_STAGES.map((s) => (
-          <Card key={s.id} className="border-border/60">
-            <CardContent className="pt-5">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">{s.label}</div>
-              <div className="text-3xl font-serif mt-1.5 text-foreground tabular-nums">{stats.byStage[s.id] ?? 0}</div>
-            </CardContent>
-          </Card>
+          <Link key={s.id} to={`/crm/accounts?stage=${s.id}`} className="group">
+            <Card className="border-border/60 transition-colors hover:border-accent/60 hover:bg-muted/30 cursor-pointer">
+              <CardContent className="pt-5">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">{s.label}</div>
+                <div className="text-3xl font-serif mt-1.5 text-foreground tabular-nums">{stats.byStage[s.id] ?? 0}</div>
+                <div className="text-[10px] text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">View accounts →</div>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, LIFECYCLE_STAGES, type LifecycleStage, type CrmAccount } from "@/hooks/useCrm";
+import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, LIFECYCLE_STAGES, BRANDS, type LifecycleStage, type Brand, type CrmAccount } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

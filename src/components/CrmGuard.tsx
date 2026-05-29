@@ -1,25 +1,23 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 
-export const CRM_ALLOWED_EMAILS = [
-  "gabriella@lineage-collections.com",
-  "will@lineage-collections.com",
-];
-
-export function canViewCrm(email?: string | null): boolean {
-  if (!email) return false;
-  return CRM_ALLOWED_EMAILS.includes(email.toLowerCase());
+export function canViewCrm(role?: string | null): boolean {
+  return role === "admin" || role === "manager";
 }
 
 export default function CrmGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) {
+  const { data: roleInfo, isLoading: roleLoading } = useUserRole();
+
+  if (loading || roleLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground">
         Loading…
       </div>
     );
   }
-  if (!canViewCrm(user?.email)) return <Navigate to="/" replace />;
+  if (!canViewCrm(roleInfo?.role)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
+

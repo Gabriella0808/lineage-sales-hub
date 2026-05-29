@@ -205,7 +205,7 @@ function SidebarNav() {
 
   const sections = NAV_SECTIONS
     .filter((s) => {
-      if (s.id === "crm") return canViewCrm(user?.email);
+      if (s.id === "crm") return canViewCrm(roleInfo?.role);
       if (cs) return true;
       if (s.id === "catalog") return isAllowedEmail(user?.email);
       return true;

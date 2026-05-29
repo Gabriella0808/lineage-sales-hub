@@ -97,7 +97,27 @@ export function useUpdateAccount() {
       const { error } = await supabase.from("crm_accounts").update(patch).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: (_d, v) => {
+    onMutate: async ({ id, patch }) => {
+      await qc.cancelQueries({ queryKey: ["crm_accounts"] });
+      await qc.cancelQueries({ queryKey: ["crm_account", id] });
+      const prevList = qc.getQueryData<CrmAccount[]>(["crm_accounts"]);
+      const prevOne = qc.getQueryData<CrmAccount>(["crm_account", id]);
+      if (prevList) {
+        qc.setQueryData<CrmAccount[]>(
+          ["crm_accounts"],
+          prevList.map((a) => (a.id === id ? ({ ...a, ...patch } as CrmAccount) : a))
+        );
+      }
+      if (prevOne) {
+        qc.setQueryData<CrmAccount>(["crm_account", id], { ...prevOne, ...patch } as CrmAccount);
+      }
+      return { prevList, prevOne };
+    },
+    onError: (_e, v, ctx: any) => {
+      if (ctx?.prevList) qc.setQueryData(["crm_accounts"], ctx.prevList);
+      if (ctx?.prevOne) qc.setQueryData(["crm_account", v.id], ctx.prevOne);
+    },
+    onSettled: (_d, _e, v) => {
       qc.invalidateQueries({ queryKey: ["crm_accounts"] });
       qc.invalidateQueries({ queryKey: ["crm_account", v.id] });
       qc.invalidateQueries({ queryKey: ["crm_stage_history", v.id] });

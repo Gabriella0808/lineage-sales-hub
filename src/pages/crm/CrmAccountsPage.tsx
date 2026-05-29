@@ -139,6 +139,16 @@ export default function CrmAccountsPage() {
                     <td className="px-4 py-2.5">
                       <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent">{a.company_name}</Link>
                     </td>
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <Select value={a.brand} onValueChange={(v) => update.mutate({ id: a.id, patch: { brand: v as Brand } })}>
+                        <SelectTrigger className="h-7 text-xs border-0 bg-transparent hover:bg-muted/60 px-2 py-0 w-fit min-w-[120px]">
+                          <Badge variant="outline" className={`text-[10px] border ${BRAND_COLORS[a.brand] ?? ""}`}>{a.brand}</Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </td>
                     <td className="px-3 py-2.5 text-muted-foreground">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{repName(a.assigned_rep_id)}</td>
                     <td className="px-3 py-2.5 text-muted-foreground">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>

@@ -46,7 +46,7 @@ const WeeklyCheckinReportEmail = ({
           <table style={rowTable} cellPadding={0} cellSpacing={0}>
             <thead>
               <tr>
-                <th style={th}>Rep</th>
+                <th style={th}>Manager</th>
                 <th style={thNum}>Check-Ins</th>
                 <th style={thNum}>New Placements</th>
               </tr>

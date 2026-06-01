@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             templateName: "weekly-checkin-report",
             recipientEmail: r.email,
-            idempotencyKey: `weekly-checkin-${startStr}-${r.email}`,
+            idempotencyKey: `weekly-checkin-${startStr}-${r.email}${testEmail ? `-test-${Date.now()}` : ""}`,
             templateData: {
               recipientName: r.name,
               weekLabel,

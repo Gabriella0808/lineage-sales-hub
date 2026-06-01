@@ -155,7 +155,7 @@ export default function CaptureLeadsPage() {
     const suffix = `${monthName} ${year}`;
     const finalName = new RegExp(`${monthName}\\s*${year}`, "i").test(baseName)
       ? baseName
-      : `${baseName} — ${suffix}`;
+      : `${baseName} - ${suffix}`;
     const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
     const { error } = await supabase.from("trade_show_markets").insert({
       name: finalName,

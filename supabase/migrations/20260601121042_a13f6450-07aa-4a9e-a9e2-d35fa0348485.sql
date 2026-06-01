@@ -1,0 +1,1 @@
+UPDATE public.trade_show_markets SET name = REPLACE(name, ' — ', ' - ');

@@ -62,7 +62,17 @@ const emptyLead = {
   followup_enabled: false, followup_title: "", followup_description: "", followup_due_date: "",
 };
 
-const emptyMarket = { name: "", location: "", season: "Spring", year: new Date().getFullYear() };
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const seasonFromMonth = (m: number): string => {
+  if (m >= 3 && m <= 5) return "Spring";
+  if (m >= 6 && m <= 8) return "Summer";
+  if (m >= 9 && m <= 11) return "Fall";
+  return "Winter";
+};
+const emptyMarket = { name: "", location: "", month: new Date().getMonth() + 1, year: new Date().getFullYear() };
 
 export default function CaptureLeadsPage() {
   const { user } = useAuth();

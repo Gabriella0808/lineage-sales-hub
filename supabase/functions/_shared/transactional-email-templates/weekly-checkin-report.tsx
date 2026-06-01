@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import {
-  Body, Container, Head, Heading, Hr, Html, Preview, Section, Text,
+  Body, Button, Container, Head, Heading, Hr, Html, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
@@ -75,14 +75,9 @@ const WeeklyCheckinReportEmail = ({
 
         {portalUrl && (
           <Section style={{ textAlign: 'center', margin: '20px 0' }}>
-            <a
-              href={portalUrl}
-              style={ctaButton}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <Button href={portalUrl} style={ctaButton}>
               View in Portal
-            </a>
+            </Button>
           </Section>
         )}
 

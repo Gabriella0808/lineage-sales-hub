@@ -397,14 +397,27 @@ export default function CaptureLeadsPage() {
             <DialogHeader><DialogTitle>New Market</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <Field label="Market Name" required>
-                <Input value={marketForm.name} onChange={(e) => setMarketForm({ ...marketForm, name: e.target.value })} placeholder="e.g. High Point Spring 2026" />
+                <Input value={marketForm.name} onChange={(e) => setMarketForm({ ...marketForm, name: e.target.value })} placeholder="e.g. High Point Market" />
+                <p className="text-[11px] text-muted-foreground mt-1">Month and year will be appended automatically.</p>
               </Field>
               <Field label="Location">
                 <Input value={marketForm.location} onChange={(e) => setMarketForm({ ...marketForm, location: e.target.value })} placeholder="e.g. High Point, NC" />
               </Field>
-              <Field label="Year">
-                <Input type="number" value={marketForm.year} onChange={(e) => setMarketForm({ ...marketForm, year: Number(e.target.value) })} />
-              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Month" required>
+                  <Select value={String(marketForm.month)} onValueChange={(v) => setMarketForm({ ...marketForm, month: Number(v) })}>
+                    <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((name, i) => (
+                        <SelectItem key={name} value={String(i + 1)}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Year" required>
+                  <Input type="number" value={marketForm.year} onChange={(e) => setMarketForm({ ...marketForm, year: Number(e.target.value) })} />
+                </Field>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setMarketDialog(false)}>Cancel</Button>

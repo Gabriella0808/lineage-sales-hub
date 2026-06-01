@@ -74,10 +74,18 @@ const WeeklyCheckinReportEmail = ({
         </Text>
 
         {portalUrl && (
-          <Section style={{ textAlign: 'center', margin: '20px 0' }}>
-            <Button href={portalUrl} style={ctaButton}>
-              View in Portal
-            </Button>
+          <Section style={{ margin: '24px 0' }}>
+            <table cellPadding={0} cellSpacing={0} role="presentation" style={{ margin: '0 auto', borderCollapse: 'separate' }}>
+              <tbody>
+                <tr>
+                  <td bgcolor="#c9a44c" style={{ backgroundColor: '#c9a44c', borderRadius: '8px' }}>
+                    <a href={portalUrl} target="_blank" rel="noopener noreferrer" style={ctaButton}>
+                      View in Portal
+                    </a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </Section>
         )}
 

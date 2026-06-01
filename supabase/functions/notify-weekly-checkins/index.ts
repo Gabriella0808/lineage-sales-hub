@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const dryRun: boolean = !!body?.dryRun;
+    const testEmail: string | undefined = body?.testEmail;
 
     const now = new Date();
     const { start, end } = lastWeekRange(now);
@@ -157,8 +158,11 @@ Deno.serve(async (req) => {
     const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
     const supaUrl = Deno.env.get("SUPABASE_URL")!;
 
+    const recipients = testEmail
+      ? [{ name: testEmail.split("@")[0], email: testEmail }]
+      : RECIPIENTS;
     let emailed = 0;
-    for (const r of RECIPIENTS) {
+    for (const r of recipients) {
       try {
         const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
           method: "POST",
@@ -170,7 +174,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             templateName: "weekly-checkin-report",
             recipientEmail: r.email,
-            idempotencyKey: `weekly-checkin-${startStr}-${r.email}`,
+            idempotencyKey: `weekly-checkin-${startStr}-${r.email}${testEmail ? `-test-${Date.now()}` : ""}`,
             templateData: {
               recipientName: r.name,
               weekLabel,

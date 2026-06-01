@@ -145,12 +145,24 @@ export default function CaptureLeadsPage() {
   }, [leads, markets]);
 
   const submitMarket = async () => {
-    if (!marketForm.name.trim()) return toast.error("Market name is required");
+    const baseName = marketForm.name.trim();
+    if (!baseName) return toast.error("Market name is required");
+    const month = Number(marketForm.month);
+    const year = Number(marketForm.year);
+    if (!month || month < 1 || month > 12) return toast.error("Month is required");
+    if (!year) return toast.error("Year is required");
+    const monthName = MONTHS[month - 1];
+    const suffix = `${monthName} ${year}`;
+    const finalName = new RegExp(`${monthName}\\s*${year}`, "i").test(baseName)
+      ? baseName
+      : `${baseName} — ${suffix}`;
+    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
     const { error } = await supabase.from("trade_show_markets").insert({
-      name: marketForm.name.trim(),
+      name: finalName,
       location: marketForm.location.trim() || null,
-      season: marketForm.season || null,
-      year: Number(marketForm.year) || null,
+      season: seasonFromMonth(month),
+      year,
+      start_date: startDate,
       created_by: user?.id ?? null,
     });
     if (error) return toast.error(error.message);

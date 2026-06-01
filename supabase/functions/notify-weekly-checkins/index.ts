@@ -177,6 +177,7 @@ Deno.serve(async (req) => {
               rows,
               totalCheckIns,
               totalPlacements,
+              portalUrl: "https://www.lineage-managerhub.com/check-ins/analytics",
             },
           }),
         });

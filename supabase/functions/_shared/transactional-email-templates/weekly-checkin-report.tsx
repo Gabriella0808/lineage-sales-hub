@@ -111,6 +111,7 @@ export const template = {
     ],
     totalCheckIns: 13,
     totalPlacements: 7,
+    portalUrl: 'https://www.lineage-managerhub.com/check-ins/analytics',
   },
 } satisfies TemplateEntry
 
@@ -175,3 +176,14 @@ const tdTotalNum = {
 }
 const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#888', margin: '0' }
+const ctaButton = {
+  display: 'inline-block',
+  backgroundColor: 'hsl(220, 35%, 22%)',
+  color: '#ffffff',
+  fontSize: '14px',
+  fontWeight: 600,
+  textDecoration: 'none',
+  borderRadius: '8px',
+  padding: '12px 28px',
+  fontFamily: '"DM Sans", Arial, sans-serif',
+}

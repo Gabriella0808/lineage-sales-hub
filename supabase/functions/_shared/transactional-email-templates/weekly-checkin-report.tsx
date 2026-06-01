@@ -18,6 +18,7 @@ interface WeeklyCheckinReportProps {
   rows?: TeamRow[]
   totalCheckIns?: number
   totalPlacements?: number
+  portalUrl?: string
 }
 
 const WeeklyCheckinReportEmail = ({
@@ -26,6 +27,7 @@ const WeeklyCheckinReportEmail = ({
   rows = [],
   totalCheckIns = 0,
   totalPlacements = 0,
+  portalUrl,
 }: WeeklyCheckinReportProps) => (
   <Html lang="en" dir="ltr">
     <Head />

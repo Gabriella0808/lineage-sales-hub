@@ -181,7 +181,7 @@ const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#888', margin: '0' }
 const ctaButton = {
   display: 'inline-block',
-  backgroundColor: 'hsl(43, 45%, 55%)',
+  backgroundColor: '#c9a44c',
   color: '#1a1a1a',
   fontSize: '14px',
   fontWeight: 600,

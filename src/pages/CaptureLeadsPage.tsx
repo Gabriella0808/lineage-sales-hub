@@ -62,7 +62,17 @@ const emptyLead = {
   followup_enabled: false, followup_title: "", followup_description: "", followup_due_date: "",
 };
 
-const emptyMarket = { name: "", location: "", season: "Spring", year: new Date().getFullYear() };
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const seasonFromMonth = (m: number): string => {
+  if (m >= 3 && m <= 5) return "Spring";
+  if (m >= 6 && m <= 8) return "Summer";
+  if (m >= 9 && m <= 11) return "Fall";
+  return "Winter";
+};
+const emptyMarket = { name: "", location: "", month: new Date().getMonth() + 1, year: new Date().getFullYear() };
 
 export default function CaptureLeadsPage() {
   const { user } = useAuth();
@@ -135,12 +145,24 @@ export default function CaptureLeadsPage() {
   }, [leads, markets]);
 
   const submitMarket = async () => {
-    if (!marketForm.name.trim()) return toast.error("Market name is required");
+    const baseName = marketForm.name.trim();
+    if (!baseName) return toast.error("Market name is required");
+    const month = Number(marketForm.month);
+    const year = Number(marketForm.year);
+    if (!month || month < 1 || month > 12) return toast.error("Month is required");
+    if (!year) return toast.error("Year is required");
+    const monthName = MONTHS[month - 1];
+    const suffix = `${monthName} ${year}`;
+    const finalName = new RegExp(`${monthName}\\s*${year}`, "i").test(baseName)
+      ? baseName
+      : `${baseName} — ${suffix}`;
+    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
     const { error } = await supabase.from("trade_show_markets").insert({
-      name: marketForm.name.trim(),
+      name: finalName,
       location: marketForm.location.trim() || null,
-      season: marketForm.season || null,
-      year: Number(marketForm.year) || null,
+      season: seasonFromMonth(month),
+      year,
+      start_date: startDate,
       created_by: user?.id ?? null,
     });
     if (error) return toast.error(error.message);
@@ -375,14 +397,27 @@ export default function CaptureLeadsPage() {
             <DialogHeader><DialogTitle>New Market</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <Field label="Market Name" required>
-                <Input value={marketForm.name} onChange={(e) => setMarketForm({ ...marketForm, name: e.target.value })} placeholder="e.g. High Point Spring 2026" />
+                <Input value={marketForm.name} onChange={(e) => setMarketForm({ ...marketForm, name: e.target.value })} placeholder="e.g. High Point Market" />
+                <p className="text-[11px] text-muted-foreground mt-1">Month and year will be appended automatically.</p>
               </Field>
               <Field label="Location">
                 <Input value={marketForm.location} onChange={(e) => setMarketForm({ ...marketForm, location: e.target.value })} placeholder="e.g. High Point, NC" />
               </Field>
-              <Field label="Year">
-                <Input type="number" value={marketForm.year} onChange={(e) => setMarketForm({ ...marketForm, year: Number(e.target.value) })} />
-              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Month" required>
+                  <Select value={String(marketForm.month)} onValueChange={(v) => setMarketForm({ ...marketForm, month: Number(v) })}>
+                    <SelectTrigger><SelectValue placeholder="Month" /></SelectTrigger>
+                    <SelectContent>
+                      {MONTHS.map((name, i) => (
+                        <SelectItem key={name} value={String(i + 1)}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Year" required>
+                  <Input type="number" value={marketForm.year} onChange={(e) => setMarketForm({ ...marketForm, year: Number(e.target.value) })} />
+                </Field>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setMarketDialog(false)}>Cancel</Button>

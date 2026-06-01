@@ -73,6 +73,20 @@ const WeeklyCheckinReportEmail = ({
           Field Check-Ins → Visit Analytics.
         </Text>
 
+        {portalUrl && (
+          <Section style={{ textAlign: 'center', margin: '20px 0' }}>
+            <a
+              href={portalUrl}
+              style={ctaButton}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View in Portal
+            </a>
+          </Section>
+        )}
+
+
         <Hr style={hr} />
         <Text style={footer}>— The {SITE_NAME} Team</Text>
       </Container>

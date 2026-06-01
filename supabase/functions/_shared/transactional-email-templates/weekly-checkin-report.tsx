@@ -75,14 +75,9 @@ const WeeklyCheckinReportEmail = ({
 
         {portalUrl && (
           <Section style={{ textAlign: 'center', margin: '20px 0' }}>
-            <a
-              href={portalUrl}
-              style={ctaButton}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <Button href={portalUrl} style={ctaButton}>
               View in Portal
-            </a>
+            </Button>
           </Section>
         )}
 

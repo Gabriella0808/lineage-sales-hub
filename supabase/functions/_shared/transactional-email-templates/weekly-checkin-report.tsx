@@ -46,7 +46,7 @@ const WeeklyCheckinReportEmail = ({
           <table style={rowTable} cellPadding={0} cellSpacing={0}>
             <thead>
               <tr>
-                <th style={th}>Rep</th>
+                <th style={th}>Manager</th>
                 <th style={thNum}>Check-Ins</th>
                 <th style={thNum}>New Placements</th>
               </tr>
@@ -178,8 +178,8 @@ const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#888', margin: '0' }
 const ctaButton = {
   display: 'inline-block',
-  backgroundColor: 'hsl(220, 35%, 22%)',
-  color: '#ffffff',
+  backgroundColor: 'hsl(43, 45%, 55%)',
+  color: '#1a1a1a',
   fontSize: '14px',
   fontWeight: 600,
   textDecoration: 'none',

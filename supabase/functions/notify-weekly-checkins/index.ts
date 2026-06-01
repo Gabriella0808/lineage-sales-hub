@@ -72,6 +72,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const dryRun: boolean = !!body?.dryRun;
+    const testEmail: string | undefined = body?.testEmail;
 
     const now = new Date();
     const { start, end } = lastWeekRange(now);

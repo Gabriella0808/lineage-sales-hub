@@ -1341,6 +1341,7 @@ export type Database = {
         Row: {
           acctivate_id: string | null
           created_at: string
+          dealer_acctivate_id: string | null
           dealer_id: string | null
           dealer_name: string | null
           extended_value: number
@@ -1360,6 +1361,7 @@ export type Database = {
         Insert: {
           acctivate_id?: string | null
           created_at?: string
+          dealer_acctivate_id?: string | null
           dealer_id?: string | null
           dealer_name?: string | null
           extended_value?: number
@@ -1379,6 +1381,7 @@ export type Database = {
         Update: {
           acctivate_id?: string | null
           created_at?: string
+          dealer_acctivate_id?: string | null
           dealer_id?: string | null
           dealer_name?: string | null
           extended_value?: number

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import backlogData from "@/data/backlogSummary.json";
 
 export interface OpenSalesOrderRow {
   id: string;
@@ -43,8 +44,8 @@ export function useOpenSalesOrders() {
         }
 
         // Hydrate dealer_name / rep from the dealers table when the sync
-        // didn't populate them on open_sales_orders. We join by
-        // dealer_acctivate_id (Acctivate CustomerID).
+        // didn't populate them on open_sales_orders. Then fall back by order
+        // number to the last backlog snapshot so live rows don't render as dashes.
         const missingIds = Array.from(
           new Set(
             all
@@ -75,6 +76,20 @@ export function useOpenSalesOrders() {
               }
             }
           }
+        }
+
+        const snapshotByOrder = new Map<string, { name: string | null; rep: string | null }>();
+        for (const r of (backlogData as { detail: { num?: string | number | null; customer?: string | null; rep?: string | null }[] }).detail) {
+          if (!r.num || snapshotByOrder.has(String(r.num))) continue;
+          snapshotByOrder.set(String(r.num), { name: r.customer ?? null, rep: r.rep ?? null });
+        }
+
+        for (const r of all) {
+          if (!r.order_number) continue;
+          const snapshot = snapshotByOrder.get(r.order_number);
+          if (!snapshot) continue;
+          if (!r.dealer_name) r.dealer_name = snapshot.name;
+          if (!r.rep) r.rep = snapshot.rep;
         }
 
         if (active) setRows(all);

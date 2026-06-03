@@ -392,11 +392,12 @@ function Send-Batch {
 $queries = @{
   managers = @"
 SELECT
-  CAST(EmployeeID AS NVARCHAR(64)) AS acctivate_id,
-  EmployeeName                     AS name,
-  Email                            AS email
+  CAST(EmployeeId AS NVARCHAR(64))                                AS acctivate_id,
+  LTRIM(RTRIM(ISNULL(FirstName,'') + ' ' + ISNULL(LastName,'')))  AS name,
+  EMail                                                            AS email
 FROM dbo.Employee
-WHERE IsSalesManager = 1
+WHERE Active = 1
+  AND JobTitle LIKE '%manager%'
 "@
 
   sales_reps = @"

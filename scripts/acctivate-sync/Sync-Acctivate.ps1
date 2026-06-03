@@ -333,17 +333,35 @@ function New-OpenSalesOrdersQuery {
   $repExpr       = if ($hdrRepCol) { "CAST(h.$(Quote-SqlIdentifier $hdrRepCol) AS NVARCHAR(255)) AS rep" } else { "NULL AS rep" }
   $skuExpr       = if ($detSkuCol) { "CAST(d.$(Quote-SqlIdentifier $detSkuCol) AS NVARCHAR(128)) AS sku" } else { "NULL AS sku" }
 
-  # Join Product to get ProductClass for stock-class breakdown
-  $hasProdClass = $prodCols -contains 'ProductClass'
+  # Join Product → ProductClass lookup so stock_class becomes the human name.
   $prodJoin = ''
   $stockClassExpr = "NULL AS stock_class"
-  if ($detProdIdCol -and $hasProdClass) {
-    $prodKeyOnDet = $detProdIdCol
-    # Find matching column on Product
-    $prodKeyOnProd = Get-FirstColumn -Columns $prodCols -Candidates @($prodKeyOnDet, 'GUIDProduct', 'ProductID')
+  if ($detProdIdCol) {
+    $prodKeyOnProd = Get-FirstColumn -Columns $prodCols -Candidates @($detProdIdCol, 'GUIDProduct', 'ProductID', 'ProductCode')
     if ($prodKeyOnProd) {
-      $prodJoin = "LEFT JOIN dbo.Product p ON p.$(Quote-SqlIdentifier $prodKeyOnProd) = d.$(Quote-SqlIdentifier $prodKeyOnDet)"
-      $stockClassExpr = "CAST(p.ProductClass AS NVARCHAR(64)) AS stock_class"
+      $prodJoin = "LEFT JOIN dbo.Product p ON p.$(Quote-SqlIdentifier $prodKeyOnProd) = d.$(Quote-SqlIdentifier $detProdIdCol)"
+
+      $prodClassCol = Get-FirstColumn -Columns $prodCols -Candidates @('ProductClassID','ProductClassId','ProductClass','ClassID','ClassId','Class')
+
+      $classTable = $null
+      foreach ($candidate in @('ProductClass','ProductClasses','ItemClass','Class')) {
+        $found = Invoke-Sql -Query "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='$candidate'"
+        if ($found.Count -gt 0) { $classTable = $candidate; break }
+      }
+
+      if ($classTable -and $prodClassCol) {
+        $classCols    = Get-SqlColumns -Table $classTable
+        $classKeyCol  = Get-FirstColumn -Columns $classCols -Candidates @($prodClassCol,'ProductClassID','ProductClassId','ClassID','ClassId','ID')
+        $classNameCol = Get-FirstColumn -Columns $classCols -Candidates @('ProductClass','ClassName','Name','Description','Class')
+        if ($classKeyCol -and $classNameCol) {
+          $prodJoin += " LEFT JOIN dbo.$classTable pc ON pc.$(Quote-SqlIdentifier $classKeyCol) = p.$(Quote-SqlIdentifier $prodClassCol)"
+          $stockClassExpr = "CAST(pc.$(Quote-SqlIdentifier $classNameCol) AS NVARCHAR(128)) AS stock_class"
+        } else {
+          $stockClassExpr = "CAST(p.$(Quote-SqlIdentifier $prodClassCol) AS NVARCHAR(128)) AS stock_class"
+        }
+      } elseif ($prodClassCol) {
+        $stockClassExpr = "CAST(p.$(Quote-SqlIdentifier $prodClassCol) AS NVARCHAR(128)) AS stock_class"
+      }
     }
   }
 

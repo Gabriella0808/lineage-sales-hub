@@ -564,7 +564,7 @@ function BacklogOrderTable({
   return (
     <div className="overflow-auto max-h-[60vh] border border-border rounded-md">
       <table className="w-full text-sm">
-        <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
+        <thead className="bg-background text-xs uppercase tracking-wide text-muted-foreground sticky top-0 z-10 shadow-[0_1px_0_hsl(var(--border))]">
           <tr>
             <th className="w-8" />
             <th className="text-left px-3 py-2">Order #</th>

@@ -667,7 +667,7 @@ function BacklogOrderTable({
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             );
           })}
           {grouped.length === 0 && (

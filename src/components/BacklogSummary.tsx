@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import backlogData from "@/data/backlogSummary.json";
+import { useOpenSalesOrders } from "@/hooks/useOpenSalesOrders";
 
 type DetailRow = {
   customer: string;
@@ -30,6 +31,19 @@ const data = backlogData as {
   discussionPoints: { customer: string; notes: string }[];
   detail: DetailRow[];
 };
+
+// Human-friendly descriptions for Acctivate ProductClass codes.
+const STOCK_CLASS_DESCRIPTIONS: Record<string, string> = {
+  "New": "New Product (Unavail)",
+  "Discs-Sur": "Discounts and Surcharges",
+  "OOS": "Out of Stock",
+  "Avail": "Available",
+  "DC": "Direct Container",
+  "MC": "Mixed Container",
+  "Contract": "Contract",
+  "N/A": "Other / Non-Inventory",
+};
+
 
 const fmtMoney = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);

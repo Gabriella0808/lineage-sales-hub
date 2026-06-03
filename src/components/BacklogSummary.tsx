@@ -460,7 +460,7 @@ export function BacklogSummary() {
             className="h-8 text-xs"
             onClick={() => setDrill({ kind: "stockClass", code: "__ALL__", label: "All open sales orders" })}
           >
-            View all open sales orders ({filteredDetail.length.toLocaleString()})
+            View all open sales orders ({new Set(filteredDetail.map((r) => r.num).filter(Boolean)).size.toLocaleString()})
           </Button>
         </div>
         <div className="overflow-auto border border-border rounded-md">

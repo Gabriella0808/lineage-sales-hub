@@ -176,13 +176,13 @@ export function BacklogSummary() {
   const filteredStockClasses = useMemo(() => {
     const totals = new Map<string, { code: string; description: string; total: number }>();
     for (const r of filteredDetail) {
-      if (!r.stockClass || r.stockClass === "N/A") continue;
-      const desc = STOCK_CLASS_DESCRIPTIONS[r.stockClass]
-        ?? data.stockClasses.find((s) => s.code === r.stockClass)?.description
-        ?? r.stockClass;
-      const entry = totals.get(r.stockClass) ?? { code: r.stockClass, description: desc, total: 0 };
+      const code = r.stockClass && r.stockClass !== "N/A" ? r.stockClass : "Unclassified";
+      const desc = STOCK_CLASS_DESCRIPTIONS[code]
+        ?? data.stockClasses.find((s) => s.code === code)?.description
+        ?? (code === "Unclassified" ? "No stock class assigned" : code);
+      const entry = totals.get(code) ?? { code, description: desc, total: 0 };
       entry.total += Math.abs(r.openBalance || 0);
-      totals.set(r.stockClass, entry);
+      totals.set(code, entry);
     }
     return Array.from(totals.values()).sort((a, b) => b.total - a.total);
   }, [filteredDetail]);

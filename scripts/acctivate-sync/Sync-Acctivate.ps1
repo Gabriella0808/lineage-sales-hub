@@ -496,6 +496,7 @@ GROUP BY i.ProductID, p.ProductID
 
 $queries['dealer_invoices']      = New-DealerInvoicesQuery
 $queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
+$queries['open_sales_orders']    = New-OpenSalesOrdersQuery
 
 $tableAliases = @{
   dealer_invoice_line  = 'dealer_invoice_lines'
@@ -503,6 +504,10 @@ $tableAliases = @{
   invoice_lines        = 'dealer_invoice_lines'
   invoice_detail       = 'dealer_invoice_lines'
   invoice_details      = 'dealer_invoice_lines'
+  open_orders          = 'open_sales_orders'
+  open_sales           = 'open_sales_orders'
+  sales_orders         = 'open_sales_orders'
+  backlog              = 'open_sales_orders'
 }
 
 function Normalize-TableKey {

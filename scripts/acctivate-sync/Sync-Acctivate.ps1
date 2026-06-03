@@ -368,6 +368,9 @@ function New-OpenSalesOrdersQuery {
     }
   }
 
+  Write-Host "  [diag] prodJoin       = $prodJoin" -ForegroundColor DarkCyan
+  Write-Host "  [diag] stockClassExpr = $stockClassExpr" -ForegroundColor DarkCyan
+
   $statusFilter = if ($hdrStatusCol) {
     "AND (h.$(Quote-SqlIdentifier $hdrStatusCol) IS NULL OR h.$(Quote-SqlIdentifier $hdrStatusCol) NOT IN ('Closed','Cancelled','Canceled','Void','C','X'))"
   } else { "" }

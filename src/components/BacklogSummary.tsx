@@ -156,7 +156,10 @@ export function BacklogSummary() {
   const filteredDetail = useMemo(() => {
     return detailWithTerritory.filter((r) => {
       if (territoryFilter !== "all" && r.territory !== territoryFilter) return false;
-      if (stockClassFilter !== "all" && r.stockClass !== stockClassFilter) return false;
+      if (stockClassFilter !== "all") {
+        const code = r.stockClass && r.stockClass !== "N/A" ? r.stockClass : "Unclassified";
+        if (code !== stockClassFilter) return false;
+      }
       if (statusFilter === "Open" && (r.openBalance || 0) === 0) return false;
       if (statusFilter === "Cleared" && (r.openBalance || 0) !== 0) return false;
       if (customerFilter !== "all" && r.customer !== customerFilter) return false;
@@ -172,17 +175,25 @@ export function BacklogSummary() {
     });
   }, [detailWithTerritory, territoryFilter, stockClassFilter, statusFilter, customerFilter, repFilter, skuQuery]);
 
+  const allStockClasses = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of detailWithTerritory) {
+      set.add(r.stockClass && r.stockClass !== "N/A" ? r.stockClass : "Unclassified");
+    }
+    return Array.from(set).sort();
+  }, [detailWithTerritory]);
+
   // Recompute summary tables from filtered detail
   const filteredStockClasses = useMemo(() => {
     const totals = new Map<string, { code: string; description: string; total: number }>();
     for (const r of filteredDetail) {
-      if (!r.stockClass || r.stockClass === "N/A") continue;
-      const desc = STOCK_CLASS_DESCRIPTIONS[r.stockClass]
-        ?? data.stockClasses.find((s) => s.code === r.stockClass)?.description
-        ?? r.stockClass;
-      const entry = totals.get(r.stockClass) ?? { code: r.stockClass, description: desc, total: 0 };
+      const code = r.stockClass && r.stockClass !== "N/A" ? r.stockClass : "Unclassified";
+      const desc = STOCK_CLASS_DESCRIPTIONS[code]
+        ?? data.stockClasses.find((s) => s.code === code)?.description
+        ?? (code === "Unclassified" ? "No stock class assigned" : code);
+      const entry = totals.get(code) ?? { code, description: desc, total: 0 };
       entry.total += Math.abs(r.openBalance || 0);
-      totals.set(r.stockClass, entry);
+      totals.set(code, entry);
     }
     return Array.from(totals.values()).sort((a, b) => b.total - a.total);
   }, [filteredDetail]);
@@ -395,8 +406,8 @@ export function BacklogSummary() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All classes</SelectItem>
-              {data.stockClasses.map((c) => (
-                <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
+              {allStockClasses.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
             </SelectContent>
           </Select>

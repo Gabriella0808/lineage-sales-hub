@@ -163,20 +163,11 @@ export default function InventoryPage() {
       <div className="page-header flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="page-title">Inventory</h1>
-          <p className="page-subtitle">
-            <span>
-              {usingMock
-                ? "Showing sample data — Acctivate sync hasn't run yet."
-                : lastSyncedAt
-                  ? `Last synced ${new Date(lastSyncedAt).toLocaleString()}`
-                  : "Synced from Acctivate."}
-            </span>
-            {lastFetchedAt && !usingMock && (
-              <span className="text-xs text-muted-foreground ml-2">
-                · refreshed {new Date(lastFetchedAt).toLocaleTimeString()}
-              </span>
-            )}
-          </p>
+          {usingMock && (
+            <p className="page-subtitle">
+              <span>Showing sample data — Acctivate sync hasn't run yet.</span>
+            </p>
+          )}
         </div>
         <Button
           size="sm"

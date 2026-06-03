@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import backlogData from "@/data/backlogSummary.json";
+import { useOpenSalesOrders } from "@/hooks/useOpenSalesOrders";
 
 type DetailRow = {
   customer: string;
@@ -30,6 +31,19 @@ const data = backlogData as {
   discussionPoints: { customer: string; notes: string }[];
   detail: DetailRow[];
 };
+
+// Human-friendly descriptions for Acctivate ProductClass codes.
+const STOCK_CLASS_DESCRIPTIONS: Record<string, string> = {
+  "New": "New Product (Unavail)",
+  "Discs-Sur": "Discounts and Surcharges",
+  "OOS": "Out of Stock",
+  "Avail": "Available",
+  "DC": "Direct Container",
+  "MC": "Mixed Container",
+  "Contract": "Contract",
+  "N/A": "Other / Non-Inventory",
+};
+
 
 const fmtMoney = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
@@ -91,14 +105,38 @@ export function BacklogSummary() {
   const [skuQuery, setSkuQuery] = useState<string>("");
   const [repFilter, setRepFilter] = useState<string>("all");
 
-  // Derive territory for every detail row
+  const { rows: liveOrders, loading: liveLoading } = useOpenSalesOrders();
+
+  // Prefer live Acctivate open sales orders when available; otherwise fall back
+  // to the static snapshot. Live rows are mapped into the same DetailRow shape
+  // the existing UI expects so all filters/drill-downs keep working.
   const detailWithTerritory = useMemo(() => {
-    return data.detail.map((r) => ({
+    const source: (DetailRow & { __live?: boolean })[] = liveOrders.length > 0
+      ? liveOrders.map((r) => ({
+          customer: r.dealer_name ?? "—",
+          type: "Sales Order",
+          date: r.order_date,
+          shipDate: r.promised_date,
+          num: r.order_number,
+          name: r.dealer_name,
+          rep: r.rep,
+          item: r.sku,
+          description: null,
+          memo: null,
+          amount: Number(r.extended_value || 0),
+          openBalance: Number(r.extended_value || 0),
+          stockClass: r.stock_class,
+          __live: true,
+        }))
+      : data.detail;
+
+    return source.map((r) => ({
       ...r,
       territory: getTerritory(r.rep),
       status: (r.openBalance || 0) !== 0 ? "Open" : "Cleared",
     }));
-  }, []);
+  }, [liveOrders]);
+
 
   const allTerritories = useMemo(
     () => Array.from(new Set(detailWithTerritory.map((r) => r.territory).filter(Boolean))).sort(),
@@ -139,13 +177,16 @@ export function BacklogSummary() {
     const totals = new Map<string, { code: string; description: string; total: number }>();
     for (const r of filteredDetail) {
       if (!r.stockClass || r.stockClass === "N/A") continue;
-      const desc = data.stockClasses.find((s) => s.code === r.stockClass)?.description ?? r.stockClass;
+      const desc = STOCK_CLASS_DESCRIPTIONS[r.stockClass]
+        ?? data.stockClasses.find((s) => s.code === r.stockClass)?.description
+        ?? r.stockClass;
       const entry = totals.get(r.stockClass) ?? { code: r.stockClass, description: desc, total: 0 };
       entry.total += Math.abs(r.openBalance || 0);
       totals.set(r.stockClass, entry);
     }
-    return Array.from(totals.values());
+    return Array.from(totals.values()).sort((a, b) => b.total - a.total);
   }, [filteredDetail]);
+
 
   const filteredTotalBacklog = useMemo(
     () => filteredStockClasses.reduce((s, c) => s + c.total, 0),
@@ -379,15 +420,19 @@ export function BacklogSummary() {
           </Button>
         )}
         <div className="ml-auto text-xs text-muted-foreground">
-          Backlog as of{" "}
-          <span className="font-medium text-foreground">
-            {new Date(data.asOf).toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </span>
+          {liveOrders.length > 0 ? (
+            <>Live Acctivate · <span className="font-medium text-foreground">{liveOrders.length.toLocaleString()} open lines</span></>
+          ) : liveLoading ? (
+            <>Loading open orders…</>
+          ) : (
+            <>Snapshot as of{" "}
+              <span className="font-medium text-foreground">
+                {new Date(data.asOf).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+              </span>
+            </>
+          )}
         </div>
+
       </div>
 
       {/* Stock Class breakdown */}

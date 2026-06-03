@@ -280,6 +280,98 @@ WHERE d.$(Quote-SqlIdentifier $invIdCol) IS NOT NULL
 "@
 }
 
+function New-OpenSalesOrdersQuery {
+  # Auto-discover Acctivate's sales-order header + detail tables
+  $headerTable = $null
+  foreach ($candidate in @('SalesOrder', 'OrderHeader', 'Order', 'SO')) {
+    $found = Invoke-Sql -Query "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='$candidate'"
+    if ($found.Count -gt 0) { $headerTable = $candidate; break }
+  }
+  if (-not $headerTable) { throw "Could not find a sales-order header table (tried SalesOrder, OrderHeader, Order, SO)." }
+
+  $detailTable = $null
+  foreach ($candidate in @('SalesOrderDetail', 'OrderDetail', 'OrderLine', 'SalesOrderLine', 'SODetail', 'OrderItem')) {
+    $found = Invoke-Sql -Query "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='$candidate'"
+    if ($found.Count -gt 0) { $detailTable = $candidate; break }
+  }
+  if (-not $detailTable) { throw "Could not find a sales-order detail table (tried SalesOrderDetail, OrderDetail, OrderLine, SalesOrderLine, SODetail, OrderItem)." }
+
+  $hdrCols    = Get-SqlColumns -Table $headerTable
+  $detailCols = Get-SqlColumns -Table $detailTable
+  $prodCols   = Get-SqlColumns -Table 'Product'
+
+  $hdrIdCol    = Get-FirstColumn -Columns $hdrCols -Candidates @('GUIDSalesOrder', 'SalesOrderID', 'SalesOrderId', 'OrderID', 'OrderId', 'GUIDOrder', 'ID')
+  $hdrNumCol   = Get-FirstColumn -Columns $hdrCols -Candidates @('OrderNumber', 'SalesOrderNumber', 'OrderNo', 'SONumber', 'Number')
+  $hdrCustCol  = Get-FirstColumn -Columns $hdrCols -Candidates @('CustID', 'CustId', 'CustomerID', 'CustomerId', 'CustomerNumber', 'CustNo', 'Customer', 'BillToCustID')
+  $hdrDateCol  = Get-FirstColumn -Columns $hdrCols -Candidates @('OrderDate', 'Date', 'CreatedDate')
+  $hdrPromCol  = Get-FirstColumn -Columns $hdrCols -Candidates @('PromisedDate', 'RequestedShipDate', 'ShipDate', 'ScheduledShipDate', 'RequiredDate')
+  $hdrRepCol   = Get-FirstColumn -Columns $hdrCols -Candidates @('SalespersonName', 'Salesperson', 'SalesPerson', 'SalesRep')
+  $hdrStatusCol = Get-FirstColumn -Columns $hdrCols -Candidates @('OrderStatus', 'Status', 'OrderStatusID')
+
+  $detIdCol    = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDSalesOrderDetail', 'SalesOrderDetailID', 'OrderDetailID', 'OrderLineID', 'LineID', 'GUIDOrderDetail', 'DetailID', 'ID')
+  $detOrdIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDSalesOrder', 'SalesOrderID', 'OrderID', 'GUIDOrder', 'OrderId', 'SalesOrderId')
+  $detSkuCol   = Get-FirstColumn -Columns $detailCols -Candidates @('ProductID', 'ProductCode', 'ItemCode', 'SKU', 'ItemNumber')
+  $detProdIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDProduct', 'ProductGUID', 'ProductID', 'ItemID')
+  $detOrdQtyCol = Get-FirstColumn -Columns $detailCols -Candidates @('OrderedQty', 'QtyOrdered', 'QuantityOrdered', 'OrderQty', 'Quantity', 'Qty')
+  $detShipQtyCol = Get-FirstColumn -Columns $detailCols -Candidates @('ShippedQty', 'QtyShipped', 'QuantityShipped', 'ShipQty')
+
+  if (-not $hdrIdCol -or -not $hdrCustCol -or -not $detIdCol -or -not $detOrdIdCol -or -not $detOrdQtyCol) {
+    throw "Could not map required columns. Header has: $($hdrCols -join ', '); Detail has: $($detailCols -join ', ')"
+  }
+
+  # Open qty = Ordered - Shipped (or just Ordered if no shipped column)
+  $openQtyExpr = if ($detShipQtyCol) {
+    "(ISNULL(d.$(Quote-SqlIdentifier $detOrdQtyCol),0) - ISNULL(d.$(Quote-SqlIdentifier $detShipQtyCol),0))"
+  } else {
+    "ISNULL(d.$(Quote-SqlIdentifier $detOrdQtyCol),0)"
+  }
+
+  $unitPriceExpr = New-SelectExpression -Columns $detailCols -Candidates @('Price', 'UnitPrice', 'SalesPrice', 'SellingPrice') -Alias 'unit_price' -Default '0' -TableAlias 'd'
+  $orderDateExpr = if ($hdrDateCol) { "CONVERT(VARCHAR(10), h.$(Quote-SqlIdentifier $hdrDateCol), 23) AS order_date" } else { "NULL AS order_date" }
+  $promDateExpr  = if ($hdrPromCol) { "CONVERT(VARCHAR(10), h.$(Quote-SqlIdentifier $hdrPromCol), 23) AS promised_date" } else { "NULL AS promised_date" }
+  $orderNumExpr  = if ($hdrNumCol) { "CAST(h.$(Quote-SqlIdentifier $hdrNumCol) AS NVARCHAR(64)) AS order_number" } else { "NULL AS order_number" }
+  $repExpr       = if ($hdrRepCol) { "CAST(h.$(Quote-SqlIdentifier $hdrRepCol) AS NVARCHAR(255)) AS rep" } else { "NULL AS rep" }
+  $skuExpr       = if ($detSkuCol) { "CAST(d.$(Quote-SqlIdentifier $detSkuCol) AS NVARCHAR(128)) AS sku" } else { "NULL AS sku" }
+
+  # Join Product to get ProductClass for stock-class breakdown
+  $hasProdClass = $prodCols -contains 'ProductClass'
+  $prodJoin = ''
+  $stockClassExpr = "NULL AS stock_class"
+  if ($detProdIdCol -and $hasProdClass) {
+    $prodKeyOnDet = $detProdIdCol
+    # Find matching column on Product
+    $prodKeyOnProd = Get-FirstColumn -Columns $prodCols -Candidates @($prodKeyOnDet, 'GUIDProduct', 'ProductID')
+    if ($prodKeyOnProd) {
+      $prodJoin = "LEFT JOIN dbo.Product p ON p.$(Quote-SqlIdentifier $prodKeyOnProd) = d.$(Quote-SqlIdentifier $prodKeyOnDet)"
+      $stockClassExpr = "CAST(p.ProductClass AS NVARCHAR(64)) AS stock_class"
+    }
+  }
+
+  $statusFilter = if ($hdrStatusCol) {
+    "AND (h.$(Quote-SqlIdentifier $hdrStatusCol) IS NULL OR h.$(Quote-SqlIdentifier $hdrStatusCol) NOT IN ('Closed','Cancelled','Canceled','Void','C','X'))"
+  } else { "" }
+
+  return @"
+SELECT
+  CAST(d.$(Quote-SqlIdentifier $detIdCol) AS NVARCHAR(64)) AS acctivate_id,
+  $orderNumExpr,
+  $skuExpr,
+  CAST(h.$(Quote-SqlIdentifier $hdrCustCol) AS NVARCHAR(64)) AS dealer_acctivate_id,
+  $openQtyExpr AS qty_open,
+  $unitPriceExpr,
+  ($openQtyExpr * ISNULL(d.$(Quote-SqlIdentifier (Get-FirstColumn -Columns $detailCols -Candidates @('Price','UnitPrice','SalesPrice','SellingPrice'))),0)) AS extended_value,
+  $orderDateExpr,
+  $promDateExpr,
+  $repExpr,
+  $stockClassExpr
+FROM dbo.$detailTable d
+INNER JOIN dbo.$headerTable h ON h.$(Quote-SqlIdentifier $hdrIdCol) = d.$(Quote-SqlIdentifier $detOrdIdCol)
+$prodJoin
+WHERE $openQtyExpr > 0
+  $statusFilter
+"@
+}
+
 function Send-Batch {
   param([string]$Table, [array]$Rows, [string]$OnConflict = 'acctivate_id')
   if (-not $Rows -or $Rows.Count -eq 0) {
@@ -404,6 +496,7 @@ GROUP BY i.ProductID, p.ProductID
 
 $queries['dealer_invoices']      = New-DealerInvoicesQuery
 $queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
+$queries['open_sales_orders']    = New-OpenSalesOrdersQuery
 
 $tableAliases = @{
   dealer_invoice_line  = 'dealer_invoice_lines'
@@ -411,6 +504,10 @@ $tableAliases = @{
   invoice_lines        = 'dealer_invoice_lines'
   invoice_detail       = 'dealer_invoice_lines'
   invoice_details      = 'dealer_invoice_lines'
+  open_orders          = 'open_sales_orders'
+  open_sales           = 'open_sales_orders'
+  sales_orders         = 'open_sales_orders'
+  backlog              = 'open_sales_orders'
 }
 
 function Normalize-TableKey {

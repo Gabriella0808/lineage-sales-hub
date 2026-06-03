@@ -1350,7 +1350,10 @@ export type Database = {
           order_number: string | null
           promised_date: string | null
           qty_open: number
+          rep: string | null
           sku: string
+          stock_class: string | null
+          stock_class_description: string | null
           unit_price: number
           updated_at: string
         }
@@ -1366,7 +1369,10 @@ export type Database = {
           order_number?: string | null
           promised_date?: string | null
           qty_open?: number
+          rep?: string | null
           sku: string
+          stock_class?: string | null
+          stock_class_description?: string | null
           unit_price?: number
           updated_at?: string
         }
@@ -1382,7 +1388,10 @@ export type Database = {
           order_number?: string | null
           promised_date?: string | null
           qty_open?: number
+          rep?: string | null
           sku?: string
+          stock_class?: string | null
+          stock_class_description?: string | null
           unit_price?: number
           updated_at?: string
         }

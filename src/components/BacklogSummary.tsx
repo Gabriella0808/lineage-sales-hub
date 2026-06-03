@@ -579,9 +579,8 @@ function BacklogOrderTable({
               .sort()[0] ?? null;
             const isOpen = expanded.has(g.key);
             return (
-              <>
+              <Fragment key={g.key}>
                 <tr
-                  key={g.key}
                   className="border-t border-border hover:bg-muted/40 cursor-pointer"
                   onClick={() => toggle(g.key)}
                 >

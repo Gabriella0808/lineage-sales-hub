@@ -2813,6 +2813,14 @@ export type Database = {
       current_manager_id: { Args: never; Returns: string }
       current_manager_rep_ids: { Args: never; Returns: string[] }
       current_rep_id: { Args: never; Returns: string }
+      dealer_daily_invoice_net: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          dealer_id: string
+          invoice_date: string
+          net_total: number
+        }[]
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

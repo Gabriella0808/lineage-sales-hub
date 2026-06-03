@@ -420,15 +420,19 @@ export function BacklogSummary() {
           </Button>
         )}
         <div className="ml-auto text-xs text-muted-foreground">
-          Backlog as of{" "}
-          <span className="font-medium text-foreground">
-            {new Date(data.asOf).toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </span>
+          {liveOrders.length > 0 ? (
+            <>Live Acctivate · <span className="font-medium text-foreground">{liveOrders.length.toLocaleString()} open lines</span></>
+          ) : liveLoading ? (
+            <>Loading open orders…</>
+          ) : (
+            <>Snapshot as of{" "}
+              <span className="font-medium text-foreground">
+                {new Date(data.asOf).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
+              </span>
+            </>
+          )}
         </div>
+
       </div>
 
       {/* Stock Class breakdown */}

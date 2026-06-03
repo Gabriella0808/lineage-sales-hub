@@ -391,6 +391,8 @@ function Send-Batch {
 
 $queries = @{
   managers = @"
+-- Intentionally no CTE/WITH here; some Acctivate SQL Server versions reject
+-- CTE batches unless the previous statement is explicitly terminated.
 SELECT
   CAST(EmployeeId AS NVARCHAR(64))                                AS acctivate_id,
   LTRIM(RTRIM(ISNULL(FirstName,'') + ' ' + ISNULL(LastName,'')))  AS name,
@@ -473,6 +475,8 @@ $tableAliases = @{
   invoice_lines        = 'dealer_invoice_lines'
   invoice_detail       = 'dealer_invoice_lines'
   invoice_details      = 'dealer_invoice_lines'
+  dealer_sales_line    = 'dealer_invoice_lines'
+  dealer_sales_lines   = 'dealer_invoice_lines'
   open_orders          = 'open_sales_orders'
   open_sales           = 'open_sales_orders'
   sales_orders         = 'open_sales_orders'

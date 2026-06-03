@@ -443,13 +443,13 @@ WHERE cv.CustID IS NOT NULL
   products = @"
 SELECT
   CAST(p.ProductID AS NVARCHAR(64)) AS acctivate_id,
-  p.ProductCode                     AS sku,
+  p.ProductID                       AS sku,
   p.Description                     AS name,
-  p.ProductClass                    AS collection,
-  p.ProductCategory                 AS category,
-  p.SalesPrice                      AS price
+  p.ProductClassID                  AS collection,
+  p.SalesCategory                   AS category,
+  p.ListPrice                       AS price
 FROM dbo.Product p
-WHERE p.Inactive = 0
+WHERE ISNULL(p.Discontinued, 0) = 0
 "@
 
   inventory = @"

@@ -393,12 +393,12 @@ WHERE p.Inactive = 0
 SET LOCK_TIMEOUT 30000;
 SELECT
   CAST(i.ProductID AS NVARCHAR(64)) AS acctivate_id,
-  p.ProductCode                     AS sku,
+  p.ProductID                       AS sku,
   SUM(i.QtyOnHand)                  AS on_hand,
   SUM(i.Available)                  AS available
 FROM dbo.ProductWarehouseSummary i
 JOIN dbo.Product p ON p.ProductID = i.ProductID
-GROUP BY i.ProductID, p.ProductCode
+GROUP BY i.ProductID, p.ProductID
 "@
 }
 

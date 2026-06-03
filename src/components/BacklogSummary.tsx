@@ -111,31 +111,39 @@ export function BacklogSummary() {
   // to the static snapshot. Live rows are mapped into the same DetailRow shape
   // the existing UI expects so all filters/drill-downs keep working.
   const detailWithTerritory = useMemo(() => {
-    const source: (DetailRow & { __live?: boolean })[] = liveOrders.length > 0
-      ? liveOrders.map((r) => ({
-          customer: r.dealer_name ?? "—",
-          type: "Sales Order",
-          date: r.order_date,
-          shipDate: r.promised_date,
-          num: r.order_number,
-          name: r.dealer_name,
-          rep: r.rep,
-          item: r.sku,
-          description: null,
-          memo: null,
-          amount: Number(r.extended_value || 0),
-          openBalance: Number(r.extended_value || 0),
-          stockClass: r.stock_class,
-          __live: true,
-        }))
-      : data.detail;
+    // While the live fetch is in flight, render nothing rather than the
+    // pre-sync static snapshot — we don't want stale figures flashing in.
+    let source: (DetailRow & { __live?: boolean })[];
+    if (liveLoading) {
+      source = [];
+    } else if (liveOrders.length > 0) {
+      source = liveOrders.map((r) => ({
+        customer: r.dealer_name ?? "—",
+        type: "Sales Order",
+        date: r.order_date,
+        shipDate: r.promised_date,
+        num: r.order_number,
+        name: r.dealer_name,
+        rep: r.rep,
+        item: r.sku,
+        description: null,
+        memo: null,
+        amount: Number(r.extended_value || 0),
+        openBalance: Number(r.extended_value || 0),
+        stockClass: r.stock_class,
+        __live: true,
+      }));
+    } else {
+      source = data.detail;
+    }
 
     return source.map((r) => ({
       ...r,
       territory: getTerritory(r.rep),
       status: (r.openBalance || 0) !== 0 ? "Open" : "Cleared",
     }));
-  }, [liveOrders]);
+  }, [liveOrders, liveLoading]);
+
 
 
   const allTerritories = useMemo(

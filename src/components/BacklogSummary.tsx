@@ -436,7 +436,7 @@ export function BacklogSummary() {
         )}
         <div className="ml-auto text-xs text-muted-foreground">
           {liveOrders.length > 0 ? (
-            <>Live Acctivate · <span className="font-medium text-foreground">{liveOrders.length.toLocaleString()} open lines</span></>
+            <>Live Acctivate · <span className="font-medium text-foreground">{new Set(liveOrders.map((o) => o.order_number).filter(Boolean)).size.toLocaleString()} open orders</span></>
           ) : liveLoading ? (
             <>Loading open orders…</>
           ) : (

@@ -436,7 +436,7 @@ export function BacklogSummary() {
         )}
         <div className="ml-auto text-xs text-muted-foreground">
           {liveOrders.length > 0 ? (
-            <>Live Acctivate · <span className="font-medium text-foreground">{liveOrders.length.toLocaleString()} open lines</span></>
+            <>Live Acctivate · <span className="font-medium text-foreground">{new Set(liveOrders.map((o) => o.order_number).filter(Boolean)).size.toLocaleString()} open orders</span></>
           ) : liveLoading ? (
             <>Loading open orders…</>
           ) : (
@@ -460,7 +460,7 @@ export function BacklogSummary() {
             className="h-8 text-xs"
             onClick={() => setDrill({ kind: "stockClass", code: "__ALL__", label: "All open sales orders" })}
           >
-            View all open sales orders ({filteredDetail.length.toLocaleString()})
+            View all open sales orders ({new Set(filteredDetail.map((r) => r.num).filter(Boolean)).size.toLocaleString()})
           </Button>
         </div>
         <div className="overflow-auto border border-border rounded-md">

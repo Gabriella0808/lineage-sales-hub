@@ -405,11 +405,11 @@ WHERE Active = 1
   sales_reps = @"
 SELECT
   CAST(SalespersonID AS NVARCHAR(64)) AS acctivate_id,
-  SalespersonName                     AS name,
-  Email                               AS email,
-  Phone                               AS phone
-FROM dbo.Salesperson
-WHERE Inactive = 0
+  Name                                AS name,
+  CAST(NULL AS NVARCHAR(255))         AS email,
+  CAST(NULL AS NVARCHAR(64))          AS phone
+FROM dbo.SalespersonInfo
+WHERE ISNULL(Status, 0) = 0
 "@
 
   territories = @"

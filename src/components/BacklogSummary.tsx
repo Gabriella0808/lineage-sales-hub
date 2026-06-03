@@ -316,70 +316,8 @@ export function BacklogSummary() {
             )}
           </div>
         </div>
-        <div className="overflow-auto max-h-[60vh] border border-border rounded-md">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
-              <tr>
-                <th className="text-left px-3 py-2">Order #</th>
-                {drill.kind === "stockClass" && <th className="text-left px-3 py-2">Customer</th>}
-                <th className="text-left px-3 py-2">Item</th>
-                <th className="text-left px-3 py-2 max-w-[300px]">Description</th>
-                <th className="text-left px-3 py-2">Rep</th>
-                <th className="text-left px-3 py-2">Territory</th>
-                <th className="text-left px-3 py-2">Ship Date</th>
-                {drill.kind === "customer" && <th className="text-left px-3 py-2">Class</th>}
-                <th className="text-right px-3 py-2">Amount</th>
-                <th className="text-right px-3 py-2">Open Bal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {drillRows.map((r, i) => (
-                <tr key={i} className="border-t border-border hover:bg-muted/30">
-                  <td className="px-3 py-2 font-mono text-xs">{r.num ?? "—"}</td>
-                  {drill.kind === "stockClass" && (
-                    <td className="px-3 py-2 max-w-[180px] truncate">{r.customer}</td>
-                  )}
-                  <td className="px-3 py-2 font-mono text-xs">{r.item ?? "—"}</td>
-                  <td className="px-3 py-2 max-w-[300px] truncate text-xs text-muted-foreground">
-                    {r.description ?? "—"}
-                  </td>
-                  <td className="px-3 py-2 text-xs">{r.rep ?? "—"}</td>
-                  <td className="px-3 py-2 text-xs">{r.territory}</td>
-                  <td className="px-3 py-2 text-xs">
-                    {r.shipDate ? new Date(r.shipDate).toLocaleDateString() : "—"}
-                  </td>
-                  {drill.kind === "customer" && (
-                    <td className="px-3 py-2">
-                      {r.stockClass ? (
-                        <span
-                          className={cn(
-                            "inline-flex px-2 py-0.5 rounded text-[10px] font-medium",
-                            STOCK_CLASS_TONE[r.stockClass] ?? "bg-muted text-muted-foreground",
-                          )}
-                        >
-                          {r.stockClass}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  )}
-                  <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(r.amount)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold">
-                    {fmtMoney(r.openBalance)}
-                  </td>
-                </tr>
-              ))}
-              {drillRows.length === 0 && (
-                <tr>
-                  <td colSpan={drill.kind === "stockClass" ? 10 : 9} className="px-3 py-8 text-center text-sm text-muted-foreground">
-                    No detail rows match the current filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <BacklogOrderTable rows={drillRows} showCustomer={drill.kind === "stockClass"} showStockClass={drill.kind === "customer"} />
+
       </div>
     );
   }

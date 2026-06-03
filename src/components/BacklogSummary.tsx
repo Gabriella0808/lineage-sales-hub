@@ -406,8 +406,8 @@ export function BacklogSummary() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All classes</SelectItem>
-              {data.stockClasses.map((c) => (
-                <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
+              {allStockClasses.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
             </SelectContent>
           </Select>

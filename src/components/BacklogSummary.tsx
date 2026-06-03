@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
-import { ArrowLeft, AlertTriangle, MessageSquare, X } from "lucide-react";
+import { ArrowLeft, AlertTriangle, MessageSquare, X, ChevronRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

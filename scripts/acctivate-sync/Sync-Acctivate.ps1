@@ -281,77 +281,48 @@ WHERE d.$(Quote-SqlIdentifier $invIdCol) IS NOT NULL
 }
 
 function New-OpenSalesOrdersQuery {
-  # Auto-discover Acctivate's sales-order header + detail tables
-  $headerTable = $null
-  foreach ($candidate in @('SalesOrder', 'OrderHeader', 'Order', 'SO')) {
-    $found = Invoke-Sql -Query "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='$candidate'"
-    if ($found.Count -gt 0) { $headerTable = $candidate; break }
-  }
-  if (-not $headerTable) { throw "Could not find a sales-order header table (tried SalesOrder, OrderHeader, Order, SO)." }
+  # Source = Acctivate's Sales → Open Only view (dbo.OrderManagementSummary).
+  # Open Only = OrderStatus IN ('Scheduled','Backordered','Booked')
+  # (excludes Completed and Cancelled). Joined to dbo.OrderDetail for line-level qty/sku.
+  $detailTable = 'OrderDetail'
+  $detailCols  = Get-SqlColumns -Table $detailTable
+  $prodCols    = Get-SqlColumns -Table 'Product'
 
-  $detailTable = $null
-  foreach ($candidate in @('SalesOrderDetail', 'OrderDetail', 'OrderLine', 'SalesOrderLine', 'SODetail', 'OrderItem')) {
-    $found = Invoke-Sql -Query "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='$candidate'"
-    if ($found.Count -gt 0) { $detailTable = $candidate; break }
-  }
-  if (-not $detailTable) { throw "Could not find a sales-order detail table (tried SalesOrderDetail, OrderDetail, OrderLine, SalesOrderLine, SODetail, OrderItem)." }
+  $detIdCol      = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDOrderDetail','GUIDSalesOrderDetail','OrderDetailID','LineID','ID')
+  $detOrdIdCol   = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDOrder','GUIDSalesOrder','OrderID','SalesOrderID')
+  $detSkuCol     = Get-FirstColumn -Columns $detailCols -Candidates @('ProductID','ProductCode','ItemCode','SKU','ItemNumber')
+  $detProdIdCol  = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDProduct','ProductGUID','ProductID','ItemID')
+  $detOrdQtyCol  = Get-FirstColumn -Columns $detailCols -Candidates @('OrderedQty','QtyOrdered','QuantityOrdered','OrderQty','Quantity','Qty')
+  $detShipQtyCol = Get-FirstColumn -Columns $detailCols -Candidates @('ShippedQty','QtyShipped','QuantityShipped','ShipQty')
 
-  $hdrCols    = Get-SqlColumns -Table $headerTable
-  $detailCols = Get-SqlColumns -Table $detailTable
-  $prodCols   = Get-SqlColumns -Table 'Product'
-
-  $hdrIdCol    = Get-FirstColumn -Columns $hdrCols -Candidates @('GUIDSalesOrder', 'SalesOrderID', 'SalesOrderId', 'OrderID', 'OrderId', 'GUIDOrder', 'ID')
-  $hdrNumCol   = Get-FirstColumn -Columns $hdrCols -Candidates @('OrderNumber', 'SalesOrderNumber', 'OrderNo', 'SONumber', 'Number')
-  $hdrCustCol  = Get-FirstColumn -Columns $hdrCols -Candidates @('CustID', 'CustId', 'CustomerID', 'CustomerId', 'CustomerNumber', 'CustNo', 'Customer', 'BillToCustID')
-  $hdrDateCol  = Get-FirstColumn -Columns $hdrCols -Candidates @('OrderDate', 'Date', 'CreatedDate')
-  $hdrPromCol  = Get-FirstColumn -Columns $hdrCols -Candidates @('PromisedDate', 'RequestedShipDate', 'ShipDate', 'ScheduledShipDate', 'RequiredDate')
-  $hdrRepCol   = Get-FirstColumn -Columns $hdrCols -Candidates @('SalespersonName', 'Salesperson', 'SalesPerson', 'SalesRep')
-  $hdrStatusCol = Get-FirstColumn -Columns $hdrCols -Candidates @('OrderStatus', 'Status', 'OrderStatusID')
-
-  $detIdCol    = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDSalesOrderDetail', 'SalesOrderDetailID', 'OrderDetailID', 'OrderLineID', 'LineID', 'GUIDOrderDetail', 'DetailID', 'ID')
-  $detOrdIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDSalesOrder', 'SalesOrderID', 'OrderID', 'GUIDOrder', 'OrderId', 'SalesOrderId')
-  $detSkuCol   = Get-FirstColumn -Columns $detailCols -Candidates @('ProductID', 'ProductCode', 'ItemCode', 'SKU', 'ItemNumber')
-  $detProdIdCol = Get-FirstColumn -Columns $detailCols -Candidates @('GUIDProduct', 'ProductGUID', 'ProductID', 'ItemID')
-  $detOrdQtyCol = Get-FirstColumn -Columns $detailCols -Candidates @('OrderedQty', 'QtyOrdered', 'QuantityOrdered', 'OrderQty', 'Quantity', 'Qty')
-  $detShipQtyCol = Get-FirstColumn -Columns $detailCols -Candidates @('ShippedQty', 'QtyShipped', 'QuantityShipped', 'ShipQty')
-
-  if (-not $hdrIdCol -or -not $hdrCustCol -or -not $detIdCol -or -not $detOrdIdCol -or -not $detOrdQtyCol) {
-    throw "Could not map required columns. Header has: $($hdrCols -join ', '); Detail has: $($detailCols -join ', ')"
+  if (-not $detIdCol -or -not $detOrdIdCol -or -not $detOrdQtyCol) {
+    throw "OrderDetail column mapping failed. Detail cols: $($detailCols -join ', ')"
   }
 
-  # Open qty = Ordered - Shipped (or just Ordered if no shipped column)
   $openQtyExpr = if ($detShipQtyCol) {
     "(ISNULL(d.$(Quote-SqlIdentifier $detOrdQtyCol),0) - ISNULL(d.$(Quote-SqlIdentifier $detShipQtyCol),0))"
   } else {
     "ISNULL(d.$(Quote-SqlIdentifier $detOrdQtyCol),0)"
   }
 
-  $unitPriceExpr = New-SelectExpression -Columns $detailCols -Candidates @('Price', 'UnitPrice', 'SalesPrice', 'SellingPrice') -Alias 'unit_price' -Default '0' -TableAlias 'd'
-  $orderDateExpr = if ($hdrDateCol) { "CONVERT(VARCHAR(10), h.$(Quote-SqlIdentifier $hdrDateCol), 23) AS order_date" } else { "NULL AS order_date" }
-  $promDateExpr  = if ($hdrPromCol) { "CONVERT(VARCHAR(10), h.$(Quote-SqlIdentifier $hdrPromCol), 23) AS promised_date" } else { "NULL AS promised_date" }
-  $orderNumExpr  = if ($hdrNumCol) { "CAST(h.$(Quote-SqlIdentifier $hdrNumCol) AS NVARCHAR(64)) AS order_number" } else { "NULL AS order_number" }
-  $repExpr       = if ($hdrRepCol) { "CAST(h.$(Quote-SqlIdentifier $hdrRepCol) AS NVARCHAR(255)) AS rep" } else { "NULL AS rep" }
+  $priceCol      = Get-FirstColumn -Columns $detailCols -Candidates @('Price','UnitPrice','SalesPrice','SellingPrice')
+  $unitPriceExpr = if ($priceCol) { "ISNULL(d.$(Quote-SqlIdentifier $priceCol),0) AS unit_price" } else { "0 AS unit_price" }
+  $extendedExpr  = if ($priceCol) { "($openQtyExpr * ISNULL(d.$(Quote-SqlIdentifier $priceCol),0)) AS extended_value" } else { "0 AS extended_value" }
   $skuExpr       = if ($detSkuCol) { "CAST(d.$(Quote-SqlIdentifier $detSkuCol) AS NVARCHAR(128)) AS sku" } else { "NULL AS sku" }
 
-  Write-Host "  [diag] Product cols: $($prodCols -join ', ')" -ForegroundColor DarkCyan
-  Write-Host "  [diag] detProdIdCol = $detProdIdCol" -ForegroundColor DarkCyan
-
-  # Join Product → ProductClass lookup so stock_class becomes the human name.
+  # Product → ProductClass lookup for stock_class
   $prodJoin = ''
   $stockClassExpr = "NULL AS stock_class"
   if ($detProdIdCol) {
-    $prodKeyOnProd = Get-FirstColumn -Columns $prodCols -Candidates @($detProdIdCol, 'GUIDProduct', 'ProductID', 'ProductCode')
+    $prodKeyOnProd = Get-FirstColumn -Columns $prodCols -Candidates @($detProdIdCol,'GUIDProduct','ProductID','ProductCode')
     if ($prodKeyOnProd) {
       $prodJoin = "LEFT JOIN dbo.Product p ON p.$(Quote-SqlIdentifier $prodKeyOnProd) = d.$(Quote-SqlIdentifier $detProdIdCol)"
-
       $prodClassCol = Get-FirstColumn -Columns $prodCols -Candidates @('ProductClassID','ProductClassId','ProductClass','ClassID','ClassId','Class')
-
       $classTable = $null
       foreach ($candidate in @('ProductClass','ProductClasses','ItemClass','Class')) {
         $found = Invoke-Sql -Query "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='$candidate'"
         if ($found.Count -gt 0) { $classTable = $candidate; break }
       }
-
       if ($classTable -and $prodClassCol) {
         $classCols    = Get-SqlColumns -Table $classTable
         $classKeyCol  = Get-FirstColumn -Columns $classCols -Candidates @($prodClassCol,'ProductClassID','ProductClassId','ClassID','ClassId','ID')
@@ -368,31 +339,26 @@ function New-OpenSalesOrdersQuery {
     }
   }
 
-  Write-Host "  [diag] prodJoin       = $prodJoin" -ForegroundColor DarkCyan
-  Write-Host "  [diag] stockClassExpr = $stockClassExpr" -ForegroundColor DarkCyan
-
-  $statusFilter = if ($hdrStatusCol) {
-    "AND (h.$(Quote-SqlIdentifier $hdrStatusCol) IS NULL OR h.$(Quote-SqlIdentifier $hdrStatusCol) NOT IN ('Closed','Cancelled','Canceled','Void','C','X'))"
-  } else { "" }
+  Write-Host "  [diag] sales-orders source = dbo.OrderManagementSummary (Open Only: Scheduled/Backordered/Booked)" -ForegroundColor DarkCyan
 
   return @"
 SELECT
   CAST(d.$(Quote-SqlIdentifier $detIdCol) AS NVARCHAR(64)) AS acctivate_id,
-  $orderNumExpr,
+  CAST(h.OrderNumber AS NVARCHAR(64)) AS order_number,
   $skuExpr,
-  CAST(h.$(Quote-SqlIdentifier $hdrCustCol) AS NVARCHAR(64)) AS dealer_acctivate_id,
+  CAST(h.CustomerID AS NVARCHAR(64)) AS dealer_acctivate_id,
   $openQtyExpr AS qty_open,
   $unitPriceExpr,
-  ($openQtyExpr * ISNULL(d.$(Quote-SqlIdentifier (Get-FirstColumn -Columns $detailCols -Candidates @('Price','UnitPrice','SalesPrice','SellingPrice'))),0)) AS extended_value,
-  $orderDateExpr,
-  $promDateExpr,
-  $repExpr,
+  $extendedExpr,
+  CONVERT(VARCHAR(10), h.OrderDate, 23) AS order_date,
+  CONVERT(VARCHAR(10), h.ShipmentPromisedDate, 23) AS promised_date,
+  CAST(h.SalespersonName AS NVARCHAR(255)) AS rep,
   $stockClassExpr
-FROM dbo.$detailTable d
-INNER JOIN dbo.$headerTable h ON h.$(Quote-SqlIdentifier $hdrIdCol) = d.$(Quote-SqlIdentifier $detOrdIdCol)
+FROM dbo.OrderDetail d
+INNER JOIN dbo.OrderManagementSummary h ON h.GUIDOrder = d.$(Quote-SqlIdentifier $detOrdIdCol)
 $prodJoin
-WHERE $openQtyExpr > 0
-  $statusFilter
+WHERE h.OrderStatus IN ('Scheduled','Backordered','Booked')
+  AND $openQtyExpr > 0
 "@
 }
 

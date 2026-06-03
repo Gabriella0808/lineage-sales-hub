@@ -409,7 +409,7 @@ SELECT
   CAST(NULL AS NVARCHAR(255))         AS email,
   CAST(NULL AS NVARCHAR(64))          AS phone
 FROM dbo.SalespersonInfo
-WHERE ISNULL(Status, 0) = 0
+WHERE Name IS NOT NULL
 "@
 
   territories = @"

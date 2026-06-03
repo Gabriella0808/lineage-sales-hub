@@ -156,7 +156,10 @@ export function BacklogSummary() {
   const filteredDetail = useMemo(() => {
     return detailWithTerritory.filter((r) => {
       if (territoryFilter !== "all" && r.territory !== territoryFilter) return false;
-      if (stockClassFilter !== "all" && r.stockClass !== stockClassFilter) return false;
+      if (stockClassFilter !== "all") {
+        const code = r.stockClass && r.stockClass !== "N/A" ? r.stockClass : "Unclassified";
+        if (code !== stockClassFilter) return false;
+      }
       if (statusFilter === "Open" && (r.openBalance || 0) === 0) return false;
       if (statusFilter === "Cleared" && (r.openBalance || 0) !== 0) return false;
       if (customerFilter !== "all" && r.customer !== customerFilter) return false;
@@ -171,6 +174,14 @@ export function BacklogSummary() {
       return true;
     });
   }, [detailWithTerritory, territoryFilter, stockClassFilter, statusFilter, customerFilter, repFilter, skuQuery]);
+
+  const allStockClasses = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of detailWithTerritory) {
+      set.add(r.stockClass && r.stockClass !== "N/A" ? r.stockClass : "Unclassified");
+    }
+    return Array.from(set).sort();
+  }, [detailWithTerritory]);
 
   // Recompute summary tables from filtered detail
   const filteredStockClasses = useMemo(() => {

@@ -517,3 +517,170 @@ export function BacklogSummary() {
 }
 
 export const BACKLOG_SUMMARY_TOTAL = data.stockClasses.reduce((s, c) => s + c.total, 0);
+
+type OrderRow = DetailRow & { territory: string; status: string };
+
+function BacklogOrderTable({
+  rows,
+  showCustomer,
+  showStockClass,
+}: {
+  rows: OrderRow[];
+  showCustomer: boolean;
+  showStockClass: boolean;
+}) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, { key: string; orderNum: string; lines: OrderRow[] }>();
+    for (const r of rows) {
+      const key = String(r.num ?? `__no-num-${r.customer}-${r.item}`);
+      const entry = map.get(key) ?? { key, orderNum: r.num != null ? String(r.num) : "—", lines: [] };
+      entry.lines.push(r);
+      map.set(key, entry);
+    }
+    return Array.from(map.values());
+  }, [rows]);
+
+  const toggle = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const colCount = 3 + (showCustomer ? 1 : 0) + 2 + (showStockClass ? 1 : 0) + 2;
+
+  return (
+    <div className="overflow-auto max-h-[60vh] border border-border rounded-md">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
+          <tr>
+            <th className="w-8" />
+            <th className="text-left px-3 py-2">Order #</th>
+            {showCustomer && <th className="text-left px-3 py-2">Customer</th>}
+            <th className="text-left px-3 py-2">Rep</th>
+            <th className="text-left px-3 py-2">Territory</th>
+            <th className="text-left px-3 py-2">Ship Date</th>
+            {showStockClass && <th className="text-left px-3 py-2">Class</th>}
+            <th className="text-right px-3 py-2">Lines</th>
+            <th className="text-right px-3 py-2">Open Bal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {grouped.map((g) => {
+            const first = g.lines[0];
+            const total = g.lines.reduce((s, l) => s + (l.openBalance || 0), 0);
+            const earliestShip = g.lines
+              .map((l) => l.shipDate)
+              .filter(Boolean)
+              .sort()[0] ?? null;
+            const isOpen = expanded.has(g.key);
+            return (
+              <>
+                <tr
+                  key={g.key}
+                  className="border-t border-border hover:bg-muted/40 cursor-pointer"
+                  onClick={() => toggle(g.key)}
+                >
+                  <td className="px-2 py-2 text-muted-foreground">
+                    {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                  </td>
+                  <td className="px-3 py-2 font-mono text-xs">{g.orderNum}</td>
+                  {showCustomer && (
+                    <td className="px-3 py-2 max-w-[180px] truncate">{first.customer}</td>
+                  )}
+                  <td className="px-3 py-2 text-xs">{first.rep ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs">{first.territory}</td>
+                  <td className="px-3 py-2 text-xs">
+                    {earliestShip ? new Date(earliestShip).toLocaleDateString() : "—"}
+                  </td>
+                  {showStockClass && (
+                    <td className="px-3 py-2">
+                      {first.stockClass ? (
+                        <span
+                          className={cn(
+                            "inline-flex px-2 py-0.5 rounded text-[10px] font-medium",
+                            STOCK_CLASS_TONE[first.stockClass] ?? "bg-muted text-muted-foreground",
+                          )}
+                        >
+                          {first.stockClass}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  )}
+                  <td className="px-3 py-2 text-right tabular-nums text-xs text-muted-foreground">
+                    {g.lines.length}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(total)}</td>
+                </tr>
+                {isOpen && (
+                  <tr className="bg-muted/20">
+                    <td />
+                    <td colSpan={colCount - 1} className="px-3 py-2">
+                      <table className="w-full text-xs">
+                        <thead className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          <tr>
+                            <th className="text-left py-1 pr-3">Item</th>
+                            <th className="text-left py-1 pr-3 max-w-[280px]">Description</th>
+                            <th className="text-left py-1 pr-3">Class</th>
+                            <th className="text-left py-1 pr-3">Ship Date</th>
+                            <th className="text-right py-1 pr-3">Amount</th>
+                            <th className="text-right py-1">Open Bal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {g.lines.map((l, i) => (
+                            <tr key={i} className="border-t border-border/50">
+                              <td className="py-1 pr-3 font-mono">{l.item ?? "—"}</td>
+                              <td className="py-1 pr-3 max-w-[280px] truncate text-muted-foreground">
+                                {l.description ?? "—"}
+                              </td>
+                              <td className="py-1 pr-3">
+                                {l.stockClass ? (
+                                  <span
+                                    className={cn(
+                                      "inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium",
+                                      STOCK_CLASS_TONE[l.stockClass] ?? "bg-muted text-muted-foreground",
+                                    )}
+                                  >
+                                    {l.stockClass}
+                                  </span>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
+                              <td className="py-1 pr-3">
+                                {l.shipDate ? new Date(l.shipDate).toLocaleDateString() : "—"}
+                              </td>
+                              <td className="py-1 pr-3 text-right tabular-nums">{fmtMoney(l.amount)}</td>
+                              <td className="py-1 text-right tabular-nums font-medium">
+                                {fmtMoney(l.openBalance)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                )}
+              </>
+            );
+          })}
+          {grouped.length === 0 && (
+            <tr>
+              <td colSpan={colCount} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                No orders match the current filters.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+

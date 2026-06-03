@@ -89,15 +89,32 @@ export function useInventoryHub() {
       setPoLines((pol.data ?? []) as PurchaseOrderLine[]);
     };
 
+    const fetchAllOpenOrders = async () => {
+      const pageSize = 1000;
+      const all: any[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("open_sales_orders")
+          .select("id, order_number, sku, dealer_name, qty_open, unit_price, extended_value, order_date, promised_date, stock_class")
+          .range(from, from + pageSize - 1);
+        if (error || !data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
+    };
+
     (async () => {
       const [oso, ssh, ls, ds] = await Promise.all([
-        supabase.from("open_sales_orders").select("id, order_number, sku, dealer_name, qty_open, unit_price, extended_value, order_date, promised_date").limit(1000),
+        fetchAllOpenOrders(),
         supabase.from("sku_sales_history").select("id, sku, year, month, units_sold, revenue, forecast_units").limit(1000),
         supabase.from("lost_sales_events").select("id, sku, event_date, qty_requested, estimated_value, reason, dealer_name").limit(1000),
         supabase.from("dealer_demand_signals").select("id, sku, dealer_name, signal_type, signal_strength, signal_date, notes").limit(1000),
       ]);
       if (!active) return;
-      setOpenOrders((oso.data ?? []) as OpenSalesOrder[]);
+      setOpenOrders(oso as OpenSalesOrder[]);
       setSalesHistory((ssh.data ?? []) as SkuSalesHistory[]);
       setLostSales((ls.data ?? []) as LostSaleEvent[]);
       setDemandSignals((ds.data ?? []) as DealerDemandSignal[]);

@@ -26,15 +26,24 @@ function useDealerInvoicesInRange(from: Date, to: Date) {
   const fromStr = format(from, "yyyy-MM-dd");
   const toStr = format(to, "yyyy-MM-dd");
   return useQuery({
-    queryKey: ["dealer_invoices_range_rpc_v1", fromStr, toStr],
+    queryKey: ["dealer_invoices_range_rpc_v2", fromStr, toStr],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).rpc("dealer_daily_invoice_net", {
-        p_from: fromStr,
-        p_to: toStr,
-      });
-      if (error) throw error;
-      return ((data ?? []) as Array<{ dealer_id: string | null; invoice_date: string | null; net_total: number | null }>)
-        .map((r) => ({ dealer_id: r.dealer_id, invoice_date: r.invoice_date, total: Number(r.net_total ?? 0) }));
+      const out: Array<{ dealer_id: string | null; invoice_date: string | null; total: number }> = [];
+      const pageSize = 1000;
+      let start = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await (supabase as any)
+          .rpc("dealer_daily_invoice_net", { p_from: fromStr, p_to: toStr })
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = ((data ?? []) as Array<{ dealer_id: string | null; invoice_date: string | null; net_total: number | null }>)
+          .map((r) => ({ dealer_id: r.dealer_id, invoice_date: r.invoice_date, total: Number(r.net_total ?? 0) }));
+        out.push(...batch);
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      return out;
     },
   });
 }

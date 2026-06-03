@@ -105,14 +105,38 @@ export function BacklogSummary() {
   const [skuQuery, setSkuQuery] = useState<string>("");
   const [repFilter, setRepFilter] = useState<string>("all");
 
-  // Derive territory for every detail row
+  const { rows: liveOrders, loading: liveLoading } = useOpenSalesOrders();
+
+  // Prefer live Acctivate open sales orders when available; otherwise fall back
+  // to the static snapshot. Live rows are mapped into the same DetailRow shape
+  // the existing UI expects so all filters/drill-downs keep working.
   const detailWithTerritory = useMemo(() => {
-    return data.detail.map((r) => ({
+    const source: (DetailRow & { __live?: boolean })[] = liveOrders.length > 0
+      ? liveOrders.map((r) => ({
+          customer: r.dealer_name ?? "—",
+          type: "Sales Order",
+          date: r.order_date,
+          shipDate: r.promised_date,
+          num: r.order_number,
+          name: r.dealer_name,
+          rep: r.rep,
+          item: r.sku,
+          description: null,
+          memo: null,
+          amount: Number(r.extended_value || 0),
+          openBalance: Number(r.extended_value || 0),
+          stockClass: r.stock_class,
+          __live: true,
+        }))
+      : data.detail;
+
+    return source.map((r) => ({
       ...r,
       territory: getTerritory(r.rep),
       status: (r.openBalance || 0) !== 0 ? "Open" : "Cleared",
     }));
-  }, []);
+  }, [liveOrders]);
+
 
   const allTerritories = useMemo(
     () => Array.from(new Set(detailWithTerritory.map((r) => r.territory).filter(Boolean))).sort(),

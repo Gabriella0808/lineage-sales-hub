@@ -221,6 +221,7 @@ export function BacklogSummary() {
   const drillRows = useMemo<typeof filteredDetail>(() => {
     if (!drill) return [];
     if (drill.kind === "stockClass") {
+      if (drill.code === "__ALL__") return filteredDetail;
       return filteredDetail.filter((r) => {
         const code = r.stockClass && r.stockClass !== "N/A" ? r.stockClass : "Unclassified";
         return code === drill.code;

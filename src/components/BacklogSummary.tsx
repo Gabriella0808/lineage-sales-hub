@@ -221,7 +221,11 @@ export function BacklogSummary() {
   const drillRows = useMemo<typeof filteredDetail>(() => {
     if (!drill) return [];
     if (drill.kind === "stockClass") {
-      return filteredDetail.filter((r) => r.stockClass === drill.code);
+      if (drill.code === "__ALL__") return filteredDetail;
+      return filteredDetail.filter((r) => {
+        const code = r.stockClass && r.stockClass !== "N/A" ? r.stockClass : "Unclassified";
+        return code === drill.code;
+      });
     }
     return filteredDetail.filter(
       (r) => (r.customer ?? "").toLowerCase() === drill.customer.toLowerCase(),
@@ -448,7 +452,17 @@ export function BacklogSummary() {
 
       {/* Stock Class breakdown */}
       <div>
-        <h4 className="text-sm font-semibold mb-2">Backlog by Stock Class</h4>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-sm font-semibold">Backlog by Stock Class</h4>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            onClick={() => setDrill({ kind: "stockClass", code: "__ALL__", label: "All open sales orders" })}
+          >
+            View all open sales orders ({filteredDetail.length.toLocaleString()})
+          </Button>
+        </div>
         <div className="overflow-auto border border-border rounded-md">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">

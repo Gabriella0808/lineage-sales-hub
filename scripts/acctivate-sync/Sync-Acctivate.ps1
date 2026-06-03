@@ -333,6 +333,9 @@ function New-OpenSalesOrdersQuery {
   $repExpr       = if ($hdrRepCol) { "CAST(h.$(Quote-SqlIdentifier $hdrRepCol) AS NVARCHAR(255)) AS rep" } else { "NULL AS rep" }
   $skuExpr       = if ($detSkuCol) { "CAST(d.$(Quote-SqlIdentifier $detSkuCol) AS NVARCHAR(128)) AS sku" } else { "NULL AS sku" }
 
+  Write-Host "  [diag] Product cols: $($prodCols -join ', ')" -ForegroundColor DarkCyan
+  Write-Host "  [diag] detProdIdCol = $detProdIdCol" -ForegroundColor DarkCyan
+
   # Join Product → ProductClass lookup so stock_class becomes the human name.
   $prodJoin = ''
   $stockClassExpr = "NULL AS stock_class"

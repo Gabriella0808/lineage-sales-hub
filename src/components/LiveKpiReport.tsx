@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
-import { ExternalLink } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, useSalesReps } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChevronsUpDown, Check, X } from "lucide-react";

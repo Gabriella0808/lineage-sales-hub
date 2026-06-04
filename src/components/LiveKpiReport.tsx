@@ -270,14 +270,54 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   // user-editable via inline cells.
   const { data: liveAgg } = useDealerSalesAggregates(scopedDbRepNames);
 
+  // 26 Act bookings come from ALL open sales orders, summed by month of order_date.
+  const [openByMonth, setOpenByMonth] = useState<Record<string, number>>({});
+  const repKey = scopedDbRepNames ? scopedDbRepNames.slice().sort().join("|") : "__all__";
+  useEffect(() => {
+    let cancelled = false;
+    const currentYear = new Date().getFullYear();
+    (async () => {
+      const pageSize = 1000;
+      const totals: Record<string, number> = {};
+      let from = 0;
+      while (true) {
+        let q = supabase
+          .from("open_sales_orders")
+          .select("extended_value, order_date, rep")
+          .gte("order_date", `${currentYear}-01-01`)
+          .lt("order_date", `${currentYear + 1}-01-01`)
+          .range(from, from + pageSize - 1);
+        if (scopedDbRepNames && scopedDbRepNames.length > 0) {
+          q = q.in("rep", scopedDbRepNames);
+        }
+        const { data, error } = await q;
+        if (error || !data) break;
+        for (const r of data as { extended_value: number | null; order_date: string | null }[]) {
+          if (!r.order_date) continue;
+          const monthIdx = new Date(`${r.order_date}T00:00:00`).getMonth();
+          const monthName = MONTHLY[monthIdx]?.m;
+          if (!monthName) continue;
+          totals[monthName] = (totals[monthName] ?? 0) + (Number(r.extended_value) || 0);
+        }
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      if (!cancelled) setOpenByMonth(totals);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repKey]);
+
   const baseMonthly = useMemo(() => MONTHLY.map((seed) => {
     const live = liveAgg.find((r) => r.m === seed.m);
+    const openBookings = openByMonth[seed.m];
     return {
       ...seed,
       // Override actuals with live DB values; fall back to seed if missing.
       b25:  live ? live.b25  : seed.b25,
       i25:  live ? live.i25  : seed.i25,
-      ytdB: live ? live.ytdB : seed.ytdB,
+      // 26 Act = sum of ALL open sales orders for that month (extended_value).
+      ytdB: openBookings ?? (live ? live.ytdB : seed.ytdB),
       ytdI: live ? live.ytdI : seed.ytdI,
       // Branch-split invoice totals (live only — no seed fallback).
       i25Container:  live?.i25Container  ?? 0,
@@ -288,7 +328,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       b26p: overrides.monthly?.[seed.m]?.b26p ?? seed.b26p,
       i26p: overrides.monthly?.[seed.m]?.i26p ?? seed.i26p,
     };
-  }), [overrides, liveAgg]);
+  }), [overrides, liveAgg, openByMonth]);
 
   const baseLine = useMemo(() => LINE_BOOK.map((r) => ({
     ...r,

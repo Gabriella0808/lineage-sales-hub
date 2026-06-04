@@ -1558,8 +1558,26 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   }, [skuSearch]);
 
   type DrilldownKey = "value" | "openpo" | "prepaid" | "backlog" | "closeout" | "lost";
-  const [drilldown, setDrilldown] = useState<null | DrilldownKey>(null);
-  const toggleDrill = (k: DrilldownKey) => setDrilldown((curr) => (curr === k ? null : k));
+  type DrilldownKey = "value" | "openpo" | "prepaid" | "backlog" | "closeout" | "lost";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialDrill = (searchParams.get("drill") as DrilldownKey | null);
+  const [drilldown, setDrilldown] = useState<null | DrilldownKey>(
+    initialDrill && ["value","openpo","prepaid","backlog","closeout","lost"].includes(initialDrill) ? initialDrill : null,
+  );
+  useEffect(() => {
+    const d = searchParams.get("drill") as DrilldownKey | null;
+    if (d && ["value","openpo","prepaid","backlog","closeout","lost"].includes(d)) {
+      setDrilldown(d);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+  const toggleDrill = (k: DrilldownKey) => setDrilldown((curr) => {
+    const next = curr === k ? null : k;
+    const sp = new URLSearchParams(searchParams);
+    if (next) sp.set("drill", next); else sp.delete("drill");
+    setSearchParams(sp, { replace: true });
+    return next;
+  });
 
   // Closeout report (shown when Closeout Inventory tile is clicked)
   function ReportCloseout() {

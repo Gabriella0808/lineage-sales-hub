@@ -770,13 +770,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
             <thead>
               <tr className="border-b">
                 <th rowSpan={2} className="text-left p-2 font-medium text-muted-foreground align-bottom">Month</th>
-                {showB && (
-                  <th colSpan={6} className="text-center p-2 font-semibold border-l bg-muted/30">
-                    <Link to="/inventory?drill=backlog" className="inline-flex items-center gap-1 hover:text-primary hover:underline">
-                      Bookings <ExternalLink className="h-3 w-3" />
-                    </Link>
-                  </th>
-                )}
+                {showB && <th colSpan={6} className="text-center p-2 font-semibold border-l bg-muted/30">Bookings</th>}
                 {showI && <th colSpan={6} className="text-center p-2 font-semibold border-l bg-muted/30">Invoiced</th>}
               </tr>
               <tr className="border-b text-muted-foreground">

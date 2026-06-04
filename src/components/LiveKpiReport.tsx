@@ -697,10 +697,18 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       <div className="glass-card p-5">
         <div className="flex items-baseline justify-between mb-3">
           <div>
-            <h3 className="text-base font-semibold">
+            <h3 className="text-base font-semibold flex items-center gap-2 flex-wrap">
               {showB && showI ? "Bookings & Invoiced — Actual vs Goal"
                 : showI ? "Invoiced — Actual vs Goal"
                 : "Bookings — Actual vs Goal"}
+              {showB && (
+                <Link
+                  to="/inventory?drill=backlog"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  View all sales orders <ExternalLink className="h-3 w-3" />
+                </Link>
+              )}
             </h3>
             <p className="text-xs text-muted-foreground">
               Monthly 2026 projection (goal) vs MTD actual

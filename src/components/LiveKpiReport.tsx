@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+import { ExternalLink } from "lucide-react";
 import { formatCurrency, useSalesReps } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChevronsUpDown, Check, X } from "lucide-react";
@@ -695,10 +697,18 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       <div className="glass-card p-5">
         <div className="flex items-baseline justify-between mb-3">
           <div>
-            <h3 className="text-base font-semibold">
+            <h3 className="text-base font-semibold flex items-center gap-2 flex-wrap">
               {showB && showI ? "Bookings & Invoiced — Actual vs Goal"
                 : showI ? "Invoiced — Actual vs Goal"
                 : "Bookings — Actual vs Goal"}
+              {showB && (
+                <Link
+                  to="/inventory?drill=backlog"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                >
+                  View all sales orders <ExternalLink className="h-3 w-3" />
+                </Link>
+              )}
             </h3>
             <p className="text-xs text-muted-foreground">
               Monthly 2026 projection (goal) vs MTD actual
@@ -768,7 +778,13 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
             <thead>
               <tr className="border-b">
                 <th rowSpan={2} className="text-left p-2 font-medium text-muted-foreground align-bottom">Month</th>
-                {showB && <th colSpan={6} className="text-center p-2 font-semibold border-l bg-muted/30">Bookings</th>}
+                {showB && (
+                  <th colSpan={6} className="text-center p-2 font-semibold border-l bg-muted/30">
+                    <Link to="/inventory?drill=backlog" className="inline-flex items-center gap-1 hover:text-primary hover:underline">
+                      Bookings <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </th>
+                )}
                 {showI && <th colSpan={6} className="text-center p-2 font-semibold border-l bg-muted/30">Invoiced</th>}
               </tr>
               <tr className="border-b text-muted-foreground">

@@ -270,14 +270,17 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   // user-editable via inline cells.
   const { data: liveAgg } = useDealerSalesAggregates(scopedDbRepNames);
 
-  // 26 Act bookings come from ALL open sales orders, summed by month of order_date.
+  // 25 Act / 26 Act bookings come from ALL open sales orders, summed by month of order_date
+  // for the previous and current calendar years respectively.
   // open_sales_orders.rep is unreliable (often NULL), so when a rep/territory scope is
   // active we resolve it to dealer_ids via dealers.rep_id and filter on dealer_id instead.
   const [openByMonth, setOpenByMonth] = useState<Record<string, number>>({});
+  const [openByMonthPrev, setOpenByMonthPrev] = useState<Record<string, number>>({});
   const repKey = scopedDbRepNames ? scopedDbRepNames.slice().sort().join("|") : "__all__";
   useEffect(() => {
     let cancelled = false;
     const currentYear = new Date().getFullYear();
+    const prevYear = currentYear - 1;
     (async () => {
       // Resolve scoped rep names → dealer_ids (only when a scope is active).
       let scopedDealerIds: string[] | null = null;
@@ -285,7 +288,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
         const scopedRepIds = dbReps
           .filter((r) => scopedDbRepNames.includes(r.name))
           .map((r) => r.id);
-        if (scopedRepIds.length === 0) { if (!cancelled) setOpenByMonth({}); return; }
+        if (scopedRepIds.length === 0) { if (!cancelled) { setOpenByMonth({}); setOpenByMonthPrev({}); } return; }
         const dealerIds: string[] = [];
         const chunk = 200;
         for (let i = 0; i < scopedRepIds.length; i += chunk) {
@@ -296,12 +299,13 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
           if (error || !data) break;
           for (const d of data as { id: string }[]) dealerIds.push(d.id);
         }
-        if (dealerIds.length === 0) { if (!cancelled) setOpenByMonth({}); return; }
+        if (dealerIds.length === 0) { if (!cancelled) { setOpenByMonth({}); setOpenByMonthPrev({}); } return; }
         scopedDealerIds = dealerIds;
       }
 
       const pageSize = 1000;
       const totals: Record<string, number> = {};
+      const totalsPrev: Record<string, number> = {};
 
       // Page through open_sales_orders, chunking dealer_id filter if necessary.
       const dealerChunks: (string[] | null)[] = scopedDealerIds
@@ -315,7 +319,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
           let q = supabase
             .from("open_sales_orders")
             .select("extended_value, order_date, dealer_id")
-            .gte("order_date", `${currentYear}-01-01`)
+            .gte("order_date", `${prevYear}-01-01`)
             .lt("order_date", `${currentYear + 1}-01-01`)
             .range(from, from + pageSize - 1);
           if (dealerChunk) q = q.in("dealer_id", dealerChunk);
@@ -323,16 +327,19 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
           if (error || !data) break;
           for (const r of data as { extended_value: number | null; order_date: string | null }[]) {
             if (!r.order_date) continue;
-            const monthIdx = new Date(`${r.order_date}T00:00:00`).getMonth();
-            const monthName = MONTHLY[monthIdx]?.m;
+            const d = new Date(`${r.order_date}T00:00:00`);
+            const yr = d.getFullYear();
+            const monthName = MONTHLY[d.getMonth()]?.m;
             if (!monthName) continue;
-            totals[monthName] = (totals[monthName] ?? 0) + (Number(r.extended_value) || 0);
+            const amt = Number(r.extended_value) || 0;
+            if (yr === currentYear) totals[monthName] = (totals[monthName] ?? 0) + amt;
+            else if (yr === prevYear) totalsPrev[monthName] = (totalsPrev[monthName] ?? 0) + amt;
           }
           if (data.length < pageSize) break;
           from += pageSize;
         }
       }
-      if (!cancelled) setOpenByMonth(totals);
+      if (!cancelled) { setOpenByMonth(totals); setOpenByMonthPrev(totalsPrev); }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -341,10 +348,13 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   const baseMonthly = useMemo(() => MONTHLY.map((seed) => {
     const live = liveAgg.find((r) => r.m === seed.m);
     const openBookings = openByMonth[seed.m];
+    const openBookingsPrev = openByMonthPrev[seed.m];
+    const liveB25 = live ? live.b25 : seed.b25;
     return {
       ...seed,
       // Override actuals with live DB values; fall back to seed if missing.
-      b25:  live ? live.b25  : seed.b25,
+      // 25 Act = dealer_sales bookings rollup + ALL 2025 open sales orders for that month.
+      b25:  liveB25 + (openBookingsPrev ?? 0),
       i25:  live ? live.i25  : seed.i25,
       // 26 Act = sum of ALL open sales orders for that month (extended_value).
       ytdB: openBookings ?? (live ? live.ytdB : seed.ytdB),

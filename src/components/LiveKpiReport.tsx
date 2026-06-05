@@ -385,6 +385,9 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
         const live = liveByMonth.get(row.m);
         return {
           ...row,
+          // Override Bookings 26 Act with live open_sales_orders (already scoped to the
+          // selected rep/territory via the openByMonth query) instead of the static REP_MONTHLY seed.
+          ytdB:          live ? live.ytdB : row.ytdB,
           i25:           live ? live.i25  : row.i25,
           ytdI:          live ? live.ytdI : row.ytdI,
           i25Container:  live?.i25Container  ?? 0,
@@ -473,7 +476,9 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
         ...r,
         b25: r.b25 * share,
         b26p: lineP,
-        ytdB: lineA,
+        // Scale the live 26 Act bookings by the brand share so the filter narrows the
+        // live open_sales_orders total instead of falling back to the static seed.
+        ytdB: r.ytdB * share,
         i25: r.i25 * share,
         i26p: r.i26p * share,
         ytdI: r.ytdI * share,

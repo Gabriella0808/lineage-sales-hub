@@ -350,10 +350,10 @@ export default function CaptureLeadsPage() {
       }
     }
 
-    // Sync to Mailchimp ONLY if: (1) dealer email present and (2) market is a High Point market
+    // Sync to Mailchimp ONLY if: (1) dealer email present and (2) market maps to a Mailchimp audience
     const dealerEmail = leadForm.email.trim();
-    const isHighPoint = market?.name && /high point/i.test(market.name);
-    if (dealerEmail && isHighPoint) {
+    const isMailchimpMarket = market?.name && /high point|furniture first/i.test(market.name);
+    if (dealerEmail && isMailchimpMarket) {
       supabase.functions.invoke("sync-mailchimp-lead", {
         body: {
           email: dealerEmail,

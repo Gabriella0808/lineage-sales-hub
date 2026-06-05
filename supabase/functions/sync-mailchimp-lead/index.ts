@@ -80,9 +80,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Only sync High Point markets
-    if (!/high point/i.test(marketName)) {
-      return new Response(JSON.stringify({ success: false, skipped: true, reason: "Not a High Point market" }), {
+    // Map market name -> Mailchimp tag. Only sync supported markets.
+    let mailchimpTag: string | null = null;
+    if (/furniture first/i.test(marketName)) {
+      mailchimpTag = "Furniture First Lead";
+    } else if (/high point/i.test(marketName)) {
+      mailchimpTag = marketName; // existing behavior: tag = market name
+    }
+    if (!mailchimpTag) {
+      return new Response(JSON.stringify({ success: false, skipped: true, reason: "Market not mapped to a Mailchimp audience" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -108,7 +114,7 @@ Deno.serve(async (req: Request) => {
         ...(lname && { LNAME: lname }),
         ...(dealer && { COMPANY: dealer, MMERGE3: dealer }),
       },
-      tags: [marketName],
+      tags: [mailchimpTag],
     };
 
     const res = await fetch(url, {
@@ -128,10 +134,10 @@ Deno.serve(async (req: Request) => {
     await fetch(`${url}/tags`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: auth },
-      body: JSON.stringify({ tags: [{ name: marketName, status: "active" }] }),
+      body: JSON.stringify({ tags: [{ name: mailchimpTag, status: "active" }] }),
     });
 
-    return new Response(JSON.stringify({ success: true, email, tag: marketName }), {
+    return new Response(JSON.stringify({ success: true, email, tag: mailchimpTag }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

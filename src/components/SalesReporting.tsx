@@ -98,22 +98,22 @@ function useOpenSalesOrdersInRange(from: Date, to: Date) {
   const fromStr = format(from, "yyyy-MM-dd");
   const toStr = format(to, "yyyy-MM-dd");
   return useQuery({
-    queryKey: ["open_sales_orders_range", fromStr, toStr],
+    queryKey: ["open_sales_orders_range_v2", fromStr, toStr],
     queryFn: async () => {
-      const out: { dealer_id: string | null; order_date: string | null; extended_value: number }[] = [];
+      const out: { dealer_id: string | null; dealer_acctivate_id: string | null; order_date: string | null; extended_value: number }[] = [];
       const pageSize = 1000;
       let start = 0;
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const { data, error } = await supabase
           .from("open_sales_orders")
-          .select("dealer_id, order_date, extended_value")
+          .select("dealer_id, dealer_acctivate_id, order_date, extended_value")
           .gte("order_date", fromStr)
           .lte("order_date", toStr)
           .range(start, start + pageSize - 1);
         if (error) throw error;
-        const batch = ((data ?? []) as { dealer_id: string | null; order_date: string | null; extended_value: number | null }[])
-          .map((r) => ({ dealer_id: r.dealer_id, order_date: r.order_date, extended_value: Number(r.extended_value ?? 0) }));
+        const batch = ((data ?? []) as { dealer_id: string | null; dealer_acctivate_id: string | null; order_date: string | null; extended_value: number | null }[])
+          .map((r) => ({ dealer_id: r.dealer_id, dealer_acctivate_id: r.dealer_acctivate_id, order_date: r.order_date, extended_value: Number(r.extended_value ?? 0) }));
         out.push(...batch);
         if (batch.length < pageSize) break;
         start += pageSize;
@@ -425,6 +425,16 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return new Set(visibleDealers.map((d) => d.id));
   }, [dealerIds, visibleDealers]);
 
+  const dealerIdByAcctivateId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const dealer of dealers) {
+      if (dealer.acctivate_id) map.set(dealer.acctivate_id.trim().toLowerCase(), dealer.id);
+    }
+    return map;
+  }, [dealers]);
+
+  const unscopedOpenOrderView = !managerScopeRepIds && territoryIds.length === 0 && repIds.length === 0 && dealerIds.length === 0;
+
   // Build aggregation
   const aggregation = useMemo(() => {
     const primMonths = monthsInRange(primary);
@@ -443,6 +453,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
     const rowLabel = (key: Key): string => {
       if (key === "__unassigned") return "Unassigned";
+      if (key.startsWith("acctivate:")) return `Dealer ID ${key.replace("acctivate:", "")}`;
       if (groupBy === "dealer") return dealers.find((d) => d.id === key)?.name ?? "—";
       if (groupBy === "rep") return reps.find((r) => r.id === key)?.name ?? "—";
       return territories.find((t) => t.id === key)?.name ?? "—";
@@ -460,15 +471,23 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const compFromMs = startOfDay(comparative.from).getTime();
       const compToMs = startOfDay(comparative.to).getTime();
       for (const oo of rangeOpenOrders) {
-        if (!oo.dealer_id || !oo.order_date) continue;
-        if (!dealerIdSet.has(oo.dealer_id)) continue;
+        if (!oo.order_date) continue;
+        const acctivateDealerId = oo.dealer_acctivate_id?.trim() || "Unmatched";
+        const resolvedDealerId = oo.dealer_id ?? (oo.dealer_acctivate_id ? dealerIdByAcctivateId.get(oo.dealer_acctivate_id.trim().toLowerCase()) : undefined);
+        let k: Key | null = null;
+        if (resolvedDealerId) {
+          if (!dealerIdSet.has(resolvedDealerId)) continue;
+          k = rowKey({ dealer_id: resolvedDealerId });
+        } else {
+          if (!unscopedOpenOrderView) continue;
+          k = groupBy === "dealer" ? `acctivate:${acctivateDealerId}` : "__unassigned";
+        }
         const d = new Date(oo.order_date + "T00:00:00");
         const ms = d.getTime();
         if (Number.isNaN(ms)) continue;
         const inPrim = ms >= primFromMs && ms <= primToMs;
         const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
         if (!inPrim && !inComp) continue;
-        const k = rowKey({ dealer_id: oo.dealer_id });
         if (!k) continue;
         const val = Number(oo.extended_value ?? 0);
         if (val === 0) continue;
@@ -563,7 +582,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       .sort((a, b) => b.primary - a.primary);
 
     return { rows: sorted, primMonths, compMonths };
-  }, [lines, aggregates, useAggregates, useInvoiceLines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealers, reps, territories, dealerIdSet, filteredProductIds, primary, comparative, compareMode, metric, groupBy]);
+  }, [lines, aggregates, useAggregates, useInvoiceLines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealers, reps, territories, dealerIdSet, dealerIdByAcctivateId, unscopedOpenOrderView, filteredProductIds, primary, comparative, compareMode, metric, groupBy]);
 
   const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
   const noData = useAggregates ? aggregates.length === 0 : (useInvoiceLines ? rangeInvoiceLines.length === 0 : lines.length === 0);
@@ -579,8 +598,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     // (live Acctivate open backlog). Otherwise fall back to dealer_sales_lines.
     if (useAggregates) {
       for (const oo of rangeOpenOrders) {
-        if (!oo.dealer_id || !oo.order_date) continue;
-        if (!dealerIdSet.has(oo.dealer_id)) continue;
+        if (!oo.order_date) continue;
+        const resolvedDealerId = oo.dealer_id ?? (oo.dealer_acctivate_id ? dealerIdByAcctivateId.get(oo.dealer_acctivate_id.trim().toLowerCase()) : undefined);
+        if (resolvedDealerId) {
+          if (!dealerIdSet.has(resolvedDealerId)) continue;
+        } else if (!unscopedOpenOrderView) {
+          continue;
+        }
         const ms = new Date(oo.order_date + "T00:00:00").getTime();
         if (Number.isNaN(ms) || ms < primFromMs || ms > primToMs) continue;
         bookings += Number(oo.extended_value ?? 0);
@@ -617,7 +641,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       }
     }
     return { bookings, invoices };
-  }, [primary, useAggregates, useInvoiceLines, lines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealerIdSet, filteredProductIds]);
+  }, [primary, useAggregates, useInvoiceLines, lines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealerIdSet, dealerIdByAcctivateId, unscopedOpenOrderView, filteredProductIds]);
 
   // Warn when a product-level filter is active but dealer_sales_lines has no rows
   // overlapping the primary date range — common right now since line sync is sparse.

@@ -114,7 +114,7 @@ Deno.serve(async (req: Request) => {
         ...(lname && { LNAME: lname }),
         ...(dealer && { COMPANY: dealer, MMERGE3: dealer }),
       },
-      tags: [marketName],
+      tags: [mailchimpTag],
     };
 
     const res = await fetch(url, {

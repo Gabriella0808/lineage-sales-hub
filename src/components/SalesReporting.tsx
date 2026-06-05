@@ -452,6 +452,34 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
     // For invoices with no product filter, use day-precise dealer_invoices.
     const useDayPreciseInvoices = metric === "invoices" && useAggregates;
+    const useDayPreciseBookings = metric === "bookings" && useAggregates;
+
+    if (useDayPreciseBookings) {
+      const primFromMs = startOfDay(primary.from).getTime();
+      const primToMs = startOfDay(primary.to).getTime();
+      const compFromMs = startOfDay(comparative.from).getTime();
+      const compToMs = startOfDay(comparative.to).getTime();
+      for (const oo of rangeOpenOrders) {
+        if (!oo.dealer_id || !oo.order_date) continue;
+        if (!dealerIdSet.has(oo.dealer_id)) continue;
+        const d = new Date(oo.order_date + "T00:00:00");
+        const ms = d.getTime();
+        if (Number.isNaN(ms)) continue;
+        const inPrim = ms >= primFromMs && ms <= primToMs;
+        const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
+        if (!inPrim && !inComp) continue;
+        const k = rowKey({ dealer_id: oo.dealer_id });
+        if (!k) continue;
+        const val = Number(oo.extended_value ?? 0);
+        if (val === 0) continue;
+        const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
+        let row = rows.get(k);
+        if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
+        if (inPrim) row.primary += val;
+        if (inComp) row.comparative += val;
+        row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
+      }
+    } else
 
     if (useDayPreciseInvoices) {
       const primFromMs = startOfDay(primary.from).getTime();

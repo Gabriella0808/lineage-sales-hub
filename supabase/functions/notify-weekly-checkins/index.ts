@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
     const testEmail: string | undefined = body?.testEmail;
 
     const now = new Date();
-    const { start, end } = lastWeekRange(now);
+    const { start, end } = currentWeekRange(now);
     const startStr = fmtDate(start);
     const endStr = fmtDate(end);
     const weekLabel = `${fmtLabel(start)} - ${fmtLabel(end)}, ${end.getUTCFullYear()}`;

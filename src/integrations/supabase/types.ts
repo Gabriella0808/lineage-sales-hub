@@ -369,6 +369,32 @@ export type Database = {
         }
         Relationships: []
       }
+      dealer_acctivate_uuids: {
+        Row: {
+          acctivate_uuid: string
+          created_at: string
+          dealer_id: string
+        }
+        Insert: {
+          acctivate_uuid: string
+          created_at?: string
+          dealer_id: string
+        }
+        Update: {
+          acctivate_uuid?: string
+          created_at?: string
+          dealer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealer_acctivate_uuids_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dealer_branding: {
         Row: {
           company_name: string | null
@@ -720,7 +746,6 @@ export type Database = {
       dealers: {
         Row: {
           acctivate_id: string | null
-          acctivate_uuid: string | null
           buying_group: string | null
           city: string | null
           created_at: string
@@ -752,7 +777,6 @@ export type Database = {
         }
         Insert: {
           acctivate_id?: string | null
-          acctivate_uuid?: string | null
           buying_group?: string | null
           city?: string | null
           created_at?: string
@@ -784,7 +808,6 @@ export type Database = {
         }
         Update: {
           acctivate_id?: string | null
-          acctivate_uuid?: string | null
           buying_group?: string | null
           city?: string | null
           created_at?: string

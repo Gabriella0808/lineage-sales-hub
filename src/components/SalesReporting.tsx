@@ -299,11 +299,15 @@ interface Props {
 export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions }: Props) {
   const today = new Date();
   const yearStart = startOfYear(today);
+  // Default primary window covers the full lifetime of synced sales orders
+  // (2024 → today) so Dealer/Rep reporting shows all-time bookings by default.
+  // Only the Live KPI view is scoped to the current year.
+  const lifetimeStart = new Date(2024, 0, 1);
 
   const [groupBy, setGroupBy] = useState<GroupBy>(initialGroupBy);
-  const [primary, setPrimary] = useState<DateRange>({ from: yearStart, to: endOfMonth(today) });
+  const [primary, setPrimary] = useState<DateRange>({ from: lifetimeStart, to: endOfMonth(today) });
   const [comparative, setComparative] = useState<DateRange>({
-    from: subYears(yearStart, 1),
+    from: subYears(lifetimeStart, 1),
     to: subYears(endOfMonth(today), 1),
   });
   type CompareMode = "prev-year" | "prev-period" | "custom" | "none";

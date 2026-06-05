@@ -98,7 +98,7 @@ function useOpenSalesOrdersInRange(from: Date, to: Date) {
   const fromStr = format(from, "yyyy-MM-dd");
   const toStr = format(to, "yyyy-MM-dd");
   return useQuery({
-    queryKey: ["open_sales_orders_range", fromStr, toStr],
+    queryKey: ["open_sales_orders_range_v2", fromStr, toStr],
     queryFn: async () => {
       const out: { dealer_id: string | null; dealer_acctivate_id: string | null; order_date: string | null; extended_value: number }[] = [];
       const pageSize = 1000;

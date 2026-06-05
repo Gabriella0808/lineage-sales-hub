@@ -425,6 +425,14 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return new Set(visibleDealers.map((d) => d.id));
   }, [dealerIds, visibleDealers]);
 
+  const dealerIdByAcctivateId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const dealer of dealers) {
+      if (dealer.acctivate_id) map.set(dealer.acctivate_id.trim().toLowerCase(), dealer.id);
+    }
+    return map;
+  }, [dealers]);
+
   // Build aggregation
   const aggregation = useMemo(() => {
     const primMonths = monthsInRange(primary);
@@ -460,15 +468,17 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const compFromMs = startOfDay(comparative.from).getTime();
       const compToMs = startOfDay(comparative.to).getTime();
       for (const oo of rangeOpenOrders) {
-        if (!oo.dealer_id || !oo.order_date) continue;
-        if (!dealerIdSet.has(oo.dealer_id)) continue;
+        if (!oo.order_date) continue;
+        const resolvedDealerId = oo.dealer_id ?? (oo.dealer_acctivate_id ? dealerIdByAcctivateId.get(oo.dealer_acctivate_id.trim().toLowerCase()) : undefined);
+        if (!resolvedDealerId) continue;
+        if (!dealerIdSet.has(resolvedDealerId)) continue;
         const d = new Date(oo.order_date + "T00:00:00");
         const ms = d.getTime();
         if (Number.isNaN(ms)) continue;
         const inPrim = ms >= primFromMs && ms <= primToMs;
         const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
         if (!inPrim && !inComp) continue;
-        const k = rowKey({ dealer_id: oo.dealer_id });
+        const k = rowKey({ dealer_id: resolvedDealerId });
         if (!k) continue;
         const val = Number(oo.extended_value ?? 0);
         if (val === 0) continue;
@@ -563,7 +573,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       .sort((a, b) => b.primary - a.primary);
 
     return { rows: sorted, primMonths, compMonths };
-  }, [lines, aggregates, useAggregates, useInvoiceLines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealers, reps, territories, dealerIdSet, filteredProductIds, primary, comparative, compareMode, metric, groupBy]);
+  }, [lines, aggregates, useAggregates, useInvoiceLines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealers, reps, territories, dealerIdSet, dealerIdByAcctivateId, filteredProductIds, primary, comparative, compareMode, metric, groupBy]);
 
   const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
   const noData = useAggregates ? aggregates.length === 0 : (useInvoiceLines ? rangeInvoiceLines.length === 0 : lines.length === 0);
@@ -579,8 +589,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     // (live Acctivate open backlog). Otherwise fall back to dealer_sales_lines.
     if (useAggregates) {
       for (const oo of rangeOpenOrders) {
-        if (!oo.dealer_id || !oo.order_date) continue;
-        if (!dealerIdSet.has(oo.dealer_id)) continue;
+        if (!oo.order_date) continue;
+        const resolvedDealerId = oo.dealer_id ?? (oo.dealer_acctivate_id ? dealerIdByAcctivateId.get(oo.dealer_acctivate_id.trim().toLowerCase()) : undefined);
+        if (!resolvedDealerId) continue;
+        if (!dealerIdSet.has(resolvedDealerId)) continue;
         const ms = new Date(oo.order_date + "T00:00:00").getTime();
         if (Number.isNaN(ms) || ms < primFromMs || ms > primToMs) continue;
         bookings += Number(oo.extended_value ?? 0);
@@ -617,7 +629,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       }
     }
     return { bookings, invoices };
-  }, [primary, useAggregates, useInvoiceLines, lines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealerIdSet, filteredProductIds]);
+  }, [primary, useAggregates, useInvoiceLines, lines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealerIdSet, dealerIdByAcctivateId, filteredProductIds]);
 
   // Warn when a product-level filter is active but dealer_sales_lines has no rows
   // overlapping the primary date range — common right now since line sync is sparse.

@@ -425,13 +425,27 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return new Set(visibleDealers.map((d) => d.id));
   }, [dealerIds, visibleDealers]);
 
+  const { data: acctivateUuidMappings } = useQuery({
+    queryKey: ["dealer_acctivate_uuids_v1"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("dealer_acctivate_uuids")
+        .select("acctivate_uuid, dealer_id");
+      if (error) throw error;
+      return (data ?? []) as { acctivate_uuid: string; dealer_id: string }[];
+    },
+  });
+
   const dealerIdByAcctivateId = useMemo(() => {
     const map = new Map<string, string>();
     for (const dealer of dealers) {
       if (dealer.acctivate_id) map.set(dealer.acctivate_id.trim().toLowerCase(), dealer.id);
     }
+    for (const m of acctivateUuidMappings ?? []) {
+      if (m.acctivate_uuid) map.set(m.acctivate_uuid.trim().toLowerCase(), m.dealer_id);
+    }
     return map;
-  }, [dealers]);
+  }, [dealers, acctivateUuidMappings]);
 
   const unscopedOpenOrderView = !managerScopeRepIds && territoryIds.length === 0 && repIds.length === 0 && dealerIds.length === 0;
 

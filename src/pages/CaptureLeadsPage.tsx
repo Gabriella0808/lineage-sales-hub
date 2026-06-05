@@ -257,6 +257,27 @@ export default function CaptureLeadsPage() {
         });
       }
 
+      // Sync to Mailchimp on edit too — lets you trigger the automation by re-saving with a dealer email
+      const editedDealerEmail = leadForm.email.trim();
+      const editIsMailchimpMarket = market?.name && /high point|furniture first/i.test(market.name);
+      if (editedDealerEmail && editIsMailchimpMarket) {
+        supabase.functions.invoke("sync-mailchimp-lead", {
+          body: {
+            email: editedDealerEmail,
+            market_name: market!.name,
+            dealer: leadForm.dealer.trim() || null,
+            contact_name: leadForm.contact_name.trim() || null,
+          },
+        }).then(({ data, error: mcErr }) => {
+          if (mcErr) return toast.error(`Mailchimp: ${mcErr.message}`);
+          if (data?.success) toast.success(`Added to Mailchimp (tag: ${data.tag})`);
+          else if (data?.skipped) return;
+          else if (data?.error) toast.error(`Mailchimp: ${data.error}`);
+        });
+      }
+
+
+
       setLeadDialog(null);
       setEditingLeadId(null);
       setEditingOriginalRepEmail("");

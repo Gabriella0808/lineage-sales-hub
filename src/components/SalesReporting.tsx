@@ -91,6 +91,38 @@ function useDealerInvoiceLinesInRange(from: Date, to: Date, productIds: string[]
   });
 }
 
+/** Day-precise fetch of open_sales_orders in a date window. Used to source
+ *  Bookings from the live Acctivate open-order backlog (extended_value summed
+ *  by order_date) instead of the monthly dealer_sales rollup. */
+function useOpenSalesOrdersInRange(from: Date, to: Date) {
+  const fromStr = format(from, "yyyy-MM-dd");
+  const toStr = format(to, "yyyy-MM-dd");
+  return useQuery({
+    queryKey: ["open_sales_orders_range", fromStr, toStr],
+    queryFn: async () => {
+      const out: { dealer_id: string | null; order_date: string | null; extended_value: number }[] = [];
+      const pageSize = 1000;
+      let start = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("open_sales_orders")
+          .select("dealer_id, order_date, extended_value")
+          .gte("order_date", fromStr)
+          .lte("order_date", toStr)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = ((data ?? []) as { dealer_id: string | null; order_date: string | null; extended_value: number | null }[])
+          .map((r) => ({ dealer_id: r.dealer_id, order_date: r.order_date, extended_value: Number(r.extended_value ?? 0) }));
+        out.push(...batch);
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      return out;
+    },
+  });
+}
+
 type GroupBy = "dealer" | "rep" | "territory";
 type Metric = "bookings" | "invoices";
 type Display = "total" | "monthly";

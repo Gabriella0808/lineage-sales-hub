@@ -720,6 +720,7 @@ export type Database = {
       dealers: {
         Row: {
           acctivate_id: string | null
+          acctivate_uuid: string | null
           buying_group: string | null
           city: string | null
           created_at: string
@@ -751,6 +752,7 @@ export type Database = {
         }
         Insert: {
           acctivate_id?: string | null
+          acctivate_uuid?: string | null
           buying_group?: string | null
           city?: string | null
           created_at?: string
@@ -782,6 +784,7 @@ export type Database = {
         }
         Update: {
           acctivate_id?: string | null
+          acctivate_uuid?: string | null
           buying_group?: string | null
           city?: string | null
           created_at?: string

@@ -271,42 +271,72 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   const { data: liveAgg } = useDealerSalesAggregates(scopedDbRepNames);
 
   // 26 Act bookings come from ALL open sales orders, summed by month of order_date.
+  // open_sales_orders.rep is unreliable (often NULL), so when a rep/territory scope is
+  // active we resolve it to dealer_ids via dealers.rep_id and filter on dealer_id instead.
   const [openByMonth, setOpenByMonth] = useState<Record<string, number>>({});
   const repKey = scopedDbRepNames ? scopedDbRepNames.slice().sort().join("|") : "__all__";
   useEffect(() => {
     let cancelled = false;
     const currentYear = new Date().getFullYear();
     (async () => {
+      // Resolve scoped rep names → dealer_ids (only when a scope is active).
+      let scopedDealerIds: string[] | null = null;
+      if (scopedDbRepNames && scopedDbRepNames.length > 0) {
+        const scopedRepIds = dbReps
+          .filter((r) => scopedDbRepNames.includes(r.name))
+          .map((r) => r.id);
+        if (scopedRepIds.length === 0) { if (!cancelled) setOpenByMonth({}); return; }
+        const dealerIds: string[] = [];
+        const chunk = 200;
+        for (let i = 0; i < scopedRepIds.length; i += chunk) {
+          const { data, error } = await supabase
+            .from("dealers")
+            .select("id")
+            .in("rep_id", scopedRepIds.slice(i, i + chunk));
+          if (error || !data) break;
+          for (const d of data as { id: string }[]) dealerIds.push(d.id);
+        }
+        if (dealerIds.length === 0) { if (!cancelled) setOpenByMonth({}); return; }
+        scopedDealerIds = dealerIds;
+      }
+
       const pageSize = 1000;
       const totals: Record<string, number> = {};
-      let from = 0;
-      while (true) {
-        let q = supabase
-          .from("open_sales_orders")
-          .select("extended_value, order_date, rep")
-          .gte("order_date", `${currentYear}-01-01`)
-          .lt("order_date", `${currentYear + 1}-01-01`)
-          .range(from, from + pageSize - 1);
-        if (scopedDbRepNames && scopedDbRepNames.length > 0) {
-          q = q.in("rep", scopedDbRepNames);
+
+      // Page through open_sales_orders, chunking dealer_id filter if necessary.
+      const dealerChunks: (string[] | null)[] = scopedDealerIds
+        ? Array.from({ length: Math.ceil(scopedDealerIds.length / 500) }, (_, i) =>
+            scopedDealerIds!.slice(i * 500, (i + 1) * 500))
+        : [null];
+
+      for (const dealerChunk of dealerChunks) {
+        let from = 0;
+        while (true) {
+          let q = supabase
+            .from("open_sales_orders")
+            .select("extended_value, order_date, dealer_id")
+            .gte("order_date", `${currentYear}-01-01`)
+            .lt("order_date", `${currentYear + 1}-01-01`)
+            .range(from, from + pageSize - 1);
+          if (dealerChunk) q = q.in("dealer_id", dealerChunk);
+          const { data, error } = await q;
+          if (error || !data) break;
+          for (const r of data as { extended_value: number | null; order_date: string | null }[]) {
+            if (!r.order_date) continue;
+            const monthIdx = new Date(`${r.order_date}T00:00:00`).getMonth();
+            const monthName = MONTHLY[monthIdx]?.m;
+            if (!monthName) continue;
+            totals[monthName] = (totals[monthName] ?? 0) + (Number(r.extended_value) || 0);
+          }
+          if (data.length < pageSize) break;
+          from += pageSize;
         }
-        const { data, error } = await q;
-        if (error || !data) break;
-        for (const r of data as { extended_value: number | null; order_date: string | null }[]) {
-          if (!r.order_date) continue;
-          const monthIdx = new Date(`${r.order_date}T00:00:00`).getMonth();
-          const monthName = MONTHLY[monthIdx]?.m;
-          if (!monthName) continue;
-          totals[monthName] = (totals[monthName] ?? 0) + (Number(r.extended_value) || 0);
-        }
-        if (data.length < pageSize) break;
-        from += pageSize;
       }
       if (!cancelled) setOpenByMonth(totals);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repKey]);
+  }, [repKey, dbReps]);
 
   const baseMonthly = useMemo(() => MONTHLY.map((seed) => {
     const live = liveAgg.find((r) => r.m === seed.m);

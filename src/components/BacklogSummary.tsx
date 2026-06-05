@@ -462,64 +462,6 @@ export function BacklogSummary() {
         </div>
       </div>
 
-      {/* Problem Orders */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h4 className="text-sm font-semibold flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-warning" />
-            Problem Orders
-          </h4>
-        </div>
-        <div className="overflow-auto border border-border rounded-md">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="text-left px-3 py-2">Customer</th>
-                <th className="text-right px-3 py-2">Open $</th>
-                <th className="text-left px-3 py-2">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.problemOrders.map((p) => (
-                <tr
-                  key={p.customer}
-                  className="border-t border-border hover:bg-muted/40 cursor-pointer"
-                  onClick={() => setDrill({ kind: "customer", customer: p.customer })}
-                >
-                  <td className="px-3 py-2 font-medium">{p.customer}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(p.amount)}</td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground max-w-[480px]">{p.notes}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Discussion Points */}
-      {data.discussionPoints.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-accent" />
-            Discussion Points
-          </h4>
-          <div className="grid gap-2 md:grid-cols-2">
-            {data.discussionPoints.map((d) => (
-              <div
-                key={d.customer}
-                className="border border-border rounded-md p-3 hover:bg-muted/30 cursor-pointer transition-colors"
-                onClick={() => setDrill({ kind: "customer", customer: d.customer })}
-              >
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="text-sm font-medium">{d.customer}</span>
-                  <Badge variant="secondary" className="text-[10px]">discuss</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">{d.notes}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

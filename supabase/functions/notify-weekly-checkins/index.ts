@@ -33,17 +33,16 @@ function fmtLabel(d: Date): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-// Returns the Monday-Sunday range for the week prior to `now`.
-function lastWeekRange(now: Date) {
+// Returns the Monday-Sunday range for the CURRENT week containing `now`.
+// The Friday email reports the in-progress week so it always reflects
+// this week's check-ins (zeros if none yet).
+function currentWeekRange(now: Date) {
   const day = now.getUTCDay(); // 0=Sun..6=Sat
-  // Days since most-recent Monday (treat Sunday as day 7)
   const sinceMon = day === 0 ? 6 : day - 1;
   const thisMon = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - sinceMon));
-  const lastMon = new Date(thisMon);
-  lastMon.setUTCDate(thisMon.getUTCDate() - 7);
-  const lastSun = new Date(lastMon);
-  lastSun.setUTCDate(lastMon.getUTCDate() + 6);
-  return { start: lastMon, end: lastSun };
+  const thisSun = new Date(thisMon);
+  thisSun.setUTCDate(thisMon.getUTCDate() + 6);
+  return { start: thisMon, end: thisSun };
 }
 
 async function fetchAll<T>(builder: (from: number, to: number) => any): Promise<T[]> {

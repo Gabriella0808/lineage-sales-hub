@@ -354,6 +354,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return { from: lo, to: hi };
   }, [primary, comparative, compareMode]);
   const { data: rangeInvoices = [] } = useDealerInvoicesInRange(invoiceWindow.from, invoiceWindow.to);
+  // Day-precise open sales orders for Bookings (replaces the monthly dealer_sales rollup
+  // when no product filter is active so we surface ALL open orders from Acctivate).
+  const { data: rangeOpenOrders = [] } = useOpenSalesOrdersInRange(invoiceWindow.from, invoiceWindow.to);
 
   // Use aggregate dealer_sales when no product-level filter is active.
   // dealer_sales_lines is sparsely populated; aggregates have full totals.

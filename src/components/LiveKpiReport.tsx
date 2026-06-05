@@ -368,7 +368,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       b26p: overrides.monthly?.[seed.m]?.b26p ?? seed.b26p,
       i26p: overrides.monthly?.[seed.m]?.i26p ?? seed.i26p,
     };
-  }), [overrides, liveAgg, openByMonth]);
+  }), [overrides, liveAgg, openByMonth, openByMonthPrev]);
 
   const baseLine = useMemo(() => LINE_BOOK.map((r) => ({
     ...r,

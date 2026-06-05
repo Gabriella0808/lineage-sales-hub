@@ -441,8 +441,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
 
   const scaledMonthlyWithTargets = useMemo(() => scaledMonthly.map(r => {
     const tgt = targetByMonth[r.m] ?? 0;
-    if (tgt > 0) return { ...r, b26p: tgt, i26p: tgt };
-    return r;
+    // Always source 26 Proj (Bookings & Invoiced) from the Sales Targets section.
+    return { ...r, b26p: tgt, i26p: tgt };
   }), [scaledMonthly, targetByMonth]);
 
   

@@ -134,10 +134,10 @@ Deno.serve(async (req: Request) => {
     await fetch(`${url}/tags`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: auth },
-      body: JSON.stringify({ tags: [{ name: marketName, status: "active" }] }),
+      body: JSON.stringify({ tags: [{ name: mailchimpTag, status: "active" }] }),
     });
 
-    return new Response(JSON.stringify({ success: true, email, tag: marketName }), {
+    return new Response(JSON.stringify({ success: true, email, tag: mailchimpTag }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

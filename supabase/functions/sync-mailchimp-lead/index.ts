@@ -80,9 +80,15 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Only sync High Point markets
-    if (!/high point/i.test(marketName)) {
-      return new Response(JSON.stringify({ success: false, skipped: true, reason: "Not a High Point market" }), {
+    // Map market name -> Mailchimp tag. Only sync supported markets.
+    let mailchimpTag: string | null = null;
+    if (/furniture first/i.test(marketName)) {
+      mailchimpTag = "Furniture First Lead";
+    } else if (/high point/i.test(marketName)) {
+      mailchimpTag = marketName; // existing behavior: tag = market name
+    }
+    if (!mailchimpTag) {
+      return new Response(JSON.stringify({ success: false, skipped: true, reason: "Market not mapped to a Mailchimp audience" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

@@ -23,6 +23,7 @@ const RECIPIENTS: { name: string; email: string }[] = [
   { name: "Will", email: "will@lineage-collections.com" },
   { name: "Mateo", email: "mateo@lineage-collections.com" },
   { name: "Chris", email: "chris@lineage-collections.com" },
+  { name: "Gabriella", email: "gabriella@lineage-collections.com" },
 ];
 
 function fmtDate(d: Date): string {

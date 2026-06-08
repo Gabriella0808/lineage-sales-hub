@@ -34,6 +34,7 @@ import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfDay, endOfD
 import { parseDateOnly } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import TaskBoardsView from "@/components/TaskBoardsView";
+import { TaskAttachments, PendingAttachmentPicker, uploadPendingAttachments } from "@/components/TaskAttachments";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
 

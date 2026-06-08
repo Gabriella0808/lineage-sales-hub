@@ -454,6 +454,9 @@ export default function TasksPage() {
         return;
       }
       await syncAssignees(data.id, ids);
+      if (pendingFiles.length > 0) {
+        await uploadPendingAttachments(data.id, user.id, pendingFiles);
+      }
     }
     setOpen(false);
     resetForm();

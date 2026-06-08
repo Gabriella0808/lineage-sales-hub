@@ -343,9 +343,12 @@ export default function TasksPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+
   const resetForm = () => {
     setEditing(null);
     setForm({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false, kpi_review: false, visibility: "public" });
+    setPendingFiles([]);
   };
 
   const openNew = () => {

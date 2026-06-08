@@ -748,6 +748,11 @@ export default function TasksPage() {
                     </div>
                   </div>
                 )}
+                {editing ? (
+                  <TaskAttachments taskId={editing.id} />
+                ) : (
+                  <PendingAttachmentPicker files={pendingFiles} onChange={setPendingFiles} />
+                )}
               </div>
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>

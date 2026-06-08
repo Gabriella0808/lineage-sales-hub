@@ -1379,6 +1379,10 @@ export default function TasksPage() {
                     )}
                   </div>
 
+                  <TaskAttachments taskId={t.id} />
+
+
+
                   {(isMine || (user && getAssigneeIds(t).includes(user.id))) && (
                     <div className="flex items-center gap-2 pt-4 border-t">
                       <Button

@@ -4,7 +4,7 @@ import {
   UserCog, LogOut, LayoutGrid, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
   Briefcase, KanbanSquare, Contact,
-  FileText, Send, FolderOpen,
+  FileText, Send, FolderOpen, Tag,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -94,6 +94,12 @@ const NAV_SECTIONS: NavSection[] = [
         title: "Trade Show Leads", url: "/trade-show-leads", icon: Megaphone, roles: ["admin", "manager"],
         children: [
           { title: "Capture Leads", url: "/trade-show-leads/capture", icon: ClipboardList, roles: ["admin", "manager"] },
+        ],
+      },
+      {
+        title: "Clearance Products", url: "/clearance", icon: Tag, roles: ["admin", "manager"],
+        children: [
+          { title: "Clearance Analytics", url: "/clearance/analytics", icon: BarChart3, roles: ["admin", "manager"] },
         ],
       },
     ],

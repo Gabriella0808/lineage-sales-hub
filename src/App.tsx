@@ -47,6 +47,8 @@ import CrmAccountDetailPage from "@/pages/crm/CrmAccountDetailPage";
 import CrmNewAccountPage from "@/pages/crm/CrmNewAccountPage";
 import CrmRepsPage from "@/pages/crm/CrmRepsPage";
 import CrmGuard from "@/components/CrmGuard";
+import ClearanceProductsPage from "@/pages/ClearanceProductsPage";
+import ClearanceAnalyticsPage from "@/pages/ClearanceAnalyticsPage";
 
 
 const queryClient = new QueryClient();
@@ -94,6 +96,8 @@ const App = () => (
                       <Route path="/travel-log" element={<ProtectedRoute allow={["admin", "manager"]}><TravelLogPage /></ProtectedRoute>} />
                       <Route path="/trade-show-leads" element={<ProtectedRoute allow={["admin", "manager"]}><TradeShowLeadsPage /></ProtectedRoute>} />
                       <Route path="/trade-show-leads/capture" element={<ProtectedRoute allow={["admin", "manager"]}><CaptureLeadsPage /></ProtectedRoute>} />
+                      <Route path="/clearance" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceProductsPage /></ProtectedRoute>} />
+                      <Route path="/clearance/analytics" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceAnalyticsPage /></ProtectedRoute>} />
                       <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]}><OrgChartPage /></ProtectedRoute>} />
                       <Route path="/crm" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmDashboardPage /></CrmGuard></ProtectedRoute>} />
                       <Route path="/crm/accounts" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsPage /></CrmGuard></ProtectedRoute>} />

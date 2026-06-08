@@ -1,0 +1,267 @@
+import * as React from 'npm:react@18.3.1'
+import {
+  Body, Container, Head, Heading, Hr, Html, Preview, Section, Text,
+} from 'npm:@react-email/components@0.0.22'
+import type { TemplateEntry } from './registry.ts'
+
+const SITE_NAME = 'Lineage Collections'
+
+interface SkuRow {
+  sku: string
+  product: string
+  qty: number
+  revenue: number
+}
+
+interface RepRow {
+  rep: string
+  totalQty: number
+  totalRevenue: number
+  skus: SkuRow[]
+}
+
+interface ClearanceWeeklyReportProps {
+  recipientName?: string
+  weekLabel?: string
+  rows?: RepRow[]
+  totalUnits?: number
+  totalRevenue?: number
+  skusMoved?: number
+  portalUrl?: string
+}
+
+const fmt = (n: number) =>
+  `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+
+const ClearanceWeeklyReportEmail = ({
+  recipientName,
+  weekLabel,
+  rows = [],
+  totalUnits = 0,
+  totalRevenue = 0,
+  skusMoved = 0,
+  portalUrl,
+}: ClearanceWeeklyReportProps) => (
+  <Html lang="en" dir="ltr">
+    <Head />
+    <Preview>
+      Clearance weekly report{weekLabel ? ` · ${weekLabel}` : ''} — {totalUnits} units sold across{' '}
+      {skusMoved} SKUs
+    </Preview>
+    <Body style={main}>
+      <Container style={container}>
+        <Heading style={h1}>Clearance Products — Weekly Report</Heading>
+        <Text style={text}>
+          {recipientName ? `Hi ${recipientName},` : 'Hi,'} here is the clearance product sales
+          summary for {weekLabel || 'last week'}.
+        </Text>
+
+        {/* Summary row */}
+        <Section style={summaryBox}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }} cellPadding={0} cellSpacing={0}>
+            <tbody>
+              <tr>
+                <td style={summaryCell}>
+                  <div style={summaryNum}>{totalUnits.toLocaleString()}</div>
+                  <div style={summaryLabel}>Units Sold</div>
+                </td>
+                <td style={summaryCellBorder}>
+                  <div style={summaryNum}>{fmt(totalRevenue)}</div>
+                  <div style={summaryLabel}>Revenue</div>
+                </td>
+                <td style={summaryCellBorder}>
+                  <div style={summaryNum}>{skusMoved}</div>
+                  <div style={summaryLabel}>SKUs Moved</div>
+                </td>
+                <td style={summaryCellBorder}>
+                  <div style={summaryNum}>{rows.length}</div>
+                  <div style={summaryLabel}>Reps with Sales</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </Section>
+
+        {/* Per-rep breakdown */}
+        {rows.map((repRow) => (
+          <Section key={repRow.rep} style={repSection}>
+            <table style={rowTable} cellPadding={0} cellSpacing={0}>
+              <thead>
+                <tr>
+                  <th style={repHeader} colSpan={3}>{repRow.rep}</th>
+                  <th style={repHeaderRight}>{repRow.totalQty.toLocaleString()} units · {fmt(repRow.totalRevenue)}</th>
+                </tr>
+                <tr>
+                  <th style={th}>SKU</th>
+                  <th style={th}>Product</th>
+                  <th style={thNum}>Units</th>
+                  <th style={thNum}>Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {repRow.skus.map((s) => (
+                  <tr key={s.sku}>
+                    <td style={tdMono}>{s.sku}</td>
+                    <td style={tdName}>{s.product}</td>
+                    <td style={tdNum}>{s.qty.toLocaleString()}</td>
+                    <td style={tdNum}>{fmt(s.revenue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Section>
+        ))}
+
+        {rows.length === 0 && (
+          <Text style={{ ...text, color: '#888' }}>No clearance product sales recorded for this week.</Text>
+        )}
+
+        <Text style={text}>
+          View the full breakdown anytime in the portal under Sales Operations → Clearance Analytics.
+        </Text>
+
+        {portalUrl && (
+          <Section style={{ margin: '24px 0' }}>
+            <table cellPadding={0} cellSpacing={0} role="presentation" style={{ margin: '0 auto', borderCollapse: 'separate' }}>
+              <tbody>
+                <tr>
+                  <td bgcolor="#c9a44c" style={{ backgroundColor: '#c9a44c', borderRadius: '8px' }}>
+                    <a href={portalUrl} target="_blank" rel="noopener noreferrer" style={ctaButton}>
+                      View in Portal
+                    </a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </Section>
+        )}
+
+        <Hr style={hr} />
+        <Text style={footer}>— The {SITE_NAME} Team</Text>
+      </Container>
+    </Body>
+  </Html>
+)
+
+export const template = {
+  component: ClearanceWeeklyReportEmail,
+  subject: (data: Record<string, any>) => {
+    const wk = data?.weekLabel ? ` (${data.weekLabel})` : ''
+    return `Clearance products weekly report${wk}`
+  },
+  displayName: 'Clearance products weekly report',
+  previewData: {
+    recipientName: 'Scott',
+    weekLabel: 'Jun 2 - Jun 8, 2026',
+    totalUnits: 47,
+    totalRevenue: 3850,
+    skusMoved: 12,
+    rows: [
+      {
+        rep: 'Will',
+        totalQty: 28,
+        totalRevenue: 2240,
+        skus: [
+          { sku: 'CL-1001', product: 'Clearance Widget A', qty: 15, revenue: 1200 },
+          { sku: 'CL-1002', product: 'Clearance Widget B', qty: 13, revenue: 1040 },
+        ],
+      },
+      {
+        rep: 'Mateo',
+        totalQty: 19,
+        totalRevenue: 1610,
+        skus: [
+          { sku: 'CL-1003', product: 'Clearance Item C', qty: 19, revenue: 1610 },
+        ],
+      },
+    ],
+    portalUrl: 'https://www.lineage-managerhub.com/clearance/analytics',
+  },
+} satisfies TemplateEntry
+
+const main = { backgroundColor: '#ffffff', fontFamily: '"DM Sans", Arial, sans-serif' }
+const container = { padding: '32px 28px', maxWidth: '600px', margin: '0 auto' }
+const h1 = {
+  fontFamily: '"DM Serif Display", Georgia, serif',
+  fontSize: '26px',
+  color: 'hsl(220, 35%, 22%)',
+  margin: '0 0 20px',
+}
+const text = { fontSize: '14px', color: '#333', lineHeight: '1.6', margin: '0 0 16px' }
+const summaryBox = {
+  backgroundColor: 'hsl(40, 15%, 96%)',
+  border: '1px solid hsl(220, 13%, 90%)',
+  borderRadius: '8px',
+  padding: '16px 20px',
+  margin: '20px 0',
+}
+const summaryCell = { textAlign: 'center' as const, padding: '8px 16px' }
+const summaryCellBorder = {
+  ...summaryCell,
+  borderLeft: '1px solid hsl(220, 13%, 88%)',
+}
+const summaryNum = { fontSize: '22px', fontWeight: 700, color: 'hsl(220, 35%, 22%)', fontVariantNumeric: 'tabular-nums' as const }
+const summaryLabel = { fontSize: '11px', textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'hsl(220, 10%, 50%)', marginTop: '4px' }
+const repSection = {
+  backgroundColor: 'hsl(40, 15%, 97%)',
+  border: '1px solid hsl(220, 13%, 90%)',
+  borderRadius: '8px',
+  padding: '12px 16px',
+  margin: '12px 0',
+}
+const rowTable = { width: '100%', borderCollapse: 'collapse' as const }
+const repHeader = {
+  fontSize: '13px',
+  fontWeight: 700,
+  color: 'hsl(220, 35%, 22%)',
+  padding: '4px 0 8px',
+  textAlign: 'left' as const,
+  borderBottom: '1px solid hsl(220, 13%, 88%)',
+}
+const repHeaderRight = {
+  ...repHeader,
+  textAlign: 'right' as const,
+  fontSize: '12px',
+  fontWeight: 500,
+  color: 'hsl(220, 10%, 46%)',
+}
+const th = {
+  fontSize: '11px',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.05em',
+  color: 'hsl(220, 10%, 46%)',
+  padding: '6px 6px 6px 0',
+  textAlign: 'left' as const,
+  borderBottom: '1px solid hsl(220, 13%, 88%)',
+}
+const thNum = { ...th, textAlign: 'right' as const, padding: '6px 0 6px 6px' }
+const tdMono = {
+  fontFamily: 'monospace',
+  fontSize: '12px',
+  color: 'hsl(220, 10%, 46%)',
+  padding: '8px 6px 8px 0',
+  whiteSpace: 'nowrap' as const,
+}
+const tdName = { fontSize: '13px', color: '#222', padding: '8px 6px 8px 0' }
+const tdNum = {
+  fontSize: '13px',
+  color: '#222',
+  fontWeight: 600,
+  padding: '8px 0 8px 6px',
+  textAlign: 'right' as const,
+  fontVariantNumeric: 'tabular-nums' as const,
+  whiteSpace: 'nowrap' as const,
+}
+const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
+const footer = { fontSize: '12px', color: '#888', margin: '0' }
+const ctaButton = {
+  display: 'inline-block',
+  backgroundColor: '#c9a44c',
+  color: '#1a1a1a',
+  fontSize: '14px',
+  fontWeight: 600,
+  textDecoration: 'none',
+  borderRadius: '8px',
+  padding: '12px 28px',
+  fontFamily: '"DM Sans", Arial, sans-serif',
+}

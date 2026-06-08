@@ -3,7 +3,6 @@ import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, LayoutGrid, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
-  Briefcase, KanbanSquare, Contact,
   FileText, Send, FolderOpen, Tag,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
@@ -13,7 +12,6 @@ import { useUserRole, type AppRole } from "@/hooks/useUserRole";
 import lineageLogo from "@/assets/lineage-logo-white.png";
 import { NavLink } from "@/components/NavLink";
 import { isAllowedEmail, isCustomerService } from "@/components/EmailGuard";
-import { canViewCrm } from "@/components/CrmGuard";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
@@ -50,16 +48,6 @@ const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
-    id: "crm",
-    label: "CRM",
-    items: [
-      { title: "CRM Overview", url: "/crm", icon: Briefcase, roles: ["admin", "manager"] },
-      { title: "Accounts", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
-      { title: "Pipeline", url: "/crm/pipeline", icon: KanbanSquare, roles: ["admin", "manager"] },
-      { title: "Accounts by Rep", url: "/crm/reps", icon: Users, roles: ["admin", "manager"] },
-    ],
-  },
-  {
     id: "catalog",
     label: "Products & Orders",
     items: [
@@ -86,6 +74,7 @@ const NAV_SECTIONS: NavSection[] = [
       icon: MapPinned,
       roles: ["admin", "manager"],
       children: [
+        { title: "Accounts", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
         { title: "Visit Analytics", url: "/check-ins/analytics", icon: PieChart, roles: ["admin", "manager"] },
       ],
     },
@@ -211,7 +200,6 @@ function SidebarNav() {
 
   const sections = NAV_SECTIONS
     .filter((s) => {
-      if (s.id === "crm") return canViewCrm(roleInfo?.role);
       if (cs) return true;
       if (s.id === "catalog") return isAllowedEmail(user?.email);
       return true;

@@ -3,13 +3,12 @@ import {
   startOfWeek, endOfWeek, subWeeks, addWeeks, format,
 } from "date-fns";
 import {
-  ChevronLeft, ChevronRight, Mail, Loader2, Package, Users,
+  ChevronLeft, ChevronRight, Package, Users,
   TrendingDown, DollarSign, ChevronDown, ChevronUp, FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -54,8 +53,6 @@ function fmtWeekLabel(start: Date, end: Date) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClearanceAnalyticsPage() {
-  const { toast } = useToast();
-
   const [anchor, setAnchor] = useState<Date>(() => new Date());
   const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
   const weekEnd   = endOfWeek(anchor, { weekStartsOn: 1 });
@@ -63,7 +60,6 @@ export default function ClearanceAnalyticsPage() {
 
   const [salesRows, setSalesRows]   = useState<SalesRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);
-  const [sendingEmail, setSendingEmail] = useState(false);
   const [expandedReps, setExpandedReps] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -139,39 +135,14 @@ export default function ClearanceAnalyticsPage() {
     });
   }
 
-  async function sendWeeklyEmail() {
-    setSendingEmail(true);
-    try {
-      const { error } = await supabase.functions.invoke("notify-weekly-clearance", {
-        body: { weekStart: format(weekStart, "yyyy-MM-dd") },
-      });
-      if (error) throw error;
-      toast({ title: "Email sent", description: `Weekly clearance report sent for ${weekLabel}.` });
-    } catch (e) {
-      toast({ title: "Send failed", description: String(e), variant: "destructive" });
-    } finally {
-      setSendingEmail(false);
-    }
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">Clearance Analytics</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Weekly clearance sales from imported CSV data, broken down by rep and SKU.
-          </p>
-        </div>
-        <Button
-          onClick={sendWeeklyEmail}
-          disabled={sendingEmail || repRows.length === 0}
-          className="gap-2"
-        >
-          {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-          {sendingEmail ? "Sending…" : "Send Weekly Report"}
-        </Button>
+      <div>
+        <h1 className="text-2xl font-semibold text-foreground">Clearance Analytics</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Weekly clearance sales from imported CSV data, broken down by rep and SKU.
+        </p>
       </div>
 
       {/* Week navigation */}

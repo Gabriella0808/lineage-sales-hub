@@ -34,6 +34,7 @@ import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfDay, endOfD
 import { parseDateOnly } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import TaskBoardsView from "@/components/TaskBoardsView";
+import { TaskAttachments, PendingAttachmentPicker, uploadPendingAttachments } from "@/components/TaskAttachments";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
 
@@ -342,9 +343,12 @@ export default function TasksPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+
   const resetForm = () => {
     setEditing(null);
     setForm({ title: "", description: "", status: "todo", due_date: "", assigned_user_ids: [], trade_show: false, kpi_review: false, visibility: "public" });
+    setPendingFiles([]);
   };
 
   const openNew = () => {
@@ -450,6 +454,9 @@ export default function TasksPage() {
         return;
       }
       await syncAssignees(data.id, ids);
+      if (pendingFiles.length > 0) {
+        await uploadPendingAttachments(data.id, user.id, pendingFiles);
+      }
     }
     setOpen(false);
     resetForm();
@@ -740,6 +747,11 @@ export default function TasksPage() {
                       </button>
                     </div>
                   </div>
+                )}
+                {editing ? (
+                  <TaskAttachments taskId={editing.id} />
+                ) : (
+                  <PendingAttachmentPicker files={pendingFiles} onChange={setPendingFiles} />
                 )}
               </div>
               <DialogFooter>
@@ -1366,6 +1378,10 @@ export default function TasksPage() {
                       <p className="text-sm italic text-muted-foreground">No description</p>
                     )}
                   </div>
+
+                  <TaskAttachments taskId={t.id} />
+
+
 
                   {(isMine || (user && getAssigneeIds(t).includes(user.id))) && (
                     <div className="flex items-center gap-2 pt-4 border-t">

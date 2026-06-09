@@ -25,6 +25,7 @@ const ADMIN_RECIPIENTS: { name: string; email: string }[] = [
 // Manager first names (lowercased) — these appear as rep_owner on some dealers
 // but should NOT be counted in the per-rep stats breakdown.
 const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
+const TEST_EXCLUDED_REPS = new Set(["gillis", "damico"]);
 
 const ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
@@ -170,14 +171,18 @@ Deno.serve(async (req) => {
         collections: Object.values(data.collections).sort((a, b) => b.qty - a.qty),
       }));
 
+    // Filter out excluded reps from test emails only
+    const filteredRows = testEmail
+      ? rows.filter((r) => !TEST_EXCLUDED_REPS.has(r.rep.toLowerCase()))
+      : rows;
 
-    const totalUnits = rows.reduce((s, r) => s + r.totalQty, 0);
-    const totalRevenue = rows.reduce((s, r) => s + r.totalRevenue, 0);
+    const totalUnits = filteredRows.reduce((s, r) => s + r.totalQty, 0);
+    const totalRevenue = filteredRows.reduce((s, r) => s + r.totalRevenue, 0);
     const skusMoved = new Set(invoiceLines.map((l) => l.sku).filter(Boolean)).size;
 
     if (dryRun) {
       return new Response(
-        JSON.stringify({ ok: true, dryRun: true, weekLabel, rows, totalUnits, totalRevenue, skusMoved }),
+        JSON.stringify({ ok: true, dryRun: true, weekLabel, rows: filteredRows, totalUnits, totalRevenue, skusMoved }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -220,7 +225,7 @@ Deno.serve(async (req) => {
             templateData: {
               recipientName: r.name,
               weekLabel,
-              rows,
+              rows: filteredRows,
               totalUnits,
               totalRevenue,
               skusMoved,
@@ -244,7 +249,7 @@ Deno.serve(async (req) => {
         totalUnits,
         totalRevenue,
         skusMoved,
-        repsWithSales: rows.length,
+        repsWithSales: filteredRows.length,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

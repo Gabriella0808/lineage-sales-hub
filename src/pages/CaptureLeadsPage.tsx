@@ -118,12 +118,13 @@ export default function CaptureLeadsPage() {
         return year * 10 + seasonRank;
       };
       const sorted = [...(m.data ?? [])].sort((a: any, b: any) => {
-        const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
-        if (cb !== ca) return cb - ca;
+        // Prioritize start_date (actual market date) so the most recent/upcoming market is first
         const sa = a.start_date ? new Date(a.start_date).getTime() : 0;
         const sb = b.start_date ? new Date(b.start_date).getTime() : 0;
         if (sb !== sa) return sb - sa;
+        const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
+        if (cb !== ca) return cb - ca;
         return inferRecency(b) - inferRecency(a) || a.name.localeCompare(b.name);
       });
       setMarkets(sorted);

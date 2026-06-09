@@ -51,7 +51,7 @@ const ClearanceWeeklyReportEmail = ({
     </Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Clearance Products — Weekly Report</Heading>
+        <Heading style={h1}>Clearance Products – Weekly Report</Heading>
         <Text style={text}>
           {recipientName ? `Hi ${recipientName},` : 'Hi,'} here is the clearance product sales
           summary for {weekLabel || 'last week'}.

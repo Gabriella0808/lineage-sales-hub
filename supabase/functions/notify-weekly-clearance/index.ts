@@ -182,11 +182,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. Build recipient list: admins + reps (managers excluded while in testing)
-    const salesReps = await fetchAll<{ name: string; email: string | null }>((f, t) =>
-      supabase.from("sales_reps").select("name,email").not("email", "is", null).range(f, t) as any,
-    );
-
+    // 5. Build recipient list — TESTING ONLY: Gabriella only until user approves broader sends.
     const seen = new Set<string>();
     const allRecipients: { name: string; email: string }[] = [];
 
@@ -198,9 +194,8 @@ Deno.serve(async (req) => {
       allRecipients.push({ name, email });
     };
 
-    ADMIN_RECIPIENTS.forEach((r) => add(r.name, r.email));
-    // NOTE: managers are intentionally NOT added yet — still in testing.
-    salesReps.forEach((r) => add(r.name, r.email));
+    // Temporary hardcoded test recipient only
+    add("Gabriella", "gabriella@lineage-collections.com");
 
     const recipients = testEmail
       ? [{ name: testEmail.split("@")[0], email: testEmail }]

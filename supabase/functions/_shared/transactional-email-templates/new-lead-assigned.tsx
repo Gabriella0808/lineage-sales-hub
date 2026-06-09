@@ -57,6 +57,13 @@ const NewLeadAssignedEmail = ({
           <Row label="Captured" value={capturedAt} />
         </Section>
 
+        {notes && notes.trim() ? (
+          <Section style={notesBox}>
+            <Text style={notesLabel}>Notes</Text>
+            <Text style={notesText}>{notes}</Text>
+          </Section>
+        ) : null}
+
         <Hr style={hr} />
         <Text style={footer}>— The {SITE_NAME} Team</Text>
       </Container>

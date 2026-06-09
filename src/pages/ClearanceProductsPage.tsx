@@ -337,10 +337,6 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
               >
                 <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
                 <p className="text-sm font-medium">Drop your CSV here or click to browse</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  CSV must have a <strong>SKU</strong> column and a <strong>Qty / Units Sold</strong> column.
-                  Optional: Revenue, Rep Name.
-                </p>
                 <input
                   ref={fileRef}
                   type="file"

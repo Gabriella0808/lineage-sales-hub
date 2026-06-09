@@ -626,13 +626,13 @@ export default function ClearanceProductsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/30">
-                  {["SKU", "Product", "Collection", "On Hand", "Available", "On PO", "List Price", "Status"].map(
+                  {["SKU", "Product", "Collection", "Available", "On PO", "List Price", "Status"].map(
                     (h, i) => (
                       <th
                         key={h}
                         className={cn(
                           "px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium",
-                          i >= 3 && i <= 6 ? "text-right" : "text-left",
+                          i >= 3 && i <= 5 ? "text-right" : "text-left",
                         )}
                       >
                         {h}

@@ -21,6 +21,7 @@ const NewLeadAssignedEmail = ({
   repName,
   contactName,
   dealer,
+  dealerEmail,
   collections,
   orderAmount,
   market,

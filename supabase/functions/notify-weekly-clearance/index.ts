@@ -116,9 +116,15 @@ Deno.serve(async (req) => {
     const dealerToRep: Record<string, string> = {};
     dealers.forEach((d) => { if (d.rep_owner) dealerToRep[d.id] = d.rep_owner; });
 
-    // 4. Aggregate by rep → SKU
-    type SkuAgg = { sku: string; product: string; qty: number; revenue: number };
-    const repAgg: Record<string, { totalQty: number; totalRevenue: number; skus: Record<string, SkuAgg> }> = {};
+    // 4. Aggregate by rep → SKU + collection
+    type SkuAgg = { sku: string; product: string; collection: string; qty: number; revenue: number };
+    type CollectionAgg = { collection: string; qty: number; revenue: number };
+    const repAgg: Record<string, {
+      totalQty: number;
+      totalRevenue: number;
+      skus: Record<string, SkuAgg>;
+      collections: Record<string, CollectionAgg>;
+    }> = {};
 
     for (const line of invoiceLines) {
       const rawRep = dealerToRep[line.dealer_id ?? ""] ?? "Unknown";
@@ -126,19 +132,26 @@ Deno.serve(async (req) => {
       const sku = line.sku ?? "?";
       const qty = line.qty ?? 0;
       const revenue = line.extended_price ?? 0;
-      if (!repAgg[rep]) repAgg[rep] = { totalQty: 0, totalRevenue: 0, skus: {} };
+      const collection = skuCollection[sku] ?? "Uncategorized";
+      if (!repAgg[rep]) repAgg[rep] = { totalQty: 0, totalRevenue: 0, skus: {}, collections: {} };
       repAgg[rep].totalQty += qty;
       repAgg[rep].totalRevenue += revenue;
       if (!repAgg[rep].skus[sku]) {
         repAgg[rep].skus[sku] = {
           sku,
           product: skuNames[sku] ?? line.product_name ?? sku,
+          collection,
           qty: 0,
           revenue: 0,
         };
       }
       repAgg[rep].skus[sku].qty += qty;
       repAgg[rep].skus[sku].revenue += revenue;
+      if (!repAgg[rep].collections[collection]) {
+        repAgg[rep].collections[collection] = { collection, qty: 0, revenue: 0 };
+      }
+      repAgg[rep].collections[collection].qty += qty;
+      repAgg[rep].collections[collection].revenue += revenue;
     }
 
     const rows = Object.entries(repAgg)
@@ -148,7 +161,9 @@ Deno.serve(async (req) => {
         totalQty: data.totalQty,
         totalRevenue: data.totalRevenue,
         skus: Object.values(data.skus).sort((a, b) => b.qty - a.qty),
+        collections: Object.values(data.collections).sort((a, b) => b.qty - a.qty),
       }));
+
 
     const totalUnits = rows.reduce((s, r) => s + r.totalQty, 0);
     const totalRevenue = rows.reduce((s, r) => s + r.totalRevenue, 0);

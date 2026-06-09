@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
 
     if (dryRun) {
       return new Response(
-        JSON.stringify({ ok: true, dryRun: true, weekLabel, rows, totalUnits, totalRevenue, skusMoved }),
+        JSON.stringify({ ok: true, dryRun: true, weekLabel, rows: filteredRows, totalUnits, totalRevenue, skusMoved }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }

@@ -121,6 +121,33 @@ Deno.serve(async (req) => {
     const dealerToRep: Record<string, string> = {};
     dealers.forEach((d) => { if (d.rep_owner) dealerToRep[d.id] = d.rep_owner; });
 
+    // 3b. Build rep_owner → full name lookup from sales_reps
+    const salesReps = await fetchAll<{ name: string | null; acctivate_id: string | null }>((f, t) =>
+      supabase.from("sales_reps").select("name,acctivate_id").eq("status", "active").range(f, t) as any,
+    );
+    const repNameLookup: Record<string, string> = {};
+    for (const sr of salesReps) {
+      const fullName = (sr.name ?? "").trim();
+      if (!fullName) continue;
+      // skip placeholder / open-territory entries that aren't real people
+      if (/\(open\)|open\)/i.test(fullName)) continue;
+      if (sr.acctivate_id) {
+        const key = sr.acctivate_id.trim().toLowerCase();
+        if (key && !repNameLookup[key]) repNameLookup[key] = fullName;
+      }
+      // last word of name (typically last name) — only if it looks like a real person (has a space)
+      if (fullName.includes(" ")) {
+        const last = fullName.split(/\s+/).pop()!.toLowerCase();
+        if (last && !repNameLookup[last]) repNameLookup[last] = fullName;
+      }
+    }
+
+    function resolveRepName(raw: string): string {
+      const key = raw.trim().toLowerCase();
+      if (repNameLookup[key]) return repNameLookup[key];
+      return toDisplayName(raw);
+    }
+
     // 4. Aggregate by rep → SKU + collection
     type SkuAgg = { sku: string; product: string; collection: string; qty: number; revenue: number };
     type CollectionAgg = { collection: string; qty: number; revenue: number };
@@ -135,7 +162,8 @@ Deno.serve(async (req) => {
       const rawRep = dealerToRep[line.dealer_id ?? ""] ?? "Unknown";
       // Skip lines attributed to managers — managers are excluded from the per-rep stats
       if (MANAGER_NAMES.has(rawRep.trim().toLowerCase())) continue;
-      const rep = toDisplayName(rawRep);
+      const rep = resolveRepName(rawRep);
+
       const sku = line.sku ?? "?";
       const qty = line.qty ?? 0;
       const revenue = line.extended_price ?? 0;

@@ -93,6 +93,7 @@ export default function CaptureLeadsPage() {
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [editingOriginalRepEmail, setEditingOriginalRepEmail] = useState<string>("");
   const [editRepCleared, setEditRepCleared] = useState<boolean>(false);
+  const [viewingLead, setViewingLead] = useState<Lead | null>(null);
 
   const load = async () => {
     setLoading(true);

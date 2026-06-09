@@ -147,3 +147,24 @@ const rowValue = {
 }
 const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#888', margin: '0' }
+const notesBox = {
+  backgroundColor: '#ffffff',
+  border: '1px solid hsl(220, 13%, 90%)',
+  borderRadius: '8px',
+  padding: '16px 20px',
+  margin: '20px 0',
+}
+const notesLabel = {
+  fontSize: '13px',
+  color: 'hsl(220, 10%, 46%)',
+  margin: '0 0 8px',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.5px',
+}
+const notesText = {
+  fontSize: '14px',
+  color: '#222',
+  lineHeight: '1.6',
+  margin: '0',
+  whiteSpace: 'pre-wrap' as const,
+}

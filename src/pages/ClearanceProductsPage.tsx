@@ -26,7 +26,7 @@ interface ClearanceItem {
   collection: string | null;
   on_hand: number;
   available: number;
-  on_po: number | null;
+  
   list_price: number | null;
   status: string | null;
 }
@@ -512,7 +512,7 @@ export default function ClearanceProductsPage() {
     setLoading(true);
     const { data } = await supabase
       .from("inventory")
-      .select("sku, product, collection, on_hand, available, on_po, list_price, status")
+      .select("sku, product, collection, on_hand, available, list_price, status")
       .eq("is_clearance", true)
       .order("collection")
       .order("sku");
@@ -626,13 +626,13 @@ export default function ClearanceProductsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/30">
-                  {["SKU", "Product", "Collection", "Available", "On PO", "List Price", "Status"].map(
+                  {["SKU", "Product", "Collection", "Available", "List Price", "Status"].map(
                     (h, i) => (
                       <th
                         key={h}
                         className={cn(
                           "px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium",
-                          i >= 3 && i <= 5 ? "text-right" : "text-left",
+                          i >= 3 && i <= 4 ? "text-right" : "text-left",
                         )}
                       >
                         {h}
@@ -655,9 +655,6 @@ export default function ClearanceProductsPage() {
                     <td className="px-4 py-2.5 text-muted-foreground">{item.collection ?? "—"}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-medium">
                       {item.available.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                      {item.on_po != null ? item.on_po.toLocaleString() : "—"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {item.list_price != null ? `$${item.list_price.toFixed(2)}` : "—"}

@@ -739,6 +739,82 @@ export default function CaptureLeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={!!viewingLead} onOpenChange={(o) => { if (!o) setViewingLead(null); }}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {viewingLead && (
+            <>
+              <SheetHeader className="text-left">
+                <SheetTitle className="font-serif text-2xl">{viewingLead.contact_name || "Unnamed Contact"}</SheetTitle>
+                <SheetDescription className="flex items-center gap-2">
+                  {viewingLead.dealer && <span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> {viewingLead.dealer}</span>}
+                </SheetDescription>
+                <div className="flex items-center gap-2 pt-1">
+                  {viewingLead.status && <Badge variant="secondary">{viewingLead.status}</Badge>}
+                  {viewingLead.trade_show && <Badge variant="outline">{viewingLead.trade_show}</Badge>}
+                </div>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-5">
+                <DetailSection title="Contact">
+                  <DetailRow icon={User} label="Name" value={viewingLead.contact_name} />
+                  <DetailRow icon={Building2} label="Dealer" value={viewingLead.dealer} />
+                  <DetailRow icon={Mail} label="Email" value={viewingLead.email} href={viewingLead.email ? `mailto:${viewingLead.email}` : undefined} />
+                  <DetailRow icon={Phone} label="Phone" value={viewingLead.phone} href={viewingLead.phone ? `tel:${viewingLead.phone}` : undefined} />
+                </DetailSection>
+
+                <DetailSection title="Sales Rep">
+                  <DetailRow icon={User} label="Rep" value={viewingLead.sales_rep} />
+                  <DetailRow icon={Mail} label="Rep Email" value={viewingLead.rep_email} href={viewingLead.rep_email ? `mailto:${viewingLead.rep_email}` : undefined} />
+                </DetailSection>
+
+                <DetailSection title="Opportunity">
+                  <div className="flex items-start gap-2 text-sm">
+                    <Tag className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground mb-1">Collections</p>
+                      {viewingLead.product_interest ? (
+                        <div className="flex flex-wrap gap-1">
+                          {viewingLead.product_interest.split(",").map((c, i) => (
+                            <Badge key={i} variant="outline" className="text-xs font-normal">{c.trim()}</Badge>
+                          ))}
+                        </div>
+                      ) : <p className="text-sm">—</p>}
+                    </div>
+                  </div>
+                  <DetailRow icon={DollarSign} label="Order Amount" value={viewingLead.order_amount ? fmt(viewingLead.order_amount) : "—"} />
+                </DetailSection>
+
+                {viewingLead.notes && (
+                  <DetailSection title="Notes">
+                    <div className="flex items-start gap-2 text-sm">
+                      <FileText className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                      <p className="whitespace-pre-wrap leading-relaxed">{viewingLead.notes}</p>
+                    </div>
+                  </DetailSection>
+                )}
+
+                <DetailSection title="Meta">
+                  <DetailRow
+                    icon={Clock}
+                    label="Captured"
+                    value={new Date(viewingLead.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                  />
+                </DetailSection>
+
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" className="flex-1" onClick={() => { const l = viewingLead; setViewingLead(null); openEditLead(l); }}>
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+                  </Button>
+                  <Button variant="ghost" className="flex-1 text-destructive hover:text-destructive" onClick={() => { deleteLead(viewingLead.id); setViewingLead(null); }}>
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

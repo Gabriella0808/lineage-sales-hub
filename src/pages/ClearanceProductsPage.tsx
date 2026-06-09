@@ -654,9 +654,6 @@ export default function ClearanceProductsPage() {
                     <td className="px-4 py-2.5 text-foreground max-w-[220px] truncate">{item.product ?? "—"}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{item.collection ?? "—"}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-medium">
-                      {item.on_hand.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                       {item.available.toLocaleString()}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
@@ -666,7 +663,7 @@ export default function ClearanceProductsPage() {
                       {item.list_price != null ? `$${item.list_price.toFixed(2)}` : "—"}
                     </td>
                     <td className="px-4 py-2.5">
-                      <StatusPill status={item.status} onHand={item.on_hand} />
+                      <StatusPill status={item.status} onHand={item.available} />
                     </td>
                   </tr>
                 ))}

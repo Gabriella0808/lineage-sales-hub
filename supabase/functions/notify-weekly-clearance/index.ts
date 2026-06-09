@@ -132,6 +132,8 @@ Deno.serve(async (req) => {
 
     for (const line of invoiceLines) {
       const rawRep = dealerToRep[line.dealer_id ?? ""] ?? "Unknown";
+      // Skip lines attributed to managers — managers are excluded from the per-rep stats
+      if (MANAGER_NAMES.has(rawRep.trim().toLowerCase())) continue;
       const rep = toDisplayName(rawRep);
       const sku = line.sku ?? "?";
       const qty = line.qty ?? 0;

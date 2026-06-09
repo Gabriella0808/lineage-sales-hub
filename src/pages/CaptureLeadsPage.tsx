@@ -513,7 +513,7 @@ export default function CaptureLeadsPage() {
                             <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
                               {l.sales_rep && <div><span className="text-muted-foreground">Rep:</span> {l.sales_rep}</div>}
                               {l.phone && <div><span className="text-muted-foreground">Phone:</span> {l.phone}</div>}
-                              {l.email && <div className="col-span-2 truncate"><span className="text-muted-foreground">Email:</span> <a href={`mailto:${l.email}`} className="hover:underline">{l.email}</a></div>}
+                              {l.email && <div className="col-span-2 truncate"><span className="text-muted-foreground">Email:</span> <a href={`mailto:${l.email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.email}</a></div>}
                             </div>
                             {l.product_interest && (
                               <div className="flex flex-wrap gap-1 mt-2">

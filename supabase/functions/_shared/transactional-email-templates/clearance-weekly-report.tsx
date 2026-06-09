@@ -81,39 +81,42 @@ const ClearanceWeeklyReportEmail = ({
         </Section>
 
         {/* Per-rep breakdown */}
-        {rows.map((repRow) => (
-          <Section key={repRow.rep} style={repSection}>
-            <table style={rowTable} cellPadding={0} cellSpacing={0}>
-              <thead>
-                <tr>
-                  <th style={repHeader} colSpan={3}>{repRow.rep}</th>
-                  <th style={repHeaderRight}>{repRow.totalQty.toLocaleString()} units · {fmt(repRow.totalRevenue)}</th>
-                </tr>
-              </thead>
-            </table>
-
-            {repRow.collections && repRow.collections.length > 0 && (
-              <table style={{ ...rowTable, marginTop: '4px' }} cellPadding={0} cellSpacing={0}>
+        {rows.map((repRow, idx) => (
+          <React.Fragment key={repRow.rep}>
+            {idx > 0 && <Hr style={thinHr} />}
+            <Section style={repSection}>
+              <table style={rowTable} cellPadding={0} cellSpacing={0}>
                 <thead>
                   <tr>
-                    <th style={th}>Collection</th>
-                    <th style={thNum}>Units</th>
-                    <th style={thNum}>Revenue</th>
+                    <th style={repHeader} colSpan={3}>{repRow.rep}</th>
+                    <th style={repHeaderRight}>{repRow.totalQty.toLocaleString()} units · {fmt(repRow.totalRevenue)}</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {repRow.collections.map((c) => (
-                    <tr key={c.collection}>
-                      <td style={tdName}>{c.collection}</td>
-                      <td style={tdNum}>{c.qty.toLocaleString()}</td>
-                      <td style={tdNum}>{fmt(c.revenue)}</td>
-                    </tr>
-                  ))}
-                </tbody>
               </table>
-            )}
 
-          </Section>
+              {repRow.collections && repRow.collections.length > 0 && (
+                <table style={{ ...rowTable, marginTop: '4px' }} cellPadding={0} cellSpacing={0}>
+                  <thead>
+                    <tr>
+                      <th style={th}>Collection</th>
+                      <th style={thNum}>Units</th>
+                      <th style={thNum}>Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {repRow.collections.map((c) => (
+                      <tr key={c.collection}>
+                        <td style={tdName}>{c.collection}</td>
+                        <td style={tdNum}>{c.qty.toLocaleString()}</td>
+                        <td style={tdNum}>{fmt(c.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+            </Section>
+          </React.Fragment>
         ))}
 
 
@@ -236,14 +239,4 @@ const tdNum = {
 }
 const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#888', margin: '0' }
-const ctaButton = {
-  display: 'inline-block',
-  backgroundColor: '#c9a44c',
-  color: '#1a1a1a',
-  fontSize: '14px',
-  fontWeight: 600,
-  textDecoration: 'none',
-  borderRadius: '8px',
-  padding: '12px 28px',
-  fontFamily: '"DM Sans", Arial, sans-serif',
-}
+const thinHr = { borderColor: 'hsl(220, 13%, 88%)', margin: '12px 0', borderWidth: '1px 0 0 0' }

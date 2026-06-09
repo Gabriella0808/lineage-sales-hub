@@ -499,13 +499,13 @@ export default function CaptureLeadsPage() {
                       {/* Mobile card list */}
                       <div className="sm:hidden space-y-2">
                         {ml.map((l) => (
-                          <div key={l.id} className="border rounded-lg p-3 bg-background/40">
+                          <div key={l.id} role="button" tabIndex={0} onClick={() => setViewingLead(l)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setViewingLead(l); } }} className="border rounded-lg p-3 bg-background/40 cursor-pointer hover:bg-muted/30 transition-colors">
                             <div className="flex items-start justify-between gap-2 mb-1.5">
                               <div className="min-w-0">
                                 <p className="font-medium text-sm">{l.contact_name || "—"}</p>
                                 <p className="text-xs text-muted-foreground truncate">{l.dealer || "—"}</p>
                               </div>
-                              <div className="flex gap-1 shrink-0">
+                              <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
                                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteLead(l.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></Button>
                               </div>

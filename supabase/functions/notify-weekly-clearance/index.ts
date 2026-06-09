@@ -69,12 +69,17 @@ Deno.serve(async (req) => {
     const weekLabel = `${format(weekStart, "MMM d")} – ${format(weekEnd, "MMM d, yyyy")}`;
 
     // 1. Get all clearance SKUs
-    const clearanceRows = await fetchAll<{ sku: string; product: string | null }>((f, t) =>
-      supabase.from("inventory").select("sku,product").eq("is_clearance", true).range(f, t) as any,
+    const clearanceRows = await fetchAll<{ sku: string; product: string | null; collection: string | null }>((f, t) =>
+      supabase.from("inventory").select("sku,product,collection").eq("is_clearance", true).range(f, t) as any,
     );
     const skuSet = new Set(clearanceRows.map((r) => r.sku));
     const skuNames: Record<string, string> = {};
-    clearanceRows.forEach((r) => { skuNames[r.sku] = r.product ?? r.sku; });
+    const skuCollection: Record<string, string> = {};
+    clearanceRows.forEach((r) => {
+      skuNames[r.sku] = r.product ?? r.sku;
+      skuCollection[r.sku] = r.collection ?? "Uncategorized";
+    });
+
 
     if (skuSet.size === 0) {
       return new Response(

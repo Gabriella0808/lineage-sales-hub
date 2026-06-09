@@ -50,6 +50,7 @@ const NewLeadAssignedEmail = ({
         <Section style={detailsBox}>
           <Row label="Contact Name" value={contactName} />
           <Row label="Dealer" value={dealer} />
+          <Row label="Dealer Email" value={dealerEmail} />
           <Row label="Collections" value={collections} />
           <Row label="Order Amount" value={orderAmount} />
           <Row label="Captured" value={capturedAt} />

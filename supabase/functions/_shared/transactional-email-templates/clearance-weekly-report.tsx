@@ -239,7 +239,7 @@ const tdNum = {
 }
 const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#888', margin: '0' }
-const ctaButton = {
+const thinHr = { borderColor: 'hsl(220, 13%, 88%)', margin: '12px 0', borderWidth: '1px 0 0 0' }
   display: 'inline-block',
   backgroundColor: '#c9a44c',
   color: '#1a1a1a',

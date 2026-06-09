@@ -26,6 +26,7 @@ const NewLeadAssignedEmail = ({
   collections,
   orderAmount,
   market,
+  notes,
   leadRef,
 }: NewLeadAssignedProps) => {
   const capturedAt = new Date().toLocaleDateString('en-US', {

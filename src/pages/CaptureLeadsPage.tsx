@@ -47,6 +47,7 @@ type Lead = {
   order_amount: number | null;
   status: string | null;
   market_id: string | null;
+  notes: string | null;
   created_at: string;
 };
 

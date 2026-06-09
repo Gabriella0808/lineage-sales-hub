@@ -357,13 +357,6 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
                 </div>
               )}
 
-              <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 rounded-md px-3 py-2">
-                <p className="font-medium">Expected CSV column names (case-insensitive):</p>
-                <p><span className="font-mono">SKU</span> — also accepts: Item, Item #, Product Code</p>
-                <p><span className="font-mono">Qty</span> — also accepts: Quantity, Units Sold, Qty Sold, Shipped</p>
-                <p><span className="font-mono">Revenue</span> (optional) — also accepts: Extended Price, Amount, Total</p>
-                <p><span className="font-mono">Rep</span> (optional) — also accepts: Salesperson, Sales Rep</p>
-              </div>
             </div>
           )}
 

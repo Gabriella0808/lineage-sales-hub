@@ -317,9 +317,6 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
                     setWeekStart(format(startOfWeek(d, { weekStartsOn: 1 }), "yyyy-MM-dd"));
                   }}
                 />
-                <span className="text-xs text-muted-foreground">
-                  (auto-snaps to week's Monday)
-                </span>
               </div>
 
               {/* Drop zone */}

@@ -102,6 +102,7 @@ export const template = {
     collections: 'Coastal, Heritage',
     orderAmount: '$12,500',
     market: 'High Point Spring 2026',
+    notes: 'Customer is interested in our new Coastal line. Follow up within 48 hours.',
   },
 } satisfies TemplateEntry
 

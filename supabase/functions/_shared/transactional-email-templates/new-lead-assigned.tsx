@@ -10,6 +10,7 @@ interface NewLeadAssignedProps {
   repName?: string
   contactName?: string
   dealer?: string
+  dealerEmail?: string
   collections?: string
   orderAmount?: string
   market?: string

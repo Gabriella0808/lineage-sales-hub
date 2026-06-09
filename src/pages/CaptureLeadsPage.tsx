@@ -786,14 +786,16 @@ export default function CaptureLeadsPage() {
                   <DetailRow icon={DollarSign} label="Order Amount" value={viewingLead.order_amount ? fmt(viewingLead.order_amount) : "—"} />
                 </DetailSection>
 
-                {viewingLead.notes && (
-                  <DetailSection title="Notes">
-                    <div className="flex items-start gap-2 text-sm">
-                      <FileText className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                <DetailSection title="Notes">
+                  <div className="flex items-start gap-2 text-sm">
+                    <FileText className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                    {viewingLead.notes ? (
                       <p className="whitespace-pre-wrap leading-relaxed">{viewingLead.notes}</p>
-                    </div>
-                  </DetailSection>
-                )}
+                    ) : (
+                      <p className="text-muted-foreground italic">No notes added yet. Click Edit to add notes.</p>
+                    )}
+                  </div>
+                </DetailSection>
 
                 <DetailSection title="Meta">
                   <DetailRow

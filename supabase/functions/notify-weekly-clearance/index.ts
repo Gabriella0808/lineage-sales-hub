@@ -171,9 +171,13 @@ Deno.serve(async (req) => {
         collections: Object.values(data.collections).sort((a, b) => b.qty - a.qty),
       }));
 
+    // Filter out excluded reps from test emails only
+    const filteredRows = testEmail
+      ? rows.filter((r) => !TEST_EXCLUDED_REPS.has(r.rep.toLowerCase()))
+      : rows;
 
-    const totalUnits = rows.reduce((s, r) => s + r.totalQty, 0);
-    const totalRevenue = rows.reduce((s, r) => s + r.totalRevenue, 0);
+    const totalUnits = filteredRows.reduce((s, r) => s + r.totalQty, 0);
+    const totalRevenue = filteredRows.reduce((s, r) => s + r.totalRevenue, 0);
     const skusMoved = new Set(invoiceLines.map((l) => l.sku).filter(Boolean)).size;
 
     if (dryRun) {

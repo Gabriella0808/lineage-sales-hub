@@ -27,9 +27,8 @@ const NewLeadAssignedEmail = ({
   market,
   leadRef,
 }: NewLeadAssignedProps) => {
-  const capturedAt = new Date().toLocaleString('en-US', {
+  const capturedAt = new Date().toLocaleDateString('en-US', {
     dateStyle: 'medium',
-    timeStyle: 'short',
   })
   return (
   <Html lang="en" dir="ltr">

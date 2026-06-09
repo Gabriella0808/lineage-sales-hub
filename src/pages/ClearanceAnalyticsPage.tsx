@@ -79,9 +79,13 @@ export default function ClearanceAnalyticsPage() {
   }, [format(weekStart, "yyyy-MM-dd")]);
 
   const repRows = useMemo<RepRow[]>(() => {
+    // Managers (by first name) are excluded from per-rep stats
+    const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
     const agg: Record<string, { totalQty: number; totalRevenue: number; skus: Record<string, RepSkuRow> }> = {};
     for (const row of salesRows) {
-      const rep = row.rep_name?.trim() || "Unattributed";
+      const rawRep = row.rep_name?.trim() || "Unattributed";
+      if (MANAGER_NAMES.has(rawRep.toLowerCase())) continue;
+      const rep = rawRep;
       const sku = row.sku;
       if (!agg[rep]) agg[rep] = { totalQty: 0, totalRevenue: 0, skus: {} };
       agg[rep].totalQty += row.qty_sold;

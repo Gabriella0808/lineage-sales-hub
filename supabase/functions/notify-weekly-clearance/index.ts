@@ -22,6 +22,10 @@ const ADMIN_RECIPIENTS: { name: string; email: string }[] = [
   { name: "Gabriella", email: "gabriella@lineage-collections.com" },
 ];
 
+// Manager first names (lowercased) — these appear as rep_owner on some dealers
+// but should NOT be counted in the per-rep stats breakdown.
+const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
+
 const ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
 
@@ -128,6 +132,8 @@ Deno.serve(async (req) => {
 
     for (const line of invoiceLines) {
       const rawRep = dealerToRep[line.dealer_id ?? ""] ?? "Unknown";
+      // Skip lines attributed to managers — managers are excluded from the per-rep stats
+      if (MANAGER_NAMES.has(rawRep.trim().toLowerCase())) continue;
       const rep = toDisplayName(rawRep);
       const sku = line.sku ?? "?";
       const qty = line.qty ?? 0;
@@ -176,15 +182,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. Build recipient list: admins + managers + reps (deduplicated)
-    const [salesReps, managers] = await Promise.all([
-      fetchAll<{ name: string; email: string | null }>((f, t) =>
-        supabase.from("sales_reps").select("name,email").not("email", "is", null).range(f, t) as any,
-      ),
-      fetchAll<{ name: string; email: string | null }>((f, t) =>
-        supabase.from("managers").select("name,email").not("email", "is", null).range(f, t) as any,
-      ),
-    ]);
+    // 5. Build recipient list: admins + reps (managers excluded while in testing)
+    const salesReps = await fetchAll<{ name: string; email: string | null }>((f, t) =>
+      supabase.from("sales_reps").select("name,email").not("email", "is", null).range(f, t) as any,
+    );
 
     const seen = new Set<string>();
     const allRecipients: { name: string; email: string }[] = [];
@@ -198,7 +199,7 @@ Deno.serve(async (req) => {
     };
 
     ADMIN_RECIPIENTS.forEach((r) => add(r.name, r.email));
-    managers.forEach((m) => add(m.name, m.email));
+    // NOTE: managers are intentionally NOT added yet — still in testing.
     salesReps.forEach((r) => add(r.name, r.email));
 
     const recipients = testEmail

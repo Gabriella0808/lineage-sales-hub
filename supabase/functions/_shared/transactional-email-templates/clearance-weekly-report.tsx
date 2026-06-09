@@ -204,7 +204,7 @@ const rowTable = { width: '100%', borderCollapse: 'collapse' as const }
 const repHeader = {
   fontSize: '13px',
   fontWeight: 700,
-  color: 'hsl(220, 35%, 22%)',
+  color: '#C5A572',
   padding: '4px 0 8px',
   textAlign: 'left' as const,
   borderBottom: '1px solid hsl(220, 13%, 88%)',

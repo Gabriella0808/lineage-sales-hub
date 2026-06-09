@@ -549,15 +549,15 @@ export default function CaptureLeadsPage() {
                           </thead>
                           <tbody>
                             {ml.map((l) => (
-                              <tr key={l.id} className="border-t hover:bg-muted/30">
+                              <tr key={l.id} onClick={() => setViewingLead(l)} className="border-t hover:bg-muted/30 cursor-pointer">
                                 <td className="px-3 py-2 font-medium">{l.contact_name || "—"}</td>
                                 <td className="px-3 py-2 text-muted-foreground">{l.dealer || "—"}</td>
                                 <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">
-                                  {l.email ? <a href={`mailto:${l.email}`} className="hover:underline">{l.email}</a> : "—"}
+                                  {l.email ? <a href={`mailto:${l.email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.email}</a> : "—"}
                                 </td>
                                 <td className="px-3 py-2">{l.sales_rep || "—"}</td>
                                 <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">
-                                  {l.rep_email ? <a href={`mailto:${l.rep_email}`} className="hover:underline">{l.rep_email}</a> : "—"}
+                                  {l.rep_email ? <a href={`mailto:${l.rep_email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.rep_email}</a> : "—"}
                                 </td>
                                 <td className="px-3 py-2 text-muted-foreground max-w-[220px] hidden md:table-cell">
                                   {l.product_interest ? (
@@ -571,7 +571,7 @@ export default function CaptureLeadsPage() {
                                 <td className="px-3 py-2 text-muted-foreground hidden md:table-cell">{l.phone || "—"}</td>
                                 <td className="px-3 py-2">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "—"}</td>
                                 <td className="px-3 py-2 text-right font-medium">{l.order_amount ? fmt(l.order_amount) : "—"}</td>
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex items-center justify-end gap-1">
                                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit lead">
                                       <Pencil className="h-3.5 w-3.5" />

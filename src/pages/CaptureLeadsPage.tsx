@@ -827,3 +827,29 @@ function Field({ label, required, children }: { label: string; required?: boolea
     </div>
   );
 }
+
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-2">{title}</h4>
+      <div className="space-y-2.5 rounded-lg border bg-muted/20 p-3">{children}</div>
+    </div>
+  );
+}
+
+function DetailRow({ icon: Icon, label, value, href }: { icon: any; label: string; value: string | null | undefined; href?: string }) {
+  if (!value) value = "—";
+  return (
+    <div className="flex items-start gap-2 text-sm">
+      <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        {href && value !== "—" ? (
+          <a href={href} className="hover:underline break-all">{value}</a>
+        ) : (
+          <p className="break-words">{value}</p>
+        )}
+      </div>
+    </div>
+  );
+}

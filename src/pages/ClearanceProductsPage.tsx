@@ -570,7 +570,7 @@ export default function ClearanceProductsPage() {
           <p className="text-2xl font-semibold tabular-nums">{filtered.length}</p>
         </Card>
         <Card className="p-4 space-y-1">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Total On Hand</p>
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Total Available</p>
           <p className="text-2xl font-semibold tabular-nums">{totalOnHand.toLocaleString()}</p>
         </Card>
         <Card className="p-4 space-y-1">

@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
             templateData: {
               recipientName: r.name,
               weekLabel,
-              rows,
+              rows: filteredRows,
               totalUnits,
               totalRevenue,
               skusMoved,

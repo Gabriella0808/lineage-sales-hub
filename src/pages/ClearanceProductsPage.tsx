@@ -542,9 +542,9 @@ export default function ClearanceProductsPage() {
     });
   }, [items, search, collectionFilter]);
 
-  const totalOnHand     = useMemo(() => filtered.reduce((s, i) => s + i.on_hand, 0), [filtered]);
+  const totalOnHand     = useMemo(() => filtered.reduce((s, i) => s + i.available, 0), [filtered]);
   const totalRetailValue = useMemo(
-    () => filtered.reduce((s, i) => s + i.on_hand * (i.list_price ?? 0), 0),
+    () => filtered.reduce((s, i) => s + i.available * (i.list_price ?? 0), 0),
     [filtered],
   );
 

@@ -14,6 +14,7 @@ interface NewLeadAssignedProps {
   collections?: string
   orderAmount?: string
   market?: string
+  notes?: string
   leadRef?: string
 }
 

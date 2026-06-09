@@ -16,6 +16,7 @@ import { template as customerQuoteSent } from './customer-quote-sent.tsx'
 import { template as taskAssigned } from './task-assigned.tsx'
 import { template as weeklyCheckinReport } from './weekly-checkin-report.tsx'
 import { template as clearanceWeeklyReport } from './clearance-weekly-report.tsx'
+import { template as disregardClearanceTest } from './disregard-clearance-test.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-lead-assigned': newLeadAssigned,
@@ -25,4 +26,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'task-assigned': taskAssigned,
   'weekly-checkin-report': weeklyCheckinReport,
   'clearance-weekly-report': clearanceWeeklyReport,
+  'disregard-clearance-test': disregardClearanceTest,
 }

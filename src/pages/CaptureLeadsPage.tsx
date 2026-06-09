@@ -122,10 +122,10 @@ export default function CaptureLeadsPage() {
         const sa = a.start_date ? new Date(a.start_date).getTime() : 0;
         const sb = b.start_date ? new Date(b.start_date).getTime() : 0;
         if (sb !== sa) return sb - sa;
-        const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
-        if (cb !== ca) return cb - ca;
-        return inferRecency(b) - inferRecency(a) || a.name.localeCompare(b.name);
+        const ir = inferRecency(b) - inferRecency(a);
+        if (ir !== 0) return ir;
+        // When market dates tie, sort by name (alphabetical) so order is stable and predictable
+        return (a.name || "").localeCompare(b.name || "");
       });
       setMarkets(sorted);
     }

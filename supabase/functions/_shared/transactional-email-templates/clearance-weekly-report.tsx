@@ -9,6 +9,13 @@ const SITE_NAME = 'Lineage Collections'
 interface SkuRow {
   sku: string
   product: string
+  collection?: string
+  qty: number
+  revenue: number
+}
+
+interface CollectionRow {
+  collection: string
   qty: number
   revenue: number
 }
@@ -18,7 +25,9 @@ interface RepRow {
   totalQty: number
   totalRevenue: number
   skus: SkuRow[]
+  collections?: CollectionRow[]
 }
+
 
 interface ClearanceWeeklyReportProps {
   recipientName?: string

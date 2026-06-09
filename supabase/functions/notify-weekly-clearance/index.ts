@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
         totalUnits,
         totalRevenue,
         skusMoved,
-        repsWithSales: rows.length,
+        repsWithSales: filteredRows.length,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

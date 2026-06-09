@@ -6,14 +6,6 @@ import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = 'Lineage Collections'
 
-interface SkuRow {
-  sku: string
-  product: string
-  collection?: string
-  qty: number
-  revenue: number
-}
-
 interface CollectionRow {
   collection: string
   qty: number
@@ -24,9 +16,9 @@ interface RepRow {
   rep: string
   totalQty: number
   totalRevenue: number
-  skus: SkuRow[]
   collections?: CollectionRow[]
 }
+
 
 
 interface ClearanceWeeklyReportProps {
@@ -79,13 +71,10 @@ const ClearanceWeeklyReportEmail = ({
                   <div style={summaryLabel}>Revenue</div>
                 </td>
                 <td style={summaryCellBorder}>
-                  <div style={summaryNum}>{skusMoved}</div>
-                  <div style={summaryLabel}>SKUs Moved</div>
-                </td>
-                <td style={summaryCellBorder}>
                   <div style={summaryNum}>{rows.length}</div>
                   <div style={summaryLabel}>Reps with Sales</div>
                 </td>
+
               </tr>
             </tbody>
           </table>
@@ -124,28 +113,9 @@ const ClearanceWeeklyReportEmail = ({
               </table>
             )}
 
-            <table style={{ ...rowTable, marginTop: '10px' }} cellPadding={0} cellSpacing={0}>
-              <thead>
-                <tr>
-                  <th style={th}>SKU</th>
-                  <th style={th}>Product</th>
-                  <th style={thNum}>Units</th>
-                  <th style={thNum}>Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {repRow.skus.map((s) => (
-                  <tr key={s.sku}>
-                    <td style={tdMono}>{s.sku}</td>
-                    <td style={tdName}>{s.product}{s.collection ? ` · ${s.collection}` : ''}</td>
-                    <td style={tdNum}>{s.qty.toLocaleString()}</td>
-                    <td style={tdNum}>{fmt(s.revenue)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </Section>
         ))}
+
 
 
         {rows.length === 0 && (
@@ -197,22 +167,23 @@ export const template = {
         rep: 'Will',
         totalQty: 28,
         totalRevenue: 2240,
-        skus: [
-          { sku: 'CL-1001', product: 'Clearance Widget A', qty: 15, revenue: 1200 },
-          { sku: 'CL-1002', product: 'Clearance Widget B', qty: 13, revenue: 1040 },
+        collections: [
+          { collection: 'Harbor', qty: 20, revenue: 1600 },
+          { collection: 'Clearance', qty: 8, revenue: 640 },
         ],
       },
       {
         rep: 'Mateo',
         totalQty: 19,
         totalRevenue: 1610,
-        skus: [
-          { sku: 'CL-1003', product: 'Clearance Item C', qty: 19, revenue: 1610 },
+        collections: [
+          { collection: 'Harbor', qty: 19, revenue: 1610 },
         ],
       },
     ],
     portalUrl: 'https://www.lineage-managerhub.com/clearance/analytics',
   },
+
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: '"DM Sans", Arial, sans-serif' }
@@ -271,14 +242,8 @@ const th = {
   borderBottom: '1px solid hsl(220, 13%, 88%)',
 }
 const thNum = { ...th, textAlign: 'right' as const, padding: '6px 0 6px 6px' }
-const tdMono = {
-  fontFamily: 'monospace',
-  fontSize: '12px',
-  color: 'hsl(220, 10%, 46%)',
-  padding: '8px 6px 8px 0',
-  whiteSpace: 'nowrap' as const,
-}
 const tdName = { fontSize: '13px', color: '#222', padding: '8px 6px 8px 0' }
+
 const tdNum = {
   fontSize: '13px',
   color: '#222',

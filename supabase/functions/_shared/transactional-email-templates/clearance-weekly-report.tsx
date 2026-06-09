@@ -9,6 +9,13 @@ const SITE_NAME = 'Lineage Collections'
 interface SkuRow {
   sku: string
   product: string
+  collection?: string
+  qty: number
+  revenue: number
+}
+
+interface CollectionRow {
+  collection: string
   qty: number
   revenue: number
 }
@@ -18,7 +25,9 @@ interface RepRow {
   totalQty: number
   totalRevenue: number
   skus: SkuRow[]
+  collections?: CollectionRow[]
 }
+
 
 interface ClearanceWeeklyReportProps {
   recipientName?: string
@@ -91,6 +100,32 @@ const ClearanceWeeklyReportEmail = ({
                   <th style={repHeader} colSpan={3}>{repRow.rep}</th>
                   <th style={repHeaderRight}>{repRow.totalQty.toLocaleString()} units · {fmt(repRow.totalRevenue)}</th>
                 </tr>
+              </thead>
+            </table>
+
+            {repRow.collections && repRow.collections.length > 0 && (
+              <table style={{ ...rowTable, marginTop: '4px' }} cellPadding={0} cellSpacing={0}>
+                <thead>
+                  <tr>
+                    <th style={th}>Collection</th>
+                    <th style={thNum}>Units</th>
+                    <th style={thNum}>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {repRow.collections.map((c) => (
+                    <tr key={c.collection}>
+                      <td style={tdName}>{c.collection}</td>
+                      <td style={tdNum}>{c.qty.toLocaleString()}</td>
+                      <td style={tdNum}>{fmt(c.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <table style={{ ...rowTable, marginTop: '10px' }} cellPadding={0} cellSpacing={0}>
+              <thead>
                 <tr>
                   <th style={th}>SKU</th>
                   <th style={th}>Product</th>
@@ -102,7 +137,7 @@ const ClearanceWeeklyReportEmail = ({
                 {repRow.skus.map((s) => (
                   <tr key={s.sku}>
                     <td style={tdMono}>{s.sku}</td>
-                    <td style={tdName}>{s.product}</td>
+                    <td style={tdName}>{s.product}{s.collection ? ` · ${s.collection}` : ''}</td>
                     <td style={tdNum}>{s.qty.toLocaleString()}</td>
                     <td style={tdNum}>{fmt(s.revenue)}</td>
                   </tr>
@@ -111,6 +146,7 @@ const ClearanceWeeklyReportEmail = ({
             </table>
           </Section>
         ))}
+
 
         {rows.length === 0 && (
           <Text style={{ ...text, color: '#888' }}>No clearance product sales recorded for this week.</Text>

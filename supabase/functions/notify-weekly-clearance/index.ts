@@ -22,6 +22,10 @@ const ADMIN_RECIPIENTS: { name: string; email: string }[] = [
   { name: "Gabriella", email: "gabriella@lineage-collections.com" },
 ];
 
+// Manager first names (lowercased) — these appear as rep_owner on some dealers
+// but should NOT be counted in the per-rep stats breakdown.
+const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
+
 const ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
 

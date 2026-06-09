@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
-  UserCog, LogOut, LayoutGrid, ListChecks, Boxes, MapPinned, Plane, PieChart,
+  UserCog, LogOut, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
   FileText, Send, FolderOpen, Tag,
 } from "lucide-react";
@@ -75,6 +75,7 @@ const NAV_SECTIONS: NavSection[] = [
       roles: ["admin", "manager"],
       children: [
         { title: "Accounts", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
+        { title: "Accounts Analytics", url: "/crm/accounts/analytics", icon: BarChart3, roles: ["admin", "manager"] },
         { title: "Visit Analytics", url: "/check-ins/analytics", icon: PieChart, roles: ["admin", "manager"] },
       ],
     },

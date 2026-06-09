@@ -41,6 +41,7 @@ import AuthPage from "@/pages/AuthPage";
 import UnsubscribePage from "@/pages/UnsubscribePage";
 import NotFound from "@/pages/NotFound";
 import CrmAccountsPage from "@/pages/crm/CrmAccountsPage";
+import CrmAccountsAnalyticsPage from "@/pages/crm/CrmAccountsAnalyticsPage";
 import CrmAccountDetailPage from "@/pages/crm/CrmAccountDetailPage";
 import CrmNewAccountPage from "@/pages/crm/CrmNewAccountPage";
 import CrmGuard from "@/components/CrmGuard";
@@ -97,6 +98,7 @@ const App = () => (
                       <Route path="/clearance/analytics" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceAnalyticsPage /></ProtectedRoute>} />
                       <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]}><OrgChartPage /></ProtectedRoute>} />
                       <Route path="/crm/accounts" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsPage /></CrmGuard></ProtectedRoute>} />
+                      <Route path="/crm/accounts/analytics" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsAnalyticsPage /></CrmGuard></ProtectedRoute>} />
                       <Route path="/crm/accounts/new" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmNewAccountPage /></CrmGuard></ProtectedRoute>} />
                       <Route path="/crm/accounts/:id" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountDetailPage /></CrmGuard></ProtectedRoute>} />
 

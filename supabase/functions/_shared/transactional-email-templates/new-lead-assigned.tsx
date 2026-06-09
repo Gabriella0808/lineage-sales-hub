@@ -14,6 +14,7 @@ interface NewLeadAssignedProps {
   collections?: string
   orderAmount?: string
   market?: string
+  notes?: string
   leadRef?: string
 }
 
@@ -25,6 +26,7 @@ const NewLeadAssignedEmail = ({
   collections,
   orderAmount,
   market,
+  notes,
   leadRef,
 }: NewLeadAssignedProps) => {
   const capturedAt = new Date().toLocaleDateString('en-US', {
@@ -54,6 +56,13 @@ const NewLeadAssignedEmail = ({
           <Row label="Order Amount" value={orderAmount} />
           <Row label="Captured" value={capturedAt} />
         </Section>
+
+        {notes && notes.trim() ? (
+          <Section style={notesBox}>
+            <Text style={notesLabel}>Notes</Text>
+            <Text style={notesText}>{notes}</Text>
+          </Section>
+        ) : null}
 
         <Hr style={hr} />
         <Text style={footer}>— The {SITE_NAME} Team</Text>
@@ -93,6 +102,7 @@ export const template = {
     collections: 'Coastal, Heritage',
     orderAmount: '$12,500',
     market: 'High Point Spring 2026',
+    notes: 'Customer is interested in our new Coastal line. Follow up within 48 hours.',
   },
 } satisfies TemplateEntry
 
@@ -137,3 +147,24 @@ const rowValue = {
 }
 const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#888', margin: '0' }
+const notesBox = {
+  backgroundColor: '#ffffff',
+  border: '1px solid hsl(220, 13%, 90%)',
+  borderRadius: '8px',
+  padding: '16px 20px',
+  margin: '20px 0',
+}
+const notesLabel = {
+  fontSize: '13px',
+  color: 'hsl(220, 10%, 46%)',
+  margin: '0 0 8px',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.5px',
+}
+const notesText = {
+  fontSize: '14px',
+  color: '#222',
+  lineHeight: '1.6',
+  margin: '0',
+  whiteSpace: 'pre-wrap' as const,
+}

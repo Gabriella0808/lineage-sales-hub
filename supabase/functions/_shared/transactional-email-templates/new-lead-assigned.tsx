@@ -10,6 +10,7 @@ interface NewLeadAssignedProps {
   repName?: string
   contactName?: string
   dealer?: string
+  dealerEmail?: string
   collections?: string
   orderAmount?: string
   market?: string
@@ -20,6 +21,7 @@ const NewLeadAssignedEmail = ({
   repName,
   contactName,
   dealer,
+  dealerEmail,
   collections,
   orderAmount,
   market,
@@ -48,6 +50,7 @@ const NewLeadAssignedEmail = ({
         <Section style={detailsBox}>
           <Row label="Contact Name" value={contactName} />
           <Row label="Dealer" value={dealer} />
+          <Row label="Dealer Email" value={dealerEmail} />
           <Row label="Collections" value={collections} />
           <Row label="Order Amount" value={orderAmount} />
           <Row label="Captured" value={capturedAt} />
@@ -87,6 +90,7 @@ export const template = {
     repName: 'Alex',
     contactName: 'Jane Doe',
     dealer: 'Acme Furniture Co.',
+    dealerEmail: 'orders@acmefurniture.com',
     collections: 'Coastal, Heritage',
     orderAmount: '$12,500',
     market: 'High Point Spring 2026',

@@ -90,6 +90,7 @@ export const template = {
     repName: 'Alex',
     contactName: 'Jane Doe',
     dealer: 'Acme Furniture Co.',
+    dealerEmail: 'orders@acmefurniture.com',
     collections: 'Coastal, Heritage',
     orderAmount: '$12,500',
     market: 'High Point Spring 2026',

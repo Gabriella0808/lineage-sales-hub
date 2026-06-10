@@ -178,7 +178,6 @@ function SidebarNavItemRow({
                 className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-sidebar-muted hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
                 activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
               >
-                <child.icon className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{child.title}</span>
               </NavLink>
             </li>

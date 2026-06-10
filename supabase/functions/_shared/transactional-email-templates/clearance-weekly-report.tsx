@@ -87,6 +87,50 @@ const ClearanceWeeklyReportEmail = ({
           </table>
         </Section>
 
+        {/* Contest leaderboard */}
+        {rows.some((r) => (r.points ?? 0) > 0) && (
+          <Section style={contestBox}>
+            <Heading style={contestH2}>🏆 Clearance Sales Contest</Heading>
+            <Text style={contestSub}>
+              Earn ${bonusAmount} for every {pointsPerBonus} points.
+              {contestEndLabel ? ` Contest ends ${contestEndLabel}.` : ''}
+            </Text>
+            {rows
+              .slice()
+              .sort((a, b) => (b.points ?? 0) - (a.points ?? 0))
+              .map((r, i) => {
+                const pts = r.points ?? 0
+                const tier = Math.floor(pts / pointsPerBonus)
+                const intoTier = pts - tier * pointsPerBonus
+                const pct = Math.max(0, Math.min(100, (intoTier / pointsPerBonus) * 100))
+                const earned = tier * bonusAmount
+                const toNext = pointsPerBonus - intoTier
+                return (
+                  <div key={r.rep} style={lbRow}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }} cellPadding={0} cellSpacing={0}>
+                      <tbody>
+                        <tr>
+                          <td style={lbName}>
+                            <span style={lbRank}>#{i + 1}</span> {r.rep}
+                          </td>
+                          <td style={lbPts}>
+                            {pts.toLocaleString()} pts{earned > 0 ? ` · ${fmt(earned)} earned` : ''}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div style={barOuter}>
+                      <div style={{ ...barInner, width: `${pct}%` }} />
+                    </div>
+                    <div style={lbMeta}>
+                      {toNext} pts to next ${bonusAmount} · {r.dealersShopped ?? 0} dealers shopped · {fmt(r.totalRevenue)} sales
+                    </div>
+                  </div>
+                )
+              })}
+          </Section>
+        )}
+
         {/* Per-rep breakdown */}
         {rows.map((repRow, idx) => (
           <React.Fragment key={repRow.rep}>

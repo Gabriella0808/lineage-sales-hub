@@ -107,8 +107,8 @@ export default function CrmAccountsPage() {
         <Select value={stageFilter} onValueChange={setStageFilter}>
           <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All stages</SelectItem>
-            {LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+            <SelectItem value="all">All types</SelectItem>
+            {ACCOUNT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={brandFilter} onValueChange={setBrandFilter}>

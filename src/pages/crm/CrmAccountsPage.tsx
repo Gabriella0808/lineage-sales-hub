@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, ArrowLeft } from "lucide-react";
 
@@ -142,7 +141,10 @@ export default function CrmAccountsPage() {
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select value={a.brand} onValueChange={(v) => update.mutate({ id: a.id, patch: { brand: v as Brand } })}>
                         <SelectTrigger className="h-7 text-xs border-0 bg-transparent hover:bg-muted/60 px-2 py-0 w-fit min-w-[120px]">
-                          <Badge variant="outline" className={`text-[10px] border ${BRAND_COLORS[a.brand] ?? ""}`}>{a.brand}</Badge>
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                            <span className={`h-1.5 w-1.5 rounded-full ${BRAND_COLORS[a.brand] ?? ""}`} />
+                            {a.brand}
+                          </span>
                         </SelectTrigger>
                         <SelectContent>
                           {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
@@ -156,7 +158,10 @@ export default function CrmAccountsPage() {
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select value={a.lifecycle_stage} onValueChange={(v) => update.mutate({ id: a.id, patch: { lifecycle_stage: v as LifecycleStage } })}>
                         <SelectTrigger className="h-7 text-xs border-0 bg-transparent hover:bg-muted/60 px-2 py-0 w-fit min-w-[120px]">
-                          <Badge variant="outline" className={`text-[10px] border ${stage.color}`}>{stage.label}</Badge>
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                            <span className={`h-1.5 w-1.5 rounded-full ${stage.dot}`} />
+                            {stage.label}
+                          </span>
                         </SelectTrigger>
                         <SelectContent>
                           {LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}

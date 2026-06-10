@@ -4,7 +4,6 @@ import { useCrmAccounts, useCrmReps, LIFECYCLE_STAGES } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
 
 export default function CrmDirectoryPage() {
@@ -59,7 +58,12 @@ export default function CrmDirectoryPage() {
                     <td className="px-3 py-2 text-muted-foreground">{a.email || "—"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{repName(a.assigned_rep_id)}</td>
-                    <td className="px-3 py-2"><Badge variant="outline" className={`text-[10px] border ${stage.color}`}>{stage.label}</Badge></td>
+                    <td className="px-3 py-2">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                        <span className={`h-1.5 w-1.5 rounded-full ${stage.dot}`} />
+                        {stage.label}
+                      </span>
+                    </td>
                   </tr>
                 );
               })}

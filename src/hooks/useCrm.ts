@@ -5,10 +5,10 @@ import { useAuth } from "@/contexts/AuthContext";
 const CRM_STALE_TIME = 60_000;
 
 export const LIFECYCLE_STAGES = [
-  { id: "prospect", label: "Prospect", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  { id: "contact_made", label: "Contact Made", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  { id: "closed_won", label: "Closed Won", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  { id: "closed_lost", label: "Closed Lost", color: "bg-rose-100 text-rose-700 border-rose-200" },
+  { id: "prospect", label: "Prospect", dot: "bg-blue-500" },
+  { id: "contact_made", label: "Contact Made", dot: "bg-amber-500" },
+  { id: "closed_won", label: "Closed Won", dot: "bg-emerald-500" },
+  { id: "closed_lost", label: "Closed Lost", dot: "bg-rose-500" },
 ] as const;
 
 export type LifecycleStage = (typeof LIFECYCLE_STAGES)[number]["id"];
@@ -17,10 +17,10 @@ export const BRANDS = ["Cabinet Beds", "Sea Winds", "Finn & Louise", "Lux Lighti
 export type Brand = (typeof BRANDS)[number];
 
 export const BRAND_COLORS: Record<Brand, string> = {
-  "Cabinet Beds": "bg-slate-100 text-slate-700 border-slate-200",
-  "Sea Winds": "bg-cyan-100 text-cyan-700 border-cyan-200",
-  "Finn & Louise": "bg-violet-100 text-violet-700 border-violet-200",
-  "Lux Lighting": "bg-amber-100 text-amber-800 border-amber-200",
+  "Cabinet Beds": "bg-slate-500",
+  "Sea Winds": "bg-cyan-500",
+  "Finn & Louise": "bg-violet-500",
+  "Lux Lighting": "bg-amber-500",
 };
 
 export interface CrmAccount {

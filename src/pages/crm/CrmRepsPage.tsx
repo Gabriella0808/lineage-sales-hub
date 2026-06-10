@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { useCrmAccounts, useCrmReps, LIFECYCLE_STAGES } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
@@ -37,13 +36,14 @@ export default function CrmRepsPage() {
                   <div className="font-serif text-lg leading-tight">{rep.name}</div>
                   {rep.email && <div className="text-[11px] text-muted-foreground truncate">{rep.email}</div>}
                 </div>
-                <Badge variant="secondary" className="tabular-nums">{total}</Badge>
+                <span className="inline-flex items-center justify-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium tabular-nums">{total}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {LIFECYCLE_STAGES.map((s) => byStage[s.id] > 0 && (
-                  <Badge key={s.id} variant="outline" className={`text-[10px] border ${s.color}`}>
+                  <span key={s.id} className="inline-flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+                    <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
                     {s.label}: {byStage[s.id]}
-                  </Badge>
+                  </span>
                 ))}
               </div>
               {states.length > 0 && (

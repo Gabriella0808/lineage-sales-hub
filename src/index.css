@@ -133,3 +133,14 @@
     @apply inline-block h-px w-10 bg-accent align-middle mr-3;
   }
 }
+
+/* Globally suppress focus rings across the portal */
+@layer base {
+  *:focus,
+  *:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
+  }
+}

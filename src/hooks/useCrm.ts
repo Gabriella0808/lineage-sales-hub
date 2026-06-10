@@ -29,6 +29,12 @@ export const ACCOUNT_TYPES = [
 ] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number]["id"];
 
+export const PROSPECT_TYPES = [
+  { id: "night_and_day", label: "Night & Day", dot: "bg-violet-500" },
+  { id: "top_100", label: "Top 100 Furniture Stores", dot: "bg-amber-500" },
+] as const;
+export type ProspectType = (typeof PROSPECT_TYPES)[number]["id"];
+
 export interface CrmAccount {
   id: string;
   company_name: string;

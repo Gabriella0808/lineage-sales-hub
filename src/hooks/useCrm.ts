@@ -81,6 +81,7 @@ export interface CrmAccount {
   brands: Brand[];
   status: string;
   assigned_rep_id: string | null;
+  assigned_manager_id: string | null;
   contact_first_name: string | null;
   contact_last_name: string | null;
   main_phone: string | null;
@@ -148,6 +149,27 @@ export function useCrmReps() {
         .order("name");
       if (error) throw error;
       return (data ?? []) as Rep[];
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+export interface Manager {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
+export function useCrmManagers() {
+  return useQuery({
+    queryKey: ["crm_managers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("managers")
+        .select("id, name, email")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as Manager[];
     },
     staleTime: 5 * 60_000,
   });

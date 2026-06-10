@@ -206,6 +206,7 @@ export type Database = {
       crm_accounts: {
         Row: {
           account_type: string
+          assigned_manager_id: string | null
           assigned_rep_id: string | null
           brand: string
           brands: string[]
@@ -231,6 +232,7 @@ export type Database = {
         }
         Insert: {
           account_type?: string
+          assigned_manager_id?: string | null
           assigned_rep_id?: string | null
           brand?: string
           brands?: string[]
@@ -256,6 +258,7 @@ export type Database = {
         }
         Update: {
           account_type?: string
+          assigned_manager_id?: string | null
           assigned_rep_id?: string | null
           brand?: string
           brands?: string[]
@@ -280,6 +283,13 @@ export type Database = {
           zip?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_accounts_assigned_manager_id_fkey"
+            columns: ["assigned_manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_accounts_assigned_rep_id_fkey"
             columns: ["assigned_rep_id"]

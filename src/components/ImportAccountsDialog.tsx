@@ -10,7 +10,7 @@ import { BRANDS } from "@/hooks/useCrm";
 
 const EXPECTED_COLUMNS = [
   "company_name","brand","contact_first_name","contact_last_name","email","main_phone",
-  "website","street_1","city","state","zip","account_type","prospect_type","notes",
+  "website","street_1","city","state","zip","account_type","prospect_type","assigned_rep","assigned_manager","notes",
 ];
 
 function parseCsv(text: string): Record<string, string>[] {
@@ -57,11 +57,20 @@ export function ImportAccountsDialog() {
       const rows = parseCsv(text);
       if (!rows.length) throw new Error("CSV appears empty");
 
+      const [{ data: repsData }, { data: managersData }] = await Promise.all([
+        supabase.from("sales_reps").select("id, name"),
+        supabase.from("managers").select("id, name"),
+      ]);
+      const repByName = new Map((repsData ?? []).map((r: any) => [String(r.name).trim().toLowerCase(), r.id]));
+      const mgrByName = new Map((managersData ?? []).map((m: any) => [String(m.name).trim().toLowerCase(), m.id]));
+
       const payload = rows
         .filter((r) => (r.company_name || "").trim().length > 0)
         .map((r) => {
           const brand = BRANDS.includes(r.brand as any) ? r.brand : "Sea Winds";
           const account_type = r.account_type === "dealer" ? "dealer" : "prospect";
+          const repKey = (r.assigned_rep || "").trim().toLowerCase();
+          const mgrKey = (r.assigned_manager || "").trim().toLowerCase();
           return {
             company_name: r.company_name,
             brand,
@@ -78,6 +87,8 @@ export function ImportAccountsDialog() {
             state: r.state || null,
             zip: r.zip || null,
             prospect_type: r.prospect_type || null,
+            assigned_rep_id: repKey ? repByName.get(repKey) ?? null : null,
+            assigned_manager_id: mgrKey ? mgrByName.get(mgrKey) ?? null : null,
             notes: r.notes || null,
             created_by: user?.id ?? null,
           };

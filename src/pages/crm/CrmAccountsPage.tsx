@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useCrmAccounts, useCrmReps, useUpdateAccount, useProspectTypes, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
+import { useCrmAccounts, useCrmReps, useCrmManagers, useUpdateAccount, useProspectTypes, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ export default function CrmAccountsPage() {
   const nav = useNavigate();
   const { data: accounts = [], isLoading } = useCrmAccounts();
   const { data: reps = [] } = useCrmReps();
+  const { data: managers = [] } = useCrmManagers();
   const { data: prospectTypes = [] } = useProspectTypes();
   const update = useUpdateAccount();
 
@@ -61,6 +62,7 @@ export default function CrmAccountsPage() {
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);
   const repName = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name ?? "—" : "Unassigned");
+  const managerName = (id: string | null) => (id ? managers.find((m) => m.id === id)?.name ?? "—" : "Unassigned");
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -188,20 +190,21 @@ export default function CrmAccountsPage() {
           <table className="w-full text-xs table-fixed">
             <thead className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground sticky top-0 z-10">
               <tr>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted w-[18%]">Company</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Brand</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Contact</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Rep</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[14%]">City / State</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Phone</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted w-[16%]">Company</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Brand</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Contact</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Rep</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Manager</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">City / State</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Phone</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Account Type</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[14%]">Prospect Type</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[13%]">Prospect Type</th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
+              {isLoading && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
               {filtered.map((a) => {
                 const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
                 return (
@@ -270,6 +273,7 @@ export default function CrmAccountsPage() {
                     </td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{repName(a.assigned_rep_id)}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{managerName(a.assigned_manager_id)}</td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
                     <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{a.main_phone || "—"}</td>
                     <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>

@@ -38,10 +38,17 @@ export default function CrmAccountsPage() {
     if (v === "all") next.delete("stage"); else next.set("stage", v);
     setSearchParams(next, { replace: true });
   };
-  const brandFilter = brandParam;
-  const setBrandFilter = (v: string) => {
+  const brandFilters = brandParam === "all" || brandParam === "" ? [] : brandParam.split(",").filter(Boolean);
+  const toggleBrand = (b: string) => {
+    const set = new Set(brandFilters);
+    if (set.has(b)) set.delete(b); else set.add(b);
     const next = new URLSearchParams(searchParams);
-    if (v === "all") next.delete("brand"); else next.set("brand", v);
+    if (set.size === 0) next.delete("brand"); else next.set("brand", Array.from(set).join(","));
+    setSearchParams(next, { replace: true });
+  };
+  const clearBrands = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("brand");
     setSearchParams(next, { replace: true });
   };
   const prospectTypeFilter = prospectTypeParam;

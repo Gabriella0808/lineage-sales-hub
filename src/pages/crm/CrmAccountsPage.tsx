@@ -291,11 +291,19 @@ export default function CrmAccountsPage() {
                       </Select>
                     </td>
                     <td className="px-2 py-2.5 pr-4" onClick={(e) => e.stopPropagation()}>
-                      <ProspectTypeSelect
-                        compact
-                        value={a.prospect_type}
-                        onChange={(v) => update.mutate({ id: a.id, patch: { prospect_type: v } })}
-                      />
+                      {(() => {
+                        const rowTypes: string[] = (a.prospect_types && a.prospect_types.length > 0)
+                          ? a.prospect_types
+                          : (a.prospect_type ? [a.prospect_type] : []);
+                        return (
+                          <ProspectTypeSelect
+                            multi
+                            compact
+                            values={rowTypes}
+                            onChangeMulti={(vs) => update.mutate({ id: a.id, patch: { prospect_types: vs, prospect_type: vs[0] ?? null } as any })}
+                          />
+                        );
+                      })()}
                     </td>
 
                   </tr>

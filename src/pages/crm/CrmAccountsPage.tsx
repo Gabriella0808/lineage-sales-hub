@@ -23,6 +23,7 @@ export default function CrmAccountsPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const repParam = searchParams.get("rep") ?? "all";
+  const managerParam = searchParams.get("manager") ?? "all";
   const stageParam = searchParams.get("stage") ?? "all";
   const brandParam = searchParams.get("brand") ?? "all";
   const prospectTypeParam = searchParams.get("ptype") ?? "all";
@@ -31,6 +32,12 @@ export default function CrmAccountsPage() {
   const setRepFilter = (v: string) => {
     const next = new URLSearchParams(searchParams);
     if (v === "all") next.delete("rep"); else next.set("rep", v);
+    setSearchParams(next, { replace: true });
+  };
+  const managerFilter = managerParam;
+  const setManagerFilter = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("manager"); else next.set("manager", v);
     setSearchParams(next, { replace: true });
   };
   const stageFilter = stageParam;

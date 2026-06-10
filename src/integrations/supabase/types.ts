@@ -208,6 +208,7 @@ export type Database = {
           account_type: string
           assigned_rep_id: string | null
           brand: string
+          brands: string[]
           city: string | null
           company_name: string
           contact_first_name: string | null
@@ -231,6 +232,7 @@ export type Database = {
           account_type?: string
           assigned_rep_id?: string | null
           brand?: string
+          brands?: string[]
           city?: string | null
           company_name: string
           contact_first_name?: string | null
@@ -254,6 +256,7 @@ export type Database = {
           account_type?: string
           assigned_rep_id?: string | null
           brand?: string
+          brands?: string[]
           city?: string | null
           company_name?: string
           contact_first_name?: string | null

@@ -65,37 +65,41 @@ function parseNum(val: unknown): number {
 
 // ─── Status pill ──────────────────────────────────────────────────────────────
 
+const PILL_BASE =
+  "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10.5px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap ring-1 ring-inset";
+
 function StatusPill({ status, onHand }: { status: string | null; onHand: number }) {
   if (onHand <= 0 || status === "out-of-stock") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20">
+      <span className={`${PILL_BASE} bg-destructive/10 text-destructive ring-destructive/20`}>
         <XCircle className="h-3 w-3" /> Out of Stock
       </span>
     );
   }
   if (status === "critical") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20">
+      <span className={`${PILL_BASE} bg-destructive/10 text-destructive ring-destructive/20`}>
         <AlertTriangle className="h-3 w-3" /> Critical
       </span>
     );
   }
   if (status === "reorder-soon" || status === "stockout-risk") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning-foreground border border-warning/30">
+      <span className={`${PILL_BASE} bg-warning/10 text-warning ring-warning/20`}>
         <RefreshCw className="h-3 w-3" /> Reorder Soon
       </span>
     );
   }
   if (status === "fast-moving") {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-success/15 text-success border border-success/25">
+      <span className={`${PILL_BASE} bg-accent/15 text-accent ring-accent/25`}>
         <Zap className="h-3 w-3" /> Fast Moving
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
+    <span className={`${PILL_BASE} bg-success/10 text-success ring-success/20`}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       In Stock
     </span>
   );

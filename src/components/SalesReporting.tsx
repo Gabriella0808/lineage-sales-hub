@@ -829,6 +829,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <MultiSelect
               label="Dealer" selected={dealerIds} onChange={setDealerIds}
               options={visibleDealers.map((d) => ({ value: d.id, label: d.name }))}
+              searchable searchPlaceholder="Search dealers..."
             />
             <MultiSelect
               label="Brand" selected={brands} onChange={setBrands}

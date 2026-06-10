@@ -135,6 +135,7 @@ export default function TasksPage() {
   const [assignees, setAssignees] = useState<AssignableUser[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [taskAssignees, setTaskAssignees] = useState<Record<string, string[]>>({});
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("list");

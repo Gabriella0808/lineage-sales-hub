@@ -196,6 +196,21 @@ export default function CrmAccountDetailPage() {
           </Card>
         </div>
       </div>
+
+      <AlertDialog open={convertOpen} onOpenChange={setConvertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convert {account.company_name} to a dealer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes them from Accounts (prospects) and adds them to the Field Check-ins map with a "Converted from CRM" check-in.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmConvert}>Convert to dealer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

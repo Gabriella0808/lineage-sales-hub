@@ -89,7 +89,6 @@ export function ProspectTypeSelect({ value, onChange, className, triggerClassNam
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Add prospect type</DialogTitle>
-            <DialogDescription>This will be available everywhere prospect type is shown.</DialogDescription>
           </DialogHeader>
           <Input
             autoFocus

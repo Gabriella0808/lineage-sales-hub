@@ -115,13 +115,13 @@ export default function CrmAccountsPage() {
           <table className="w-full text-sm">
             <thead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
               <tr>
-                <th className="text-left px-4 py-2.5 font-medium bg-muted/70">Company</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted/70">Brand</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted/70">Contact</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted/70">Rep</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted/70">City / State</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted/70">Phone</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted/70 w-44">Stage</th>
+                <th className="text-left px-4 py-2.5 font-medium bg-muted">Company</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted">Brand</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted">Contact</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted">Rep</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted">City / State</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted">Phone</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted w-44">Stage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">

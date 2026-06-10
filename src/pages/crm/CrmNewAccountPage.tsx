@@ -52,7 +52,7 @@ export default function CrmNewAccountPage() {
     );
   };
 
-  const set = (k: keyof typeof f, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const set = (k: keyof typeof f, v: any) => setF((p) => ({ ...p, [k]: v }));
 
   return (
     <div className="space-y-6 max-w-4xl">

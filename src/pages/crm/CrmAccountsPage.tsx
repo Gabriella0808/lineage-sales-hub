@@ -62,6 +62,7 @@ export default function CrmAccountsPage() {
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);
   const repName = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name ?? "—" : "Unassigned");
+  const managerName = (id: string | null) => (id ? managers.find((m) => m.id === id)?.name ?? "—" : "Unassigned");
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -189,14 +190,15 @@ export default function CrmAccountsPage() {
           <table className="w-full text-xs table-fixed">
             <thead className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground sticky top-0 z-10">
               <tr>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted w-[18%]">Company</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Brand</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Contact</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Rep</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[14%]">City / State</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Phone</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted w-[16%]">Company</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Brand</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Contact</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Rep</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Manager</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">City / State</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Phone</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Account Type</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[14%]">Prospect Type</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[13%]">Prospect Type</th>
               </tr>
             </thead>
 

@@ -298,3 +298,24 @@ const tdNum = {
 const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#888', margin: '0' }
 const thinHr = { borderColor: 'hsl(220, 13%, 88%)', margin: '12px 0', borderWidth: '1px 0 0 0' }
+const contestBox = {
+  backgroundColor: 'hsl(214, 80%, 97%)',
+  border: '1px solid hsl(214, 60%, 85%)',
+  borderRadius: '8px',
+  padding: '16px 20px',
+  margin: '20px 0',
+}
+const contestH2 = {
+  fontFamily: '"DM Serif Display", Georgia, serif',
+  fontSize: '18px',
+  color: 'hsl(214, 80%, 36%)',
+  margin: '0 0 4px',
+}
+const contestSub = { fontSize: '12px', color: 'hsl(220, 10%, 46%)', margin: '0 0 14px' }
+const lbRow = { padding: '10px 0', borderTop: '1px solid hsl(214, 30%, 90%)' }
+const lbName = { fontSize: '14px', color: 'hsl(220, 35%, 22%)', fontWeight: 600, padding: '0 0 4px' }
+const lbRank = { color: 'hsl(214, 90%, 52%)', fontWeight: 700, marginRight: '6px' }
+const lbPts = { fontSize: '13px', color: 'hsl(220, 35%, 22%)', fontWeight: 600, textAlign: 'right' as const, padding: '0 0 4px', fontVariantNumeric: 'tabular-nums' as const, whiteSpace: 'nowrap' as const }
+const barOuter = { width: '100%', height: '8px', backgroundColor: 'hsl(214, 30%, 90%)', borderRadius: '4px', overflow: 'hidden' as const, margin: '4px 0 6px' }
+const barInner = { height: '8px', backgroundColor: 'hsl(214, 90%, 52%)', borderRadius: '4px' }
+const lbMeta = { fontSize: '11px', color: 'hsl(220, 10%, 46%)' }

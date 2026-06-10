@@ -17,9 +17,6 @@ interface RepRow {
   totalQty: number
   totalRevenue: number
   collections?: CollectionRow[]
-  points?: number
-  dealersShopped?: number
-  rank?: number
 }
 
 interface ClearanceWeeklyReportProps {
@@ -30,9 +27,6 @@ interface ClearanceWeeklyReportProps {
   totalRevenue?: number
   skusMoved?: number
   portalUrl?: string
-  contestEndLabel?: string
-  pointsPerBonus?: number
-  bonusAmount?: number
 }
 
 const fmt = (n: number) =>

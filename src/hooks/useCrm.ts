@@ -40,6 +40,7 @@ export interface CrmAccount {
   company_name: string;
   lifecycle_stage: LifecycleStage;
   account_type: AccountType;
+  prospect_type: ProspectType | null;
   brand: Brand;
   status: string;
   assigned_rep_id: string | null;

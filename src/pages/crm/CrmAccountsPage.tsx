@@ -15,6 +15,7 @@ export default function CrmAccountsPage() {
   const nav = useNavigate();
   const { data: accounts = [], isLoading } = useCrmAccounts();
   const { data: reps = [] } = useCrmReps();
+  const { data: prospectTypes = [] } = useProspectTypes();
   const update = useUpdateAccount();
 
   const [searchParams, setSearchParams] = useSearchParams();

@@ -34,7 +34,7 @@ export default function CrmAccountDetailPage() {
 
   if (isLoading || !form || !account) return <div className="p-8 text-muted-foreground">Loading…</div>;
 
-  const stage = LIFECYCLE_STAGES.find((s) => s.id === form.lifecycle_stage)!;
+  const type = ACCOUNT_TYPES.find((s) => s.id === (form.account_type ?? "prospect"))!;
   const repName = reps.find((r) => r.id === form.assigned_rep_id)?.name ?? "Unassigned";
 
   const save = () => {

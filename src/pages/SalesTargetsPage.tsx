@@ -144,7 +144,7 @@ export default function SalesTargetsPage() {
     <div className="animate-fade-in">
       <div className="page-header flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="page-title flex items-center gap-2"><Target className="h-6 w-6 text-accent" /> Sales Targets</h1>
+          <h1 className="page-title">Sales Targets</h1>
           <p className="page-subtitle">{canEdit ? "Set monthly sales goals per rep. Annual target = sum of all months." : "View-only. Contact an admin to update goals."}</p>
         </div>
         <div className="flex items-center gap-2">

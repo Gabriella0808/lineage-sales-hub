@@ -203,8 +203,8 @@ export default function CrmAccountsPage() {
             </thead>
 
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
+              {isLoading && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
               {filtered.map((a) => {
                 const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
                 return (
@@ -273,6 +273,7 @@ export default function CrmAccountsPage() {
                     </td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{repName(a.assigned_rep_id)}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{managerName(a.assigned_manager_id)}</td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
                     <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{a.main_phone || "—"}</td>
                     <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>

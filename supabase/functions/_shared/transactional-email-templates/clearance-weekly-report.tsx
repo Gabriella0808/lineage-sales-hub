@@ -40,9 +40,6 @@ const ClearanceWeeklyReportEmail = ({
   totalRevenue = 0,
   skusMoved = 0,
   portalUrl,
-  contestEndLabel,
-  pointsPerBonus = 100,
-  bonusAmount = 500,
 }: ClearanceWeeklyReportProps) => (
   <Html lang="en" dir="ltr">
     <Head />

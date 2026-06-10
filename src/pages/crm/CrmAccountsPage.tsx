@@ -114,18 +114,18 @@ export default function CrmAccountsPage() {
             {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={stageFilter} onValueChange={setStageFilter}>
-          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            {ACCOUNT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Select value={brandFilter} onValueChange={setBrandFilter}>
           <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All brands</SelectItem>
             {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={prospectTypeFilter} onValueChange={setProspectTypeFilter}>
+          <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All prospect types</SelectItem>
+            {prospectTypes.map((p) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={stateFilter} onValueChange={setStateFilter}>

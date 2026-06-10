@@ -244,8 +244,6 @@ Deno.serve(async (req) => {
               totalRevenue,
               skusMoved,
               portalUrl: "https://www.lineage-managerhub.com/clearance/analytics",
-              pointsPerBonus: POINTS_PER_BONUS,
-              bonusAmount: BONUS_AMOUNT,
             },
           }),
         });

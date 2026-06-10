@@ -94,7 +94,7 @@ export function ProspectTypeSelect({ value, onChange, className, triggerClassNam
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Top 100 Furniture Stores"
+            placeholder="type prospect name"
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }}
           />
           <DialogFooter>

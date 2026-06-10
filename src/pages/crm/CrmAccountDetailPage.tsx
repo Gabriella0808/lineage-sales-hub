@@ -29,6 +29,7 @@ export default function CrmAccountDetailPage() {
 
   const [form, setForm] = useState<Partial<CrmAccount> | null>(null);
   const [newNote, setNewNote] = useState("");
+  const [convertOpen, setConvertOpen] = useState(false);
 
   useEffect(() => { if (account) setForm(account); }, [account]);
 
@@ -44,6 +45,20 @@ export default function CrmAccountDetailPage() {
     );
   };
 
+  const confirmConvert = () => {
+    update.mutate(
+      { id: account.id, patch: { account_type: "dealer" as AccountType } },
+      {
+        onSuccess: () => {
+          toast({ title: "Converted to dealer", description: `${account.company_name} now appears on the Field Check-ins map.` });
+          nav("/crm/accounts");
+        },
+        onError: (e: any) => toast({ title: "Conversion failed", description: e.message, variant: "destructive" }),
+      },
+    );
+    setConvertOpen(false);
+  };
+
   const set = <K extends keyof CrmAccount>(k: K, v: CrmAccount[K]) => setForm((f) => ({ ...(f ?? {}), [k]: v }));
 
   return (
@@ -57,8 +72,8 @@ export default function CrmAccountDetailPage() {
         subtitle={[account.city, account.state].filter(Boolean).join(", ") || "—"}
         actions={
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <span className={`h-1.5 w-1.5 rounded-full ${stage.dot}`} />
-            {stage.label}
+            <span className={`h-1.5 w-1.5 rounded-full ${type.dot}`} />
+            {type.label}
           </span>
         }
       />
@@ -68,10 +83,16 @@ export default function CrmAccountDetailPage() {
           <CardHeader><CardTitle className="text-sm">Account Details</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Company name"><Input value={form.company_name ?? ""} onChange={(e) => set("company_name", e.target.value)} /></Field>
-            <Field label="Lifecycle stage">
-              <Select value={form.lifecycle_stage as string} onValueChange={(v) => set("lifecycle_stage", v as LifecycleStage)}>
+            <Field label="Account type">
+              <Select
+                value={(form.account_type as string) ?? "prospect"}
+                onValueChange={(v) => {
+                  if (v === "dealer" && account.account_type !== "dealer") setConvertOpen(true);
+                  else set("account_type", v as AccountType);
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
+                <SelectContent>{ACCOUNT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
             <Field label="Brand">

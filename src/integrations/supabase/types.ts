@@ -219,6 +219,7 @@ export type Database = {
           lifecycle_stage: string
           main_phone: string | null
           notes: string | null
+          prospect_type: string | null
           state: string | null
           status: string
           street_1: string | null
@@ -241,6 +242,7 @@ export type Database = {
           lifecycle_stage?: string
           main_phone?: string | null
           notes?: string | null
+          prospect_type?: string | null
           state?: string | null
           status?: string
           street_1?: string | null
@@ -263,6 +265,7 @@ export type Database = {
           lifecycle_stage?: string
           main_phone?: string | null
           notes?: string | null
+          prospect_type?: string | null
           state?: string | null
           status?: string
           street_1?: string | null

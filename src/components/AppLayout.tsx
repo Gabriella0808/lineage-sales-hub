@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";
 import lineageLogo from "@/assets/lineage-logo-white.png";
+import lineageLogoFooter from "@/assets/lineage-logo-footer.png.asset.json";
 import { NavLink } from "@/components/NavLink";
 import { isAllowedEmail, isCustomerService } from "@/components/EmailGuard";
 import { NotificationsBell } from "@/components/NotificationsBell";

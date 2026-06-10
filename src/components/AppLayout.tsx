@@ -151,7 +151,9 @@ function SidebarNavItemRow({
             "shadow-[inset_2px_0_0_0_hsl(var(--sidebar-primary))]",
           )}
         >
-          <item.icon className="h-[15px] w-[15px] shrink-0 text-sidebar-foreground/70 group-hover/item:text-sidebar-accent-foreground" />
+          {collapsed && (
+            <item.icon className="h-[15px] w-[15px] shrink-0 text-sidebar-foreground/70 group-hover/item:text-sidebar-accent-foreground" />
+          )}
           {!collapsed && <span className="truncate">{item.title}</span>}
         </NavLink>
         {!collapsed && hasChildren && (

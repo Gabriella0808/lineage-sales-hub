@@ -280,7 +280,7 @@ export default function CrmAccountsPage() {
                           update.mutate({ id: a.id, patch: { assigned_manager_id: v === "unassigned" ? null : v } });
                         }}
                       >
-                        <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0">
+                        <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0 focus:ring-0 focus-visible:ring-0 focus:ring-offset-0">
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground truncate">
                             <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-muted-foreground/40" />
                             <span className="truncate">{managerName(a.assigned_manager_id)}</span>

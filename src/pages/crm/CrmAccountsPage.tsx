@@ -139,6 +139,7 @@ export default function CrmAccountsPage() {
                 <th className="text-left px-3 py-2.5 font-medium bg-muted">City / State</th>
                 <th className="text-left px-3 py-2.5 font-medium bg-muted">Phone</th>
                 <th className="text-left px-3 py-2.5 font-medium bg-muted w-44">Account Type</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted w-52">Prospect Type</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">

@@ -59,12 +59,6 @@ export default function CrmNewAccountPage() {
         <CardContent className="pt-6">
           <form onSubmit={submit} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2"><L>Company name *</L><Input value={f.company_name} onChange={(e) => set("company_name", e.target.value)} required /></div>
-            <div><L>Lifecycle stage</L>
-              <Select value={f.lifecycle_stage} onValueChange={(v) => set("lifecycle_stage", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
             <div className="sm:col-span-2"><L>Brand</L>
               <Select value={f.brand} onValueChange={(v) => set("brand", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

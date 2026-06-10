@@ -39,23 +39,22 @@ const STATUS_FILTERS: { key: "all" | InventoryStatus; label: string; tone?: stri
   { key: "liquidate", label: "Liquidate" },
 ];
 
-const STATUS_BADGE: Record<InventoryStatus, { label: string; cls: string; icon?: React.ComponentType<{ className?: string }> }> = {
-  "out-of-stock":   { label: "Out of Stock",   cls: "bg-destructive/10 text-destructive border border-destructive/20", icon: XCircle },
-  "critical":       { label: "Critical",       cls: "bg-destructive/10 text-destructive border border-destructive/20", icon: AlertTriangle },
-  "reorder-soon":   { label: "Reorder Soon",   cls: "bg-warning/15 text-warning-foreground border border-warning/30", icon: RefreshCw },
-  "stockout-risk":  { label: "Stockout Risk",  cls: "bg-warning/15 text-warning-foreground border border-warning/30", icon: TrendingDown },
-  "fast-moving":    { label: "Fast Moving",    cls: "bg-success/15 text-success border border-success/25", icon: Zap },
-  "overstock":      { label: "Overstock",      cls: "bg-accent/15 text-accent-foreground border border-accent/30" },
-  "liquidate":      { label: "Liquidate",      cls: "bg-muted text-muted-foreground border border-border" },
-  "healthy":        { label: "Healthy",        cls: "bg-success/10 text-success border border-success/20" },
+const STATUS_BADGE: Record<InventoryStatus, { label: string; dot: string; icon?: React.ComponentType<{ className?: string }> }> = {
+  "out-of-stock":   { label: "Out of Stock",   dot: "bg-destructive", icon: XCircle },
+  "critical":       { label: "Critical",       dot: "bg-destructive", icon: AlertTriangle },
+  "reorder-soon":   { label: "Reorder Soon",   dot: "bg-warning",     icon: RefreshCw },
+  "stockout-risk":  { label: "Stockout Risk",  dot: "bg-warning",     icon: TrendingDown },
+  "fast-moving":    { label: "Fast Moving",    dot: "bg-success",     icon: Zap },
+  "overstock":      { label: "Overstock",      dot: "bg-accent" },
+  "liquidate":      { label: "Liquidate",      dot: "bg-muted-foreground" },
+  "healthy":        { label: "Healthy",        dot: "bg-success" },
 };
 
 function StatusPill({ status }: { status: InventoryStatus }) {
   const cfg = STATUS_BADGE[status];
-  const Icon = cfg.icon;
   return (
-    <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium", cfg.cls)}>
-      {Icon && <Icon className="h-3 w-3" />}
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+      <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
       {cfg.label}
     </span>
   );

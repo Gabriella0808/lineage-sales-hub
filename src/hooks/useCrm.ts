@@ -77,6 +77,7 @@ export interface CrmAccount {
   account_type: AccountType;
   prospect_type: ProspectType | null;
   brand: Brand;
+  brands: Brand[];
   status: string;
   assigned_rep_id: string | null;
   contact_first_name: string | null;

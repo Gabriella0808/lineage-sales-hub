@@ -51,10 +51,10 @@ export default function CrmAccountsPage() {
     next.delete("brand");
     setSearchParams(next, { replace: true });
   };
-  const prospectTypeFilter = prospectTypeParam;
-  const setProspectTypeFilter = (v: string) => {
+  const prospectTypeFilters = prospectTypeParam === "all" || prospectTypeParam === "" ? [] : prospectTypeParam.split(",").filter(Boolean);
+  const setProspectTypeFilters = (vs: string[]) => {
     const next = new URLSearchParams(searchParams);
-    if (v === "all") next.delete("ptype"); else next.set("ptype", v);
+    if (vs.length === 0) next.delete("ptype"); else next.set("ptype", vs.join(","));
     setSearchParams(next, { replace: true });
   };
   const [stateFilter, setStateFilter] = useState<string>("all");
@@ -72,13 +72,16 @@ export default function CrmAccountsPage() {
         const accBrands = (a.brands && a.brands.length > 0) ? a.brands : (a.brand ? [a.brand] : []);
         if (!accBrands.some((b) => brandFilters.includes(b as string))) return false;
       }
-      if (prospectTypeFilter !== "all" && (a.prospect_type ?? "") !== prospectTypeFilter) return false;
+      if (prospectTypeFilters.length > 0) {
+        const accTypes = (a.prospect_types && a.prospect_types.length > 0) ? a.prospect_types : (a.prospect_type ? [a.prospect_type] : []);
+        if (!accTypes.some((t) => prospectTypeFilters.includes(t))) return false;
+      }
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, brandFilters, prospectTypeFilter, stateFilter]);
+  }, [accounts, q, repFilter, brandFilters, prospectTypeFilters, stateFilter]);
 
   const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
@@ -163,13 +166,14 @@ export default function CrmAccountsPage() {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Select value={prospectTypeFilter} onValueChange={setProspectTypeFilter}>
-          <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All prospect types</SelectItem>
-            {prospectTypes.map((p) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <ProspectTypeSelect
+          multi
+          values={prospectTypeFilters}
+          onChangeMulti={setProspectTypeFilters}
+          showAllOption
+          allLabel="All prospect types"
+          triggerClassName="w-full sm:w-52"
+        />
         <Select value={stateFilter} onValueChange={setStateFilter}>
           <SelectTrigger className="w-full sm:w-32"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -287,11 +291,19 @@ export default function CrmAccountsPage() {
                       </Select>
                     </td>
                     <td className="px-2 py-2.5 pr-4" onClick={(e) => e.stopPropagation()}>
-                      <ProspectTypeSelect
-                        compact
-                        value={a.prospect_type}
-                        onChange={(v) => update.mutate({ id: a.id, patch: { prospect_type: v } })}
-                      />
+                      {(() => {
+                        const rowTypes: string[] = (a.prospect_types && a.prospect_types.length > 0)
+                          ? a.prospect_types
+                          : (a.prospect_type ? [a.prospect_type] : []);
+                        return (
+                          <ProspectTypeSelect
+                            multi
+                            compact
+                            values={rowTypes}
+                            onChangeMulti={(vs) => update.mutate({ id: a.id, patch: { prospect_types: vs, prospect_type: vs[0] ?? null } as any })}
+                          />
+                        );
+                      })()}
                     </td>
 
                   </tr>

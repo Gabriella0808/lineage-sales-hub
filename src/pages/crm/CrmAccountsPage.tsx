@@ -23,6 +23,7 @@ export default function CrmAccountsPage() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const repParam = searchParams.get("rep") ?? "all";
+  const managerParam = searchParams.get("manager") ?? "all";
   const stageParam = searchParams.get("stage") ?? "all";
   const brandParam = searchParams.get("brand") ?? "all";
   const prospectTypeParam = searchParams.get("ptype") ?? "all";
@@ -31,6 +32,12 @@ export default function CrmAccountsPage() {
   const setRepFilter = (v: string) => {
     const next = new URLSearchParams(searchParams);
     if (v === "all") next.delete("rep"); else next.set("rep", v);
+    setSearchParams(next, { replace: true });
+  };
+  const managerFilter = managerParam;
+  const setManagerFilter = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("manager"); else next.set("manager", v);
     setSearchParams(next, { replace: true });
   };
   const stageFilter = stageParam;
@@ -70,6 +77,7 @@ export default function CrmAccountsPage() {
       // Accounts section shows prospects only — dealers live in Field Check-ins
       if ((a.account_type ?? "prospect") !== "prospect") return false;
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
+      if (managerFilter !== "all" && a.assigned_manager_id !== managerFilter) return false;
       if (brandFilters.length > 0) {
         const accBrands = (a.brands && a.brands.length > 0) ? a.brands : (a.brand ? [a.brand] : []);
         if (!accBrands.some((b) => brandFilters.includes(b as string))) return false;
@@ -83,7 +91,7 @@ export default function CrmAccountsPage() {
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, brandFilters, prospectTypeFilters, stateFilter]);
+  }, [accounts, q, repFilter, managerFilter, brandFilters, prospectTypeFilters, stateFilter]);
 
   const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
@@ -99,7 +107,7 @@ export default function CrmAccountsPage() {
     setConvertTarget(null);
   };
 
-  const cameFromDashboard = stageParam !== "all" || brandParam !== "all";
+  const cameFromDashboard = stageParam !== "all" || brandParam !== "all" || managerParam !== "all";
 
   return (
     <div className="space-y-6">
@@ -132,6 +140,15 @@ export default function CrmAccountsPage() {
           <SelectContent>
             <SelectItem value="all">All reps</SelectItem>
             {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={managerFilter} onValueChange={setManagerFilter}>
+          <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All managers</SelectItem>
+            {managers
+              .filter((m) => ["Will", "Mateo", "Kate"].includes(m.name))
+              .map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <DropdownMenu>

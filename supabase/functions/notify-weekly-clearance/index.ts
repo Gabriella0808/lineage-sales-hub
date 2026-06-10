@@ -191,23 +191,14 @@ Deno.serve(async (req) => {
       repAgg[rep].collections[collection].revenue += revenue;
     }
 
-    // Contest scoring: 1 point per $10 of clearance revenue + 10 points per unique dealer shopped
-    const POINTS_PER_BONUS = 100;
-    const BONUS_AMOUNT = 500;
-    const computePoints = (revenue: number, dealers: number) =>
-      Math.floor(revenue / 10) + dealers * 10;
-
     const rows = Object.entries(repAgg)
       .map(([rep, data]) => ({
         rep,
         totalQty: data.totalQty,
         totalRevenue: data.totalRevenue,
-        skus: Object.values(data.skus).sort((a, b) => b.qty - a.qty),
         collections: Object.values(data.collections).sort((a, b) => b.qty - a.qty),
-        dealersShopped: data.dealers.size,
-        points: computePoints(data.totalRevenue, data.dealers.size),
       }))
-      .sort((a, b) => b.points - a.points);
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
 
     // Filter out excluded reps from test emails only
     const filteredRows = testEmail

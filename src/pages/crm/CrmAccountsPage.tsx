@@ -68,7 +68,10 @@ export default function CrmAccountsPage() {
       // Accounts section shows prospects only — dealers live in Field Check-ins
       if ((a.account_type ?? "prospect") !== "prospect") return false;
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
-      if (brandFilters.length > 0 && !brandFilters.includes(a.brand as string)) return false;
+      if (brandFilters.length > 0) {
+        const accBrands = (a.brands && a.brands.length > 0) ? a.brands : (a.brand ? [a.brand] : []);
+        if (!accBrands.some((b) => brandFilters.includes(b as string))) return false;
+      }
       if (prospectTypeFilter !== "all" && (a.prospect_type ?? "") !== prospectTypeFilter) return false;
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
@@ -207,17 +210,59 @@ export default function CrmAccountsPage() {
                       <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent truncate block">{a.company_name}</Link>
                     </td>
                     <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <Select value={a.brand} onValueChange={(v) => update.mutate({ id: a.id, patch: { brand: v as Brand } })}>
-                        <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0">
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground truncate">
-                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${BRAND_COLORS[a.brand] ?? ""}`} />
-                            <span className="truncate">{a.brand}</span>
-                          </span>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      {(() => {
+                        const rowBrands: Brand[] = (a.brands && a.brands.length > 0)
+                          ? (a.brands as Brand[])
+                          : (a.brand ? [a.brand as Brand] : []);
+                        const label = rowBrands.length === 0
+                          ? "—"
+                          : rowBrands.length === BRANDS.length
+                            ? "All brands"
+                            : rowBrands.length === 1
+                              ? rowBrands[0]
+                              : `${rowBrands.length} brands`;
+                        const dotClass = rowBrands.length === 1 ? (BRAND_COLORS[rowBrands[0]] ?? "") : "bg-muted-foreground/40";
+                        const toggle = (b: Brand) => {
+                          const set = new Set(rowBrands);
+                          if (set.has(b)) set.delete(b); else set.add(b);
+                          const next = Array.from(set);
+                          update.mutate({ id: a.id, patch: { brands: next, brand: next[0] ?? a.brand } as any });
+                        };
+                        const selectAll = () => {
+                          update.mutate({ id: a.id, patch: { brands: [...BRANDS], brand: BRANDS[0] } as any });
+                        };
+                        return (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="h-7 text-[11px] bg-muted/60 hover:bg-muted px-1.5 py-0 rounded-md w-full min-w-0 inline-flex items-center gap-1.5 text-muted-foreground font-medium">
+                                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${dotClass}`} />
+                                <span className="truncate flex-1 text-left">{label}</span>
+                                <ChevronDown className="h-3 w-3 opacity-60 shrink-0" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-48">
+                              <DropdownMenuCheckboxItem
+                                checked={rowBrands.length === BRANDS.length}
+                                onCheckedChange={selectAll}
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                All brands
+                              </DropdownMenuCheckboxItem>
+                              <DropdownMenuSeparator />
+                              {BRANDS.map((b) => (
+                                <DropdownMenuCheckboxItem
+                                  key={b}
+                                  checked={rowBrands.includes(b)}
+                                  onCheckedChange={() => toggle(b)}
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  {b}
+                                </DropdownMenuCheckboxItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        );
+                      })()}
                     </td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{repName(a.assigned_rep_id)}</td>

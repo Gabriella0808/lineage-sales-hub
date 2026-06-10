@@ -97,16 +97,10 @@ export default function CrmAccountDetailPage() {
               </Select>
             </Field>
             <Field label="Prospect type">
-              <Select
-                value={(form.prospect_type as string) ?? "none"}
-                onValueChange={(v) => set("prospect_type", (v === "none" ? null : (v as ProspectType)) as any)}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— None —</SelectItem>
-                  {PROSPECT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <ProspectTypeSelect
+                value={(form.prospect_type as string | null) ?? null}
+                onChange={(v) => set("prospect_type", v as any)}
+              />
             </Field>
             <Field label="Brand">
               <Select value={(form.brand as string) ?? "Cabinet Beds"} onValueChange={(v) => set("brand", v as Brand)}>

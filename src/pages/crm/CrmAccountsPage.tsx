@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useCrmAccounts, useCrmReps, useUpdateAccount, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
+import { useCrmAccounts, useCrmReps, useUpdateAccount, ACCOUNT_TYPES, PROSPECT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand, type ProspectType } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -139,11 +139,12 @@ export default function CrmAccountsPage() {
                 <th className="text-left px-3 py-2.5 font-medium bg-muted">City / State</th>
                 <th className="text-left px-3 py-2.5 font-medium bg-muted">Phone</th>
                 <th className="text-left px-3 py-2.5 font-medium bg-muted w-44">Account Type</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted w-52">Prospect Type</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
+              {isLoading && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
               {filtered.map((a) => {
                 const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
                 return (
@@ -189,6 +190,28 @@ export default function CrmAccountsPage() {
                           {ACCOUNT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
+                    </td>
+                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      {(() => {
+                        const pt = PROSPECT_TYPES.find((s) => s.id === a.prospect_type);
+                        return (
+                          <Select
+                            value={a.prospect_type ?? "none"}
+                            onValueChange={(v) => update.mutate({ id: a.id, patch: { prospect_type: (v === "none" ? null : (v as ProspectType)) } })}
+                          >
+                            <SelectTrigger className="h-7 text-xs border-0 bg-muted/60 hover:bg-muted px-2 py-0 w-fit min-w-[150px]">
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                                <span className={`h-1.5 w-1.5 rounded-full ${pt?.dot ?? "bg-muted-foreground/30"}`} />
+                                {pt?.label ?? "—"}
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">—</SelectItem>
+                              {PROSPECT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
                     </td>
                   </tr>
                 );

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCreateAccount, useCrmReps, BRANDS, type Brand } from "@/hooks/useCrm";
+import { useCreateAccount, useCrmReps, BRANDS, PROSPECT_TYPES, type Brand, type ProspectType } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ export default function CrmNewAccountPage() {
   const [f, setF] = useState({
     company_name: "",
     account_type: "prospect" as "prospect" | "dealer",
+    prospect_type: "none" as "none" | ProspectType,
     brand: "Cabinet Beds" as Brand,
     assigned_rep_id: "none",
     contact_first_name: "",
@@ -39,7 +40,7 @@ export default function CrmNewAccountPage() {
       return;
     }
     create.mutate(
-      { ...f, assigned_rep_id: f.assigned_rep_id === "none" ? null : f.assigned_rep_id } as any,
+      { ...f, assigned_rep_id: f.assigned_rep_id === "none" ? null : f.assigned_rep_id, prospect_type: f.prospect_type === "none" ? null : f.prospect_type } as any,
       {
         onSuccess: (acct) => {
           toast({ title: "Account created" });
@@ -63,6 +64,15 @@ export default function CrmNewAccountPage() {
               <Select value={f.brand} onValueChange={(v) => set("brand", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="sm:col-span-2"><L>Prospect type</L>
+              <Select value={f.prospect_type} onValueChange={(v) => set("prospect_type", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— None —</SelectItem>
+                  {PROSPECT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                </SelectContent>
               </Select>
             </div>
             <div><L>Assigned rep</L>

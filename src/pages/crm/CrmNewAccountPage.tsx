@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCreateAccount, useCrmReps, BRANDS, type Brand } from "@/hooks/useCrm";
+import { useCreateAccount, useCrmReps, useCrmManagers, BRANDS, type Brand } from "@/hooks/useCrm";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,7 @@ export default function CrmNewAccountPage() {
   const nav = useNavigate();
   const { toast } = useToast();
   const { data: reps = [] } = useCrmReps();
+  const { data: managers = [] } = useCrmManagers();
   const create = useCreateAccount();
   const [f, setF] = useState({
     company_name: "",
@@ -22,6 +23,7 @@ export default function CrmNewAccountPage() {
     prospect_type: null as string | null,
     brand: "Cabinet Beds" as Brand,
     assigned_rep_id: "none",
+    assigned_manager_id: "none",
     contact_first_name: "",
     contact_last_name: "",
     main_phone: "",
@@ -41,7 +43,10 @@ export default function CrmNewAccountPage() {
       return;
     }
     create.mutate(
-      { ...f, assigned_rep_id: f.assigned_rep_id === "none" ? null : f.assigned_rep_id } as any,
+      { ...f,
+        assigned_rep_id: f.assigned_rep_id === "none" ? null : f.assigned_rep_id,
+        assigned_manager_id: f.assigned_manager_id === "none" ? null : f.assigned_manager_id,
+      } as any,
       {
         onSuccess: (acct) => {
           toast({ title: "Account created" });
@@ -79,6 +84,15 @@ export default function CrmNewAccountPage() {
                 <SelectContent>
                   <SelectItem value="none">Unassigned</SelectItem>
                   {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><L>Assigned manager</L>
+              <Select value={f.assigned_manager_id} onValueChange={(v) => set("assigned_manager_id", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned</SelectItem>
+                  {managers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

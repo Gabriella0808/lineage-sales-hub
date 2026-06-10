@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useCrmAccounts, useCrmReps, useUpdateAccount, LIFECYCLE_STAGES, BRANDS, BRAND_COLORS, type LifecycleStage, type Brand } from "@/hooks/useCrm";
+import { useCrmAccounts, useCrmReps, useUpdateAccount, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, ArrowLeft } from "lucide-react";
 
 export default function CrmAccountsPage() {

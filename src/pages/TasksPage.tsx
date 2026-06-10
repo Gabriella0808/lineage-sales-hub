@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { MetricCard } from "@/components/MetricCard";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -135,6 +135,7 @@ export default function TasksPage() {
   const [assignees, setAssignees] = useState<AssignableUser[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [taskAssignees, setTaskAssignees] = useState<Record<string, string[]>>({});
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("list");
@@ -947,10 +948,20 @@ export default function TasksPage() {
           <div className="divide-y-2 divide-border">
             {COLUMNS.map((col) => {
               const items = filteredTasks.filter((t) => t.status === col.key);
+              const isCollapsed = !!collapsedGroups[col.key];
               return (
                 <div key={col.key} className="">
                   {/* Group header — editorial style */}
                   <div className={`flex items-center gap-3 px-4 py-2.5 ${col.headerBg} border-b-2 border-border`}>
+                    <button
+                      type="button"
+                      onClick={() => setCollapsedGroups((p) => ({ ...p, [col.key]: !p[col.key] }))}
+                      aria-label={isCollapsed ? `Expand ${col.label}` : `Collapse ${col.label}`}
+                      aria-expanded={!isCollapsed}
+                      className="p-0.5 rounded text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} />
+                    </button>
                     {selectMode && items.length > 0 && (
                       <Checkbox
                         checked={items.every((t) => selectedIds.has(t.id))}
@@ -972,7 +983,7 @@ export default function TasksPage() {
                   </div>
 
                   {/* Group rows */}
-                  {items.length === 0 ? (
+                  {isCollapsed ? null : items.length === 0 ? (
                     <div className="px-4 py-4 text-xs italic text-muted-foreground/70">
                       No items in this lane.
                     </div>

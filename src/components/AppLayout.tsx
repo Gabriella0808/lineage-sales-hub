@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";
 import lineageLogo from "@/assets/lineage-logo-white.png";
+import lineageLogoFooter from "@/assets/lineage-logo-footer.png.asset.json";
 import { NavLink } from "@/components/NavLink";
 import { isAllowedEmail, isCustomerService } from "@/components/EmailGuard";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -151,7 +152,9 @@ function SidebarNavItemRow({
             "shadow-[inset_2px_0_0_0_hsl(var(--sidebar-primary))]",
           )}
         >
-          <item.icon className="h-[15px] w-[15px] shrink-0 text-sidebar-foreground/70 group-hover/item:text-sidebar-accent-foreground" />
+          {collapsed && (
+            <item.icon className="h-[15px] w-[15px] shrink-0 text-sidebar-foreground/70 group-hover/item:text-sidebar-accent-foreground" />
+          )}
           {!collapsed && <span className="truncate">{item.title}</span>}
         </NavLink>
         {!collapsed && hasChildren && (
@@ -176,7 +179,6 @@ function SidebarNavItemRow({
                 className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-sidebar-muted hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
                 activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
               >
-                <child.icon className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{child.title}</span>
               </NavLink>
             </li>
@@ -273,8 +275,8 @@ function SidebarNav() {
 
       <SidebarFooter className="p-3 border-t border-sidebar-border/70">
         <div className="flex items-center gap-3 px-1.5">
-          <div className="w-8 h-8 rounded-sm bg-gradient-bronze flex items-center justify-center text-[11px] font-semibold text-sidebar-primary-foreground shadow-soft">
-            LC
+          <div className="w-10 h-10 rounded-sm flex items-center justify-center overflow-hidden">
+            <img src={lineageLogoFooter.url} alt="Lineage Collections" className="w-8 h-8 object-contain" />
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">

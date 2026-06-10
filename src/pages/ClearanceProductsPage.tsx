@@ -26,7 +26,7 @@ interface ClearanceItem {
   collection: string | null;
   on_hand: number;
   available: number;
-  on_po: number | null;
+  
   list_price: number | null;
   status: string | null;
 }
@@ -65,40 +65,26 @@ function parseNum(val: unknown): number {
 
 // ─── Status pill ──────────────────────────────────────────────────────────────
 
+const PILL_BASE = "inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground";
+
+function Dot({ cls }: { cls: string }) {
+  return <span className={`h-1.5 w-1.5 rounded-full ${cls}`} />;
+}
+
 function StatusPill({ status, onHand }: { status: string | null; onHand: number }) {
   if (onHand <= 0 || status === "out-of-stock") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20">
-        <XCircle className="h-3 w-3" /> Out of Stock
-      </span>
-    );
+    return <span className={PILL_BASE}><Dot cls="bg-destructive" />Out of Stock</span>;
   }
   if (status === "critical") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20">
-        <AlertTriangle className="h-3 w-3" /> Critical
-      </span>
-    );
+    return <span className={PILL_BASE}><Dot cls="bg-destructive" />Critical</span>;
   }
   if (status === "reorder-soon" || status === "stockout-risk") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning-foreground border border-warning/30">
-        <RefreshCw className="h-3 w-3" /> Reorder Soon
-      </span>
-    );
+    return <span className={PILL_BASE}><Dot cls="bg-warning" />Reorder Soon</span>;
   }
   if (status === "fast-moving") {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-success/15 text-success border border-success/25">
-        <Zap className="h-3 w-3" /> Fast Moving
-      </span>
-    );
+    return <span className={PILL_BASE}><Dot cls="bg-accent" />Fast Moving</span>;
   }
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
-      In Stock
-    </span>
-  );
+  return <span className={PILL_BASE}><Dot cls="bg-success" />In Stock</span>;
 }
 
 // ─── Import dialog ────────────────────────────────────────────────────────────
@@ -317,9 +303,6 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
                     setWeekStart(format(startOfWeek(d, { weekStartsOn: 1 }), "yyyy-MM-dd"));
                   }}
                 />
-                <span className="text-xs text-muted-foreground">
-                  (auto-snaps to week's Monday)
-                </span>
               </div>
 
               {/* Drop zone */}
@@ -337,10 +320,6 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
               >
                 <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
                 <p className="text-sm font-medium">Drop your CSV here or click to browse</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  CSV must have a <strong>SKU</strong> column and a <strong>Qty / Units Sold</strong> column.
-                  Optional: Revenue, Rep Name.
-                </p>
                 <input
                   ref={fileRef}
                   type="file"
@@ -357,13 +336,6 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
                 </div>
               )}
 
-              <div className="text-xs text-muted-foreground space-y-1 bg-muted/30 rounded-md px-3 py-2">
-                <p className="font-medium">Expected CSV column names (case-insensitive):</p>
-                <p><span className="font-mono">SKU</span> — also accepts: Item, Item #, Product Code</p>
-                <p><span className="font-mono">Qty</span> — also accepts: Quantity, Units Sold, Qty Sold, Shipped</p>
-                <p><span className="font-mono">Revenue</span> (optional) — also accepts: Extended Price, Amount, Total</p>
-                <p><span className="font-mono">Rep</span> (optional) — also accepts: Salesperson, Sales Rep</p>
-              </div>
             </div>
           )}
 
@@ -512,7 +484,7 @@ export default function ClearanceProductsPage() {
     setLoading(true);
     const { data } = await supabase
       .from("inventory")
-      .select("sku, product, collection, on_hand, available, on_po, list_price, status")
+      .select("sku, product, collection, on_hand, available, list_price, status")
       .eq("is_clearance", true)
       .order("collection")
       .order("sku");
@@ -542,9 +514,9 @@ export default function ClearanceProductsPage() {
     });
   }, [items, search, collectionFilter]);
 
-  const totalOnHand     = useMemo(() => filtered.reduce((s, i) => s + i.on_hand, 0), [filtered]);
+  const totalOnHand     = useMemo(() => filtered.reduce((s, i) => s + i.available, 0), [filtered]);
   const totalRetailValue = useMemo(
-    () => filtered.reduce((s, i) => s + i.on_hand * (i.list_price ?? 0), 0),
+    () => filtered.reduce((s, i) => s + i.available * (i.list_price ?? 0), 0),
     [filtered],
   );
 
@@ -570,7 +542,7 @@ export default function ClearanceProductsPage() {
           <p className="text-2xl font-semibold tabular-nums">{filtered.length}</p>
         </Card>
         <Card className="p-4 space-y-1">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Total On Hand</p>
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Total Available</p>
           <p className="text-2xl font-semibold tabular-nums">{totalOnHand.toLocaleString()}</p>
         </Card>
         <Card className="p-4 space-y-1">
@@ -626,13 +598,13 @@ export default function ClearanceProductsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/30">
-                  {["SKU", "Product", "Collection", "On Hand", "Available", "On PO", "List Price", "Status"].map(
+                  {["SKU", "Product", "Collection", "Available", "List Price", "Status"].map(
                     (h, i) => (
                       <th
                         key={h}
                         className={cn(
                           "px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium",
-                          i >= 3 && i <= 6 ? "text-right" : "text-left",
+                          i >= 3 && i <= 4 ? "text-right" : "text-left",
                         )}
                       >
                         {h}
@@ -654,19 +626,13 @@ export default function ClearanceProductsPage() {
                     <td className="px-4 py-2.5 text-foreground max-w-[220px] truncate">{item.product ?? "—"}</td>
                     <td className="px-4 py-2.5 text-muted-foreground">{item.collection ?? "—"}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-medium">
-                      {item.on_hand.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                       {item.available.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
-                      {item.on_po != null ? item.on_po.toLocaleString() : "—"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {item.list_price != null ? `$${item.list_price.toFixed(2)}` : "—"}
                     </td>
                     <td className="px-4 py-2.5">
-                      <StatusPill status={item.status} onHand={item.on_hand} />
+                      <StatusPill status={item.status} onHand={item.available} />
                     </td>
                   </tr>
                 ))}

@@ -11,12 +11,15 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Loader2, Plus, MapPin, Calendar, Trash2, Pencil } from "lucide-react";
+import { Loader2, Plus, MapPin, Calendar, Trash2, Pencil, Mail, Phone, User, Building2, Tag, DollarSign, FileText, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
 
@@ -44,6 +47,7 @@ type Lead = {
   order_amount: number | null;
   status: string | null;
   market_id: string | null;
+  notes: string | null;
   created_at: string;
 };
 
@@ -89,6 +93,7 @@ export default function CaptureLeadsPage() {
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [editingOriginalRepEmail, setEditingOriginalRepEmail] = useState<string>("");
   const [editRepCleared, setEditRepCleared] = useState<boolean>(false);
+  const [viewingLead, setViewingLead] = useState<Lead | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -113,13 +118,14 @@ export default function CaptureLeadsPage() {
         return year * 10 + seasonRank;
       };
       const sorted = [...(m.data ?? [])].sort((a: any, b: any) => {
-        const ca = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const cb = b.created_at ? new Date(b.created_at).getTime() : 0;
-        if (cb !== ca) return cb - ca;
+        // Prioritize start_date (actual market date) so the most recent/upcoming market is first
         const sa = a.start_date ? new Date(a.start_date).getTime() : 0;
         const sb = b.start_date ? new Date(b.start_date).getTime() : 0;
         if (sb !== sa) return sb - sa;
-        return inferRecency(b) - inferRecency(a) || a.name.localeCompare(b.name);
+        const ir = inferRecency(b) - inferRecency(a);
+        if (ir !== 0) return ir;
+        // When market dates tie, sort by name (alphabetical) so order is stable and predictable
+        return (a.name || "").localeCompare(b.name || "");
       });
       setMarkets(sorted);
     }
@@ -246,9 +252,11 @@ export default function CaptureLeadsPage() {
               repName: leadForm.sales_rep.trim() || undefined,
               contactName: leadForm.contact_name.trim() || undefined,
               dealer: leadForm.dealer.trim() || undefined,
+              dealerEmail: leadForm.email.trim() || undefined,
               collections: leadForm.product_interest.trim() || undefined,
               orderAmount: orderNum > 0 ? fmt(orderNum) : undefined,
               market: market?.name || undefined,
+              notes: leadForm.notes.trim() || undefined,
               leadRef: editingLeadIdSnapshot.slice(0, 8).toUpperCase(),
             },
           },
@@ -321,9 +329,11 @@ export default function CaptureLeadsPage() {
             repName: leadForm.sales_rep.trim() || undefined,
             contactName: leadForm.contact_name.trim() || undefined,
             dealer: leadForm.dealer.trim() || undefined,
+            dealerEmail: leadForm.email.trim() || undefined,
             collections: leadForm.product_interest.trim() || undefined,
             orderAmount: orderNum > 0 ? fmt(orderNum) : undefined,
             market: market?.name || undefined,
+            notes: leadForm.notes.trim() || undefined,
             leadRef: newLeadId.slice(0, 8).toUpperCase(),
           },
         },
@@ -494,13 +504,13 @@ export default function CaptureLeadsPage() {
                       {/* Mobile card list */}
                       <div className="sm:hidden space-y-2">
                         {ml.map((l) => (
-                          <div key={l.id} className="border rounded-lg p-3 bg-background/40">
+                          <div key={l.id} role="button" tabIndex={0} onClick={() => setViewingLead(l)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setViewingLead(l); } }} className="border rounded-lg p-3 bg-background/40 cursor-pointer hover:bg-muted/30 transition-colors">
                             <div className="flex items-start justify-between gap-2 mb-1.5">
                               <div className="min-w-0">
                                 <p className="font-medium text-sm">{l.contact_name || "—"}</p>
                                 <p className="text-xs text-muted-foreground truncate">{l.dealer || "—"}</p>
                               </div>
-                              <div className="flex gap-1 shrink-0">
+                              <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
                                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteLead(l.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></Button>
                               </div>
@@ -508,7 +518,7 @@ export default function CaptureLeadsPage() {
                             <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
                               {l.sales_rep && <div><span className="text-muted-foreground">Rep:</span> {l.sales_rep}</div>}
                               {l.phone && <div><span className="text-muted-foreground">Phone:</span> {l.phone}</div>}
-                              {l.email && <div className="col-span-2 truncate"><span className="text-muted-foreground">Email:</span> <a href={`mailto:${l.email}`} className="hover:underline">{l.email}</a></div>}
+                              {l.email && <div className="col-span-2 truncate"><span className="text-muted-foreground">Email:</span> <a href={`mailto:${l.email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.email}</a></div>}
                             </div>
                             {l.product_interest && (
                               <div className="flex flex-wrap gap-1 mt-2">
@@ -544,15 +554,15 @@ export default function CaptureLeadsPage() {
                           </thead>
                           <tbody>
                             {ml.map((l) => (
-                              <tr key={l.id} className="border-t hover:bg-muted/30">
+                              <tr key={l.id} onClick={() => setViewingLead(l)} className="border-t hover:bg-muted/30 cursor-pointer">
                                 <td className="px-3 py-2 font-medium">{l.contact_name || "—"}</td>
                                 <td className="px-3 py-2 text-muted-foreground">{l.dealer || "—"}</td>
                                 <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">
-                                  {l.email ? <a href={`mailto:${l.email}`} className="hover:underline">{l.email}</a> : "—"}
+                                  {l.email ? <a href={`mailto:${l.email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.email}</a> : "—"}
                                 </td>
                                 <td className="px-3 py-2">{l.sales_rep || "—"}</td>
                                 <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">
-                                  {l.rep_email ? <a href={`mailto:${l.rep_email}`} className="hover:underline">{l.rep_email}</a> : "—"}
+                                  {l.rep_email ? <a href={`mailto:${l.rep_email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.rep_email}</a> : "—"}
                                 </td>
                                 <td className="px-3 py-2 text-muted-foreground max-w-[220px] hidden md:table-cell">
                                   {l.product_interest ? (
@@ -566,7 +576,7 @@ export default function CaptureLeadsPage() {
                                 <td className="px-3 py-2 text-muted-foreground hidden md:table-cell">{l.phone || "—"}</td>
                                 <td className="px-3 py-2">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "—"}</td>
                                 <td className="px-3 py-2 text-right font-medium">{l.order_amount ? fmt(l.order_amount) : "—"}</td>
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex items-center justify-end gap-1">
                                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit lead">
                                       <Pencil className="h-3.5 w-3.5" />
@@ -734,6 +744,84 @@ export default function CaptureLeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Sheet open={!!viewingLead} onOpenChange={(o) => { if (!o) setViewingLead(null); }}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {viewingLead && (
+            <>
+              <SheetHeader className="text-left">
+                <SheetTitle className="font-serif text-2xl">{viewingLead.contact_name || "Unnamed Contact"}</SheetTitle>
+                <SheetDescription className="flex items-center gap-2">
+                  {viewingLead.dealer && <span className="flex items-center gap-1"><Building2 className="h-3.5 w-3.5" /> {viewingLead.dealer}</span>}
+                </SheetDescription>
+                <div className="flex items-center gap-2 pt-1">
+                  {viewingLead.status && <Badge variant="secondary">{viewingLead.status}</Badge>}
+                  {viewingLead.trade_show && <Badge variant="outline">{viewingLead.trade_show}</Badge>}
+                </div>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-5">
+                <DetailSection title="Contact">
+                  <DetailRow icon={User} label="Name" value={viewingLead.contact_name} />
+                  <DetailRow icon={Building2} label="Dealer" value={viewingLead.dealer} />
+                  <DetailRow icon={Mail} label="Email" value={viewingLead.email} href={viewingLead.email ? `mailto:${viewingLead.email}` : undefined} />
+                  <DetailRow icon={Phone} label="Phone" value={viewingLead.phone} href={viewingLead.phone ? `tel:${viewingLead.phone}` : undefined} />
+                </DetailSection>
+
+                <DetailSection title="Sales Rep">
+                  <DetailRow icon={User} label="Rep" value={viewingLead.sales_rep} />
+                  <DetailRow icon={Mail} label="Rep Email" value={viewingLead.rep_email} href={viewingLead.rep_email ? `mailto:${viewingLead.rep_email}` : undefined} />
+                </DetailSection>
+
+                <DetailSection title="Opportunity">
+                  <div className="flex items-start gap-2 text-sm">
+                    <Tag className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground mb-1">Collections</p>
+                      {viewingLead.product_interest ? (
+                        <div className="flex flex-wrap gap-1">
+                          {viewingLead.product_interest.split(",").map((c, i) => (
+                            <Badge key={i} variant="outline" className="text-xs font-normal">{c.trim()}</Badge>
+                          ))}
+                        </div>
+                      ) : <p className="text-sm">—</p>}
+                    </div>
+                  </div>
+                  <DetailRow icon={DollarSign} label="Order Amount" value={viewingLead.order_amount ? fmt(viewingLead.order_amount) : "—"} />
+                </DetailSection>
+
+                <DetailSection title="Notes">
+                  <div className="flex items-start gap-2 text-sm">
+                    <FileText className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                    {viewingLead.notes ? (
+                      <p className="whitespace-pre-wrap leading-relaxed">{viewingLead.notes}</p>
+                    ) : (
+                      <p className="text-muted-foreground italic">No notes added yet. Click Edit to add notes.</p>
+                    )}
+                  </div>
+                </DetailSection>
+
+                <DetailSection title="Meta">
+                  <DetailRow
+                    icon={Clock}
+                    label="Captured"
+                    value={new Date(viewingLead.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                  />
+                </DetailSection>
+
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" className="flex-1" onClick={() => { const l = viewingLead; setViewingLead(null); openEditLead(l); }}>
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+                  </Button>
+                  <Button variant="ghost" className="flex-1 text-destructive hover:text-destructive" onClick={() => { deleteLead(viewingLead.id); setViewingLead(null); }}>
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Delete
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -743,6 +831,32 @@ function Field({ label, required, children }: { label: string; required?: boolea
     <div className="space-y-1.5">
       <Label>{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
       {children}
+    </div>
+  );
+}
+
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-2">{title}</h4>
+      <div className="space-y-2.5 rounded-lg border bg-muted/20 p-3">{children}</div>
+    </div>
+  );
+}
+
+function DetailRow({ icon: Icon, label, value, href }: { icon: any; label: string; value: string | null | undefined; href?: string }) {
+  if (!value) value = "—";
+  return (
+    <div className="flex items-start gap-2 text-sm">
+      <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        {href && value !== "—" ? (
+          <a href={href} className="hover:underline break-all">{value}</a>
+        ) : (
+          <p className="break-words">{value}</p>
+        )}
+      </div>
     </div>
   );
 }

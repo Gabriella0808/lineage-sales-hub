@@ -1,24 +1,28 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useCrmAccounts, useCrmReps, useUpdateAccount, LIFECYCLE_STAGES, BRANDS, BRAND_COLORS, type LifecycleStage, type Brand } from "@/hooks/useCrm";
+import { useCrmAccounts, useCrmReps, useUpdateAccount, useProspectTypes, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
+import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, ArrowLeft } from "lucide-react";
 
 export default function CrmAccountsPage() {
   const nav = useNavigate();
   const { data: accounts = [], isLoading } = useCrmAccounts();
   const { data: reps = [] } = useCrmReps();
+  const { data: prospectTypes = [] } = useProspectTypes();
   const update = useUpdateAccount();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const repParam = searchParams.get("rep") ?? "all";
   const stageParam = searchParams.get("stage") ?? "all";
   const brandParam = searchParams.get("brand") ?? "all";
+  const prospectTypeParam = searchParams.get("ptype") ?? "all";
   const [q, setQ] = useState("");
   const repFilter = repParam;
   const setRepFilter = (v: string) => {
@@ -38,6 +42,12 @@ export default function CrmAccountsPage() {
     if (v === "all") next.delete("brand"); else next.set("brand", v);
     setSearchParams(next, { replace: true });
   };
+  const prospectTypeFilter = prospectTypeParam;
+  const setProspectTypeFilter = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("ptype"); else next.set("ptype", v);
+    setSearchParams(next, { replace: true });
+  };
   const [stateFilter, setStateFilter] = useState<string>("all");
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);
@@ -46,15 +56,31 @@ export default function CrmAccountsPage() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return accounts.filter((a) => {
+      // Accounts section shows prospects only — dealers live in Field Check-ins
+      if ((a.account_type ?? "prospect") !== "prospect") return false;
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
-      if (stageFilter !== "all" && a.lifecycle_stage !== stageFilter) return false;
       if (brandFilter !== "all" && a.brand !== brandFilter) return false;
+      if (prospectTypeFilter !== "all" && (a.prospect_type ?? "") !== prospectTypeFilter) return false;
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, stageFilter, brandFilter, stateFilter]);
+  }, [accounts, q, repFilter, brandFilter, prospectTypeFilter, stateFilter]);
+
+  const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
+  const { toast } = useToast();
+  const confirmConvert = () => {
+    if (!convertTarget) return;
+    update.mutate(
+      { id: convertTarget.id, patch: { account_type: "dealer" as AccountType } },
+      {
+        onSuccess: () => toast({ title: "Converted to dealer", description: `${convertTarget.name} now appears on the Field Check-ins map.` }),
+        onError: (e: any) => toast({ title: "Conversion failed", description: e.message, variant: "destructive" }),
+      },
+    );
+    setConvertTarget(null);
+  };
 
   const cameFromDashboard = stageParam !== "all" || brandParam !== "all";
 
@@ -88,18 +114,18 @@ export default function CrmAccountsPage() {
             {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={stageFilter} onValueChange={setStageFilter}>
-          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All stages</SelectItem>
-            {LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Select value={brandFilter} onValueChange={setBrandFilter}>
           <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All brands</SelectItem>
             {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={prospectTypeFilter} onValueChange={setProspectTypeFilter}>
+          <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All prospect types</SelectItem>
+            {prospectTypes.map((p) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={stateFilter} onValueChange={setStateFilter}>
@@ -112,57 +138,78 @@ export default function CrmAccountsPage() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="overflow-x-hidden overflow-y-auto max-h-[calc(100vh-240px)]">
+          <table className="w-full text-xs table-fixed">
+            <thead className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground sticky top-0 z-10">
               <tr>
-                <th className="text-left px-4 py-2.5 font-medium">Company</th>
-                <th className="text-left px-3 py-2.5 font-medium">Brand</th>
-                <th className="text-left px-3 py-2.5 font-medium">Contact</th>
-                <th className="text-left px-3 py-2.5 font-medium">Rep</th>
-                <th className="text-left px-3 py-2.5 font-medium">City / State</th>
-                <th className="text-left px-3 py-2.5 font-medium">Phone</th>
-                <th className="text-left px-3 py-2.5 font-medium w-44">Stage</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted w-[18%]">Company</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Brand</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Contact</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Rep</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[14%]">City / State</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Phone</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Account Type</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[14%]">Prospect Type</th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
+              {isLoading && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
               {filtered.map((a) => {
-                const stage = LIFECYCLE_STAGES.find((s) => s.id === a.lifecycle_stage)!;
+                const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
                 return (
                   <tr
                     key={a.id}
                     className="hover:bg-muted/30 transition-colors cursor-pointer"
                     onClick={() => nav(`/crm/accounts/${a.id}`)}
                   >
-                    <td className="px-4 py-2.5">
-                      <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent">{a.company_name}</Link>
+                    <td className="px-3 py-2.5">
+                      <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent truncate block">{a.company_name}</Link>
                     </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select value={a.brand} onValueChange={(v) => update.mutate({ id: a.id, patch: { brand: v as Brand } })}>
-                        <SelectTrigger className="h-7 text-xs border-0 bg-transparent hover:bg-muted/60 px-2 py-0 w-fit min-w-[120px]">
-                          <Badge variant="outline" className={`text-[10px] border ${BRAND_COLORS[a.brand] ?? ""}`}>{a.brand}</Badge>
+                        <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground truncate">
+                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${BRAND_COLORS[a.brand] ?? ""}`} />
+                            <span className="truncate">{a.brand}</span>
+                          </span>
                         </SelectTrigger>
                         <SelectContent>
                           {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{repName(a.assigned_rep_id)}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{a.main_phone || "—"}</td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <Select value={a.lifecycle_stage} onValueChange={(v) => update.mutate({ id: a.id, patch: { lifecycle_stage: v as LifecycleStage } })}>
-                        <SelectTrigger className="h-7 text-xs border-0 bg-transparent hover:bg-muted/60 px-2 py-0 w-fit min-w-[120px]">
-                          <Badge variant="outline" className={`text-[10px] border ${stage.color}`}>{stage.label}</Badge>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{repName(a.assigned_rep_id)}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{a.main_phone || "—"}</td>
+                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={a.account_type ?? "prospect"}
+                        onValueChange={(v) => {
+                          if (v === "dealer") setConvertTarget({ id: a.id, name: a.company_name });
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground truncate">
+                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${type.dot}`} />
+                            <span className="truncate">{type.label}</span>
+                          </span>
                         </SelectTrigger>
                         <SelectContent>
-                          {LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                          {ACCOUNT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </td>
+                    <td className="px-2 py-2.5 pr-4" onClick={(e) => e.stopPropagation()}>
+                      <ProspectTypeSelect
+                        compact
+                        value={a.prospect_type}
+                        onChange={(v) => update.mutate({ id: a.id, patch: { prospect_type: v } })}
+                      />
+                    </td>
+
                   </tr>
                 );
               })}
@@ -170,6 +217,21 @@ export default function CrmAccountsPage() {
           </table>
         </div>
       </Card>
+
+      <AlertDialog open={!!convertTarget} onOpenChange={(open) => !open && setConvertTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convert {convertTarget?.name} to a dealer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the account from the prospects list and add them to the Field Check-ins map with a "Converted from CRM" check-in. This can't be undone here.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmConvert}>Convert to dealer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

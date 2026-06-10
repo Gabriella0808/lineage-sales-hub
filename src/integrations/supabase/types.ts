@@ -205,6 +205,7 @@ export type Database = {
       }
       crm_accounts: {
         Row: {
+          account_type: string
           assigned_rep_id: string | null
           brand: string
           city: string | null
@@ -218,6 +219,7 @@ export type Database = {
           lifecycle_stage: string
           main_phone: string | null
           notes: string | null
+          prospect_type: string | null
           state: string | null
           status: string
           street_1: string | null
@@ -226,6 +228,7 @@ export type Database = {
           zip: string | null
         }
         Insert: {
+          account_type?: string
           assigned_rep_id?: string | null
           brand?: string
           city?: string | null
@@ -239,6 +242,7 @@ export type Database = {
           lifecycle_stage?: string
           main_phone?: string | null
           notes?: string | null
+          prospect_type?: string | null
           state?: string | null
           status?: string
           street_1?: string | null
@@ -247,6 +251,7 @@ export type Database = {
           zip?: string | null
         }
         Update: {
+          account_type?: string
           assigned_rep_id?: string | null
           brand?: string
           city?: string | null
@@ -260,6 +265,7 @@ export type Database = {
           lifecycle_stage?: string
           main_phone?: string | null
           notes?: string | null
+          prospect_type?: string | null
           state?: string | null
           status?: string
           street_1?: string | null
@@ -276,6 +282,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      crm_prospect_types: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       customer_quote_items: {
         Row: {
@@ -749,6 +776,7 @@ export type Database = {
           buying_group: string | null
           city: string | null
           created_at: string
+          crm_account_id: string | null
           email: string | null
           engagement: string | null
           first_name: string | null
@@ -780,6 +808,7 @@ export type Database = {
           buying_group?: string | null
           city?: string | null
           created_at?: string
+          crm_account_id?: string | null
           email?: string | null
           engagement?: string | null
           first_name?: string | null
@@ -811,6 +840,7 @@ export type Database = {
           buying_group?: string | null
           city?: string | null
           created_at?: string
+          crm_account_id?: string | null
           email?: string | null
           engagement?: string | null
           first_name?: string | null
@@ -838,6 +868,13 @@ export type Database = {
           website?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "dealers_crm_account_id_fkey"
+            columns: ["crm_account_id"]
+            isOneToOne: false
+            referencedRelation: "crm_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dealers_manager_id_fkey"
             columns: ["manager_id"]

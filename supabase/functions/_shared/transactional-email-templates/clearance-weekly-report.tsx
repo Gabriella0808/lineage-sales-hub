@@ -6,9 +6,8 @@ import type { TemplateEntry } from './registry.ts'
 
 const SITE_NAME = 'Lineage Collections'
 
-interface SkuRow {
-  sku: string
-  product: string
+interface CollectionRow {
+  collection: string
   qty: number
   revenue: number
 }
@@ -17,8 +16,10 @@ interface RepRow {
   rep: string
   totalQty: number
   totalRevenue: number
-  skus: SkuRow[]
+  collections?: CollectionRow[]
 }
+
+
 
 interface ClearanceWeeklyReportProps {
   recipientName?: string
@@ -50,7 +51,7 @@ const ClearanceWeeklyReportEmail = ({
     </Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Clearance Products — Weekly Report</Heading>
+        <Heading style={h1}>Clearance Products – Weekly Report</Heading>
         <Text style={text}>
           {recipientName ? `Hi ${recipientName},` : 'Hi,'} here is the clearance product sales
           summary for {weekLabel || 'last week'}.
@@ -70,73 +71,62 @@ const ClearanceWeeklyReportEmail = ({
                   <div style={summaryLabel}>Revenue</div>
                 </td>
                 <td style={summaryCellBorder}>
-                  <div style={summaryNum}>{skusMoved}</div>
-                  <div style={summaryLabel}>SKUs Moved</div>
-                </td>
-                <td style={summaryCellBorder}>
                   <div style={summaryNum}>{rows.length}</div>
                   <div style={summaryLabel}>Reps with Sales</div>
                 </td>
+
               </tr>
             </tbody>
           </table>
         </Section>
 
         {/* Per-rep breakdown */}
-        {rows.map((repRow) => (
-          <Section key={repRow.rep} style={repSection}>
-            <table style={rowTable} cellPadding={0} cellSpacing={0}>
-              <thead>
-                <tr>
-                  <th style={repHeader} colSpan={3}>{repRow.rep}</th>
-                  <th style={repHeaderRight}>{repRow.totalQty.toLocaleString()} units · {fmt(repRow.totalRevenue)}</th>
-                </tr>
-                <tr>
-                  <th style={th}>SKU</th>
-                  <th style={th}>Product</th>
-                  <th style={thNum}>Units</th>
-                  <th style={thNum}>Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {repRow.skus.map((s) => (
-                  <tr key={s.sku}>
-                    <td style={tdMono}>{s.sku}</td>
-                    <td style={tdName}>{s.product}</td>
-                    <td style={tdNum}>{s.qty.toLocaleString()}</td>
-                    <td style={tdNum}>{fmt(s.revenue)}</td>
+        {rows.map((repRow, idx) => (
+          <React.Fragment key={repRow.rep}>
+            {idx > 0 && <Hr style={thinHr} />}
+            <Section style={repSection}>
+              <table style={rowTable} cellPadding={0} cellSpacing={0}>
+                <thead>
+                  <tr>
+                    <th style={repHeader} colSpan={3}>{repRow.rep}</th>
+                    <th style={repHeaderRight}>{repRow.totalQty.toLocaleString()} units · {fmt(repRow.totalRevenue)}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </Section>
+                </thead>
+              </table>
+
+              {repRow.collections && repRow.collections.length > 0 && (
+                <table style={{ ...rowTable, marginTop: '4px' }} cellPadding={0} cellSpacing={0}>
+                  <thead>
+                    <tr>
+                      <th style={th}>Collection</th>
+                      <th style={thNum}>Units</th>
+                      <th style={thNum}>Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {repRow.collections.map((c) => (
+                      <tr key={c.collection}>
+                        <td style={tdName}>{c.collection}</td>
+                        <td style={tdNum}>{c.qty.toLocaleString()}</td>
+                        <td style={tdNum}>{fmt(c.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+            </Section>
+          </React.Fragment>
         ))}
+
+
 
         {rows.length === 0 && (
           <Text style={{ ...text, color: '#888' }}>No clearance product sales recorded for this week.</Text>
         )}
 
-        <Text style={text}>
-          View the full breakdown anytime in the portal under Sales Operations → Clearance Analytics.
-        </Text>
-
-        {portalUrl && (
-          <Section style={{ margin: '24px 0' }}>
-            <table cellPadding={0} cellSpacing={0} role="presentation" style={{ margin: '0 auto', borderCollapse: 'separate' }}>
-              <tbody>
-                <tr>
-                  <td bgcolor="#c9a44c" style={{ backgroundColor: '#c9a44c', borderRadius: '8px' }}>
-                    <a href={portalUrl} target="_blank" rel="noopener noreferrer" style={ctaButton}>
-                      View in Portal
-                    </a>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </Section>
-        )}
-
         <Hr style={hr} />
+
         <Text style={footer}>— The {SITE_NAME} Team</Text>
       </Container>
     </Body>
@@ -161,22 +151,23 @@ export const template = {
         rep: 'Will',
         totalQty: 28,
         totalRevenue: 2240,
-        skus: [
-          { sku: 'CL-1001', product: 'Clearance Widget A', qty: 15, revenue: 1200 },
-          { sku: 'CL-1002', product: 'Clearance Widget B', qty: 13, revenue: 1040 },
+        collections: [
+          { collection: 'Harbor', qty: 20, revenue: 1600 },
+          { collection: 'Clearance', qty: 8, revenue: 640 },
         ],
       },
       {
         rep: 'Mateo',
         totalQty: 19,
         totalRevenue: 1610,
-        skus: [
-          { sku: 'CL-1003', product: 'Clearance Item C', qty: 19, revenue: 1610 },
+        collections: [
+          { collection: 'Harbor', qty: 19, revenue: 1610 },
         ],
       },
     ],
     portalUrl: 'https://www.lineage-managerhub.com/clearance/analytics',
   },
+
 } satisfies TemplateEntry
 
 const main = { backgroundColor: '#ffffff', fontFamily: '"DM Sans", Arial, sans-serif' }
@@ -213,7 +204,7 @@ const rowTable = { width: '100%', borderCollapse: 'collapse' as const }
 const repHeader = {
   fontSize: '13px',
   fontWeight: 700,
-  color: 'hsl(220, 35%, 22%)',
+  color: '#C5A572',
   padding: '4px 0 8px',
   textAlign: 'left' as const,
   borderBottom: '1px solid hsl(220, 13%, 88%)',
@@ -235,14 +226,8 @@ const th = {
   borderBottom: '1px solid hsl(220, 13%, 88%)',
 }
 const thNum = { ...th, textAlign: 'right' as const, padding: '6px 0 6px 6px' }
-const tdMono = {
-  fontFamily: 'monospace',
-  fontSize: '12px',
-  color: 'hsl(220, 10%, 46%)',
-  padding: '8px 6px 8px 0',
-  whiteSpace: 'nowrap' as const,
-}
 const tdName = { fontSize: '13px', color: '#222', padding: '8px 6px 8px 0' }
+
 const tdNum = {
   fontSize: '13px',
   color: '#222',
@@ -254,14 +239,4 @@ const tdNum = {
 }
 const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#888', margin: '0' }
-const ctaButton = {
-  display: 'inline-block',
-  backgroundColor: '#c9a44c',
-  color: '#1a1a1a',
-  fontSize: '14px',
-  fontWeight: 600,
-  textDecoration: 'none',
-  borderRadius: '8px',
-  padding: '12px 28px',
-  fontFamily: '"DM Sans", Arial, sans-serif',
-}
+const thinHr = { borderColor: 'hsl(220, 13%, 88%)', margin: '12px 0', borderWidth: '1px 0 0 0' }

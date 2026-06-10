@@ -10,9 +10,11 @@ interface NewLeadAssignedProps {
   repName?: string
   contactName?: string
   dealer?: string
+  dealerEmail?: string
   collections?: string
   orderAmount?: string
   market?: string
+  notes?: string
   leadRef?: string
 }
 
@@ -20,15 +22,15 @@ const NewLeadAssignedEmail = ({
   repName,
   contactName,
   dealer,
+  dealerEmail,
   collections,
   orderAmount,
   market,
+  notes,
   leadRef,
 }: NewLeadAssignedProps) => {
-  const ref = leadRef || Math.random().toString(36).slice(2, 10).toUpperCase()
-  const capturedAt = new Date().toLocaleString('en-US', {
+  const capturedAt = new Date().toLocaleDateString('en-US', {
     dateStyle: 'medium',
-    timeStyle: 'short',
   })
   return (
   <Html lang="en" dir="ltr">
@@ -36,7 +38,7 @@ const NewLeadAssignedEmail = ({
     <Preview>
       {contactName ? `${contactName}` : 'New lead'}
       {dealer ? ` · ${dealer}` : ''}
-      {orderAmount ? ` · ${orderAmount}` : ''} (Ref ${ref})
+      {orderAmount ? ` · ${orderAmount}` : ''}
     </Preview>
     <Body style={main}>
       <Container style={container}>
@@ -49,14 +51,21 @@ const NewLeadAssignedEmail = ({
         <Section style={detailsBox}>
           <Row label="Contact Name" value={contactName} />
           <Row label="Dealer" value={dealer} />
+          <Row label="Dealer Email" value={dealerEmail} />
           <Row label="Collections" value={collections} />
           <Row label="Order Amount" value={orderAmount} />
           <Row label="Captured" value={capturedAt} />
-          <Row label="Reference" value={ref} />
         </Section>
 
+        {notes && notes.trim() ? (
+          <Section style={notesBox}>
+            <Text style={notesLabel}>Notes</Text>
+            <Text style={notesText}>{notes}</Text>
+          </Section>
+        ) : null}
+
         <Hr style={hr} />
-        <Text style={footer}>— The {SITE_NAME} Team · Ref {ref}</Text>
+        <Text style={footer}>— The {SITE_NAME} Team</Text>
       </Container>
     </Body>
   </Html>
@@ -81,18 +90,19 @@ export const template = {
     if (data?.contactName) parts.push(data.contactName)
     if (data?.dealer) parts.push(data.dealer)
     if (data?.orderAmount) parts.push(data.orderAmount)
-    const ref = data?.leadRef || Math.random().toString(36).slice(2, 8).toUpperCase()
     const head = parts.length ? parts.join(' · ') : 'New lead assigned'
-    return `New lead: ${head} [${ref}]`
+    return `New lead: ${head}`
   },
   displayName: 'New lead assigned',
   previewData: {
     repName: 'Alex',
     contactName: 'Jane Doe',
     dealer: 'Acme Furniture Co.',
+    dealerEmail: 'orders@acmefurniture.com',
     collections: 'Coastal, Heritage',
     orderAmount: '$12,500',
     market: 'High Point Spring 2026',
+    notes: 'Customer is interested in our new Coastal line. Follow up within 48 hours.',
   },
 } satisfies TemplateEntry
 
@@ -137,3 +147,24 @@ const rowValue = {
 }
 const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#888', margin: '0' }
+const notesBox = {
+  backgroundColor: '#ffffff',
+  border: '1px solid hsl(220, 13%, 90%)',
+  borderRadius: '8px',
+  padding: '16px 20px',
+  margin: '20px 0',
+}
+const notesLabel = {
+  fontSize: '13px',
+  color: 'hsl(220, 10%, 46%)',
+  margin: '0 0 8px',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.5px',
+}
+const notesText = {
+  fontSize: '14px',
+  color: '#222',
+  lineHeight: '1.6',
+  margin: '0',
+  whiteSpace: 'pre-wrap' as const,
+}

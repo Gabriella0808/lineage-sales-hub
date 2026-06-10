@@ -22,6 +22,11 @@ const ADMIN_RECIPIENTS: { name: string; email: string }[] = [
   { name: "Gabriella", email: "gabriella@lineage-collections.com" },
 ];
 
+// Manager first names (lowercased) — these appear as rep_owner on some dealers
+// but should NOT be counted in the per-rep stats breakdown.
+const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
+const TEST_EXCLUDED_REPS = new Set(["gillis", "damico"]);
+
 const ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
 
@@ -69,12 +74,17 @@ Deno.serve(async (req) => {
     const weekLabel = `${format(weekStart, "MMM d")} – ${format(weekEnd, "MMM d, yyyy")}`;
 
     // 1. Get all clearance SKUs
-    const clearanceRows = await fetchAll<{ sku: string; product: string | null }>((f, t) =>
-      supabase.from("inventory").select("sku,product").eq("is_clearance", true).range(f, t) as any,
+    const clearanceRows = await fetchAll<{ sku: string; product: string | null; collection: string | null }>((f, t) =>
+      supabase.from("inventory").select("sku,product,collection").eq("is_clearance", true).range(f, t) as any,
     );
     const skuSet = new Set(clearanceRows.map((r) => r.sku));
     const skuNames: Record<string, string> = {};
-    clearanceRows.forEach((r) => { skuNames[r.sku] = r.product ?? r.sku; });
+    const skuCollection: Record<string, string> = {};
+    clearanceRows.forEach((r) => {
+      skuNames[r.sku] = r.product ?? r.sku;
+      skuCollection[r.sku] = r.collection ?? "Uncategorized";
+    });
+
 
     if (skuSet.size === 0) {
       return new Response(
@@ -111,29 +121,72 @@ Deno.serve(async (req) => {
     const dealerToRep: Record<string, string> = {};
     dealers.forEach((d) => { if (d.rep_owner) dealerToRep[d.id] = d.rep_owner; });
 
-    // 4. Aggregate by rep → SKU
-    type SkuAgg = { sku: string; product: string; qty: number; revenue: number };
-    const repAgg: Record<string, { totalQty: number; totalRevenue: number; skus: Record<string, SkuAgg> }> = {};
+    // 3b. Build rep_owner → full name lookup from sales_reps
+    const salesReps = await fetchAll<{ name: string | null; acctivate_id: string | null }>((f, t) =>
+      supabase.from("sales_reps").select("name,acctivate_id").eq("status", "active").range(f, t) as any,
+    );
+    const repNameLookup: Record<string, string> = {};
+    for (const sr of salesReps) {
+      const fullName = (sr.name ?? "").trim();
+      if (!fullName) continue;
+      // skip placeholder / open-territory entries that aren't real people
+      if (/\(open\)|open\)/i.test(fullName)) continue;
+      if (sr.acctivate_id) {
+        const key = sr.acctivate_id.trim().toLowerCase();
+        if (key && !repNameLookup[key]) repNameLookup[key] = fullName;
+      }
+      // last word of name (typically last name) — only if it looks like a real person (has a space)
+      if (fullName.includes(" ")) {
+        const last = fullName.split(/\s+/).pop()!.toLowerCase();
+        if (last && !repNameLookup[last]) repNameLookup[last] = fullName;
+      }
+    }
+
+    function resolveRepName(raw: string): string {
+      const key = raw.trim().toLowerCase();
+      if (repNameLookup[key]) return repNameLookup[key];
+      return toDisplayName(raw);
+    }
+
+    // 4. Aggregate by rep → SKU + collection
+    type SkuAgg = { sku: string; product: string; collection: string; qty: number; revenue: number };
+    type CollectionAgg = { collection: string; qty: number; revenue: number };
+    const repAgg: Record<string, {
+      totalQty: number;
+      totalRevenue: number;
+      skus: Record<string, SkuAgg>;
+      collections: Record<string, CollectionAgg>;
+    }> = {};
 
     for (const line of invoiceLines) {
       const rawRep = dealerToRep[line.dealer_id ?? ""] ?? "Unknown";
-      const rep = toDisplayName(rawRep);
+      // Skip lines attributed to managers — managers are excluded from the per-rep stats
+      if (MANAGER_NAMES.has(rawRep.trim().toLowerCase())) continue;
+      const rep = resolveRepName(rawRep);
+
       const sku = line.sku ?? "?";
       const qty = line.qty ?? 0;
       const revenue = line.extended_price ?? 0;
-      if (!repAgg[rep]) repAgg[rep] = { totalQty: 0, totalRevenue: 0, skus: {} };
+      const collection = skuCollection[sku] ?? "Uncategorized";
+      if (!repAgg[rep]) repAgg[rep] = { totalQty: 0, totalRevenue: 0, skus: {}, collections: {} };
       repAgg[rep].totalQty += qty;
       repAgg[rep].totalRevenue += revenue;
       if (!repAgg[rep].skus[sku]) {
         repAgg[rep].skus[sku] = {
           sku,
           product: skuNames[sku] ?? line.product_name ?? sku,
+          collection,
           qty: 0,
           revenue: 0,
         };
       }
       repAgg[rep].skus[sku].qty += qty;
       repAgg[rep].skus[sku].revenue += revenue;
+      if (!repAgg[rep].collections[collection]) {
+        repAgg[rep].collections[collection] = { collection, qty: 0, revenue: 0 };
+      }
+      repAgg[rep].collections[collection].qty += qty;
+      repAgg[rep].collections[collection].revenue += revenue;
     }
 
     const rows = Object.entries(repAgg)
@@ -143,29 +196,26 @@ Deno.serve(async (req) => {
         totalQty: data.totalQty,
         totalRevenue: data.totalRevenue,
         skus: Object.values(data.skus).sort((a, b) => b.qty - a.qty),
+        collections: Object.values(data.collections).sort((a, b) => b.qty - a.qty),
       }));
 
-    const totalUnits = rows.reduce((s, r) => s + r.totalQty, 0);
-    const totalRevenue = rows.reduce((s, r) => s + r.totalRevenue, 0);
+    // Filter out excluded reps from test emails only
+    const filteredRows = testEmail
+      ? rows.filter((r) => !TEST_EXCLUDED_REPS.has(r.rep.toLowerCase()))
+      : rows;
+
+    const totalUnits = filteredRows.reduce((s, r) => s + r.totalQty, 0);
+    const totalRevenue = filteredRows.reduce((s, r) => s + r.totalRevenue, 0);
     const skusMoved = new Set(invoiceLines.map((l) => l.sku).filter(Boolean)).size;
 
     if (dryRun) {
       return new Response(
-        JSON.stringify({ ok: true, dryRun: true, weekLabel, rows, totalUnits, totalRevenue, skusMoved }),
+        JSON.stringify({ ok: true, dryRun: true, weekLabel, rows: filteredRows, totalUnits, totalRevenue, skusMoved }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // 5. Build recipient list: admins + managers + reps (deduplicated)
-    const [salesReps, managers] = await Promise.all([
-      fetchAll<{ name: string; email: string | null }>((f, t) =>
-        supabase.from("sales_reps").select("name,email").not("email", "is", null).range(f, t) as any,
-      ),
-      fetchAll<{ name: string; email: string | null }>((f, t) =>
-        supabase.from("managers").select("name,email").not("email", "is", null).range(f, t) as any,
-      ),
-    ]);
-
+    // 5. Build recipient list — TESTING ONLY: Gabriella only until user approves broader sends.
     const seen = new Set<string>();
     const allRecipients: { name: string; email: string }[] = [];
 
@@ -177,9 +227,8 @@ Deno.serve(async (req) => {
       allRecipients.push({ name, email });
     };
 
-    ADMIN_RECIPIENTS.forEach((r) => add(r.name, r.email));
-    managers.forEach((m) => add(m.name, m.email));
-    salesReps.forEach((r) => add(r.name, r.email));
+    // Temporary hardcoded test recipient only
+    add("Gabriella", "gabriella@lineage-collections.com");
 
     const recipients = testEmail
       ? [{ name: testEmail.split("@")[0], email: testEmail }]
@@ -204,7 +253,7 @@ Deno.serve(async (req) => {
             templateData: {
               recipientName: r.name,
               weekLabel,
-              rows,
+              rows: filteredRows,
               totalUnits,
               totalRevenue,
               skusMoved,
@@ -228,7 +277,7 @@ Deno.serve(async (req) => {
         totalUnits,
         totalRevenue,
         skusMoved,
-        repsWithSales: rows.length,
+        repsWithSales: filteredRows.length,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

@@ -68,13 +68,10 @@ export default function CrmNewAccountPage() {
               </Select>
             </div>
             <div className="sm:col-span-2"><L>Prospect type</L>
-              <Select value={f.prospect_type} onValueChange={(v) => set("prospect_type", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— None —</SelectItem>
-                  {PROSPECT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <ProspectTypeSelect
+                value={f.prospect_type}
+                onChange={(v) => set("prospect_type", v)}
+              />
             </div>
             <div><L>Assigned rep</L>
               <Select value={f.assigned_rep_id} onValueChange={(v) => set("assigned_rep_id", v)}>

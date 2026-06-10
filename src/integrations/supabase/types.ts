@@ -283,6 +283,27 @@ export type Database = {
           },
         ]
       }
+      crm_prospect_types: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       customer_quote_items: {
         Row: {
           created_at: string

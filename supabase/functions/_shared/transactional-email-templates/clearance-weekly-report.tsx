@@ -105,6 +105,7 @@ const ClearanceWeeklyReportEmail = ({
                 const pct = Math.max(0, Math.min(100, (intoTier / pointsPerBonus) * 100))
                 const earned = tier * bonusAmount
                 const toNext = pointsPerBonus - intoTier
+                const nextBonus = (tier + 1) * bonusAmount
                 return (
                   <div key={r.rep} style={lbRow}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }} cellPadding={0} cellSpacing={0}>
@@ -113,18 +114,32 @@ const ClearanceWeeklyReportEmail = ({
                           <td style={lbName}>
                             <span style={lbRank}>#{i + 1}</span> {r.rep}
                           </td>
-                          <td style={lbPts}>
-                            {pts.toLocaleString()} pts{earned > 0 ? ` · ${fmt(earned)} earned` : ''}
+                          <td style={lbEarned}>
+                            {earned > 0 ? `${fmt(earned)} earned` : ''}
                           </td>
                         </tr>
                       </tbody>
                     </table>
+
                     <div style={barOuter}>
                       <div style={{ ...barInner, width: `${pct}%` }} />
                     </div>
-                    <div style={lbMeta}>
-                      {toNext} pts to next ${bonusAmount} · {r.dealersShopped ?? 0} dealers shopped · {fmt(r.totalRevenue)} sales
-                    </div>
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }} cellPadding={0} cellSpacing={0}>
+                      <tbody>
+                        <tr>
+                          <td style={barLabelLeft}>
+                            {pts.toLocaleString()} pts
+                          </td>
+                          <td style={barLabelCenter}>
+                            {pct >= 100 ? 'Ready for next bonus!' : `${toNext} pts to ${fmt(nextBonus)}`}
+                          </td>
+                          <td style={barLabelRight}>
+                            {r.dealersShopped ?? 0} dealers
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 )
               })}
@@ -316,6 +331,9 @@ const lbRow = { padding: '10px 0', borderTop: '1px solid hsl(214, 30%, 90%)' }
 const lbName = { fontSize: '14px', color: 'hsl(220, 35%, 22%)', fontWeight: 600, padding: '0 0 4px' }
 const lbRank = { color: 'hsl(214, 90%, 52%)', fontWeight: 700, marginRight: '6px' }
 const lbPts = { fontSize: '13px', color: 'hsl(220, 35%, 22%)', fontWeight: 600, textAlign: 'right' as const, padding: '0 0 4px', fontVariantNumeric: 'tabular-nums' as const, whiteSpace: 'nowrap' as const }
-const barOuter = { width: '100%', height: '8px', backgroundColor: 'hsl(214, 30%, 90%)', borderRadius: '4px', overflow: 'hidden' as const, margin: '4px 0 6px' }
-const barInner = { height: '8px', backgroundColor: 'hsl(214, 90%, 52%)', borderRadius: '4px' }
-const lbMeta = { fontSize: '11px', color: 'hsl(220, 10%, 46%)' }
+const barOuter = { width: '100%', height: '18px', backgroundColor: 'hsl(214, 30%, 90%)', borderRadius: '9px', overflow: 'hidden' as const, margin: '8px 0 8px' }
+const barInner = { height: '18px', backgroundColor: 'hsl(214, 90%, 52%)', borderRadius: '9px' }
+const lbEarned = { fontSize: '12px', color: 'hsl(220, 10%, 46%)', textAlign: 'right' as const, padding: '0 0 4px', fontWeight: 500 }
+const barLabelLeft = { fontSize: '12px', color: 'hsl(220, 35%, 22%)', fontWeight: 700, padding: '0', fontVariantNumeric: 'tabular-nums' as const }
+const barLabelCenter = { fontSize: '11px', color: 'hsl(220, 10%, 46%)', textAlign: 'center' as const, padding: '0' }
+const barLabelRight = { fontSize: '11px', color: 'hsl(220, 10%, 46%)', textAlign: 'right' as const, padding: '0' }

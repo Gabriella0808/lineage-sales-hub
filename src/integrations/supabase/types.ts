@@ -221,6 +221,7 @@ export type Database = {
           main_phone: string | null
           notes: string | null
           prospect_type: string | null
+          prospect_types: string[]
           state: string | null
           status: string
           street_1: string | null
@@ -245,6 +246,7 @@ export type Database = {
           main_phone?: string | null
           notes?: string | null
           prospect_type?: string | null
+          prospect_types?: string[]
           state?: string | null
           status?: string
           street_1?: string | null
@@ -269,6 +271,7 @@ export type Database = {
           main_phone?: string | null
           notes?: string | null
           prospect_type?: string | null
+          prospect_types?: string[]
           state?: string | null
           status?: string
           street_1?: string | null

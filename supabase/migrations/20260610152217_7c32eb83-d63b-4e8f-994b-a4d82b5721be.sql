@@ -1,0 +1,2 @@
+ALTER TABLE public.crm_accounts ADD COLUMN prospect_types text[] NOT NULL DEFAULT '{}';
+UPDATE public.crm_accounts SET prospect_types = ARRAY[prospect_type] WHERE prospect_type IS NOT NULL AND prospect_type <> '';

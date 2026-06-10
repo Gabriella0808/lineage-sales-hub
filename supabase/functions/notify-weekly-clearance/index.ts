@@ -148,15 +148,12 @@ Deno.serve(async (req) => {
       return toDisplayName(raw);
     }
 
-    // 4. Aggregate by rep → SKU + collection
-    type SkuAgg = { sku: string; product: string; collection: string; qty: number; revenue: number };
+    // 4. Aggregate by rep → collection
     type CollectionAgg = { collection: string; qty: number; revenue: number };
     const repAgg: Record<string, {
       totalQty: number;
       totalRevenue: number;
-      skus: Record<string, SkuAgg>;
       collections: Record<string, CollectionAgg>;
-      dealers: Set<string>;
     }> = {};
 
     for (const line of invoiceLines) {

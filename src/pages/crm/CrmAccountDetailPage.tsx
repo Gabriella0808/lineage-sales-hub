@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, ACCOUNT_TYPES, PROSPECT_TYPES, BRANDS, type AccountType, type Brand, type ProspectType, type CrmAccount } from "@/hooks/useCrm";
+import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, ACCOUNT_TYPES, BRANDS, type AccountType, type Brand, type CrmAccount } from "@/hooks/useCrm";
+import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

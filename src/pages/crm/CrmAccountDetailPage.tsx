@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -55,7 +54,12 @@ export default function CrmAccountDetailPage() {
         eyebrow={repName}
         title={account.company_name}
         subtitle={[account.city, account.state].filter(Boolean).join(", ") || "—"}
-        actions={<Badge variant="outline" className={`text-xs border ${stage.color}`}>{stage.label}</Badge>}
+        actions={
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <span className={`h-1.5 w-1.5 rounded-full ${stage.dot}`} />
+            {stage.label}
+          </span>
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

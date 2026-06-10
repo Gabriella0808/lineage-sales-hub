@@ -61,9 +61,12 @@ export default function CrmDashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {BRANDS.map((b) => (
             <Link key={b} to={`/crm/accounts?brand=${encodeURIComponent(b)}`} className="group">
-              <Card className="border-border/60 transition-colors hover:border-accent/60 hover:bg-muted/30 cursor-pointer">
+                <Card className="border-border/60 transition-colors hover:border-accent/60 hover:bg-muted/30 cursor-pointer">
                 <CardContent className="pt-5">
-                  <Badge variant="outline" className={`text-[10px] border ${BRAND_COLORS[b]}`}>{b}</Badge>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                    <span className={`h-1.5 w-1.5 rounded-full ${BRAND_COLORS[b]}`} />
+                    {b}
+                  </span>
                   <div className="text-3xl font-serif mt-1.5 text-foreground tabular-nums">{stats.byBrand[b] ?? 0}</div>
                   <div className="text-[10px] text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">View accounts →</div>
                 </CardContent>
@@ -117,7 +120,10 @@ export default function CrmDashboardPage() {
                     <div className="text-sm font-medium truncate">{a.company_name}</div>
                     <div className="text-[11px] text-muted-foreground">{[a.city, a.state].filter(Boolean).join(", ")}</div>
                   </div>
-                  <Badge className={`text-[10px] ${stage.color} border`} variant="outline">{stage.label}</Badge>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                    <span className={`h-1.5 w-1.5 rounded-full ${stage.dot}`} />
+                    {stage.label}
+                  </span>
                 </Link>
               );
             })}

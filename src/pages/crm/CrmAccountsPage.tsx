@@ -113,15 +113,15 @@ export default function CrmAccountsPage() {
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/70 text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+            <thead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
               <tr>
-                <th className="text-left px-4 py-2.5 font-medium">Company</th>
-                <th className="text-left px-3 py-2.5 font-medium">Brand</th>
-                <th className="text-left px-3 py-2.5 font-medium">Contact</th>
-                <th className="text-left px-3 py-2.5 font-medium">Rep</th>
-                <th className="text-left px-3 py-2.5 font-medium">City / State</th>
-                <th className="text-left px-3 py-2.5 font-medium">Phone</th>
-                <th className="text-left px-3 py-2.5 font-medium w-44">Stage</th>
+                <th className="text-left px-4 py-2.5 font-medium bg-muted/70">Company</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted/70">Brand</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted/70">Contact</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted/70">Rep</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted/70">City / State</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted/70">Phone</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted/70 w-44">Stage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">

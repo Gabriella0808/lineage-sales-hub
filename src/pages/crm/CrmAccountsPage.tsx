@@ -60,12 +60,13 @@ export default function CrmAccountsPage() {
       if ((a.account_type ?? "prospect") !== "prospect") return false;
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
       if (brandFilter !== "all" && a.brand !== brandFilter) return false;
+      if (prospectTypeFilter !== "all" && (a.prospect_type ?? "") !== prospectTypeFilter) return false;
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, brandFilter, stateFilter]);
+  }, [accounts, q, repFilter, brandFilter, prospectTypeFilter, stateFilter]);
 
   const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();

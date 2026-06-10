@@ -13,68 +13,68 @@
 
 @layer base {
   :root {
-    /* Canvas */
-    --background: 36 22% 96%;          /* warm ivory */
-    --foreground: 220 24% 11%;         /* graphite navy */
+    /* Canvas — soft lavender/periwinkle wash, Outlook-inspired */
+    --background: 240 30% 96%;         /* pale lavender */
+    --foreground: 222 30% 14%;         /* near-black slate */
 
     --card: 0 0% 100%;
-    --card-foreground: 220 24% 11%;
+    --card-foreground: 222 30% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 24% 11%;
+    --popover-foreground: 222 30% 14%;
 
-    /* Brand */
-    --primary: 220 32% 16%;            /* deep graphite navy */
-    --primary-foreground: 36 30% 96%;
+    /* Brand — professional Microsoft-style blue */
+    --primary: 214 80% 36%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 32 18% 90%;           /* muted taupe */
-    --secondary-foreground: 220 24% 11%;
+    --secondary: 240 22% 92%;
+    --secondary-foreground: 222 30% 14%;
 
-    --muted: 30 14% 92%;               /* parchment */
-    --muted-foreground: 220 12% 38%;
+    --muted: 240 18% 94%;
+    --muted-foreground: 222 14% 40%;
 
-    --accent: 28 55% 44%;              /* refined bronze */
-    --accent-foreground: 36 30% 97%;
+    --accent: 214 90% 52%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 4 64% 46%;          /* bordeaux */
-    --destructive-foreground: 36 30% 97%;
+    --destructive: 0 70% 48%;
+    --destructive-foreground: 0 0% 100%;
 
-    --success: 152 38% 32%;            /* deep moss */
-    --success-foreground: 36 30% 97%;
+    --success: 152 52% 34%;
+    --success-foreground: 0 0% 100%;
 
-    --warning: 36 72% 46%;             /* amber */
-    --warning-foreground: 220 24% 11%;
+    --warning: 36 92% 50%;
+    --warning-foreground: 222 30% 14%;
 
-    --border: 30 14% 86%;
-    --input: 30 14% 86%;
-    --ring: 28 55% 44%;
+    --border: 240 18% 86%;
+    --input: 240 18% 86%;
+    --ring: 214 80% 36%;
 
     --radius: 0.5rem;
 
-    /* Sidebar — bespoke graphite shell */
-    --sidebar-background: 220 28% 10%;
-    --sidebar-foreground: 36 18% 78%;
-    --sidebar-primary: 28 55% 52%;
-    --sidebar-primary-foreground: 220 28% 10%;
-    --sidebar-accent: 220 24% 16%;
-    --sidebar-accent-foreground: 36 30% 96%;
-    --sidebar-border: 220 22% 18%;
-    --sidebar-ring: 28 55% 52%;
-    --sidebar-muted: 220 12% 50%;
-    --sidebar-section: 36 14% 60%;
+    /* Sidebar — clean white/lavender shell like Outlook nav */
+    --sidebar-background: 240 28% 97%;
+    --sidebar-foreground: 222 24% 22%;
+    --sidebar-primary: 214 80% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 24% 92%;
+    --sidebar-accent-foreground: 214 80% 36%;
+    --sidebar-border: 240 20% 88%;
+    --sidebar-ring: 214 80% 36%;
+    --sidebar-muted: 222 12% 50%;
+    --sidebar-section: 222 14% 42%;
 
     /* Charts */
-    --chart-1: 220 32% 22%;
-    --chart-2: 28 55% 44%;
-    --chart-3: 152 38% 36%;
-    --chart-4: 200 42% 38%;
-    --chart-5: 12 48% 48%;
+    --chart-1: 214 80% 36%;
+    --chart-2: 214 90% 52%;
+    --chart-3: 152 52% 38%;
+    --chart-4: 262 60% 56%;
+    --chart-5: 36 88% 52%;
 
     /* Premium effects */
-    --shadow-soft: 0 1px 2px hsl(220 24% 11% / 0.04), 0 4px 16px -8px hsl(220 24% 11% / 0.08);
-    --shadow-elev: 0 2px 4px hsl(220 24% 11% / 0.06), 0 12px 32px -12px hsl(220 24% 11% / 0.14);
-    --gradient-bronze: linear-gradient(135deg, hsl(28 55% 50%), hsl(34 60% 58%));
-    --gradient-graphite: linear-gradient(180deg, hsl(220 28% 12%), hsl(220 28% 8%));
+    --shadow-soft: 0 1px 2px hsl(222 30% 14% / 0.04), 0 4px 16px -8px hsl(222 30% 14% / 0.08);
+    --shadow-elev: 0 2px 4px hsl(222 30% 14% / 0.06), 0 12px 32px -12px hsl(222 30% 14% / 0.14);
+    --gradient-bronze: linear-gradient(135deg, hsl(214 80% 40%), hsl(214 90% 56%));
+    --gradient-graphite: linear-gradient(180deg, hsl(240 28% 97%), hsl(240 24% 92%));
   }
 }
 

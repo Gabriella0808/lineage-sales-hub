@@ -76,6 +76,7 @@ export interface CrmAccount {
   lifecycle_stage: LifecycleStage;
   account_type: AccountType;
   prospect_type: ProspectType | null;
+  prospect_types: string[];
   brand: Brand;
   brands: Brand[];
   status: string;

@@ -47,15 +47,30 @@ export default function CrmAccountsPage() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return accounts.filter((a) => {
+      // Accounts section shows prospects only — dealers live in Field Check-ins
+      if ((a.account_type ?? "prospect") !== "prospect") return false;
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
-      if (stageFilter !== "all" && a.lifecycle_stage !== stageFilter) return false;
       if (brandFilter !== "all" && a.brand !== brandFilter) return false;
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, stageFilter, brandFilter, stateFilter]);
+  }, [accounts, q, repFilter, brandFilter, stateFilter]);
+
+  const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
+  const { toast } = useToast();
+  const confirmConvert = () => {
+    if (!convertTarget) return;
+    update.mutate(
+      { id: convertTarget.id, patch: { account_type: "dealer" as AccountType } },
+      {
+        onSuccess: () => toast({ title: "Converted to dealer", description: `${convertTarget.name} now appears on the Field Check-ins map.` }),
+        onError: (e: any) => toast({ title: "Conversion failed", description: e.message, variant: "destructive" }),
+      },
+    );
+    setConvertTarget(null);
+  };
 
   const cameFromDashboard = stageParam !== "all" || brandParam !== "all";
 

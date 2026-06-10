@@ -143,8 +143,8 @@ export default function CrmAccountsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
+              {isLoading && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
               {filtered.map((a) => {
                 const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
                 return (

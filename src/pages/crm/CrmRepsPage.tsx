@@ -36,7 +36,7 @@ export default function CrmRepsPage() {
                   <div className="font-serif text-lg leading-tight">{rep.name}</div>
                   {rep.email && <div className="text-[11px] text-muted-foreground truncate">{rep.email}</div>}
                 </div>
-                <Badge variant="secondary" className="tabular-nums">{total}</Badge>
+                <span className="inline-flex items-center justify-center rounded-md bg-secondary px-2 py-0.5 text-xs font-medium tabular-nums">{total}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {LIFECYCLE_STAGES.map((s) => byStage[s.id] > 0 && (

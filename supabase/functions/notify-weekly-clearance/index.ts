@@ -166,21 +166,9 @@ Deno.serve(async (req) => {
       const qty = line.qty ?? 0;
       const revenue = line.extended_price ?? 0;
       const collection = skuCollection[sku] ?? "Uncategorized";
-      if (!repAgg[rep]) repAgg[rep] = { totalQty: 0, totalRevenue: 0, skus: {}, collections: {}, dealers: new Set() };
+      if (!repAgg[rep]) repAgg[rep] = { totalQty: 0, totalRevenue: 0, collections: {} };
       repAgg[rep].totalQty += qty;
       repAgg[rep].totalRevenue += revenue;
-      if (line.dealer_id) repAgg[rep].dealers.add(line.dealer_id);
-      if (!repAgg[rep].skus[sku]) {
-        repAgg[rep].skus[sku] = {
-          sku,
-          product: skuNames[sku] ?? line.product_name ?? sku,
-          collection,
-          qty: 0,
-          revenue: 0,
-        };
-      }
-      repAgg[rep].skus[sku].qty += qty;
-      repAgg[rep].skus[sku].revenue += revenue;
       if (!repAgg[rep].collections[collection]) {
         repAgg[rep].collections[collection] = { collection, qty: 0, revenue: 0 };
       }

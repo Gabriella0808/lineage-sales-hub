@@ -17,7 +17,7 @@ export default function CrmNewAccountPage() {
   const create = useCreateAccount();
   const [f, setF] = useState({
     company_name: "",
-    lifecycle_stage: "prospect" as LifecycleStage,
+    account_type: "prospect" as "prospect" | "dealer",
     brand: "Cabinet Beds" as Brand,
     assigned_rep_id: "none",
     contact_first_name: "",

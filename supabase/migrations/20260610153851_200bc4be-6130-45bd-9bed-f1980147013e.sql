@@ -1,0 +1,1 @@
+INSERT INTO public.managers (id, name) VALUES (gen_random_uuid(), 'Kate');

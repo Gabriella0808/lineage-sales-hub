@@ -51,10 +51,10 @@ export default function CrmAccountsPage() {
     next.delete("brand");
     setSearchParams(next, { replace: true });
   };
-  const prospectTypeFilter = prospectTypeParam;
-  const setProspectTypeFilter = (v: string) => {
+  const prospectTypeFilters = prospectTypeParam === "all" || prospectTypeParam === "" ? [] : prospectTypeParam.split(",").filter(Boolean);
+  const setProspectTypeFilters = (vs: string[]) => {
     const next = new URLSearchParams(searchParams);
-    if (v === "all") next.delete("ptype"); else next.set("ptype", v);
+    if (vs.length === 0) next.delete("ptype"); else next.set("ptype", vs.join(","));
     setSearchParams(next, { replace: true });
   };
   const [stateFilter, setStateFilter] = useState<string>("all");

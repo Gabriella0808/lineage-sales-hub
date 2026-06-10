@@ -40,7 +40,7 @@ export default function CrmNewAccountPage() {
       return;
     }
     create.mutate(
-      { ...f, assigned_rep_id: f.assigned_rep_id === "none" ? null : f.assigned_rep_id } as any,
+      { ...f, assigned_rep_id: f.assigned_rep_id === "none" ? null : f.assigned_rep_id, prospect_type: f.prospect_type === "none" ? null : f.prospect_type } as any,
       {
         onSuccess: (acct) => {
           toast({ title: "Account created" });

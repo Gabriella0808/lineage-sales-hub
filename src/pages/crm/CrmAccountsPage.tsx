@@ -77,6 +77,7 @@ export default function CrmAccountsPage() {
       // Accounts section shows prospects only — dealers live in Field Check-ins
       if ((a.account_type ?? "prospect") !== "prospect") return false;
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
+      if (managerFilter !== "all" && a.assigned_manager_id !== managerFilter) return false;
       if (brandFilters.length > 0) {
         const accBrands = (a.brands && a.brands.length > 0) ? a.brands : (a.brand ? [a.brand] : []);
         if (!accBrands.some((b) => brandFilters.includes(b as string))) return false;
@@ -90,7 +91,7 @@ export default function CrmAccountsPage() {
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, brandFilters, prospectTypeFilters, stateFilter]);
+  }, [accounts, q, repFilter, managerFilter, brandFilters, prospectTypeFilters, stateFilter]);
 
   const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();

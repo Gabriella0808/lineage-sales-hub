@@ -22,6 +22,7 @@ export default function CrmAccountsPage() {
   const repParam = searchParams.get("rep") ?? "all";
   const stageParam = searchParams.get("stage") ?? "all";
   const brandParam = searchParams.get("brand") ?? "all";
+  const prospectTypeParam = searchParams.get("ptype") ?? "all";
   const [q, setQ] = useState("");
   const repFilter = repParam;
   const setRepFilter = (v: string) => {

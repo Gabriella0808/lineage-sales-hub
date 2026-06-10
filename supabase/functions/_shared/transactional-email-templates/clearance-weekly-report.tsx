@@ -105,6 +105,7 @@ const ClearanceWeeklyReportEmail = ({
                 const pct = Math.max(0, Math.min(100, (intoTier / pointsPerBonus) * 100))
                 const earned = tier * bonusAmount
                 const toNext = pointsPerBonus - intoTier
+                const nextBonus = (tier + 1) * bonusAmount
                 return (
                   <div key={r.rep} style={lbRow}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }} cellPadding={0} cellSpacing={0}>
@@ -113,18 +114,32 @@ const ClearanceWeeklyReportEmail = ({
                           <td style={lbName}>
                             <span style={lbRank}>#{i + 1}</span> {r.rep}
                           </td>
-                          <td style={lbPts}>
-                            {pts.toLocaleString()} pts{earned > 0 ? ` · ${fmt(earned)} earned` : ''}
+                          <td style={lbEarned}>
+                            {earned > 0 ? `${fmt(earned)} earned` : ''}
                           </td>
                         </tr>
                       </tbody>
                     </table>
+
                     <div style={barOuter}>
                       <div style={{ ...barInner, width: `${pct}%` }} />
                     </div>
-                    <div style={lbMeta}>
-                      {toNext} pts to next ${bonusAmount} · {r.dealersShopped ?? 0} dealers shopped · {fmt(r.totalRevenue)} sales
-                    </div>
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }} cellPadding={0} cellSpacing={0}>
+                      <tbody>
+                        <tr>
+                          <td style={barLabelLeft}>
+                            {pts.toLocaleString()} pts
+                          </td>
+                          <td style={barLabelCenter}>
+                            {pct >= 100 ? 'Ready for next bonus!' : `${toNext} pts to ${fmt(nextBonus)}`}
+                          </td>
+                          <td style={barLabelRight}>
+                            {r.dealersShopped ?? 0} dealers
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 )
               })}

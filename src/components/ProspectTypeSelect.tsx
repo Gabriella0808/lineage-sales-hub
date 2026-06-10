@@ -147,7 +147,7 @@ export function ProspectTypeSelect(props: Props) {
     );
   }
 
-  const { value, onChange, className, triggerClassName, compact, placeholder = "—" } = props;
+  const { value, onChange, className, triggerClassName, compact, placeholder = "—" } = props as SingleProps;
   const handleSelect = (v: string) => {
     if (v === NEW_VALUE) {
       setName("");

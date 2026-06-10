@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, ArrowLeft } from "lucide-react";
+import { Plus, Search, ArrowLeft, ChevronDown } from "lucide-react";
 import { ImportAccountsDialog } from "@/components/ImportAccountsDialog";
 
 export default function CrmAccountsPage() {
@@ -37,10 +38,17 @@ export default function CrmAccountsPage() {
     if (v === "all") next.delete("stage"); else next.set("stage", v);
     setSearchParams(next, { replace: true });
   };
-  const brandFilter = brandParam;
-  const setBrandFilter = (v: string) => {
+  const brandFilters = brandParam === "all" || brandParam === "" ? [] : brandParam.split(",").filter(Boolean);
+  const toggleBrand = (b: string) => {
+    const set = new Set(brandFilters);
+    if (set.has(b)) set.delete(b); else set.add(b);
     const next = new URLSearchParams(searchParams);
-    if (v === "all") next.delete("brand"); else next.set("brand", v);
+    if (set.size === 0) next.delete("brand"); else next.set("brand", Array.from(set).join(","));
+    setSearchParams(next, { replace: true });
+  };
+  const clearBrands = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("brand");
     setSearchParams(next, { replace: true });
   };
   const prospectTypeFilter = prospectTypeParam;
@@ -60,14 +68,14 @@ export default function CrmAccountsPage() {
       // Accounts section shows prospects only — dealers live in Field Check-ins
       if ((a.account_type ?? "prospect") !== "prospect") return false;
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
-      if (brandFilter !== "all" && a.brand !== brandFilter) return false;
+      if (brandFilters.length > 0 && !brandFilters.includes(a.brand as string)) return false;
       if (prospectTypeFilter !== "all" && (a.prospect_type ?? "") !== prospectTypeFilter) return false;
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, brandFilter, prospectTypeFilter, stateFilter]);
+  }, [accounts, q, repFilter, brandFilters, prospectTypeFilter, stateFilter]);
 
   const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
@@ -118,13 +126,40 @@ export default function CrmAccountsPage() {
             {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={brandFilter} onValueChange={setBrandFilter}>
-          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All brands</SelectItem>
-            {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="w-full sm:w-44 justify-between font-normal">
+              <span className="truncate">
+                {brandFilters.length === 0
+                  ? "All brands"
+                  : brandFilters.length === 1
+                    ? brandFilters[0]
+                    : `${brandFilters.length} brands`}
+              </span>
+              <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuCheckboxItem
+              checked={brandFilters.length === 0}
+              onCheckedChange={() => clearBrands()}
+              onSelect={(e) => e.preventDefault()}
+            >
+              All brands
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            {BRANDS.map((b) => (
+              <DropdownMenuCheckboxItem
+                key={b}
+                checked={brandFilters.includes(b)}
+                onCheckedChange={() => toggleBrand(b)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                {b}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Select value={prospectTypeFilter} onValueChange={setProspectTypeFilter}>
           <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
           <SelectContent>

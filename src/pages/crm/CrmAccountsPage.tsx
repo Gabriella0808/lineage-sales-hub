@@ -202,7 +202,7 @@ export default function CrmAccountsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 py-2.5 pr-4" onClick={(e) => e.stopPropagation()}>
                       <ProspectTypeSelect
                         compact
                         value={a.prospect_type}

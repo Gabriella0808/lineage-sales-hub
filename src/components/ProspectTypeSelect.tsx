@@ -61,7 +61,7 @@ export function ProspectTypeSelect({ value, onChange, className, triggerClassNam
         <SelectTrigger
           className={cn(
             compact
-              ? "h-7 text-xs border-0 bg-muted/60 hover:bg-muted px-2 py-0 w-fit min-w-[150px]"
+              ? "h-7 text-xs border-0 bg-muted/60 hover:bg-muted px-2 py-0 w-full min-w-0"
               : undefined,
             triggerClassName,
           )}

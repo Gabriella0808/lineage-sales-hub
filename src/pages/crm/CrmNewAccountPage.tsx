@@ -19,7 +19,7 @@ export default function CrmNewAccountPage() {
   const [f, setF] = useState({
     company_name: "",
     account_type: "prospect" as "prospect" | "dealer",
-    prospect_type: "none" as "none" | ProspectType,
+    prospect_type: null as string | null,
     brand: "Cabinet Beds" as Brand,
     assigned_rep_id: "none",
     contact_first_name: "",

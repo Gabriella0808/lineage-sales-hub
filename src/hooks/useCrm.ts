@@ -23,10 +23,17 @@ export const BRAND_COLORS: Record<Brand, string> = {
   "Lux Lighting": "bg-amber-500",
 };
 
+export const ACCOUNT_TYPES = [
+  { id: "prospect", label: "Prospect", dot: "bg-blue-500" },
+  { id: "dealer", label: "Dealer", dot: "bg-emerald-500" },
+] as const;
+export type AccountType = (typeof ACCOUNT_TYPES)[number]["id"];
+
 export interface CrmAccount {
   id: string;
   company_name: string;
   lifecycle_stage: LifecycleStage;
+  account_type: AccountType;
   brand: Brand;
   status: string;
   assigned_rep_id: string | null;

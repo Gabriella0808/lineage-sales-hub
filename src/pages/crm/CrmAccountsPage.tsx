@@ -68,7 +68,10 @@ export default function CrmAccountsPage() {
       // Accounts section shows prospects only — dealers live in Field Check-ins
       if ((a.account_type ?? "prospect") !== "prospect") return false;
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
-      if (brandFilters.length > 0 && !brandFilters.includes(a.brand as string)) return false;
+      if (brandFilters.length > 0) {
+        const accBrands = (a.brands && a.brands.length > 0) ? a.brands : (a.brand ? [a.brand] : []);
+        if (!accBrands.some((b) => brandFilters.includes(b as string))) return false;
+      }
       if (prospectTypeFilter !== "all" && (a.prospect_type ?? "") !== prospectTypeFilter) return false;
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;

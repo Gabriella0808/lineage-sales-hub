@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCreateAccount, useCrmReps, LIFECYCLE_STAGES, BRANDS, type LifecycleStage, type Brand } from "@/hooks/useCrm";
+import { useCreateAccount, useCrmReps, BRANDS, type Brand } from "@/hooks/useCrm";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

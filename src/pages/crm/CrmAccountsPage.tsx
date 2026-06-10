@@ -166,13 +166,14 @@ export default function CrmAccountsPage() {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Select value={prospectTypeFilter} onValueChange={setProspectTypeFilter}>
-          <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All prospect types</SelectItem>
-            {prospectTypes.map((p) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <ProspectTypeSelect
+          multi
+          values={prospectTypeFilters}
+          onChangeMulti={setProspectTypeFilters}
+          showAllOption
+          allLabel="All prospect types"
+          triggerClassName="w-full sm:w-52"
+        />
         <Select value={stateFilter} onValueChange={setStateFilter}>
           <SelectTrigger className="w-full sm:w-32"><SelectValue /></SelectTrigger>
           <SelectContent>

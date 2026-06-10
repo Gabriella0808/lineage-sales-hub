@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, ArrowLeft } from "lucide-react";
+import { ImportAccountsDialog } from "@/components/ImportAccountsDialog";
 
 export default function CrmAccountsPage() {
   const nav = useNavigate();
@@ -96,9 +97,12 @@ export default function CrmAccountsPage() {
         title="All Accounts"
         subtitle={`${filtered.length} of ${accounts.length} accounts`}
         actions={
-          <Button asChild>
-            <Link to="/crm/accounts/new"><Plus className="h-4 w-4 mr-1.5" />New Account</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <ImportAccountsDialog />
+            <Button asChild>
+              <Link to="/crm/accounts/new"><Plus className="h-4 w-4 mr-1.5" />New Account</Link>
+            </Button>
+          </div>
         }
       />
 

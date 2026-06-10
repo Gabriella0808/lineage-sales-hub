@@ -273,7 +273,29 @@ export default function CrmAccountsPage() {
                     </td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{repName(a.assigned_rep_id)}</td>
-                    <td className="px-2 py-2.5 text-muted-foreground truncate">{managerName(a.assigned_manager_id)}</td>
+                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={a.assigned_manager_id ?? "unassigned"}
+                        onValueChange={(v) => {
+                          update.mutate({ id: a.id, patch: { assigned_manager_id: v === "unassigned" ? null : v } });
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground truncate">
+                            <span className="h-1.5 w-1.5 rounded-full shrink-0 bg-muted-foreground/40" />
+                            <span className="truncate">{managerName(a.assigned_manager_id)}</span>
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {managers
+                            .filter((m) => ["Will", "Mateo", "Kate"].includes(m.name))
+                            .map((m) => (
+                              <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </td>
                     <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
                     <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{a.main_phone || "—"}</td>
                     <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>

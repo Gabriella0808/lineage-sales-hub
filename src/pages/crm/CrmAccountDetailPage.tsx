@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, LIFECYCLE_STAGES, BRANDS, type LifecycleStage, type Brand, type CrmAccount } from "@/hooks/useCrm";
+import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, ACCOUNT_TYPES, BRANDS, type AccountType, type Brand, type CrmAccount } from "@/hooks/useCrm";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,12 +29,13 @@ export default function CrmAccountDetailPage() {
 
   const [form, setForm] = useState<Partial<CrmAccount> | null>(null);
   const [newNote, setNewNote] = useState("");
+  const [convertOpen, setConvertOpen] = useState(false);
 
   useEffect(() => { if (account) setForm(account); }, [account]);
 
   if (isLoading || !form || !account) return <div className="p-8 text-muted-foreground">Loading…</div>;
 
-  const stage = LIFECYCLE_STAGES.find((s) => s.id === form.lifecycle_stage)!;
+  const type = ACCOUNT_TYPES.find((s) => s.id === (form.account_type ?? "prospect"))!;
   const repName = reps.find((r) => r.id === form.assigned_rep_id)?.name ?? "Unassigned";
 
   const save = () => {
@@ -41,6 +43,20 @@ export default function CrmAccountDetailPage() {
       { id: account.id, patch: form },
       { onSuccess: () => toast({ title: "Account updated" }) }
     );
+  };
+
+  const confirmConvert = () => {
+    update.mutate(
+      { id: account.id, patch: { account_type: "dealer" as AccountType } },
+      {
+        onSuccess: () => {
+          toast({ title: "Converted to dealer", description: `${account.company_name} now appears on the Field Check-ins map.` });
+          nav("/crm/accounts");
+        },
+        onError: (e: any) => toast({ title: "Conversion failed", description: e.message, variant: "destructive" }),
+      },
+    );
+    setConvertOpen(false);
   };
 
   const set = <K extends keyof CrmAccount>(k: K, v: CrmAccount[K]) => setForm((f) => ({ ...(f ?? {}), [k]: v }));
@@ -56,8 +72,8 @@ export default function CrmAccountDetailPage() {
         subtitle={[account.city, account.state].filter(Boolean).join(", ") || "—"}
         actions={
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <span className={`h-1.5 w-1.5 rounded-full ${stage.dot}`} />
-            {stage.label}
+            <span className={`h-1.5 w-1.5 rounded-full ${type.dot}`} />
+            {type.label}
           </span>
         }
       />
@@ -67,10 +83,16 @@ export default function CrmAccountDetailPage() {
           <CardHeader><CardTitle className="text-sm">Account Details</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Company name"><Input value={form.company_name ?? ""} onChange={(e) => set("company_name", e.target.value)} /></Field>
-            <Field label="Lifecycle stage">
-              <Select value={form.lifecycle_stage as string} onValueChange={(v) => set("lifecycle_stage", v as LifecycleStage)}>
+            <Field label="Account type">
+              <Select
+                value={(form.account_type as string) ?? "prospect"}
+                onValueChange={(v) => {
+                  if (v === "dealer" && account.account_type !== "dealer") setConvertOpen(true);
+                  else set("account_type", v as AccountType);
+                }}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
+                <SelectContent>{ACCOUNT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
             <Field label="Brand">
@@ -174,6 +196,21 @@ export default function CrmAccountDetailPage() {
           </Card>
         </div>
       </div>
+
+      <AlertDialog open={convertOpen} onOpenChange={setConvertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convert {account.company_name} to a dealer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes them from Accounts (prospects) and adds them to the Field Check-ins map with a "Converted from CRM" check-in.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmConvert}>Convert to dealer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

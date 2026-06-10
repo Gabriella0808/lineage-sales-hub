@@ -138,20 +138,21 @@ export default function CrmAccountsPage() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="overflow-auto max-h-[calc(100vh-240px)]">
-          <table className="w-full text-sm">
-            <thead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground sticky top-0 z-10">
+        <div className="overflow-x-hidden overflow-y-auto max-h-[calc(100vh-240px)]">
+          <table className="w-full text-xs table-fixed">
+            <thead className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground sticky top-0 z-10">
               <tr>
-                <th className="text-left px-4 py-2.5 font-medium bg-muted">Company</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted">Brand</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted">Contact</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted">Rep</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted">City / State</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted">Phone</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted w-44">Account Type</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted w-52">Prospect Type</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted w-[18%]">Company</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Brand</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Contact</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Rep</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[14%]">City / State</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Phone</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Account Type</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[14%]">Prospect Type</th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-border/60">
               {isLoading && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
               {!isLoading && filtered.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}

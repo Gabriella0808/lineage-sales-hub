@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useCrmAccounts, useCrmReps, useUpdateAccount, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
+import { useCrmAccounts, useCrmReps, useUpdateAccount, useProspectTypes, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,14 @@ export default function CrmAccountsPage() {
   const nav = useNavigate();
   const { data: accounts = [], isLoading } = useCrmAccounts();
   const { data: reps = [] } = useCrmReps();
+  const { data: prospectTypes = [] } = useProspectTypes();
   const update = useUpdateAccount();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const repParam = searchParams.get("rep") ?? "all";
   const stageParam = searchParams.get("stage") ?? "all";
   const brandParam = searchParams.get("brand") ?? "all";
+  const prospectTypeParam = searchParams.get("ptype") ?? "all";
   const [q, setQ] = useState("");
   const repFilter = repParam;
   const setRepFilter = (v: string) => {
@@ -40,6 +42,12 @@ export default function CrmAccountsPage() {
     if (v === "all") next.delete("brand"); else next.set("brand", v);
     setSearchParams(next, { replace: true });
   };
+  const prospectTypeFilter = prospectTypeParam;
+  const setProspectTypeFilter = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("ptype"); else next.set("ptype", v);
+    setSearchParams(next, { replace: true });
+  };
   const [stateFilter, setStateFilter] = useState<string>("all");
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);
@@ -52,12 +60,13 @@ export default function CrmAccountsPage() {
       if ((a.account_type ?? "prospect") !== "prospect") return false;
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
       if (brandFilter !== "all" && a.brand !== brandFilter) return false;
+      if (prospectTypeFilter !== "all" && (a.prospect_type ?? "") !== prospectTypeFilter) return false;
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, brandFilter, stateFilter]);
+  }, [accounts, q, repFilter, brandFilter, prospectTypeFilter, stateFilter]);
 
   const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
@@ -105,18 +114,18 @@ export default function CrmAccountsPage() {
             {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={stageFilter} onValueChange={setStageFilter}>
-          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            {ACCOUNT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Select value={brandFilter} onValueChange={setBrandFilter}>
           <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All brands</SelectItem>
             {BRANDS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={prospectTypeFilter} onValueChange={setProspectTypeFilter}>
+          <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All prospect types</SelectItem>
+            {prospectTypes.map((p) => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={stateFilter} onValueChange={setStateFilter}>

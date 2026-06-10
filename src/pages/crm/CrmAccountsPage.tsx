@@ -42,6 +42,12 @@ export default function CrmAccountsPage() {
     if (v === "all") next.delete("brand"); else next.set("brand", v);
     setSearchParams(next, { replace: true });
   };
+  const prospectTypeFilter = prospectTypeParam;
+  const setProspectTypeFilter = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("ptype"); else next.set("ptype", v);
+    setSearchParams(next, { replace: true });
+  };
   const [stateFilter, setStateFilter] = useState<string>("all");
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);

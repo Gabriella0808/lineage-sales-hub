@@ -138,14 +138,14 @@ export default function CrmAccountsPage() {
                 <th className="text-left px-3 py-2.5 font-medium bg-muted">Rep</th>
                 <th className="text-left px-3 py-2.5 font-medium bg-muted">City / State</th>
                 <th className="text-left px-3 py-2.5 font-medium bg-muted">Phone</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted w-44">Stage</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted w-44">Account Type</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {isLoading && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
               {!isLoading && filtered.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
               {filtered.map((a) => {
-                const stage = LIFECYCLE_STAGES.find((s) => s.id === a.lifecycle_stage)!;
+                const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
                 return (
                   <tr
                     key={a.id}
@@ -173,15 +173,20 @@ export default function CrmAccountsPage() {
                     <td className="px-3 py-2.5 text-muted-foreground">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
                     <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{a.main_phone || "—"}</td>
                     <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
-                      <Select value={a.lifecycle_stage} onValueChange={(v) => update.mutate({ id: a.id, patch: { lifecycle_stage: v as LifecycleStage } })}>
+                      <Select
+                        value={a.account_type ?? "prospect"}
+                        onValueChange={(v) => {
+                          if (v === "dealer") setConvertTarget({ id: a.id, name: a.company_name });
+                        }}
+                      >
                         <SelectTrigger className="h-7 text-xs border-0 bg-muted/60 hover:bg-muted px-2 py-0 w-fit min-w-[120px]">
                           <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                            <span className={`h-1.5 w-1.5 rounded-full ${stage.dot}`} />
-                            {stage.label}
+                            <span className={`h-1.5 w-1.5 rounded-full ${type.dot}`} />
+                            {type.label}
                           </span>
                         </SelectTrigger>
                         <SelectContent>
-                          {LIFECYCLE_STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                          {ACCOUNT_TYPES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </td>
@@ -192,6 +197,21 @@ export default function CrmAccountsPage() {
           </table>
         </div>
       </Card>
+
+      <AlertDialog open={!!convertTarget} onOpenChange={(open) => !open && setConvertTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Convert {convertTarget?.name} to a dealer?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the account from the prospects list and add them to the Field Check-ins map with a "Converted from CRM" check-in. This can't be undone here.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmConvert}>Convert to dealer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -108,9 +108,6 @@ export function ImportAccountsDialog() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Import accounts from CSV</DialogTitle>
-            <DialogDescription>
-              Upload a CSV with these columns: {EXPECTED_COLUMNS.join(", ")}. Only <code>company_name</code> is required.
-            </DialogDescription>
           </DialogHeader>
 
           <div className="rounded-md border border-dashed p-6 flex flex-col items-center gap-3 text-center">

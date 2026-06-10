@@ -164,15 +164,15 @@ export default function CrmAccountsPage() {
                     className="hover:bg-muted/30 transition-colors cursor-pointer"
                     onClick={() => nav(`/crm/accounts/${a.id}`)}
                   >
-                    <td className="px-4 py-2.5">
-                      <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent">{a.company_name}</Link>
+                    <td className="px-3 py-2.5">
+                      <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent truncate block">{a.company_name}</Link>
                     </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select value={a.brand} onValueChange={(v) => update.mutate({ id: a.id, patch: { brand: v as Brand } })}>
-                        <SelectTrigger className="h-7 text-xs border-0 bg-muted/60 hover:bg-muted px-2 py-0 w-fit min-w-[120px]">
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                            <span className={`h-1.5 w-1.5 rounded-full ${BRAND_COLORS[a.brand] ?? ""}`} />
-                            {a.brand}
+                        <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground truncate">
+                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${BRAND_COLORS[a.brand] ?? ""}`} />
+                            <span className="truncate">{a.brand}</span>
                           </span>
                         </SelectTrigger>
                         <SelectContent>
@@ -180,21 +180,21 @@ export default function CrmAccountsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{repName(a.assigned_rep_id)}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{a.main_phone || "—"}</td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{repName(a.assigned_rep_id)}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{a.main_phone || "—"}</td>
+                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select
                         value={a.account_type ?? "prospect"}
                         onValueChange={(v) => {
                           if (v === "dealer") setConvertTarget({ id: a.id, name: a.company_name });
                         }}
                       >
-                        <SelectTrigger className="h-7 text-xs border-0 bg-muted/60 hover:bg-muted px-2 py-0 w-fit min-w-[120px]">
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                            <span className={`h-1.5 w-1.5 rounded-full ${type.dot}`} />
-                            {type.label}
+                        <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground truncate">
+                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${type.dot}`} />
+                            <span className="truncate">{type.label}</span>
                           </span>
                         </SelectTrigger>
                         <SelectContent>
@@ -202,13 +202,14 @@ export default function CrmAccountsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <ProspectTypeSelect
                         compact
                         value={a.prospect_type}
                         onChange={(v) => update.mutate({ id: a.id, patch: { prospect_type: v } })}
                       />
                     </td>
+
                   </tr>
                 );
               })}

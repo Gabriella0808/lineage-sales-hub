@@ -72,13 +72,16 @@ export default function CrmAccountsPage() {
         const accBrands = (a.brands && a.brands.length > 0) ? a.brands : (a.brand ? [a.brand] : []);
         if (!accBrands.some((b) => brandFilters.includes(b as string))) return false;
       }
-      if (prospectTypeFilter !== "all" && (a.prospect_type ?? "") !== prospectTypeFilter) return false;
+      if (prospectTypeFilters.length > 0) {
+        const accTypes = (a.prospect_types && a.prospect_types.length > 0) ? a.prospect_types : (a.prospect_type ? [a.prospect_type] : []);
+        if (!accTypes.some((t) => prospectTypeFilters.includes(t))) return false;
+      }
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
       const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
       return hay.includes(needle);
     });
-  }, [accounts, q, repFilter, brandFilters, prospectTypeFilter, stateFilter]);
+  }, [accounts, q, repFilter, brandFilters, prospectTypeFilters, stateFilter]);
 
   const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();

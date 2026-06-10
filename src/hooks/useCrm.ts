@@ -29,11 +29,46 @@ export const ACCOUNT_TYPES = [
 ] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number]["id"];
 
-export const PROSPECT_TYPES = [
-  { id: "night_and_day", label: "Night & Day", dot: "bg-violet-500" },
-  { id: "top_100", label: "Top 100 Furniture Stores", dot: "bg-amber-500" },
-] as const;
-export type ProspectType = (typeof PROSPECT_TYPES)[number]["id"];
+export type ProspectType = string;
+
+export interface ProspectTypeRow {
+  id: string;
+  name: string;
+}
+
+export function useProspectTypes() {
+  return useQuery({
+    queryKey: ["crm_prospect_types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("crm_prospect_types")
+        .select("id, name")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as ProspectTypeRow[];
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useCreateProspectType() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Name required");
+      const { data, error } = await supabase
+        .from("crm_prospect_types")
+        .insert({ name: trimmed, created_by: user?.id })
+        .select("id, name")
+        .single();
+      if (error) throw error;
+      return data as ProspectTypeRow;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["crm_prospect_types"] }),
+  });
+}
 
 export interface CrmAccount {
   id: string;

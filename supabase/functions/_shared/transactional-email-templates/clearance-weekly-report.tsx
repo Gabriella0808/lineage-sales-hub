@@ -202,6 +202,8 @@ export const template = {
         rep: 'Will',
         totalQty: 28,
         totalRevenue: 2240,
+        points: 142,
+        dealersShopped: 7,
         collections: [
           { collection: 'Harbor', qty: 20, revenue: 1600 },
           { collection: 'Clearance', qty: 8, revenue: 640 },
@@ -211,12 +213,17 @@ export const template = {
         rep: 'Mateo',
         totalQty: 19,
         totalRevenue: 1610,
+        points: 96,
+        dealersShopped: 5,
         collections: [
           { collection: 'Harbor', qty: 19, revenue: 1610 },
         ],
       },
     ],
     portalUrl: 'https://www.lineage-managerhub.com/clearance/analytics',
+    contestEndLabel: 'Aug 31',
+    pointsPerBonus: 100,
+    bonusAmount: 500,
   },
 
 } satisfies TemplateEntry

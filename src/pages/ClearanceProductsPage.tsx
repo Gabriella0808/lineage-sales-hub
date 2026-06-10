@@ -98,8 +98,8 @@ function StatusPill({ status, onHand }: { status: string | null; onHand: number 
     );
   }
   return (
-    <span className={`${PILL_BASE} bg-success/10 text-success ring-success/20`}>
-      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+      <span className="h-1.5 w-1.5 rounded-full bg-success" />
       In Stock
     </span>
   );

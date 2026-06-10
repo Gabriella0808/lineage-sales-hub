@@ -138,20 +138,21 @@ export default function CrmAccountsPage() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="overflow-auto max-h-[calc(100vh-240px)]">
-          <table className="w-full text-sm">
-            <thead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground sticky top-0 z-10">
+        <div className="overflow-x-hidden overflow-y-auto max-h-[calc(100vh-240px)]">
+          <table className="w-full text-xs table-fixed">
+            <thead className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground sticky top-0 z-10">
               <tr>
-                <th className="text-left px-4 py-2.5 font-medium bg-muted">Company</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted">Brand</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted">Contact</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted">Rep</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted">City / State</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted">Phone</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted w-44">Account Type</th>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted w-52">Prospect Type</th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted w-[18%]">Company</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Brand</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Contact</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Rep</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[14%]">City / State</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Phone</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Account Type</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[14%]">Prospect Type</th>
               </tr>
             </thead>
+
             <tbody className="divide-y divide-border/60">
               {isLoading && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
               {!isLoading && filtered.length === 0 && <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
@@ -163,15 +164,15 @@ export default function CrmAccountsPage() {
                     className="hover:bg-muted/30 transition-colors cursor-pointer"
                     onClick={() => nav(`/crm/accounts/${a.id}`)}
                   >
-                    <td className="px-4 py-2.5">
-                      <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent">{a.company_name}</Link>
+                    <td className="px-3 py-2.5">
+                      <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent truncate block">{a.company_name}</Link>
                     </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select value={a.brand} onValueChange={(v) => update.mutate({ id: a.id, patch: { brand: v as Brand } })}>
-                        <SelectTrigger className="h-7 text-xs border-0 bg-muted/60 hover:bg-muted px-2 py-0 w-fit min-w-[120px]">
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                            <span className={`h-1.5 w-1.5 rounded-full ${BRAND_COLORS[a.brand] ?? ""}`} />
-                            {a.brand}
+                        <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground truncate">
+                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${BRAND_COLORS[a.brand] ?? ""}`} />
+                            <span className="truncate">{a.brand}</span>
                           </span>
                         </SelectTrigger>
                         <SelectContent>
@@ -179,21 +180,21 @@ export default function CrmAccountsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{repName(a.assigned_rep_id)}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
-                    <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{a.main_phone || "—"}</td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{repName(a.assigned_rep_id)}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{a.main_phone || "—"}</td>
+                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select
                         value={a.account_type ?? "prospect"}
                         onValueChange={(v) => {
                           if (v === "dealer") setConvertTarget({ id: a.id, name: a.company_name });
                         }}
                       >
-                        <SelectTrigger className="h-7 text-xs border-0 bg-muted/60 hover:bg-muted px-2 py-0 w-fit min-w-[120px]">
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                            <span className={`h-1.5 w-1.5 rounded-full ${type.dot}`} />
-                            {type.label}
+                        <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground truncate">
+                            <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${type.dot}`} />
+                            <span className="truncate">{type.label}</span>
                           </span>
                         </SelectTrigger>
                         <SelectContent>
@@ -201,13 +202,14 @@ export default function CrmAccountsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <ProspectTypeSelect
                         compact
                         value={a.prospect_type}
                         onChange={(v) => update.mutate({ id: a.id, patch: { prospect_type: v } })}
                       />
                     </td>
+
                   </tr>
                 );
               })}

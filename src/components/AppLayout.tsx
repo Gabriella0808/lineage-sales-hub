@@ -273,8 +273,8 @@ function SidebarNav() {
 
       <SidebarFooter className="p-3 border-t border-sidebar-border/70">
         <div className="flex items-center gap-3 px-1.5">
-          <div className="w-8 h-8 rounded-sm bg-gradient-bronze flex items-center justify-center text-[11px] font-semibold text-sidebar-primary-foreground shadow-soft">
-            LC
+          <div className="w-8 h-8 rounded-sm bg-gradient-bronze flex items-center justify-center shadow-soft overflow-hidden">
+            <img src={lineageLogoFooter.url} alt="Lineage Collections" className="w-6 h-6 object-contain" />
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">

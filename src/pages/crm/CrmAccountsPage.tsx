@@ -111,9 +111,9 @@ export default function CrmAccountsPage() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-340px)]">
           <table className="w-full text-sm">
-            <thead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+            <thead className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground sticky top-0 z-10">
               <tr>
                 <th className="text-left px-4 py-2.5 font-medium bg-muted">Company</th>
                 <th className="text-left px-3 py-2.5 font-medium bg-muted">Brand</th>

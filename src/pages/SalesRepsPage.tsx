@@ -305,7 +305,11 @@ export default function SalesRepsPage() {
                 <Input value={editForm!.email} onChange={e => setEditForm({ ...editForm!, email: e.target.value })} placeholder="Email" className="h-9" />
                 <Input value={editForm!.phone} onChange={e => setEditForm({ ...editForm!, phone: e.target.value })} placeholder="Phone" className="h-9" />
                 <Input value={editForm!.quota} onChange={e => setEditForm({ ...editForm!, quota: e.target.value })} placeholder="Quota" type="number" className="h-9" />
-                <Select value={editForm!.manager_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
+                <Select value={editForm!.manager_id ?? "none"} onValueChange={v => {
+                  const mid = v === "none" ? null : v;
+                  const mgrEmail = mid ? managers.find(m => m.id === mid)?.email ?? "" : "";
+                  setEditForm({ ...editForm!, manager_id: mid, manager_email: mgrEmail });
+                }}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Manager" /></SelectTrigger>
                   <SelectContent className="max-h-72">
                     <SelectItem value="none">— None —</SelectItem>

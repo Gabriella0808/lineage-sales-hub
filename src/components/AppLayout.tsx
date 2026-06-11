@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, LayoutGrid, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
-  FileText, Send, FolderOpen, Tag,
+  FileText, Send, FolderOpen, Tag, Database,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -119,6 +119,7 @@ const NAV_SECTIONS: NavSection[] = [
       { title: "Organizational Chart", url: "/org-chart", icon: Network,  roles: ["admin"] },
       { title: "Sales Managers", url: "/managers", icon: UserCog,  roles: ["admin"] },
       { title: "Sales Reps",     url: "/reps",     icon: Users,    roles: ["admin", "manager"] },
+      { title: "Sales Rep Database (Acctivate)", url: "/reps-acctivate", icon: Database, roles: ["admin"] },
       { title: "Settings",       url: "/settings", icon: Settings, roles: ["admin", "manager", "rep"] },
     ],
   },

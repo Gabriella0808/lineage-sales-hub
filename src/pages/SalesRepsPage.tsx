@@ -149,6 +149,7 @@ export default function SalesRepsPage() {
       email: r.email ?? "",
       phone: r.phone ?? "",
       manager_id: r.manager_id,
+      manager_email: managers.find(m => m.id === r.manager_id)?.email ?? "",
       territory_ids: repTerritoryIds(repId),
       status: r.status,
       quota: r.quota != null ? String(r.quota) : "",

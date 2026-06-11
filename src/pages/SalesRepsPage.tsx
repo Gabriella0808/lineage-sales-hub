@@ -183,6 +183,17 @@ export default function SalesRepsPage() {
     }).eq("id", editingId);
     if (error) { toast.error(error.message); return; }
 
+    // Update manager email if changed
+    if (editForm.manager_id && editForm.manager_email.trim()) {
+      const currentManager = managers.find(m => m.id === editForm.manager_id);
+      if (currentManager && currentManager.email !== editForm.manager_email.trim()) {
+        const { error: mgrErr } = await supabase.from("managers").update({
+          email: editForm.manager_email.trim() || null,
+        }).eq("id", editForm.manager_id);
+        if (mgrErr) { toast.error(mgrErr.message); return; }
+      }
+    }
+
     // Sync rep_territories — replace with the selected set
     const currentIds = repTerritoryIds(editingId);
     const desiredIds = editForm.territory_ids;

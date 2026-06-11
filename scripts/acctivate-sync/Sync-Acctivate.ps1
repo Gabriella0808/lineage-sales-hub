@@ -436,9 +436,11 @@ GROUP BY i.ProductID, p.ProductID
 "@
 }
 
-$queries['dealer_invoices']      = New-DealerInvoicesQuery
-$queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
-$queries['open_sales_orders']    = New-OpenSalesOrdersQuery
+$queryBuilders = @{
+  dealer_invoices      = { New-DealerInvoicesQuery }
+  dealer_invoice_lines = { New-DealerInvoiceLinesQuery }
+  open_sales_orders    = { New-OpenSalesOrdersQuery }
+}
 
 # ---------- Acctivate-section sales reps / managers / territories ----------
 # These populate the SEPARATE acctivate_* tables only. The original
@@ -533,9 +535,9 @@ WHERE rk = 1
 "@
 }
 
-$queries['acctivate_sales_reps']     = New-AcctivateSalesRepsQuery
-$queries['acctivate_sales_managers'] = New-AcctivateSalesManagersQuery
-$queries['acctivate_territories']    = New-AcctivateTerritoriesQuery
+$queryBuilders['acctivate_sales_reps']     = { New-AcctivateSalesRepsQuery }
+$queryBuilders['acctivate_sales_managers'] = { New-AcctivateSalesManagersQuery }
+$queryBuilders['acctivate_territories']    = { New-AcctivateTerritoriesQuery }
 
 
 $tableAliases = @{
@@ -583,12 +585,14 @@ if ($Prune) {
 }
 
 foreach ($table in $enabled) {
-  if (-not $queries.ContainsKey($table)) {
-    Write-Warning "No query defined for '$table' — skipping. Available: $($queries.Keys -join ', ')"
+  if (-not $queries.ContainsKey($table) -and -not $queryBuilders.ContainsKey($table)) {
+    $available = @($queries.Keys) + @($queryBuilders.Keys) | Sort-Object -Unique
+    Write-Warning "No query defined for '$table' — skipping. Available: $($available -join ', ')"
     continue
   }
   Write-Host "==> $table at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Yellow
-  $rows = Invoke-Sql -Query $queries[$table]
+  $query = if ($queries.ContainsKey($table)) { $queries[$table] } else { & $queryBuilders[$table] }
+  $rows = Invoke-Sql -Query $query
   Write-Host "  pulled $($rows.Count) rows from SQL"
   Send-Batch -Table $table -Rows $rows -OnConflict 'acctivate_id'
 

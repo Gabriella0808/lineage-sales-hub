@@ -31,7 +31,7 @@ const STATUS_OPTIONS = [
   { value: "on-leave", label: "On Leave" },
 ];
 
-interface TerritoryOpt { id: string; name: string; acctivate_id: string | null; }
+interface TerritoryOpt { id: string; name: string }
 
 function TerritoryMultiSelect({
   options,
@@ -46,10 +46,6 @@ function TerritoryMultiSelect({
   placeholder?: string;
   triggerClassName?: string;
 }) {
-  // Hide territories whose code looks like a raw UUID/hex string (letter+number jumble)
-  const UUID_RE = /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
-  const filteredOptions = options.filter(o => !o.acctivate_id || !UUID_RE.test(o.acctivate_id));
-
   const toggle = (id: string) => {
     onChange(value.includes(id) ? value.filter(x => x !== id) : [...value, id]);
   };
@@ -60,7 +56,7 @@ function TerritoryMultiSelect({
         ? value
             .map(id => options.find(o => o.id === id))
             .filter(Boolean)
-            .map(o => o!.acctivate_id || o!.name)
+            .map(o => o!.name)
             .join(", ")
         : `${value.length} selected`;
 
@@ -78,10 +74,10 @@ function TerritoryMultiSelect({
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="start">
         <div className="max-h-64 overflow-y-auto py-1">
-          {filteredOptions.length === 0 && (
+          {options.length === 0 && (
             <div className="px-3 py-2 text-xs text-muted-foreground">No territories available</div>
           )}
-          {filteredOptions.map(t => {
+          {options.map(t => {
             const selected = value.includes(t.id);
             return (
               <button
@@ -91,16 +87,7 @@ function TerritoryMultiSelect({
                 className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-sm hover:bg-muted transition-colors"
               >
                 <Checkbox checked={selected} className="pointer-events-none" />
-                <span className="flex-1 truncate">
-                  {t.acctivate_id ? (
-                    <>
-                      <span className="font-medium">{t.acctivate_id}</span>
-                      <span className="text-muted-foreground"> · {t.name}</span>
-                    </>
-                  ) : (
-                    t.name
-                  )}
-                </span>
+                <span className="flex-1 truncate">{t.name}</span>
               </button>
             );
           })}
@@ -123,7 +110,7 @@ export default function SalesRepsPage() {
   const [editForm, setEditForm] = useState<RepEditState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [newRep, setNewRep] = useState<RepEditState>({
-    name: "", acctivate_id: "", email: "", phone: "", manager_id: null, territory_ids: [], status: "active", quota: "",
+    name: "", email: "", phone: "", manager_id: null, territory_ids: [], status: "active", quota: "",
   });
 
   const invalidate = () => {
@@ -143,7 +130,6 @@ export default function SalesRepsPage() {
     setEditingId(repId);
     setEditForm({
       name: r.name,
-      acctivate_id: r.acctivate_id ?? "",
       email: r.email ?? "",
       phone: r.phone ?? "",
       manager_id: r.manager_id,
@@ -171,7 +157,6 @@ export default function SalesRepsPage() {
     }
     const { error } = await supabase.from("sales_reps").update({
       name: editForm.name.trim(),
-      acctivate_id: editForm.acctivate_id.trim() || null,
       email: editForm.email.trim() || null,
       phone: editForm.phone.trim() || null,
       manager_id: editForm.manager_id,
@@ -211,7 +196,6 @@ export default function SalesRepsPage() {
     if (quotaNum !== null && Number.isNaN(quotaNum)) { toast.error("Quota must be a number"); return; }
     const { data, error } = await supabase.from("sales_reps").insert({
       name: newRep.name.trim(),
-      acctivate_id: newRep.acctivate_id.trim() || null,
       email: newRep.email.trim() || null,
       phone: newRep.phone.trim() || null,
       manager_id: newRep.manager_id,
@@ -224,7 +208,7 @@ export default function SalesRepsPage() {
     }
     toast.success("Rep added");
     setAddOpen(false);
-    setNewRep({ name: "", acctivate_id: "", email: "", phone: "", manager_id: null, territory_ids: [], status: "active", quota: "" });
+    setNewRep({ name: "", email: "", phone: "", manager_id: null, territory_ids: [], status: "active", quota: "" });
     invalidate();
   };
 
@@ -235,8 +219,6 @@ export default function SalesRepsPage() {
   });
 
   const managerEmail = (mid: string | null) => managers.find(m => m.id === mid)?.email ?? "—";
-  const territoryName = (tid: string | null) => territories.find(t => t.id === tid)?.name ?? "—";
-  const territoryCode = (tid: string | null) => territories.find(t => t.id === tid)?.acctivate_id ?? "—";
 
   if (repsLoading) {
     return (
@@ -278,16 +260,13 @@ export default function SalesRepsPage() {
             return (
               <div key={r.id} className="glass-card p-3 space-y-2">
                 <Input value={editForm!.name} onChange={e => setEditForm({ ...editForm!, name: e.target.value })} placeholder="Name" className="h-9" />
-                <div className="grid grid-cols-2 gap-2">
-                  <Input value={editForm!.acctivate_id} onChange={e => setEditForm({ ...editForm!, acctivate_id: e.target.value })} placeholder="Rep code" className="h-9" />
-                  <TerritoryMultiSelect
-                    options={territories}
-                    value={editForm!.territory_ids}
-                    onChange={(next) => setEditForm({ ...editForm!, territory_ids: next })}
-                    placeholder="Territories"
-                    triggerClassName="h-9 w-full text-xs"
-                  />
-                </div>
+                <TerritoryMultiSelect
+                  options={territories}
+                  value={editForm!.territory_ids}
+                  onChange={(next) => setEditForm({ ...editForm!, territory_ids: next })}
+                  placeholder="Territories"
+                  triggerClassName="h-9 w-full text-xs"
+                />
                 <Input value={editForm!.email} onChange={e => setEditForm({ ...editForm!, email: e.target.value })} placeholder="Email" className="h-9" />
                 <Input value={editForm!.phone} onChange={e => setEditForm({ ...editForm!, phone: e.target.value })} placeholder="Phone" className="h-9" />
                 <Input value={editForm!.quota} onChange={e => setEditForm({ ...editForm!, quota: e.target.value })} placeholder="Quota" type="number" className="h-9" />
@@ -328,12 +307,12 @@ export default function SalesRepsPage() {
               </div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                 <div>
-                  <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Code</p>
-                  <p>{r.acctivate_id || "—"}</p>
-                </div>
-                <div>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Manager</p>
                   <p className="truncate">{managers.find(m => m.id === r.manager_id)?.name ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Phone</p>
+                  <p className="truncate">{r.phone || "—"}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">Territories</p>
@@ -341,7 +320,7 @@ export default function SalesRepsPage() {
                     {tids.length === 0 ? <span className="text-muted-foreground">—</span> :
                       tids.map(id => (
                         <Badge key={id} variant="secondary" className="font-normal text-[10px]">
-                          {territories.find(t => t.id === id)?.acctivate_id ?? "—"} · {territories.find(t => t.id === id)?.name ?? ""}
+                          {territories.find(t => t.id === id)?.name ?? "—"}
                         </Badge>
                       ))}
                   </div>
@@ -354,16 +333,14 @@ export default function SalesRepsPage() {
       </div>
 
       <div className="table-container hidden lg:block overflow-x-auto">
-        <table className="w-full text-sm min-w-[1100px]">
+        <table className="w-full text-sm min-w-[1000px]">
           <thead>
             <tr className="border-b bg-muted/30">
               <th className="text-left p-3 font-medium text-muted-foreground">Rep</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Rep Code</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Territory Code</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Rep Email</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Manager</th>
               <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Manager Email</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Region</th>
+              <th className="text-left p-3 font-medium text-muted-foreground">Territories</th>
               <th className="text-right p-2 pr-2 font-medium text-muted-foreground w-20 sticky right-0 bg-muted/30 z-10">Actions</th>
             </tr>
           </thead>
@@ -387,40 +364,7 @@ export default function SalesRepsPage() {
                     )}
                   </td>
 
-                  {/* Rep code */}
-                  <td className="p-3">
-                    {isEditing ? (
-                      <Input value={editForm!.acctivate_id} onChange={e => setEditForm({ ...editForm!, acctivate_id: e.target.value })} className="h-8 w-24" />
-                    ) : (
-                      <span className="text-muted-foreground">{r.acctivate_id || "—"}</span>
-                    )}
-                  </td>
-
-                  {/* Territory code(s) — editable multi-select */}
-                  <td className="p-3">
-                    {isEditing ? (
-                      <TerritoryMultiSelect
-                        options={territories}
-                        value={editForm!.territory_ids}
-                        onChange={(next) => setEditForm({ ...editForm!, territory_ids: next })}
-                        placeholder="Select territories"
-                        triggerClassName="h-8 w-32 text-xs"
-                      />
-                    ) : (
-                      <div className="flex flex-wrap gap-1">
-                        {tids.length === 0 ? (
-                          <span className="text-muted-foreground">—</span>
-                        ) : (
-                          tids.map(id => (
-                            <Badge key={id} variant="outline" className="font-normal text-[11px]">
-                              {territories.find(t => t.id === id)?.acctivate_id ?? "—"}
-                            </Badge>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </td>
-
+                  {/* Email */}
                   <td className="p-3">
                     {isEditing ? (
                       <Input value={editForm!.email} onChange={e => setEditForm({ ...editForm!, email: e.target.value })} className="h-8" />
@@ -429,7 +373,7 @@ export default function SalesRepsPage() {
                     )}
                   </td>
 
-                  {/* Manager (name) */}
+                  {/* Manager */}
                   <td className="p-3">
                     {isEditing ? (
                       <Select value={editForm!.manager_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
@@ -449,14 +393,16 @@ export default function SalesRepsPage() {
                     <span className="text-muted-foreground text-xs">{managerEmail(r.manager_id)}</span>
                   </td>
 
-                  {/* Region(s) — derived from selected territories */}
+                  {/* Territories (names only) */}
                   <td className="p-3">
                     {isEditing ? (
-                      <span className="text-xs text-muted-foreground">
-                        {editForm!.territory_ids.length === 0
-                          ? "—"
-                          : editForm!.territory_ids.map(id => territories.find(t => t.id === id)?.name).filter(Boolean).join(", ")}
-                      </span>
+                      <TerritoryMultiSelect
+                        options={territories}
+                        value={editForm!.territory_ids}
+                        onChange={(next) => setEditForm({ ...editForm!, territory_ids: next })}
+                        placeholder="Select territories"
+                        triggerClassName="h-8 w-48 text-xs"
+                      />
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {tids.length === 0 ? (
@@ -471,8 +417,6 @@ export default function SalesRepsPage() {
                       </div>
                     )}
                   </td>
-
-
 
                   {/* Actions */}
                   <td className="p-2 sticky right-0 bg-background shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.1)] w-20">
@@ -504,12 +448,11 @@ export default function SalesRepsPage() {
           <DialogHeader><DialogTitle>Add Sales Rep</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Name</Label><Input value={newRep.name} onChange={e => setNewRep({ ...newRep, name: e.target.value })} /></div>
-            <div><Label>Rep Code</Label><Input value={newRep.acctivate_id} onChange={e => setNewRep({ ...newRep, acctivate_id: e.target.value })} /></div>
             <div><Label>Rep Email</Label><Input type="email" value={newRep.email} onChange={e => setNewRep({ ...newRep, email: e.target.value })} /></div>
             <div><Label>Phone</Label><Input value={newRep.phone} onChange={e => setNewRep({ ...newRep, phone: e.target.value })} /></div>
             <div><Label>Quota</Label><Input type="number" value={newRep.quota} onChange={e => setNewRep({ ...newRep, quota: e.target.value })} /></div>
             <div>
-              <Label>Manager Email</Label>
+              <Label>Manager</Label>
               <Select value={newRep.manager_id ?? "none"} onValueChange={v => setNewRep({ ...newRep, manager_id: v === "none" ? null : v })}>
                 <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
                 <SelectContent className="max-h-72">
@@ -519,7 +462,7 @@ export default function SalesRepsPage() {
               </Select>
             </div>
             <div>
-              <Label>Territories / Regions</Label>
+              <Label>Territories</Label>
               <div className="mt-1.5">
                 <TerritoryMultiSelect
                   options={territories}

@@ -49,7 +49,7 @@ const ClearanceWeeklyReportEmail = ({
     </Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Clearance Products – Weekly Report</Heading>
+        <Heading style={h1}>Summer Special – Weekly Report</Heading>
         <Text style={text}>
           {recipientName ? `Hi ${recipientName},` : 'Hi,'} here is the clearance product sales
           summary for {weekLabel || 'last week'}.
@@ -135,9 +135,9 @@ export const template = {
   component: ClearanceWeeklyReportEmail,
   subject: (data: Record<string, any>) => {
     const wk = data?.weekLabel ? ` (${data.weekLabel})` : ''
-    return `Clearance products weekly report${wk}`
+    return `Summer Special weekly report${wk}`
   },
-  displayName: 'Clearance products weekly report',
+  displayName: 'Summer Special weekly report',
   previewData: {
     recipientName: 'Scott',
     weekLabel: 'Jun 2 - Jun 8, 2026',

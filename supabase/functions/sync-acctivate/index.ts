@@ -6,7 +6,7 @@ import { z } from "npm:zod@3";
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const protectedRepTables = ["managers", "sales_reps", "territories", "rep_territories"] as const;
-const allowedSyncTables = ["dealers", "contacts", "kpi_records", "activities", "tasks", "dealer_sales", "dealer_sales_lines", "dealer_invoices", "dealer_invoice_lines", "products", "inventory", "open_sales_orders"] as const;
+const allowedSyncTables = ["dealers", "contacts", "kpi_records", "activities", "tasks", "dealer_sales", "dealer_sales_lines", "dealer_invoices", "dealer_invoice_lines", "products", "inventory", "open_sales_orders", "acctivate_sales_reps", "acctivate_sales_managers", "acctivate_territories"] as const;
 
 const SyncPayloadSchema = z.object({
   table: z.enum(allowedSyncTables),

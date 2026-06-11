@@ -7,7 +7,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const SyncPayloadSchema = z.object({
-  table: z.enum(["managers", "sales_reps", "territories", "rep_territories", "dealers", "contacts", "kpi_records", "activities", "tasks", "dealer_sales", "dealer_sales_lines", "dealer_invoices", "dealer_invoice_lines", "products", "inventory", "open_sales_orders"]),
+  table: z.enum(["managers", "sales_reps", "territories", "rep_territories", "dealers", "contacts", "kpi_records", "activities", "tasks", "dealer_sales", "dealer_sales_lines", "dealer_invoices", "dealer_invoice_lines", "products", "inventory", "open_sales_orders", "acctivate_sales_reps", "acctivate_sales_managers", "acctivate_territories"]),
   rows: z.array(z.record(z.unknown())).min(1).max(5000),
   on_conflict: z.string().optional(),
 });

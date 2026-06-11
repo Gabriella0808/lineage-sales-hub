@@ -463,6 +463,50 @@ FROM dbo.ProductWarehouseSummary i
 JOIN dbo.Product p ON p.ProductID = i.ProductID
 GROUP BY i.ProductID, p.ProductID
 "@
+
+  acctivate_sales_reps = @"
+SELECT
+  CAST(sp.SalespersonID AS NVARCHAR(64))           AS acctivate_id,
+  CAST(sp.SalespersonID AS NVARCHAR(64))           AS rep_code,
+  sp.Name                                          AS name,
+  CAST(NULL AS NVARCHAR(255))                      AS email,
+  CAST(NULL AS NVARCHAR(64))                       AS phone,
+  CAST(sp.SalesManagerID AS NVARCHAR(64))          AS manager_acctivate_id,
+  mgr.Name                                         AS manager_name,
+  CAST(sp.TerritoryID AS NVARCHAR(64))             AS territory_acctivate_id,
+  terr.Name                                        AS territory_name,
+  CASE WHEN ISNULL(sp.Inactive,0) = 0 THEN 1 ELSE 0 END AS active
+FROM dbo.SalespersonInfo sp
+LEFT JOIN dbo.SalespersonInfo mgr ON mgr.SalespersonID = sp.SalesManagerID
+LEFT JOIN dbo.Territory terr ON terr.TerritoryID = sp.TerritoryID
+WHERE sp.Name IS NOT NULL
+"@
+
+  acctivate_sales_managers = @"
+SELECT DISTINCT
+  CAST(sp.SalespersonID AS NVARCHAR(64))  AS acctivate_id,
+  CAST(sp.SalespersonID AS NVARCHAR(64))  AS manager_code,
+  sp.Name                                  AS name,
+  CAST(NULL AS NVARCHAR(255))              AS email,
+  CAST(NULL AS NVARCHAR(64))               AS phone,
+  CAST('Sales Manager' AS NVARCHAR(128))   AS job_title,
+  CASE WHEN ISNULL(sp.Inactive,0) = 0 THEN 1 ELSE 0 END AS active
+FROM dbo.SalespersonInfo sp
+WHERE sp.SalespersonID IN (SELECT DISTINCT SalesManagerID FROM dbo.SalespersonInfo WHERE SalesManagerID IS NOT NULL)
+"@
+
+  acctivate_territories = @"
+SELECT
+  CAST(t.TerritoryID AS NVARCHAR(64))      AS acctivate_id,
+  CAST(t.TerritoryID AS NVARCHAR(64))      AS territory_code,
+  t.Name                                    AS name,
+  t.Description                             AS description,
+  CAST(t.SalesManagerID AS NVARCHAR(64))   AS manager_acctivate_id,
+  mgr.Name                                  AS manager_name,
+  CASE WHEN ISNULL(t.Inactive,0) = 0 THEN 1 ELSE 0 END AS active
+FROM dbo.Territory t
+LEFT JOIN dbo.SalespersonInfo mgr ON mgr.SalespersonID = t.SalesManagerID
+"@
 }
 
 $queries['dealer_invoices']      = New-DealerInvoicesQuery

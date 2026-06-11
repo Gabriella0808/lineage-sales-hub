@@ -9,7 +9,6 @@ import EmailGuard from "@/components/EmailGuard";
 import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import SalesRepsPage from "@/pages/SalesRepsPage";
-import SalesRepsAcctivatePage from "@/pages/SalesRepsAcctivatePage";
 
 import DealersPage from "@/pages/DealersPage";
 import DirectoryPage from "@/pages/DirectoryPage";
@@ -71,7 +70,6 @@ const App = () => (
                       <Route path="/" element={<DashboardPage />} />
                       <Route path="/managers" element={<ProtectedRoute allow={["admin"]}><ManagersPage /></ProtectedRoute>} />
                       <Route path="/reps" element={<ProtectedRoute allow={["admin", "manager"]}><SalesRepsPage /></ProtectedRoute>} />
-                      <Route path="/reps-acctivate" element={<ProtectedRoute allow={["admin", "manager"]}><SalesRepsAcctivatePage /></ProtectedRoute>} />
                       <Route path="/dealers" element={<DealersPage />} />
                       <Route path="/directory" element={<ProtectedRoute allow={["admin", "manager"]}><DirectoryPage /></ProtectedRoute>} />
                       <Route path="/kpi" element={<CompanyWidePage />} />

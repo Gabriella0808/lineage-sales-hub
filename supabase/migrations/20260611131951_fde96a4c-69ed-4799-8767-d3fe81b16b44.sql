@@ -1,1 +1,0 @@
-ALTER TABLE public.sales_reps ADD CONSTRAINT sales_reps_acctivate_id_key UNIQUE (acctivate_id);

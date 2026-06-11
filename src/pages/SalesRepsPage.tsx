@@ -21,7 +21,6 @@ interface RepEditState {
   email: string;
   phone: string;
   manager_id: string | null;
-  manager_email: string;
   territory_ids: string[];
   status: string;
   quota: string;
@@ -125,7 +124,7 @@ export default function SalesRepsPage() {
   const [editForm, setEditForm] = useState<RepEditState | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [newRep, setNewRep] = useState<RepEditState>({
-    name: "", acctivate_id: "", email: "", phone: "", manager_id: null, manager_email: "", territory_ids: [], status: "active", quota: "",
+    name: "", acctivate_id: "", email: "", phone: "", manager_id: null, territory_ids: [], status: "active", quota: "",
   });
 
   const invalidate = () => {
@@ -149,7 +148,6 @@ export default function SalesRepsPage() {
       email: r.email ?? "",
       phone: r.phone ?? "",
       manager_id: r.manager_id,
-      manager_email: managers.find(m => m.id === r.manager_id)?.email ?? "",
       territory_ids: repTerritoryIds(repId),
       status: r.status,
       quota: r.quota != null ? String(r.quota) : "",
@@ -182,17 +180,6 @@ export default function SalesRepsPage() {
       quota: quotaNum,
     }).eq("id", editingId);
     if (error) { toast.error(error.message); return; }
-
-    // Update manager email if changed
-    if (editForm.manager_id && editForm.manager_email.trim()) {
-      const currentManager = managers.find(m => m.id === editForm.manager_id);
-      if (currentManager && currentManager.email !== editForm.manager_email.trim()) {
-        const { error: mgrErr } = await supabase.from("managers").update({
-          email: editForm.manager_email.trim() || null,
-        }).eq("id", editForm.manager_id);
-        if (mgrErr) { toast.error(mgrErr.message); return; }
-      }
-    }
 
     // Sync rep_territories — replace with the selected set
     const currentIds = repTerritoryIds(editingId);
@@ -238,7 +225,7 @@ export default function SalesRepsPage() {
     }
     toast.success("Rep added");
     setAddOpen(false);
-    setNewRep({ name: "", acctivate_id: "", email: "", phone: "", manager_id: null, manager_email: "", territory_ids: [], status: "active", quota: "" });
+    setNewRep({ name: "", acctivate_id: "", email: "", phone: "", manager_id: null, territory_ids: [], status: "active", quota: "" });
     invalidate();
   };
 
@@ -283,13 +270,6 @@ export default function SalesRepsPage() {
         ]}
       />
 
-      {/* Acctivate sync legend */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 px-1">
-        <span className="inline-block w-3 h-3 rounded-sm bg-blue-100 border border-blue-300" />
-        <span>Highlighted rows are synced from Acctivate</span>
-        <Badge variant="outline" className="ml-1 border-blue-300 bg-blue-50 text-blue-800 text-[10px] font-medium px-1.5 py-0">Acctivate</Badge>
-      </div>
-
       {/* Mobile cards */}
       <div className="lg:hidden space-y-2">
         {filtered.map(r => {
@@ -297,7 +277,7 @@ export default function SalesRepsPage() {
           const tids = repTerritoryIds(r.id);
           if (isEditing) {
             return (
-              <div key={r.id} className={`glass-card p-3 space-y-2 ${r.acctivate_id ? "bg-blue-50/40" : ""}`}>
+              <div key={r.id} className="glass-card p-3 space-y-2">
                 <Input value={editForm!.name} onChange={e => setEditForm({ ...editForm!, name: e.target.value })} placeholder="Name" className="h-9" />
                 <div className="grid grid-cols-2 gap-2">
                   <Input value={editForm!.acctivate_id} onChange={e => setEditForm({ ...editForm!, acctivate_id: e.target.value })} placeholder="Rep code" className="h-9" />
@@ -312,18 +292,13 @@ export default function SalesRepsPage() {
                 <Input value={editForm!.email} onChange={e => setEditForm({ ...editForm!, email: e.target.value })} placeholder="Email" className="h-9" />
                 <Input value={editForm!.phone} onChange={e => setEditForm({ ...editForm!, phone: e.target.value })} placeholder="Phone" className="h-9" />
                 <Input value={editForm!.quota} onChange={e => setEditForm({ ...editForm!, quota: e.target.value })} placeholder="Quota" type="number" className="h-9" />
-                <Select value={editForm!.manager_id ?? "none"} onValueChange={v => {
-                  const mid = v === "none" ? null : v;
-                  const mgrEmail = mid ? managers.find(m => m.id === mid)?.email ?? "" : "";
-                  setEditForm({ ...editForm!, manager_id: mid, manager_email: mgrEmail });
-                }}>
+                <Select value={editForm!.manager_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Manager" /></SelectTrigger>
                   <SelectContent className="max-h-72">
                     <SelectItem value="none">— None —</SelectItem>
                     {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Input value={editForm!.manager_email} onChange={e => setEditForm({ ...editForm!, manager_email: e.target.value })} placeholder="Manager email" className="h-9" />
                 <Select value={editForm!.status} onValueChange={v => setEditForm({ ...editForm!, status: v })}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent className="max-h-72">
@@ -338,7 +313,7 @@ export default function SalesRepsPage() {
             );
           }
           return (
-            <div key={r.id} className={`glass-card p-3 ${r.acctivate_id ? "bg-blue-50/40" : ""}`}>
+            <div key={r.id} className="glass-card p-3">
               <div className="flex items-start gap-3 mb-2">
                 <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-[11px] font-semibold text-primary-foreground shrink-0">
                   {getInitials(r.name)}
@@ -398,7 +373,7 @@ export default function SalesRepsPage() {
               const isEditing = editingId === r.id;
               const tids = repTerritoryIds(r.id);
               return (
-                <tr key={r.id} className={`border-b last:border-0 hover:bg-muted/20 transition-colors ${r.acctivate_id ? "bg-blue-50/40" : ""}`}>
+                <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                   {/* Rep name */}
                   <td className="p-3">
                     {isEditing ? (
@@ -472,11 +447,7 @@ export default function SalesRepsPage() {
 
                   {/* Manager email */}
                   <td className="p-3 hidden lg:table-cell">
-                    {isEditing ? (
-                      <Input value={editForm!.manager_email} onChange={e => setEditForm({ ...editForm!, manager_email: e.target.value })} placeholder="Manager email" className="h-8" />
-                    ) : (
-                      <span className="text-muted-foreground text-xs">{managerEmail(r.manager_id)}</span>
-                    )}
+                    <span className="text-muted-foreground text-xs">{managerEmail(r.manager_id)}</span>
                   </td>
 
                   {/* Region(s) — derived from selected territories */}
@@ -505,7 +476,7 @@ export default function SalesRepsPage() {
 
 
                   {/* Actions */}
-                  <td className={`p-2 sticky right-0 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.1)] w-20 ${r.acctivate_id ? "bg-blue-50/40" : "bg-background"}`}>
+                  <td className="p-2 sticky right-0 bg-background shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.1)] w-20">
                     <div className="flex items-center justify-end gap-0.5">
                       {isEditing ? (
                         <>

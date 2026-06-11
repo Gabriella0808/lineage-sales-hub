@@ -340,6 +340,83 @@ WHERE h.OrderStatus IN ('Scheduled','Backordered','Booked')
 "@
 }
 
+function Test-SqlTableExists {
+  param([string]$Schema = 'dbo', [string]$Table)
+  $rows = Invoke-Sql -Query "SELECT 1 AS found FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$Schema' AND TABLE_NAME = '$Table'"
+  return ($rows.Count -gt 0)
+}
+
+function New-TerritoriesQuery {
+  if (Test-SqlTableExists -Table 'Territory') {
+    $columns = Get-SqlColumns -Table 'Territory'
+    $idCol = Get-FirstColumn -Columns $columns -Candidates @('TerritoryCode', 'TerritoryID', 'TerritoryId', 'Code', 'ID', 'Name')
+    $nameCol = Get-FirstColumn -Columns $columns -Candidates @('TerritoryName', 'Name', 'Description', 'TerritoryCode', 'TerritoryID')
+    if ($idCol -and $nameCol) {
+      return @"
+SELECT DISTINCT
+  CAST($(Quote-SqlIdentifier $idCol) AS NVARCHAR(64)) AS acctivate_id,
+  CAST($(Quote-SqlIdentifier $nameCol) AS NVARCHAR(255)) AS name
+FROM dbo.Territory
+WHERE $(Quote-SqlIdentifier $idCol) IS NOT NULL
+"@
+    }
+  }
+
+  if (Test-SqlTableExists -Table 'tbCustomer') {
+    $columns = Get-SqlColumns -Table 'tbCustomer'
+    $territoryCol = Get-FirstColumn -Columns $columns -Candidates @('_Territory', 'Territory', 'TerritoryCode', 'TerritoryID', 'SalesTerritory')
+    if ($territoryCol) {
+      return @"
+SELECT DISTINCT
+  CAST($(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(64)) AS acctivate_id,
+  CAST($(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(255)) AS name
+FROM dbo.tbCustomer
+WHERE $(Quote-SqlIdentifier $territoryCol) IS NOT NULL
+  AND LTRIM(RTRIM(CAST($(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(255)))) <> ''
+"@
+    }
+  }
+
+  Write-Warning "No dbo.Territory table or tbCustomer territory column found; territories will be skipped."
+  return "SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id, CAST(NULL AS NVARCHAR(255)) AS name WHERE 1 = 0"
+}
+
+function New-AcctivateSalesRepsQuery {
+  $spCols = Get-SqlColumns -Table 'SalespersonInfo'
+  $idCol = Get-FirstColumn -Columns $spCols -Candidates @('SalespersonID', 'SalespersonId', 'ID')
+  $nameCol = Get-FirstColumn -Columns $spCols -Candidates @('Name', 'SalespersonName')
+  if (-not $idCol -or -not $nameCol) {
+    throw "Could not map dbo.SalespersonInfo id/name columns. Found columns: $($spCols -join ', ')"
+  }
+
+  $managerCol = Get-FirstColumn -Columns $spCols -Candidates @('SalesManagerID', 'SalesManagerId', 'ManagerID', 'ManagerId')
+  $territoryCol = Get-FirstColumn -Columns $spCols -Candidates @('TerritoryID', 'TerritoryId', 'TerritoryCode', 'Territory')
+  $inactiveCol = Get-FirstColumn -Columns $spCols -Candidates @('Inactive', 'IsInactive', 'Active')
+  $managerSelect = if ($managerCol) { "CAST(sp.$(Quote-SqlIdentifier $managerCol) AS NVARCHAR(64)) AS manager_acctivate_id" } else { "CAST(NULL AS NVARCHAR(64)) AS manager_acctivate_id" }
+  $managerNameSelect = if ($managerCol) { "mgr.$(Quote-SqlIdentifier $nameCol) AS manager_name" } else { "CAST(NULL AS NVARCHAR(255)) AS manager_name" }
+  $managerJoin = if ($managerCol) { "LEFT JOIN dbo.SalespersonInfo mgr ON mgr.$(Quote-SqlIdentifier $idCol) = sp.$(Quote-SqlIdentifier $managerCol)" } else { "" }
+  $territorySelect = if ($territoryCol) { "CAST(sp.$(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(64)) AS territory_acctivate_id" } else { "CAST(NULL AS NVARCHAR(64)) AS territory_acctivate_id" }
+  $territoryNameSelect = if ($territoryCol) { "CAST(sp.$(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(255)) AS territory_name" } else { "CAST(NULL AS NVARCHAR(255)) AS territory_name" }
+  $activeSelect = if ($inactiveCol -and $inactiveCol -ieq 'Active') { "CASE WHEN ISNULL(sp.$(Quote-SqlIdentifier $inactiveCol),0) = 1 THEN 1 ELSE 0 END AS active" } elseif ($inactiveCol) { "CASE WHEN ISNULL(sp.$(Quote-SqlIdentifier $inactiveCol),0) = 0 THEN 1 ELSE 0 END AS active" } else { "1 AS active" }
+
+  return @"
+SELECT
+  CAST(sp.$(Quote-SqlIdentifier $idCol) AS NVARCHAR(64)) AS acctivate_id,
+  CAST(sp.$(Quote-SqlIdentifier $idCol) AS NVARCHAR(64)) AS rep_code,
+  sp.$(Quote-SqlIdentifier $nameCol) AS name,
+  CAST(NULL AS NVARCHAR(255)) AS email,
+  CAST(NULL AS NVARCHAR(64)) AS phone,
+  $managerSelect,
+  $managerNameSelect,
+  $territorySelect,
+  $territoryNameSelect,
+  $activeSelect
+FROM dbo.SalespersonInfo sp
+$managerJoin
+WHERE sp.$(Quote-SqlIdentifier $nameCol) IS NOT NULL
+"@
+}
+
 function Send-Batch {
   param([string]$Table, [array]$Rows, [string]$OnConflict = 'acctivate_id')
   if (-not $Rows -or $Rows.Count -eq 0) {
@@ -413,10 +490,7 @@ WHERE Name IS NOT NULL
 "@
 
   territories = @"
-SELECT DISTINCT
-  CAST(TerritoryCode AS NVARCHAR(64)) AS acctivate_id,
-  TerritoryName                       AS name
-FROM dbo.Territory
+SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id, CAST(NULL AS NVARCHAR(255)) AS name WHERE 1 = 0
 "@
 
   dealers = @"
@@ -465,21 +539,7 @@ GROUP BY i.ProductID, p.ProductID
 "@
 
   acctivate_sales_reps = @"
-SELECT
-  CAST(sp.SalespersonID AS NVARCHAR(64))           AS acctivate_id,
-  CAST(sp.SalespersonID AS NVARCHAR(64))           AS rep_code,
-  sp.Name                                          AS name,
-  CAST(NULL AS NVARCHAR(255))                      AS email,
-  CAST(NULL AS NVARCHAR(64))                       AS phone,
-  CAST(sp.SalesManagerID AS NVARCHAR(64))          AS manager_acctivate_id,
-  mgr.Name                                         AS manager_name,
-  CAST(sp.TerritoryID AS NVARCHAR(64))             AS territory_acctivate_id,
-  terr.Name                                        AS territory_name,
-  CASE WHEN ISNULL(sp.Inactive,0) = 0 THEN 1 ELSE 0 END AS active
-FROM dbo.SalespersonInfo sp
-LEFT JOIN dbo.SalespersonInfo mgr ON mgr.SalespersonID = sp.SalesManagerID
-LEFT JOIN dbo.Territory terr ON terr.TerritoryID = sp.TerritoryID
-WHERE sp.Name IS NOT NULL
+SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id WHERE 1 = 0
 "@
 
   acctivate_sales_managers = @"
@@ -512,6 +572,9 @@ LEFT JOIN dbo.SalespersonInfo mgr ON mgr.SalespersonID = t.SalesManagerID
 $queries['dealer_invoices']      = New-DealerInvoicesQuery
 $queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
 $queries['open_sales_orders']    = New-OpenSalesOrdersQuery
+$queries['territories']          = New-TerritoriesQuery
+$queries['acctivate_territories'] = New-TerritoriesQuery
+$queries['acctivate_sales_reps'] = New-AcctivateSalesRepsQuery
 
 $tableAliases = @{
   dealer_invoice_line  = 'dealer_invoice_lines'

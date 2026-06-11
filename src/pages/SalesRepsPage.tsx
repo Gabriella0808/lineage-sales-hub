@@ -383,13 +383,21 @@ export default function SalesRepsPage() {
         <table className="w-full text-sm min-w-[1100px]">
           <thead>
             <tr className="border-b bg-muted/30">
-              <th className="text-left p-3 font-medium text-muted-foreground">Rep</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Rep Code</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Territory Code</th>
+              <th className="text-left p-3 font-medium text-muted-foreground bg-amber-50/70">
+                <div className="flex items-center gap-1.5">Rep <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 text-[9px] font-medium px-1 py-0 leading-none">Acctivate</Badge></div>
+              </th>
+              <th className="text-left p-3 font-medium text-muted-foreground bg-amber-50/70">
+                <div className="flex items-center gap-1.5">Rep Code <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 text-[9px] font-medium px-1 py-0 leading-none">Acctivate</Badge></div>
+              </th>
+              <th className="text-left p-3 font-medium text-muted-foreground bg-amber-50/70">
+                <div className="flex items-center gap-1.5">Territory Code <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 text-[9px] font-medium px-1 py-0 leading-none">Acctivate</Badge></div>
+              </th>
+              <th className="text-left p-3 font-medium text-muted-foreground bg-amber-50/70">
+                <div className="flex items-center gap-1.5">Region <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 text-[9px] font-medium px-1 py-0 leading-none">Acctivate</Badge></div>
+              </th>
               <th className="text-left p-3 font-medium text-muted-foreground">Rep Email</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Manager</th>
               <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Manager Email</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Region</th>
               <th className="text-right p-2 pr-2 font-medium text-muted-foreground w-20 sticky right-0 bg-muted/30 z-10">Actions</th>
             </tr>
           </thead>

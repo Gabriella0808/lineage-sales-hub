@@ -14,6 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
+      acctivate_sales_managers: {
+        Row: {
+          acctivate_id: string
+          active: boolean | null
+          created_at: string
+          email: string | null
+          id: string
+          job_title: string | null
+          manager_code: string | null
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id: string
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          job_title?: string | null
+          manager_code?: string | null
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          job_title?: string | null
+          manager_code?: string | null
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      acctivate_sales_reps: {
+        Row: {
+          acctivate_id: string
+          active: boolean | null
+          created_at: string
+          email: string | null
+          id: string
+          manager_acctivate_id: string | null
+          manager_name: string | null
+          name: string
+          phone: string | null
+          rep_code: string | null
+          territory_acctivate_id: string | null
+          territory_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id: string
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          manager_acctivate_id?: string | null
+          manager_name?: string | null
+          name: string
+          phone?: string | null
+          rep_code?: string | null
+          territory_acctivate_id?: string | null
+          territory_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          manager_acctivate_id?: string | null
+          manager_name?: string | null
+          name?: string
+          phone?: string | null
+          rep_code?: string | null
+          territory_acctivate_id?: string | null
+          territory_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      acctivate_territories: {
+        Row: {
+          acctivate_id: string
+          active: boolean | null
+          created_at: string
+          description: string | null
+          id: string
+          manager_acctivate_id: string | null
+          manager_name: string | null
+          name: string
+          territory_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id: string
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          manager_acctivate_id?: string | null
+          manager_name?: string | null
+          name: string
+          territory_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          manager_acctivate_id?: string | null
+          manager_name?: string | null
+          name?: string
+          territory_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           created_at: string

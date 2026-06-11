@@ -100,6 +100,7 @@ export interface Rep {
   id: string;
   name: string;
   email: string | null;
+  manager_id: string | null;
 }
 
 export function useCrmAccounts() {

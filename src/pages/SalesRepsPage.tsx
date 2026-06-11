@@ -283,6 +283,13 @@ export default function SalesRepsPage() {
         ]}
       />
 
+      {/* Acctivate sync legend */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 px-1">
+        <span className="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300" />
+        <span>Highlighted columns are synced from Acctivate</span>
+        <Badge variant="outline" className="ml-1 border-amber-300 bg-amber-50 text-amber-800 text-[10px] font-medium px-1.5 py-0">Acctivate</Badge>
+      </div>
+
       {/* Mobile cards */}
       <div className="lg:hidden space-y-2">
         {filtered.map(r => {

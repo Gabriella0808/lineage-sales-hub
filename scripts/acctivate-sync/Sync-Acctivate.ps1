@@ -390,32 +390,6 @@ function Send-Batch {
 # and MUST include an `acctivate_id` text column used for upsert conflict resolution.
 
 $queries = @{
-  managers = @"
--- Intentionally no CTE/WITH here; some Acctivate SQL Server versions reject
--- CTE batches unless the previous statement is explicitly terminated.
-SELECT
-  CAST(EmployeeId AS NVARCHAR(64))                                AS acctivate_id,
-  LTRIM(RTRIM(ISNULL(FirstName,'') + ' ' + ISNULL(LastName,'')))  AS name,
-  EMail                                                            AS email
-FROM dbo.Employee
-WHERE Active = 1
-  AND JobTitle LIKE '%manager%'
-"@
-
-  sales_reps = @"
-SELECT
-  CAST(SalespersonID AS NVARCHAR(64)) AS acctivate_id,
-  Name                                AS name,
-  CAST(NULL AS NVARCHAR(255))         AS email,
-  CAST(NULL AS NVARCHAR(64))          AS phone
-FROM dbo.SalespersonInfo
-WHERE Name IS NOT NULL
-"@
-
-  territories = @"
-SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id, CAST(NULL AS NVARCHAR(255)) AS name WHERE 1 = 0
-"@
-
   dealers = @"
 SELECT
   CAST(cv.CustId AS NVARCHAR(64)) AS acctivate_id,
@@ -460,43 +434,11 @@ FROM dbo.ProductWarehouseSummary i
 JOIN dbo.Product p ON p.ProductID = i.ProductID
 GROUP BY i.ProductID, p.ProductID
 "@
-
-  acctivate_sales_reps = @"
-SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id WHERE 1 = 0
-"@
-
-  acctivate_sales_managers = @"
-SELECT DISTINCT
-  CAST(sp.SalespersonID AS NVARCHAR(64))  AS acctivate_id,
-  CAST(sp.SalespersonID AS NVARCHAR(64))  AS manager_code,
-  sp.Name                                  AS name,
-  CAST(NULL AS NVARCHAR(255))              AS email,
-  CAST(NULL AS NVARCHAR(64))               AS phone,
-  CAST('Sales Manager' AS NVARCHAR(128))   AS job_title,
-  CASE WHEN ISNULL(sp.Inactive,0) = 0 THEN 1 ELSE 0 END AS active
-FROM dbo.SalespersonInfo sp
-WHERE sp.SalespersonID IN (SELECT DISTINCT SalesManagerID FROM dbo.SalespersonInfo WHERE SalesManagerID IS NOT NULL)
-"@
-
-  acctivate_territories = @"
-SELECT
-  CAST(t.TerritoryID AS NVARCHAR(64))      AS acctivate_id,
-  CAST(t.TerritoryID AS NVARCHAR(64))      AS territory_code,
-  t.Name                                    AS name,
-  t.Description                             AS description,
-  CAST(t.SalesManagerID AS NVARCHAR(64))   AS manager_acctivate_id,
-  mgr.Name                                  AS manager_name,
-  CASE WHEN ISNULL(t.Inactive,0) = 0 THEN 1 ELSE 0 END AS active
-FROM dbo.Territory t
-LEFT JOIN dbo.SalespersonInfo mgr ON mgr.SalespersonID = t.SalesManagerID
-"@
 }
 
 $queries['dealer_invoices']      = New-DealerInvoicesQuery
 $queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
 $queries['open_sales_orders']    = New-OpenSalesOrdersQuery
-$queries['territories']          = New-TerritoriesQuery
-$queries['acctivate_territories'] = New-TerritoriesQuery
 
 
 $tableAliases = @{

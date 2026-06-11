@@ -17,7 +17,6 @@ import { toast } from "sonner";
 
 interface RepEditState {
   name: string;
-  acctivate_id: string;
   email: string;
   phone: string;
   manager_id: string | null;

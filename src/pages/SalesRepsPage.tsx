@@ -227,7 +227,7 @@ export default function SalesRepsPage() {
     }
     toast.success("Rep added");
     setAddOpen(false);
-    setNewRep({ name: "", acctivate_id: "", email: "", phone: "", manager_id: null, territory_ids: [], status: "active", quota: "" });
+    setNewRep({ name: "", acctivate_id: "", email: "", phone: "", manager_id: null, manager_email: "", territory_ids: [], status: "active", quota: "" });
     invalidate();
   };
 

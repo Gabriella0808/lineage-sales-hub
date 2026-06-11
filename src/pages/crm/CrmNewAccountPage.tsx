@@ -79,14 +79,7 @@ export default function CrmNewAccountPage() {
               />
             </div>
             <div><L>Assigned rep</L>
-              <Select value={f.assigned_rep_id} onValueChange={(v) => {
-                const rep = reps.find((r) => r.id === v);
-                setF((p) => ({
-                  ...p,
-                  assigned_rep_id: v,
-                  assigned_manager_id: rep?.manager_id ?? (v === "none" ? "none" : p.assigned_manager_id),
-                }));
-              }}>
+              <Select value={f.assigned_rep_id} onValueChange={(v) => set("assigned_rep_id", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Unassigned</SelectItem>

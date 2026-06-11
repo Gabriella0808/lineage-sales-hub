@@ -100,7 +100,6 @@ export interface Rep {
   id: string;
   name: string;
   email: string | null;
-  manager_id: string | null;
 }
 
 export function useCrmAccounts() {
@@ -146,7 +145,7 @@ export function useCrmReps() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales_reps")
-        .select("id, name, email, manager_id")
+        .select("id, name, email")
         .order("name");
       if (error) throw error;
       return (data ?? []) as Rep[];

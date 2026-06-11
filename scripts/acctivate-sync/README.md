@@ -15,7 +15,7 @@ SQL Server (typically the same machine Acctivate is installed on).
    Copy-Item sync.config.example.json sync.config.json
    notepad sync.config.json
    ```
-   - `syncToken` → value of the `SYNC_API_TOKEN` secret in Lovable Cloud
+   - `syncToken` → value of the `SYNC_API_TOKEN` secret in the backend
    - `sql.server` → e.g. `LOCALHOST\ACCTIVATE` or `ACCT-SQL01`
    - `sql.database` → usually `Acctivate`
    - `integratedSecurity: true` uses the logged-in Windows account; set to
@@ -118,7 +118,7 @@ Unregister-ScheduledTask -TaskName 'Lineage Acctivate Sync' -Confirm:$false
 
 | Symptom | Fix |
 |---|---|
-| `Invalid sync token` | Token in `sync.config.json` doesn't match `SYNC_API_TOKEN` in Lovable Cloud. Re-copy it. |
+| `Invalid sync token` | Token in `sync.config.json` doesn't match `SYNC_API_TOKEN` in the backend. Re-copy it. |
 | `Login failed for user` | Wrong SQL credentials — toggle `integratedSecurity` or fix user/password. |
 | `Invalid object name 'dbo.Customer'` | Your Acctivate schema differs — edit the SQL in `$queries`. |
 | HTTP 400 with column errors | A returned column isn't in the target table. Adjust the SELECT aliases. |

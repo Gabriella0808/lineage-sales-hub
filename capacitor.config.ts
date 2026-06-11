@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Lineage Collections Portal',
   webDir: 'dist',
   server: {
-    url: 'https://70f79ed3-f087-4215-913a-d377e2fdf8a7.lovableproject.com?forceHideBadge=true',
+    url: 'https://www.lineage-portal.com?forceHideBadge=true',
     cleartext: true,
   },
   ios: {

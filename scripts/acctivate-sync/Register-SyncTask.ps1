@@ -81,7 +81,7 @@ Register-ScheduledTask `
     -Settings    $settings `
     -User        $User `
     -RunLevel    Highest `
-    -Description 'Daily full sync of Acctivate data into Lovable Cloud at 3:00 PM Eastern.' | Out-Null
+    -Description 'Daily full sync of Acctivate data into the Lineage backend at 3:00 PM Eastern.' | Out-Null
 
 Write-Host ""
 Write-Host "Registered scheduled task '$TaskName'." -ForegroundColor Green

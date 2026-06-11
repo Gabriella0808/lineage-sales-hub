@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
   Pushes data from the local Acctivate SQL Server database to the
-  Lovable Cloud `sync-acctivate` edge function.
+  Lineage backend `sync-acctivate` edge function.
 
 .DESCRIPTION
   Runs a set of SQL queries against Acctivate, shapes each result set

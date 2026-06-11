@@ -293,7 +293,10 @@ export default function CrmAccountsPage() {
                       <Select
                         value={a.assigned_rep_id ?? "unassigned"}
                         onValueChange={(v) => {
-                          update.mutate({ id: a.id, patch: { assigned_rep_id: v === "unassigned" ? null : v } });
+                          const repId = v === "unassigned" ? null : v;
+                          const rep = repId ? reps.find((r) => r.id === repId) : null;
+                          const managerId = rep?.manager_id ?? null;
+                          update.mutate({ id: a.id, patch: { assigned_rep_id: repId, assigned_manager_id: managerId } });
                         }}
                       >
                         <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0 focus:ring-0 focus-visible:ring-0 focus:ring-offset-0">

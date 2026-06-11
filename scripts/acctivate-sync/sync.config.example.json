@@ -5,7 +5,7 @@
   "requestTimeoutSeconds": 120,
   "maxRetries": 3,
   "retryDelaySeconds": 5,
-  "enabledTables": ["dealers", "products", "inventory", "dealer_invoices", "dealer_invoice_lines", "open_sales_orders"],
+  "enabledTables": ["dealers", "products", "inventory", "dealer_invoices", "dealer_invoice_lines", "open_sales_orders", "acctivate_sales_reps", "acctivate_sales_managers", "acctivate_territories"],
   "sql": {
     "server": "YOUR-SQL-HOST\\ACCTIVATE",
     "database": "Acctivate",

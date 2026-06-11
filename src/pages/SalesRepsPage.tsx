@@ -488,7 +488,7 @@ export default function SalesRepsPage() {
                   </td>
 
                   {/* Region(s) — derived from selected territories */}
-                  <td className="p-3">
+                  <td className="p-3 bg-amber-50/40">
                     {isEditing ? (
                       <span className="text-xs text-muted-foreground">
                         {editForm!.territory_ids.length === 0

@@ -63,7 +63,23 @@ may differ — open the script, edit the `$queries` hashtable, and make sure
 Allowed target tables (defined server-side in `sync-acctivate`):
 `dealers, contacts, kpi_records, activities, tasks, dealer_sales,
 dealer_sales_lines, dealer_invoices, dealer_invoice_lines, products,
-inventory, open_sales_orders`.
+inventory, open_sales_orders, acctivate_sales_reps,
+acctivate_sales_managers, acctivate_territories`.
+
+The original `sales_reps`, `managers`, `territories`, and `rep_territories`
+tables are intentionally blocked by the edge function (HTTP 403) — Acctivate
+only writes to the `acctivate_*` mirror tables shown on the
+**Sales Rep Database (Acctivate)** page.
+
+### Sync only the Acctivate sales-rep mirror tables
+
+To push just sales reps (with rep code), sales managers, and territories
+(with territory codes) into the `acctivate_*` tables — without touching
+dealers, products, invoices, etc. — run:
+
+```powershell
+pwsh .\Sync-Acctivate.ps1 -Tables acctivate_sales_reps,acctivate_sales_managers,acctivate_territories
+```
 
 ## 4. Schedule it (daily 3:00 PM Eastern)
 

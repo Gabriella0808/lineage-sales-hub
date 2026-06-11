@@ -585,12 +585,14 @@ if ($Prune) {
 }
 
 foreach ($table in $enabled) {
-  if (-not $queries.ContainsKey($table)) {
-    Write-Warning "No query defined for '$table' — skipping. Available: $($queries.Keys -join ', ')"
+  if (-not $queries.ContainsKey($table) -and -not $queryBuilders.ContainsKey($table)) {
+    $available = @($queries.Keys) + @($queryBuilders.Keys) | Sort-Object -Unique
+    Write-Warning "No query defined for '$table' — skipping. Available: $($available -join ', ')"
     continue
   }
   Write-Host "==> $table at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Yellow
-  $rows = Invoke-Sql -Query $queries[$table]
+  $query = if ($queries.ContainsKey($table)) { $queries[$table] } else { & $queryBuilders[$table] }
+  $rows = Invoke-Sql -Query $query
   Write-Host "  pulled $($rows.Count) rows from SQL"
   Send-Batch -Table $table -Rows $rows -OnConflict 'acctivate_id'
 

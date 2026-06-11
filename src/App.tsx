@@ -9,6 +9,7 @@ import EmailGuard from "@/components/EmailGuard";
 import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import SalesRepsPage from "@/pages/SalesRepsPage";
+import SalesRepsAcctivatePage from "@/pages/SalesRepsAcctivatePage";
 
 import DealersPage from "@/pages/DealersPage";
 import DirectoryPage from "@/pages/DirectoryPage";

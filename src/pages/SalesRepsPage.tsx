@@ -316,6 +316,7 @@ export default function SalesRepsPage() {
                     {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <Input value={editForm!.manager_email} onChange={e => setEditForm({ ...editForm!, manager_email: e.target.value })} placeholder="Manager email" className="h-9" />
                 <Select value={editForm!.status} onValueChange={v => setEditForm({ ...editForm!, status: v })}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent className="max-h-72">

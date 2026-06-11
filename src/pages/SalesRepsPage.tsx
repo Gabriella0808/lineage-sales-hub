@@ -422,7 +422,7 @@ export default function SalesRepsPage() {
                   </td>
 
                   {/* Rep code */}
-                  <td className="p-3">
+                  <td className="p-3 bg-amber-50/40">
                     {isEditing ? (
                       <Input value={editForm!.acctivate_id} onChange={e => setEditForm({ ...editForm!, acctivate_id: e.target.value })} className="h-8 w-24" />
                     ) : (

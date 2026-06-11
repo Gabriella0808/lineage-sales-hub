@@ -490,10 +490,7 @@ WHERE Name IS NOT NULL
 "@
 
   territories = @"
-SELECT DISTINCT
-  CAST(TerritoryCode AS NVARCHAR(64)) AS acctivate_id,
-  TerritoryName                       AS name
-FROM dbo.Territory
+SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id, CAST(NULL AS NVARCHAR(255)) AS name WHERE 1 = 0
 "@
 
   dealers = @"
@@ -542,21 +539,7 @@ GROUP BY i.ProductID, p.ProductID
 "@
 
   acctivate_sales_reps = @"
-SELECT
-  CAST(sp.SalespersonID AS NVARCHAR(64))           AS acctivate_id,
-  CAST(sp.SalespersonID AS NVARCHAR(64))           AS rep_code,
-  sp.Name                                          AS name,
-  CAST(NULL AS NVARCHAR(255))                      AS email,
-  CAST(NULL AS NVARCHAR(64))                       AS phone,
-  CAST(sp.SalesManagerID AS NVARCHAR(64))          AS manager_acctivate_id,
-  mgr.Name                                         AS manager_name,
-  CAST(sp.TerritoryID AS NVARCHAR(64))             AS territory_acctivate_id,
-  terr.Name                                        AS territory_name,
-  CASE WHEN ISNULL(sp.Inactive,0) = 0 THEN 1 ELSE 0 END AS active
-FROM dbo.SalespersonInfo sp
-LEFT JOIN dbo.SalespersonInfo mgr ON mgr.SalespersonID = sp.SalesManagerID
-LEFT JOIN dbo.Territory terr ON terr.TerritoryID = sp.TerritoryID
-WHERE sp.Name IS NOT NULL
+SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id WHERE 1 = 0
 "@
 
   acctivate_sales_managers = @"

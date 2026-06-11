@@ -572,6 +572,9 @@ LEFT JOIN dbo.SalespersonInfo mgr ON mgr.SalespersonID = t.SalesManagerID
 $queries['dealer_invoices']      = New-DealerInvoicesQuery
 $queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
 $queries['open_sales_orders']    = New-OpenSalesOrdersQuery
+$queries['territories']          = New-TerritoriesQuery
+$queries['acctivate_territories'] = New-TerritoriesQuery
+$queries['acctivate_sales_reps'] = New-AcctivateSalesRepsQuery
 
 $tableAliases = @{
   dealer_invoice_line  = 'dealer_invoice_lines'

@@ -340,48 +340,6 @@ WHERE h.OrderStatus IN ('Scheduled','Backordered','Booked')
 "@
 }
 
-function Test-SqlTableExists {
-  param([string]$Schema = 'dbo', [string]$Table)
-  $rows = Invoke-Sql -Query "SELECT 1 AS found FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$Schema' AND TABLE_NAME = '$Table'"
-  return ($rows.Count -gt 0)
-}
-
-function New-TerritoriesQuery {
-  if (Test-SqlTableExists -Table 'Territory') {
-    $columns = Get-SqlColumns -Table 'Territory'
-    $idCol = Get-FirstColumn -Columns $columns -Candidates @('TerritoryCode', 'TerritoryID', 'TerritoryId', 'Code', 'ID', 'Name')
-    $nameCol = Get-FirstColumn -Columns $columns -Candidates @('TerritoryName', 'Name', 'Description', 'TerritoryCode', 'TerritoryID')
-    if ($idCol -and $nameCol) {
-      return @"
-SELECT DISTINCT
-  CAST($(Quote-SqlIdentifier $idCol) AS NVARCHAR(64)) AS acctivate_id,
-  CAST($(Quote-SqlIdentifier $nameCol) AS NVARCHAR(255)) AS name
-FROM dbo.Territory
-WHERE $(Quote-SqlIdentifier $idCol) IS NOT NULL
-"@
-    }
-  }
-
-  if (Test-SqlTableExists -Table 'tbCustomer') {
-    $columns = Get-SqlColumns -Table 'tbCustomer'
-    $territoryCol = Get-FirstColumn -Columns $columns -Candidates @('_Territory', 'Territory', 'TerritoryCode', 'TerritoryID', 'SalesTerritory')
-    if ($territoryCol) {
-      return @"
-SELECT DISTINCT
-  CAST($(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(64)) AS acctivate_id,
-  CAST($(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(255)) AS name
-FROM dbo.tbCustomer
-WHERE $(Quote-SqlIdentifier $territoryCol) IS NOT NULL
-  AND LTRIM(RTRIM(CAST($(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(255)))) <> ''
-"@
-    }
-  }
-
-  Write-Warning "No dbo.Territory table or tbCustomer territory column found; territories will be skipped."
-  return "SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id, CAST(NULL AS NVARCHAR(255)) AS name WHERE 1 = 0"
-}
-
-
 function Send-Batch {
   param([string]$Table, [array]$Rows, [string]$OnConflict = 'acctivate_id')
   if (-not $Rows -or $Rows.Count -eq 0) {

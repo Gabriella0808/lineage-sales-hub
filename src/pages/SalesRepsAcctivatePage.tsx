@@ -60,7 +60,7 @@ export default function SalesRepsAcctivatePage() {
     <div className="p-6 space-y-4">
       <PageHeader
         title="Sales Rep Database (Acctivate)"
-        description="Read-only view of sales reps synced from Acctivate. This does not affect the original Sales Reps section."
+        subtitle="Read-only view of sales reps synced from Acctivate. This does not affect the original Sales Reps section."
       />
 
       <div className="flex items-center justify-between gap-3">

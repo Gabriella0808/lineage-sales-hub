@@ -550,6 +550,13 @@ $tableAliases = @{
   open_sales           = 'open_sales_orders'
   sales_orders         = 'open_sales_orders'
   backlog              = 'open_sales_orders'
+  reps                 = 'acctivate_sales_reps'
+  sales_reps           = 'acctivate_sales_reps'
+  acctivate_reps       = 'acctivate_sales_reps'
+  managers             = 'acctivate_sales_managers'
+  sales_managers       = 'acctivate_sales_managers'
+  acctivate_managers   = 'acctivate_sales_managers'
+  territories          = 'acctivate_territories'
 }
 
 function Normalize-TableKey {

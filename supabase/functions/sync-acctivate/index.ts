@@ -63,6 +63,16 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const supabase = createClient(supabaseUrl, supabaseKey);
     const results: Record<string, { synced: number; error?: string }> = {};
+    const requestedTables = [
+      body.table,
+      ...(Array.isArray(body.batches) ? body.batches.map((batch: { table?: unknown }) => batch.table) : []),
+    ].filter(Boolean);
+    if (requestedTables.some((table) => protectedRepTables.includes(table as typeof protectedRepTables[number]))) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Acctivate sync is not allowed to update sales reps, managers, territories, or rep territories." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
+    }
 
     // Lookup mode: return {acctivate_id: id} map for the requested table
     if (body.action === "lookup") {

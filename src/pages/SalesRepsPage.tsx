@@ -21,6 +21,7 @@ interface RepEditState {
   email: string;
   phone: string;
   manager_id: string | null;
+  manager_email: string;
   territory_ids: string[];
   status: string;
   quota: string;

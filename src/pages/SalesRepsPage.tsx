@@ -431,7 +431,7 @@ export default function SalesRepsPage() {
                   </td>
 
                   {/* Territory code(s) — editable multi-select */}
-                  <td className="p-3">
+                  <td className="p-3 bg-amber-50/40">
                     {isEditing ? (
                       <TerritoryMultiSelect
                         options={territories}

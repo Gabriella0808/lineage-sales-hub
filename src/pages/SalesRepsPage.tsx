@@ -283,6 +283,13 @@ export default function SalesRepsPage() {
         ]}
       />
 
+      {/* Acctivate sync legend */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 px-1">
+        <span className="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300" />
+        <span>Highlighted columns are synced from Acctivate</span>
+        <Badge variant="outline" className="ml-1 border-amber-300 bg-amber-50 text-amber-800 text-[10px] font-medium px-1.5 py-0">Acctivate</Badge>
+      </div>
+
       {/* Mobile cards */}
       <div className="lg:hidden space-y-2">
         {filtered.map(r => {
@@ -376,13 +383,21 @@ export default function SalesRepsPage() {
         <table className="w-full text-sm min-w-[1100px]">
           <thead>
             <tr className="border-b bg-muted/30">
-              <th className="text-left p-3 font-medium text-muted-foreground">Rep</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Rep Code</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Territory Code</th>
+              <th className="text-left p-3 font-medium text-muted-foreground bg-amber-50/70">
+                <div className="flex items-center gap-1.5">Rep <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 text-[9px] font-medium px-1 py-0 leading-none">Acctivate</Badge></div>
+              </th>
+              <th className="text-left p-3 font-medium text-muted-foreground bg-amber-50/70">
+                <div className="flex items-center gap-1.5">Rep Code <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 text-[9px] font-medium px-1 py-0 leading-none">Acctivate</Badge></div>
+              </th>
+              <th className="text-left p-3 font-medium text-muted-foreground bg-amber-50/70">
+                <div className="flex items-center gap-1.5">Territory Code <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 text-[9px] font-medium px-1 py-0 leading-none">Acctivate</Badge></div>
+              </th>
               <th className="text-left p-3 font-medium text-muted-foreground">Rep Email</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Manager</th>
               <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Manager Email</th>
-              <th className="text-left p-3 font-medium text-muted-foreground">Region</th>
+              <th className="text-left p-3 font-medium text-muted-foreground bg-amber-50/70">
+                <div className="flex items-center gap-1.5">Region <Badge variant="outline" className="border-amber-300 bg-amber-100 text-amber-800 text-[9px] font-medium px-1 py-0 leading-none">Acctivate</Badge></div>
+              </th>
               <th className="text-right p-2 pr-2 font-medium text-muted-foreground w-20 sticky right-0 bg-muted/30 z-10">Actions</th>
             </tr>
           </thead>
@@ -393,7 +408,7 @@ export default function SalesRepsPage() {
               return (
                 <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                   {/* Rep name */}
-                  <td className="p-3">
+                  <td className="p-3 bg-amber-50/40">
                     {isEditing ? (
                       <Input value={editForm!.name} onChange={e => setEditForm({ ...editForm!, name: e.target.value })} className="h-8" />
                     ) : (
@@ -407,7 +422,7 @@ export default function SalesRepsPage() {
                   </td>
 
                   {/* Rep code */}
-                  <td className="p-3">
+                  <td className="p-3 bg-amber-50/40">
                     {isEditing ? (
                       <Input value={editForm!.acctivate_id} onChange={e => setEditForm({ ...editForm!, acctivate_id: e.target.value })} className="h-8 w-24" />
                     ) : (
@@ -416,7 +431,7 @@ export default function SalesRepsPage() {
                   </td>
 
                   {/* Territory code(s) — editable multi-select */}
-                  <td className="p-3">
+                  <td className="p-3 bg-amber-50/40">
                     {isEditing ? (
                       <TerritoryMultiSelect
                         options={territories}
@@ -473,7 +488,7 @@ export default function SalesRepsPage() {
                   </td>
 
                   {/* Region(s) — derived from selected territories */}
-                  <td className="p-3">
+                  <td className="p-3 bg-amber-50/40">
                     {isEditing ? (
                       <span className="text-xs text-muted-foreground">
                         {editForm!.territory_ids.length === 0

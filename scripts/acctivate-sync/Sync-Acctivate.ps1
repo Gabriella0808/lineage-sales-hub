@@ -381,41 +381,6 @@ WHERE $(Quote-SqlIdentifier $territoryCol) IS NOT NULL
   return "SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id, CAST(NULL AS NVARCHAR(255)) AS name WHERE 1 = 0"
 }
 
-function New-AcctivateSalesRepsQuery {
-  $spCols = Get-SqlColumns -Table 'SalespersonInfo'
-  $idCol = Get-FirstColumn -Columns $spCols -Candidates @('SalespersonID', 'SalespersonId', 'ID')
-  $nameCol = Get-FirstColumn -Columns $spCols -Candidates @('Name', 'SalespersonName')
-  if (-not $idCol -or -not $nameCol) {
-    throw "Could not map dbo.SalespersonInfo id/name columns. Found columns: $($spCols -join ', ')"
-  }
-
-  $managerCol = Get-FirstColumn -Columns $spCols -Candidates @('SalesManagerID', 'SalesManagerId', 'ManagerID', 'ManagerId')
-  $territoryCol = Get-FirstColumn -Columns $spCols -Candidates @('TerritoryID', 'TerritoryId', 'TerritoryCode', 'Territory')
-  $inactiveCol = Get-FirstColumn -Columns $spCols -Candidates @('Inactive', 'IsInactive', 'Active')
-  $managerSelect = if ($managerCol) { "CAST(sp.$(Quote-SqlIdentifier $managerCol) AS NVARCHAR(64)) AS manager_acctivate_id" } else { "CAST(NULL AS NVARCHAR(64)) AS manager_acctivate_id" }
-  $managerNameSelect = if ($managerCol) { "mgr.$(Quote-SqlIdentifier $nameCol) AS manager_name" } else { "CAST(NULL AS NVARCHAR(255)) AS manager_name" }
-  $managerJoin = if ($managerCol) { "LEFT JOIN dbo.SalespersonInfo mgr ON mgr.$(Quote-SqlIdentifier $idCol) = sp.$(Quote-SqlIdentifier $managerCol)" } else { "" }
-  $territorySelect = if ($territoryCol) { "CAST(sp.$(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(64)) AS territory_acctivate_id" } else { "CAST(NULL AS NVARCHAR(64)) AS territory_acctivate_id" }
-  $territoryNameSelect = if ($territoryCol) { "CAST(sp.$(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(255)) AS territory_name" } else { "CAST(NULL AS NVARCHAR(255)) AS territory_name" }
-  $activeSelect = if ($inactiveCol -and $inactiveCol -ieq 'Active') { "CASE WHEN ISNULL(sp.$(Quote-SqlIdentifier $inactiveCol),0) = 1 THEN 1 ELSE 0 END AS active" } elseif ($inactiveCol) { "CASE WHEN ISNULL(sp.$(Quote-SqlIdentifier $inactiveCol),0) = 0 THEN 1 ELSE 0 END AS active" } else { "1 AS active" }
-
-  return @"
-SELECT
-  CAST(sp.$(Quote-SqlIdentifier $idCol) AS NVARCHAR(64)) AS acctivate_id,
-  CAST(sp.$(Quote-SqlIdentifier $idCol) AS NVARCHAR(64)) AS rep_code,
-  sp.$(Quote-SqlIdentifier $nameCol) AS name,
-  CAST(NULL AS NVARCHAR(255)) AS email,
-  CAST(NULL AS NVARCHAR(64)) AS phone,
-  $managerSelect,
-  $managerNameSelect,
-  $territorySelect,
-  $territoryNameSelect,
-  $activeSelect
-FROM dbo.SalespersonInfo sp
-$managerJoin
-WHERE sp.$(Quote-SqlIdentifier $nameCol) IS NOT NULL
-"@
-}
 
 function Send-Batch {
   param([string]$Table, [array]$Rows, [string]$OnConflict = 'acctivate_id')
@@ -574,7 +539,7 @@ $queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
 $queries['open_sales_orders']    = New-OpenSalesOrdersQuery
 $queries['territories']          = New-TerritoriesQuery
 $queries['acctivate_territories'] = New-TerritoriesQuery
-$queries['acctivate_sales_reps'] = New-AcctivateSalesRepsQuery
+
 
 $tableAliases = @{
   dealer_invoice_line  = 'dealer_invoice_lines'

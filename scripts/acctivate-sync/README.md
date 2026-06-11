@@ -1,4 +1,4 @@
-# Acctivate → Lovable Cloud Sync (PowerShell)
+# Acctivate → Lineage Backend Sync (PowerShell)
 
 Pushes data from your on-prem Acctivate SQL Server to the `sync-acctivate`
 edge function. Run this on a Windows machine that can reach the Acctivate

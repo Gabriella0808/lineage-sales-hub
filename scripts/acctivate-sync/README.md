@@ -61,9 +61,9 @@ may differ — open the script, edit the `$queries` hashtable, and make sure
 **every query returns an `acctivate_id` column** (used as the upsert key).
 
 Allowed target tables (defined server-side in `sync-acctivate`):
-`managers, sales_reps, territories, rep_territories, dealers, contacts,
-kpi_records, activities, tasks, dealer_sales, dealer_sales_lines,
-products, inventory`.
+`dealers, contacts, kpi_records, activities, tasks, dealer_sales,
+dealer_sales_lines, dealer_invoices, dealer_invoice_lines, products,
+inventory, open_sales_orders`.
 
 ## 4. Schedule it (daily 3:00 PM Eastern)
 

@@ -13,8 +13,8 @@
   Path to sync.config.json. Defaults to ./sync.config.json next to this script.
 
 .PARAMETER Tables
-  Optional list of table keys to sync (managers, sales_reps, territories,
-  dealers, products, inventory). Defaults to all enabled in config.
+  Optional list of table keys to sync (dealers, products, inventory,
+  dealer_invoices, dealer_invoice_lines, open_sales_orders). Defaults to all enabled in config.
 
 .PARAMETER Prune
   After syncing dealers, remove stale dealer rows that are no longer in
@@ -340,48 +340,6 @@ WHERE h.OrderStatus IN ('Scheduled','Backordered','Booked')
 "@
 }
 
-function Test-SqlTableExists {
-  param([string]$Schema = 'dbo', [string]$Table)
-  $rows = Invoke-Sql -Query "SELECT 1 AS found FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$Schema' AND TABLE_NAME = '$Table'"
-  return ($rows.Count -gt 0)
-}
-
-function New-TerritoriesQuery {
-  if (Test-SqlTableExists -Table 'Territory') {
-    $columns = Get-SqlColumns -Table 'Territory'
-    $idCol = Get-FirstColumn -Columns $columns -Candidates @('TerritoryCode', 'TerritoryID', 'TerritoryId', 'Code', 'ID', 'Name')
-    $nameCol = Get-FirstColumn -Columns $columns -Candidates @('TerritoryName', 'Name', 'Description', 'TerritoryCode', 'TerritoryID')
-    if ($idCol -and $nameCol) {
-      return @"
-SELECT DISTINCT
-  CAST($(Quote-SqlIdentifier $idCol) AS NVARCHAR(64)) AS acctivate_id,
-  CAST($(Quote-SqlIdentifier $nameCol) AS NVARCHAR(255)) AS name
-FROM dbo.Territory
-WHERE $(Quote-SqlIdentifier $idCol) IS NOT NULL
-"@
-    }
-  }
-
-  if (Test-SqlTableExists -Table 'tbCustomer') {
-    $columns = Get-SqlColumns -Table 'tbCustomer'
-    $territoryCol = Get-FirstColumn -Columns $columns -Candidates @('_Territory', 'Territory', 'TerritoryCode', 'TerritoryID', 'SalesTerritory')
-    if ($territoryCol) {
-      return @"
-SELECT DISTINCT
-  CAST($(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(64)) AS acctivate_id,
-  CAST($(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(255)) AS name
-FROM dbo.tbCustomer
-WHERE $(Quote-SqlIdentifier $territoryCol) IS NOT NULL
-  AND LTRIM(RTRIM(CAST($(Quote-SqlIdentifier $territoryCol) AS NVARCHAR(255)))) <> ''
-"@
-    }
-  }
-
-  Write-Warning "No dbo.Territory table or tbCustomer territory column found; territories will be skipped."
-  return "SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id, CAST(NULL AS NVARCHAR(255)) AS name WHERE 1 = 0"
-}
-
-
 function Send-Batch {
   param([string]$Table, [array]$Rows, [string]$OnConflict = 'acctivate_id')
   if (-not $Rows -or $Rows.Count -eq 0) {
@@ -432,32 +390,6 @@ function Send-Batch {
 # and MUST include an `acctivate_id` text column used for upsert conflict resolution.
 
 $queries = @{
-  managers = @"
--- Intentionally no CTE/WITH here; some Acctivate SQL Server versions reject
--- CTE batches unless the previous statement is explicitly terminated.
-SELECT
-  CAST(EmployeeId AS NVARCHAR(64))                                AS acctivate_id,
-  LTRIM(RTRIM(ISNULL(FirstName,'') + ' ' + ISNULL(LastName,'')))  AS name,
-  EMail                                                            AS email
-FROM dbo.Employee
-WHERE Active = 1
-  AND JobTitle LIKE '%manager%'
-"@
-
-  sales_reps = @"
-SELECT
-  CAST(SalespersonID AS NVARCHAR(64)) AS acctivate_id,
-  Name                                AS name,
-  CAST(NULL AS NVARCHAR(255))         AS email,
-  CAST(NULL AS NVARCHAR(64))          AS phone
-FROM dbo.SalespersonInfo
-WHERE Name IS NOT NULL
-"@
-
-  territories = @"
-SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id, CAST(NULL AS NVARCHAR(255)) AS name WHERE 1 = 0
-"@
-
   dealers = @"
 SELECT
   CAST(cv.CustId AS NVARCHAR(64)) AS acctivate_id,
@@ -502,43 +434,11 @@ FROM dbo.ProductWarehouseSummary i
 JOIN dbo.Product p ON p.ProductID = i.ProductID
 GROUP BY i.ProductID, p.ProductID
 "@
-
-  acctivate_sales_reps = @"
-SELECT CAST(NULL AS NVARCHAR(64)) AS acctivate_id WHERE 1 = 0
-"@
-
-  acctivate_sales_managers = @"
-SELECT DISTINCT
-  CAST(sp.SalespersonID AS NVARCHAR(64))  AS acctivate_id,
-  CAST(sp.SalespersonID AS NVARCHAR(64))  AS manager_code,
-  sp.Name                                  AS name,
-  CAST(NULL AS NVARCHAR(255))              AS email,
-  CAST(NULL AS NVARCHAR(64))               AS phone,
-  CAST('Sales Manager' AS NVARCHAR(128))   AS job_title,
-  CASE WHEN ISNULL(sp.Inactive,0) = 0 THEN 1 ELSE 0 END AS active
-FROM dbo.SalespersonInfo sp
-WHERE sp.SalespersonID IN (SELECT DISTINCT SalesManagerID FROM dbo.SalespersonInfo WHERE SalesManagerID IS NOT NULL)
-"@
-
-  acctivate_territories = @"
-SELECT
-  CAST(t.TerritoryID AS NVARCHAR(64))      AS acctivate_id,
-  CAST(t.TerritoryID AS NVARCHAR(64))      AS territory_code,
-  t.Name                                    AS name,
-  t.Description                             AS description,
-  CAST(t.SalesManagerID AS NVARCHAR(64))   AS manager_acctivate_id,
-  mgr.Name                                  AS manager_name,
-  CASE WHEN ISNULL(t.Inactive,0) = 0 THEN 1 ELSE 0 END AS active
-FROM dbo.Territory t
-LEFT JOIN dbo.SalespersonInfo mgr ON mgr.SalespersonID = t.SalesManagerID
-"@
 }
 
 $queries['dealer_invoices']      = New-DealerInvoicesQuery
 $queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
 $queries['open_sales_orders']    = New-OpenSalesOrdersQuery
-$queries['territories']          = New-TerritoriesQuery
-$queries['acctivate_territories'] = New-TerritoriesQuery
 
 
 $tableAliases = @{

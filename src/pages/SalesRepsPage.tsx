@@ -408,7 +408,7 @@ export default function SalesRepsPage() {
               return (
                 <tr key={r.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                   {/* Rep name */}
-                  <td className="p-3">
+                  <td className="p-3 bg-amber-50/40">
                     {isEditing ? (
                       <Input value={editForm!.name} onChange={e => setEditForm({ ...editForm!, name: e.target.value })} className="h-8" />
                     ) : (

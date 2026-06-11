@@ -436,9 +436,11 @@ GROUP BY i.ProductID, p.ProductID
 "@
 }
 
-$queries['dealer_invoices']      = New-DealerInvoicesQuery
-$queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
-$queries['open_sales_orders']    = New-OpenSalesOrdersQuery
+$queryBuilders = @{
+  dealer_invoices      = { New-DealerInvoicesQuery }
+  dealer_invoice_lines = { New-DealerInvoiceLinesQuery }
+  open_sales_orders    = { New-OpenSalesOrdersQuery }
+}
 
 # ---------- Acctivate-section sales reps / managers / territories ----------
 # These populate the SEPARATE acctivate_* tables only. The original

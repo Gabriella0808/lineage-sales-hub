@@ -13,8 +13,8 @@
   Path to sync.config.json. Defaults to ./sync.config.json next to this script.
 
 .PARAMETER Tables
-  Optional list of table keys to sync (managers, sales_reps, territories,
-  dealers, products, inventory). Defaults to all enabled in config.
+  Optional list of table keys to sync (dealers, products, inventory,
+  dealer_invoices, dealer_invoice_lines, open_sales_orders). Defaults to all enabled in config.
 
 .PARAMETER Prune
   After syncing dealers, remove stale dealer rows that are no longer in

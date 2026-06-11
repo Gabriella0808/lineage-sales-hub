@@ -464,7 +464,11 @@ export default function SalesRepsPage() {
 
                   {/* Manager email */}
                   <td className="p-3 hidden lg:table-cell">
-                    <span className="text-muted-foreground text-xs">{managerEmail(r.manager_id)}</span>
+                    {isEditing ? (
+                      <Input value={editForm!.manager_email} onChange={e => setEditForm({ ...editForm!, manager_email: e.target.value })} placeholder="Manager email" className="h-8" />
+                    ) : (
+                      <span className="text-muted-foreground text-xs">{managerEmail(r.manager_id)}</span>
+                    )}
                   </td>
 
                   {/* Region(s) — derived from selected territories */}

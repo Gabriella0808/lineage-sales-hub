@@ -535,9 +535,9 @@ WHERE rk = 1
 "@
 }
 
-$queries['acctivate_sales_reps']     = New-AcctivateSalesRepsQuery
-$queries['acctivate_sales_managers'] = New-AcctivateSalesManagersQuery
-$queries['acctivate_territories']    = New-AcctivateTerritoriesQuery
+$queryBuilders['acctivate_sales_reps']     = { New-AcctivateSalesRepsQuery }
+$queryBuilders['acctivate_sales_managers'] = { New-AcctivateSalesManagersQuery }
+$queryBuilders['acctivate_territories']    = { New-AcctivateTerritoriesQuery }
 
 
 $tableAliases = @{

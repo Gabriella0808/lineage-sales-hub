@@ -117,9 +117,9 @@ export default function CrmAccountsPage() {
         </Button>
       )}
       <PageHeader
-        eyebrow="CRM · Accounts"
-        title="All Accounts"
-        subtitle={`${filtered.length} of ${accounts.length} accounts`}
+        eyebrow="CRM · Prospects"
+        title="All Prospects"
+        subtitle={`${filtered.length} of ${accounts.length} prospects`}
         actions={
           <div className="flex items-center gap-2">
             <ImportAccountsDialog />

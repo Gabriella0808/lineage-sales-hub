@@ -100,7 +100,7 @@ export default function CrmAccountsPage() {
     update.mutate(
       { id: convertTarget.id, patch: { account_type: "dealer" as AccountType } },
       {
-        onSuccess: () => toast({ title: "Converted to dealer", description: `${convertTarget.name} now appears on the Field Check-ins map.` }),
+        onSuccess: () => toast({ title: "Converted to dealer", description: `${convertTarget.name} now appears on the Field Check-ins map and remains in Prospects.` }),
         onError: (e: any) => toast({ title: "Conversion failed", description: e.message, variant: "destructive" }),
       },
     );

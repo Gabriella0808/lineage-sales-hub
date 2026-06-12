@@ -117,14 +117,14 @@ export default function CrmAccountsPage() {
         </Button>
       )}
       <PageHeader
-        eyebrow="CRM · Accounts"
-        title="All Accounts"
-        subtitle={`${filtered.length} of ${accounts.length} accounts`}
+        eyebrow="CRM · Prospects"
+        title="All Prospects"
+        subtitle={`${filtered.length} of ${accounts.length} prospects`}
         actions={
           <div className="flex items-center gap-2">
             <ImportAccountsDialog />
             <Button asChild>
-              <Link to="/crm/accounts/new"><Plus className="h-4 w-4 mr-1.5" />New Account</Link>
+              <Link to="/crm/accounts/new"><Plus className="h-4 w-4 mr-1.5" />New Prospect</Link>
             </Button>
           </div>
         }
@@ -221,7 +221,7 @@ export default function CrmAccountsPage() {
 
             <tbody className="divide-y divide-border/60">
               {isLoading && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">No accounts match your filters.</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">No prospects match your filters.</td></tr>}
               {filtered.map((a) => {
                 const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
                 return (

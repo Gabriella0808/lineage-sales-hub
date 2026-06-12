@@ -184,6 +184,48 @@ export type Database = {
           },
         ]
       }
+      clearance_weekly_sales: {
+        Row: {
+          created_at: string
+          id: string
+          import_filename: string | null
+          import_id: string
+          imported_by: string | null
+          product_name: string | null
+          qty_sold: number
+          rep_name: string | null
+          revenue: number | null
+          sku: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          import_filename?: string | null
+          import_id: string
+          imported_by?: string | null
+          product_name?: string | null
+          qty_sold?: number
+          rep_name?: string | null
+          revenue?: number | null
+          sku: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          import_filename?: string | null
+          import_id?: string
+          imported_by?: string | null
+          product_name?: string | null
+          qty_sold?: number
+          rep_name?: string | null
+          revenue?: number | null
+          sku?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
       compare_periods_notes: {
         Row: {
           account: string

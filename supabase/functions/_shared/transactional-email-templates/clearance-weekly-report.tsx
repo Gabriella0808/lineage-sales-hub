@@ -44,7 +44,7 @@ const ClearanceWeeklyReportEmail = ({
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Clearance weekly report{weekLabel ? ` · ${weekLabel}` : ''} — {totalUnits} units sold across{' '}
+      Summer Special weekly report{weekLabel ? ` · ${weekLabel}` : ''} — {totalUnits} units sold across{' '}
       {skusMoved} SKUs
     </Preview>
     <Body style={main}>

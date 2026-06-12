@@ -1,6 +1,5 @@
-// Computes clearance product sales for the requested week (or current week),
-// broken down by rep, and emails the report to all reps, managers, and admins.
-// Can be triggered manually from the Clearance Analytics page or scheduled via pg_cron.
+// Sends the weekly clearance sales report. Pulls per-rep / per-SKU data from
+// the public.clearance_weekly_sales table (populated via the Clearance import).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   startOfWeek,
@@ -15,15 +14,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Hardcoded admin recipients that are not in sales_reps or managers tables
-const ADMIN_RECIPIENTS: { name: string; email: string }[] = [
-  { name: "Scott", email: "scott@lineage-collections.com" },
-  { name: "Justin", email: "justin@lineage-collections.com" },
-  { name: "Gabriella", email: "gabriella@lineage-collections.com" },
-];
-
-// Manager first names (lowercased) — these appear as rep_owner on some dealers
-// but should NOT be counted in the per-rep stats breakdown.
 const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
 const TEST_EXCLUDED_REPS = new Set(["gillis", "damico"]);
 
@@ -47,11 +37,6 @@ async function fetchAll<T>(
   return out;
 }
 
-function toDisplayName(raw: string): string {
-  if (!raw) return "Unknown";
-  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -65,7 +50,6 @@ Deno.serve(async (req) => {
     const dryRun: boolean = !!body?.dryRun;
     const testEmail: string | undefined = body?.testEmail;
 
-    // Determine week range — caller may pass weekStart (YYYY-MM-DD), otherwise use current week
     const anchor = body?.weekStart ? parseISO(body.weekStart as string) : new Date();
     const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 });
@@ -73,126 +57,78 @@ Deno.serve(async (req) => {
     const endStr = format(weekEnd, "yyyy-MM-dd");
     const weekLabel = `${format(weekStart, "MMM d")} – ${format(weekEnd, "MMM d, yyyy")}`;
 
-    // 1. Get all clearance SKUs
-    const clearanceRows = await fetchAll<{ sku: string; product: string | null; collection: string | null }>((f, t) =>
-      supabase.from("inventory").select("sku,product,collection").eq("is_clearance", true).range(f, t) as any,
-    );
-    const skuSet = new Set(clearanceRows.map((r) => r.sku));
-    const skuNames: Record<string, string> = {};
-    const skuCollection: Record<string, string> = {};
-    clearanceRows.forEach((r) => {
-      skuNames[r.sku] = r.product ?? r.sku;
-      skuCollection[r.sku] = r.collection ?? "Uncategorized";
-    });
-
-
-    if (skuSet.size === 0) {
-      return new Response(
-        JSON.stringify({ ok: true, message: "No clearance SKUs found.", weekLabel }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // 2. Get invoice lines for the week filtered to clearance SKUs
-    const skuList = Array.from(skuSet);
-    const invoiceLines = await fetchAll<{
-      sku: string | null;
-      qty: number | null;
-      extended_price: number | null;
-      dealer_id: string | null;
+    // 1. Pull this week's clearance sales rows
+    const salesRows = await fetchAll<{
+      sku: string;
       product_name: string | null;
+      qty_sold: number;
+      revenue: number;
+      rep_name: string | null;
     }>((f, t) =>
       supabase
-        .from("dealer_invoice_lines")
-        .select("sku,qty,extended_price,dealer_id,product_name")
-        .gte("invoice_date", startStr)
-        .lte("invoice_date", endStr)
-        .in("sku", skuList)
+        .from("clearance_weekly_sales")
+        .select("sku, product_name, qty_sold, revenue, rep_name")
+        .gte("week_start", startStr)
+        .lte("week_start", endStr)
         .range(f, t) as any,
     );
 
-    // 3. Get dealers for rep attribution
-    const dealerIds = [...new Set(invoiceLines.map((l) => l.dealer_id).filter(Boolean))] as string[];
-    const dealers = dealerIds.length > 0
-      ? await fetchAll<{ id: string; rep_owner: string | null }>((f, t) =>
-          supabase.from("dealers").select("id,rep_owner").in("id", dealerIds).range(f, t) as any,
+    // 2. Look up collection names for the SKUs so we can group per-rep rows
+    const skuList = [...new Set(salesRows.map((r) => r.sku))];
+    const invRows = skuList.length
+      ? await fetchAll<{ sku: string; collection: string | null; product: string | null }>((f, t) =>
+          supabase
+            .from("inventory")
+            .select("sku, collection, product")
+            .in("sku", skuList)
+            .range(f, t) as any,
         )
       : [];
-    const dealerToRep: Record<string, string> = {};
-    dealers.forEach((d) => { if (d.rep_owner) dealerToRep[d.id] = d.rep_owner; });
+    const skuCollection: Record<string, string> = {};
+    const skuProductName: Record<string, string> = {};
+    invRows.forEach((r) => {
+      skuCollection[r.sku] = r.collection ?? "Uncategorized";
+      if (r.product) skuProductName[r.sku] = r.product;
+    });
 
-    // 3b. Build rep_owner → full name lookup from sales_reps
-    const salesReps = await fetchAll<{ name: string | null; acctivate_id: string | null }>((f, t) =>
-      supabase.from("sales_reps").select("name,acctivate_id").eq("status", "active").range(f, t) as any,
-    );
-    const repNameLookup: Record<string, string> = {};
-    for (const sr of salesReps) {
-      const fullName = (sr.name ?? "").trim();
-      if (!fullName) continue;
-      // skip placeholder / open-territory entries that aren't real people
-      if (/\(open\)|open\)/i.test(fullName)) continue;
-      if (sr.acctivate_id) {
-        const key = sr.acctivate_id.trim().toLowerCase();
-        if (key && !repNameLookup[key]) repNameLookup[key] = fullName;
-      }
-      // last word of name (typically last name) — only if it looks like a real person (has a space)
-      if (fullName.includes(" ")) {
-        const last = fullName.split(/\s+/).pop()!.toLowerCase();
-        if (last && !repNameLookup[last]) repNameLookup[last] = fullName;
-      }
-    }
-
-    function resolveRepName(raw: string): string {
-      const key = raw.trim().toLowerCase();
-      if (repNameLookup[key]) return repNameLookup[key];
-      return toDisplayName(raw);
-    }
-
-    // 4. Aggregate by rep → collection
-    type CollectionAgg = { collection: string; qty: number; revenue: number };
+    // 3. Aggregate by rep → collection
+    type CollAgg = { collection: string; qty: number; revenue: number };
     const repAgg: Record<string, {
       totalQty: number;
       totalRevenue: number;
-      collections: Record<string, CollectionAgg>;
+      collections: Record<string, CollAgg>;
     }> = {};
 
-    for (const line of invoiceLines) {
-      const rawRep = dealerToRep[line.dealer_id ?? ""] ?? "Unknown";
-      // Skip lines attributed to managers — managers are excluded from the per-rep stats
-      if (MANAGER_NAMES.has(rawRep.trim().toLowerCase())) continue;
-      const rep = resolveRepName(rawRep);
-
-      const sku = line.sku ?? "?";
-      const qty = line.qty ?? 0;
-      const revenue = line.extended_price ?? 0;
-      const collection = skuCollection[sku] ?? "Uncategorized";
+    for (const r of salesRows) {
+      const rep = (r.rep_name ?? "Unattributed").trim() || "Unattributed";
+      if (MANAGER_NAMES.has(rep.toLowerCase())) continue;
+      const coll = skuCollection[r.sku] ?? "Uncategorized";
       if (!repAgg[rep]) repAgg[rep] = { totalQty: 0, totalRevenue: 0, collections: {} };
-      repAgg[rep].totalQty += qty;
-      repAgg[rep].totalRevenue += revenue;
-      if (!repAgg[rep].collections[collection]) {
-        repAgg[rep].collections[collection] = { collection, qty: 0, revenue: 0 };
+      repAgg[rep].totalQty += r.qty_sold;
+      repAgg[rep].totalRevenue += Number(r.revenue ?? 0);
+      if (!repAgg[rep].collections[coll]) {
+        repAgg[rep].collections[coll] = { collection: coll, qty: 0, revenue: 0 };
       }
-      repAgg[rep].collections[collection].qty += qty;
-      repAgg[rep].collections[collection].revenue += revenue;
+      repAgg[rep].collections[coll].qty += r.qty_sold;
+      repAgg[rep].collections[coll].revenue += Number(r.revenue ?? 0);
     }
 
     const rows = Object.entries(repAgg)
-      .map(([rep, data]) => ({
+      .map(([rep, d]) => ({
         rep,
-        totalQty: data.totalQty,
-        totalRevenue: data.totalRevenue,
-        collections: Object.values(data.collections).sort((a, b) => b.qty - a.qty),
+        totalQty: d.totalQty,
+        totalRevenue: d.totalRevenue,
+        collections: Object.values(d.collections).sort((a, b) => b.qty - a.qty),
       }))
       .sort((a, b) => b.totalRevenue - a.totalRevenue);
 
-    // Filter out excluded reps from test emails only
     const filteredRows = testEmail
       ? rows.filter((r) => !TEST_EXCLUDED_REPS.has(r.rep.toLowerCase()))
       : rows;
 
     const totalUnits = filteredRows.reduce((s, r) => s + r.totalQty, 0);
     const totalRevenue = filteredRows.reduce((s, r) => s + r.totalRevenue, 0);
-    const skusMoved = new Set(invoiceLines.map((l) => l.sku).filter(Boolean)).size;
+    const skusMoved = new Set(salesRows.map((r) => r.sku)).size;
 
     if (dryRun) {
       return new Response(
@@ -201,24 +137,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. Build recipient list — TESTING ONLY: Gabriella only until user approves broader sends.
-    const seen = new Set<string>();
-    const allRecipients: { name: string; email: string }[] = [];
-
-    const add = (name: string, email: string | null) => {
-      if (!email) return;
-      const key = email.toLowerCase();
-      if (seen.has(key)) return;
-      seen.add(key);
-      allRecipients.push({ name, email });
-    };
-
-    // Temporary hardcoded test recipient only
-    add("Gabriella", "gabriella@lineage-collections.com");
-
+    // 4. Recipient list — TESTING: only testEmail or Gabriella.
     const recipients = testEmail
       ? [{ name: testEmail.split("@")[0], email: testEmail }]
-      : allRecipients;
+      : [{ name: "Gabriella", email: "gabriella@lineage-collections.com" }];
 
     const supaUrl = Deno.env.get("SUPABASE_URL")!;
     let emailed = 0;
@@ -235,7 +157,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             templateName: "clearance-weekly-report",
             recipientEmail: r.email,
-            idempotencyKey: `clearance-weekly-${startStr}-${r.email}${testEmail ? `-test-${Date.now()}` : ""}`,
+            idempotencyKey: `clearance-weekly-${startStr}-${r.email}-${Date.now()}`,
             templateData: {
               recipientName: r.name,
               weekLabel,

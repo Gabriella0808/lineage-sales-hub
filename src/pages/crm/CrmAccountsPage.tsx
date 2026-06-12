@@ -74,8 +74,8 @@ export default function CrmAccountsPage() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return accounts.filter((a) => {
-      // Accounts section shows prospects only — dealers live in Field Check-ins
-      if ((a.account_type ?? "prospect") !== "prospect") return false;
+      // Prospects section shows all prospects, including those converted to dealers
+      // (converted dealers also appear on the Field Check-ins map)
       if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
       if (managerFilter !== "all" && a.assigned_manager_id !== managerFilter) return false;
       if (brandFilters.length > 0) {

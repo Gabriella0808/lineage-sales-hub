@@ -51,8 +51,12 @@ Deno.serve(async (req) => {
     const testEmail: string | undefined = body?.testEmail;
 
     const anchor = body?.weekStart ? parseISO(body.weekStart as string) : new Date();
-    const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
-    const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 });
+    const weekStart = body?.weekStart
+      ? parseISO(body.weekStart as string)
+      : startOfWeek(anchor, { weekStartsOn: 1 });
+    const weekEnd = body?.weekEnd
+      ? parseISO(body.weekEnd as string)
+      : endOfWeek(anchor, { weekStartsOn: 1 });
     const startStr = format(weekStart, "yyyy-MM-dd");
     const endStr = format(weekEnd, "yyyy-MM-dd");
     const weekLabel = `${format(weekStart, "MMM d")} – ${format(weekEnd, "MMM d, yyyy")}`;

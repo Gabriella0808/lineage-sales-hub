@@ -385,7 +385,7 @@ export default function CrmAccountsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Convert {convertTarget?.name} to a dealer?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the account from the prospects list and add them to the Field Check-ins map with a "Converted from CRM" check-in. This can't be undone here.
+              This will mark the account as a dealer and add them to the Field Check-ins map with a "Converted from CRM" check-in. They will remain in the prospects list.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

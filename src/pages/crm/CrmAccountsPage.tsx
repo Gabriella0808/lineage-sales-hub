@@ -103,7 +103,7 @@ export default function CrmAccountsPage() {
       { id: target.id, patch: { account_type: "dealer" as AccountType } },
       {
         onSuccess: async () => {
-          toast({ title: "Converted to dealer", description: `${target.name} now appears on the Field Check-ins map and remains in Prospects.` });
+          toast({ title: "Converted to dealer", description: `${target.name} was added to the Field Check-ins map and will show as never visited until a check-in is logged.` });
           // Geocode the newly created dealer so it shows up as a pin on the map
           try {
             const { data: dealerRow } = await supabase
@@ -403,7 +403,7 @@ export default function CrmAccountsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Convert {convertTarget?.name} to a dealer?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will mark the account as a dealer and add them to the Field Check-ins map with a "Converted from CRM" check-in. They will remain in the prospects list.
+              This will mark the account as a dealer and add them to the Field Check-ins map. They will remain in the prospects list and show as never visited until someone logs a check-in.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -203,6 +203,11 @@ function recencyColor(days: number | null): string {
   return "#dc2626"; // red
 }
 
+function isRealFieldCheckIn(c: Pick<CheckIn, "log_type" | "outcome" | "notes">): boolean {
+  if (c.log_type === "conversion" || c.outcome === "converted") return false;
+  return !(c.notes ?? "").toLowerCase().startsWith("converted from crm account");
+}
+
 export default function CheckInsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -404,7 +409,7 @@ export default function CheckInsPage() {
       if (checkInsRes.error) {
         toast({ title: "Failed to load check-ins", description: checkInsRes.error.message, variant: "destructive" });
       } else {
-        const ci = (checkInsRes.data ?? []) as CheckIn[];
+        const ci = ((checkInsRes.data ?? []) as CheckIn[]).filter(isRealFieldCheckIn);
         setCheckIns(ci);
         const ids = Array.from(new Set(ci.map((c) => c.user_id).filter(Boolean)));
         if (ids.length > 0) {

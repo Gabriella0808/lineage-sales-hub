@@ -97,10 +97,26 @@ export default function CrmAccountsPage() {
   const { toast } = useToast();
   const confirmConvert = () => {
     if (!convertTarget) return;
+    const target = convertTarget;
     update.mutate(
-      { id: convertTarget.id, patch: { account_type: "dealer" as AccountType } },
+      { id: target.id, patch: { account_type: "dealer" as AccountType } },
       {
-        onSuccess: () => toast({ title: "Converted to dealer", description: `${convertTarget.name} now appears on the Field Check-ins map and remains in Prospects.` }),
+        onSuccess: async () => {
+          toast({ title: "Converted to dealer", description: `${target.name} now appears on the Field Check-ins map and remains in Prospects.` });
+          // Geocode the newly created dealer so it shows up as a pin on the map
+          try {
+            const { data: dealerRow } = await supabase
+              .from("dealers")
+              .select("id, lat")
+              .eq("crm_account_id", target.id)
+              .maybeSingle();
+            if (dealerRow?.id && dealerRow.lat == null) {
+              await supabase.functions.invoke("geocode-dealer", { body: { dealer_id: dealerRow.id } });
+            }
+          } catch (err) {
+            console.warn("geocode-dealer failed", err);
+          }
+        },
         onError: (e: any) => toast({ title: "Conversion failed", description: e.message, variant: "destructive" }),
       },
     );

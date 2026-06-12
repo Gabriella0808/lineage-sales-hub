@@ -360,6 +360,7 @@ export default function CrmAccountsPage() {
                         value={a.account_type ?? "prospect"}
                         onValueChange={(v) => {
                           if (v === "dealer") setConvertTarget({ id: a.id, name: a.company_name });
+                          else update.mutate({ id: a.id, patch: { account_type: v as AccountType } });
                         }}
                       >
                         <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0 focus:ring-0 focus-visible:ring-0 focus:ring-offset-0">

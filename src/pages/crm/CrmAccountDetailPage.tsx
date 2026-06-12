@@ -14,6 +14,7 @@ import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History, Tr
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function CrmAccountDetailPage() {
   const { id } = useParams();
@@ -50,8 +51,20 @@ export default function CrmAccountDetailPage() {
     update.mutate(
       { id: account.id, patch: { account_type: "dealer" as AccountType } },
       {
-        onSuccess: () => {
-          toast({ title: "Converted to dealer", description: `${account.company_name} now appears on the Field Check-ins map.` });
+        onSuccess: async () => {
+          toast({ title: "Converted to dealer", description: `${account.company_name} was added to the Field Check-ins map and will show as never visited until a check-in is logged.` });
+          try {
+            const { data: dealerRow } = await supabase
+              .from("dealers")
+              .select("id, lat")
+              .eq("crm_account_id", account.id)
+              .maybeSingle();
+            if (dealerRow?.id && dealerRow.lat == null) {
+              await supabase.functions.invoke("geocode-dealer", { body: { dealer_id: dealerRow.id } });
+            }
+          } catch (err) {
+            console.warn("geocode-dealer failed", err);
+          }
           nav("/crm/accounts");
         },
         onError: (e: any) => toast({ title: "Conversion failed", description: e.message, variant: "destructive" }),
@@ -209,7 +222,7 @@ export default function CrmAccountDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Convert {account.company_name} to a dealer?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes them from Accounts (prospects) and adds them to the Field Check-ins map with a "Converted from CRM" check-in.
+              This marks them as a dealer and adds them to the Field Check-ins map. They will show as never visited until someone logs a check-in.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

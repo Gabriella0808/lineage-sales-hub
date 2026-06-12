@@ -51,7 +51,7 @@ const ClearanceWeeklyReportEmail = ({
       <Container style={container}>
         <Heading style={h1}>Summer Special – Weekly Report</Heading>
         <Text style={text}>
-          {recipientName ? `Hi ${recipientName},` : 'Hi,'} here is the clearance product sales
+          {recipientName ? `Hi ${recipientName},` : 'Hi,'} here is the Summer Special sales
           summary for {weekLabel || 'last week'}.
         </Text>
 

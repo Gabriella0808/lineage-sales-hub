@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, ArrowLeft, ChevronDown } from "lucide-react";
 import { ImportAccountsDialog } from "@/components/ImportAccountsDialog";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function CrmAccountsPage() {
   const nav = useNavigate();

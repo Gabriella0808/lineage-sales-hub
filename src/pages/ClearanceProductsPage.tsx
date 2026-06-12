@@ -484,16 +484,42 @@ export default function ClearanceProductsPage() {
     setLoading(true);
     const { data } = await supabase
       .from("inventory")
-      .select("sku, product, collection, on_hand, available, list_price, status")
+      .select("sku, product, collection, on_hand, available, list_price, status, updated_at")
       .eq("is_clearance", true)
       .order("collection")
       .order("sku");
+
+    const invRows = (data ?? []) as (ClearanceItem & { updated_at: string | null })[];
+
+    // Acctivate sync overwrites inventory, so subtract clearance sales imported
+    // AFTER the last sync for each SKU on top of the synced quantities.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: salesData } = await (supabase as any)
+      .from("clearance_weekly_sales")
+      .select("sku, qty_sold, created_at");
+    const sales = (salesData ?? []) as { sku: string; qty_sold: number; created_at: string }[];
+
+    const pendingBySku = new Map<string, number>();
+    for (const inv of invRows) {
+      const since = inv.updated_at ? new Date(inv.updated_at).getTime() : 0;
+      let pending = 0;
+      for (const s of sales) {
+        if (s.sku === inv.sku && new Date(s.created_at).getTime() > since) {
+          pending += Number(s.qty_sold) || 0;
+        }
+      }
+      if (pending > 0) pendingBySku.set(inv.sku, pending);
+    }
+
     setItems(
-      ((data ?? []) as ClearanceItem[]).map((r) => ({
-        ...r,
-        on_hand: Number(r.on_hand ?? 0),
-        available: Number(r.available ?? 0),
-      })),
+      invRows.map((r) => {
+        const pending = pendingBySku.get(r.sku) ?? 0;
+        return {
+          ...r,
+          on_hand: Math.max(0, Number(r.on_hand ?? 0) - pending),
+          available: Math.max(0, Number(r.available ?? 0) - pending),
+        };
+      }),
     );
     setLoading(false);
   }, []);

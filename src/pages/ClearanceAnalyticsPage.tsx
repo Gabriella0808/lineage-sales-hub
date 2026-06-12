@@ -208,21 +208,6 @@ export default function ClearanceAnalyticsPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {/* Import batches pill row */}
-          {importBatches.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {importBatches.map((b) => (
-                <div
-                  key={b.import_id}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs text-muted-foreground border border-border"
-                >
-                  <FileText className="h-3 w-3" />
-                  <span className="font-medium">{b.import_filename ?? "Unnamed import"}</span>
-                  <span>· {b.totalQty.toLocaleString()} units · {b.rowCount} SKUs</span>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Rep breakdown table */}
           <Card>

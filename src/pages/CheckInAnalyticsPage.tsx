@@ -564,15 +564,16 @@ export default function CheckInAnalyticsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="flex gap-5 overflow-x-auto pb-2">
           {TEAM.map((member, idx) => (
-            <RepCard
-              key={member.id}
-              name={member.name}
-              periods={periods}
-              data={stats[member.id]}
-              accentClass={["bg-primary", "bg-accent", "bg-success"][idx % 3]}
-            />
+            <div key={member.id} className="min-w-[320px] flex-shrink-0">
+              <RepCard
+                name={member.name}
+                periods={periods}
+                data={stats[member.id]}
+                accentClass={["bg-primary", "bg-accent", "bg-success", "bg-primary"][idx % 4]}
+              />
+            </div>
           ))}
         </div>
       </section>

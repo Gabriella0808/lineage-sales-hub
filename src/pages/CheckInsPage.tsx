@@ -101,6 +101,14 @@ const TEAM_MEMBERS: {
     states: [],
     ownerOnly: true,
   },
+  {
+    id: "justin",
+    name: "Justin Jeangerard",
+    managerIds: ["970f22fb-f3bf-4c14-9b11-ce399b71b70f"],
+    repOwners: ["justin"],
+    states: [],
+    ownerOnly: true,
+  },
 ];
 
 // Returns true when a dealer belongs to the given team member, matching by

@@ -1,11 +1,14 @@
 import { useMemo, useId } from "react";
 import { Target } from "lucide-react";
-import { useSalesReps, useDealerSales, useDealers, formatCurrency, getInitials } from "@/hooks/usePortalData";
+import { useSalesReps, useDealers, formatCurrency, getInitials } from "@/hooks/usePortalData";
 import { useRepTargets, MONTH_LABEL_TO_KEY, type RepTarget } from "@/hooks/useRepTargets";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 
 function ProgressRing({ pct, size = 64, label }: { pct: number; size?: number; label: string }) {
   const uid = useId();

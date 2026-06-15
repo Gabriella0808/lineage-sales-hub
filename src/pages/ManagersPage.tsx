@@ -95,18 +95,48 @@ export default function ManagersPage() {
     );
   }
 
+  // Helpers — match dealers to a rep by rep_id OR by salesperson name overlap (≥2 tokens),
+  // so reps whose dealers aren't linked via rep_id still roll up their YTD revenue.
+  const tokenize = (s: string | null | undefined) =>
+    (s ?? "").toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 2);
+  const dealerMatchesRep = (d: any, rep: { id: string; name: string }) => {
+    if (d.rep_id && d.rep_id === rep.id) return true;
+    const repTokens = new Set(tokenize(rep.name));
+    if (repTokens.size === 0) return false;
+    const dealerTokens = tokenize(d.salesperson);
+    if (dealerTokens.length === 0) return false;
+    let overlap = 0;
+    for (const t of dealerTokens) if (repTokens.has(t)) overlap++;
+    return overlap >= 2;
+  };
+  const dealersForReps = (repsList: { id: string; name: string }[]) => {
+    const seen = new Set<string>();
+    const out: typeof dealers = [];
+    repsList.forEach((rep) => {
+      dealers.forEach((d) => {
+        if (seen.has(d.id)) return;
+        if (dealerMatchesRep(d, rep)) {
+          out.push(d);
+          seen.add(d.id);
+        }
+      });
+    });
+    return out;
+  };
+
   // ── Manager profile (people-only) ──
   if (selectedManager) {
     const managerReps = managerRepsById.get(selectedManager.id) ?? [];
     const mgrTerritoryIds = [...new Set(
       managerReps.flatMap((r) => repTerritories.filter((rt) => rt.rep_id === r.id).map((rt) => rt.territory_id)),
     )];
-    const mgrDealers = dealers.filter((d) => managerReps.some((r) => r.id === d.rep_id));
-    // Current-year revenue per rep = sum of YTD revenue of their dealers.
+    const mgrDealers = dealersForReps(managerReps);
+    // Current-year revenue per rep = sum of YTD revenue of their dealers (rep_id or name match).
     const revenueByRep = new Map<string, number>();
-    mgrDealers.forEach((d) => {
-      if (!d.rep_id) return;
-      revenueByRep.set(d.rep_id, (revenueByRep.get(d.rep_id) ?? 0) + (d.revenue ?? 0));
+    managerReps.forEach((rep) => {
+      const repDealers = dealers.filter((d) => dealerMatchesRep(d, rep));
+      const sum = repDealers.reduce((s, d) => s + (d.revenue ?? 0), 0);
+      revenueByRep.set(rep.id, sum);
     });
 
 
@@ -261,7 +291,7 @@ export default function ManagersPage() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {visibleManagers.map((mgr) => {
           const mgrReps = managerRepsById.get(mgr.id) ?? [];
-          const mgrDealersList = dealers.filter((d) => mgrReps.some((r) => r.id === d.rep_id));
+          const mgrDealersList = dealersForReps(mgrReps);
           const mgrRevenue = mgrDealersList.reduce((s, d) => s + (d.revenue ?? 0), 0);
           const mgrDealerCount = mgrDealersList.length;
           const mgrTerCount = [...new Set(

@@ -82,31 +82,6 @@ export default function ManagersPage() {
     return map;
   }, [visibleManagers, managerIdMap, reps]);
 
-  const sortedVisibleManagers = useMemo(() => {
-    return [...visibleManagers].sort((a, b) => {
-      const aReps = managerRepsById.get(a.id) ?? [];
-      const bReps = managerRepsById.get(b.id) ?? [];
-      const aDealers = dealersForReps(aReps);
-      const bDealers = dealersForReps(bReps);
-      const aRev = aDealers.reduce((s, d) => s + (d.revenue ?? 0), 0);
-      const bRev = bDealers.reduce((s, d) => s + (d.revenue ?? 0), 0);
-      return bRev - aRev;
-    });
-  }, [visibleManagers, managerRepsById, dealers]);
-
-  const selectedManager = sortedVisibleManagers.find((m) => m.id === selectedManagerId);
-
-  if (isLoading) {
-    return (
-      <div className="animate-fade-in space-y-4">
-        <Skeleton className="h-10 w-64" />
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
-        </div>
-      </div>
-    );
-  }
-
   // Helpers — match dealers to a rep by rep_id OR by salesperson name overlap (≥2 tokens),
   // so reps whose dealers aren't linked via rep_id still roll up their YTD revenue.
   const tokenize = (s: string | null | undefined) =>
@@ -135,6 +110,31 @@ export default function ManagersPage() {
     });
     return out;
   };
+
+  const sortedVisibleManagers = useMemo(() => {
+    return [...visibleManagers].sort((a, b) => {
+      const aReps = managerRepsById.get(a.id) ?? [];
+      const bReps = managerRepsById.get(b.id) ?? [];
+      const aDealers = dealersForReps(aReps);
+      const bDealers = dealersForReps(bReps);
+      const aRev = aDealers.reduce((s, d) => s + (d.revenue ?? 0), 0);
+      const bRev = bDealers.reduce((s, d) => s + (d.revenue ?? 0), 0);
+      return bRev - aRev;
+    });
+  }, [visibleManagers, managerRepsById, dealers]);
+
+  const selectedManager = sortedVisibleManagers.find((m) => m.id === selectedManagerId);
+
+  if (isLoading) {
+    return (
+      <div className="animate-fade-in space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
 
   // ── Manager profile (people-only) ──
   if (selectedManager) {

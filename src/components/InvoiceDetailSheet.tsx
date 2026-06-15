@@ -315,22 +315,18 @@ export function InvoiceDetailSheet({
           <SheetTitle className="text-xl">{rowLabel}</SheetTitle>
           <SheetDescription>
             Invoice detail · {format(from, "MMM d, yyyy")} – {format(to, "MMM d, yyyy")}
+            {hasCompare && (
+              <span className="block text-[11px] mt-0.5">
+                vs {format(compareFrom!, "MMM d, yyyy")} – {format(compareTo!, "MMM d, yyyy")}
+              </span>
+            )}
           </SheetDescription>
         </SheetHeader>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <Card><CardContent className="p-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Invoiced</p>
-            <p className="text-lg font-semibold tabular-nums">{formatCurrency(summary.totalAmt)}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Invoices</p>
-            <p className="text-lg font-semibold tabular-nums">{summary.invoiceCount.toLocaleString()}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-3">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Units</p>
-            <p className="text-lg font-semibold tabular-nums">{summary.totalQty.toLocaleString()}</p>
-          </CardContent></Card>
+          <StatCard label="Invoiced" value={formatCurrency(summary.totalAmt)} compValue={compSummary ? formatCurrency(compSummary.totalAmt) : undefined} delta={compSummary ? pctDelta(summary.totalAmt, compSummary.totalAmt) : undefined} />
+          <StatCard label="Invoices" value={summary.invoiceCount.toLocaleString()} compValue={compSummary ? compSummary.invoiceCount.toLocaleString() : undefined} delta={compSummary ? pctDelta(summary.invoiceCount, compSummary.invoiceCount) : undefined} />
+          <StatCard label="Units" value={summary.totalQty.toLocaleString()} compValue={compSummary ? compSummary.totalQty.toLocaleString() : undefined} delta={compSummary ? pctDelta(summary.totalQty, compSummary.totalQty) : undefined} />
         </div>
 
         {isLoading && (
@@ -347,14 +343,20 @@ export function InvoiceDetailSheet({
               <Section title="By Branch" count={branchSummary.rows.length}>
                 <table className="w-full text-xs">
                   <tbody>
-                    {branchSummary.rows.map((b) => (
-                      <tr key={b.label} className="border-b last:border-0">
-                        <td className="py-1.5">{b.label}</td>
-                        <td className="py-1.5 text-right tabular-nums text-muted-foreground">{b.count.toLocaleString()} inv</td>
-                        <td className="py-1.5 text-right tabular-nums">{(b.pct * 100).toFixed(1)}%</td>
-                        <td className="py-1.5 text-right tabular-nums">{formatCurrency(b.total)}</td>
-                      </tr>
-                    ))}
+                    {branchSummary.rows.map((b) => {
+                      const cv = compBranchMap.get(b.label);
+                      return (
+                        <tr key={b.label} className="border-b last:border-0">
+                          <td className="py-1.5">{b.label}</td>
+                          <td className="py-1.5 text-right tabular-nums text-muted-foreground">{b.count.toLocaleString()} inv</td>
+                          <td className="py-1.5 text-right tabular-nums">{(b.pct * 100).toFixed(1)}%</td>
+                          <td className="py-1.5 text-right tabular-nums">{formatCurrency(b.total)}</td>
+                          {hasCompare && (
+                            <td className="py-1.5 text-right tabular-nums text-muted-foreground">{cv !== undefined ? formatCurrency(cv) : "—"}</td>
+                          )}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </Section>
@@ -362,27 +364,27 @@ export function InvoiceDetailSheet({
 
             <div className="grid sm:grid-cols-2 gap-6">
               <Section title="By Brand" count={summary.byBrand.length}>
-                <BreakdownList rows={summary.byBrand.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />
+                <BreakdownList rows={summary.byBrand.map((b) => ({ label: b.name, total: b.total, qty: b.qty, comp: compMaps.brand.get(b.name) }))} showComp={hasCompare} />
               </Section>
               <Section title="By Collection" count={summary.byCollection.length}>
-                <BreakdownList rows={summary.byCollection.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />
+                <BreakdownList rows={summary.byCollection.map((b) => ({ label: b.name, total: b.total, qty: b.qty, comp: compMaps.collection.get(b.name) }))} showComp={hasCompare} />
               </Section>
               <Section title="By Category" count={summary.byCategory.length}>
-                <BreakdownList rows={summary.byCategory.map((b) => ({ label: b.name, total: b.total, qty: b.qty }))} />
+                <BreakdownList rows={summary.byCategory.map((b) => ({ label: b.name, total: b.total, qty: b.qty, comp: compMaps.category.get(b.name) }))} showComp={hasCompare} />
               </Section>
               {showRepBreakdown && (
                 <Section title="By Rep" count={summary.byRep.length}>
-                  <BreakdownList rows={summary.byRep.map((b) => ({ label: b.name, total: b.total }))} />
+                  <BreakdownList rows={summary.byRep.map((b) => ({ label: b.name, total: b.total, comp: compMaps.rep.get(b.name) }))} showComp={hasCompare} />
                 </Section>
               )}
               {showTerritoryBreakdown && (
                 <Section title="By Territory" count={summary.byTerritory.length}>
-                  <BreakdownList rows={summary.byTerritory.map((b) => ({ label: b.name, total: b.total }))} />
+                  <BreakdownList rows={summary.byTerritory.map((b) => ({ label: b.name, total: b.total, comp: compMaps.territory.get(b.name) }))} showComp={hasCompare} />
                 </Section>
               )}
               {showDealerBreakdown && (
                 <Section title="By Dealer" count={summary.byDealer.length}>
-                  <BreakdownList rows={summary.byDealer.map((b) => ({ label: b.name, total: b.total }))} />
+                  <BreakdownList rows={summary.byDealer.map((b) => ({ label: b.name, total: b.total, comp: compMaps.dealer.get(b.name) }))} showComp={hasCompare} />
                 </Section>
               )}
             </div>
@@ -391,6 +393,30 @@ export function InvoiceDetailSheet({
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function pctDelta(cur: number, prev: number): number | null {
+  if (!prev) return null;
+  return ((cur - prev) / prev) * 100;
+}
+
+function StatCard({ label, value, compValue, delta }: { label: string; value: string; compValue?: string; delta?: number | null }) {
+  return (
+    <Card><CardContent className="p-3">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold tabular-nums">{value}</p>
+      {compValue !== undefined && (
+        <p className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
+          vs {compValue}
+          {delta !== null && delta !== undefined && (
+            <span className={`ml-1 ${delta >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+              {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
+            </span>
+          )}
+        </p>
+      )}
+    </CardContent></Card>
   );
 }
 

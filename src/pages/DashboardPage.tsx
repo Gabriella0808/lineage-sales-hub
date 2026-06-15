@@ -7,6 +7,8 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -21,18 +23,66 @@ export default function DashboardPage() {
   const { data: repTerritories = [] } = useRepTerritories();
   const { data: managers = [] } = useManagers();
 
-  const isLoading = repsLoading || terLoading || dlrLoading || salesLoading;
+  const currentYear = new Date().getFullYear();
+
+  // Authoritative monthly revenue per dealer for current + prev year — pulled directly
+  // from dealer_invoices (same source as the Sales Targets card).
+  const { data: invoiceSales = [], isLoading: invLoading } = useQuery({
+    queryKey: ["dashboard_invoice_sales", currentYear],
+    queryFn: async () => {
+      const from = `${currentYear - 1}-01-01`;
+      const to = `${currentYear}-12-31`;
+      const pageSize = 1000;
+      const rows: { dealer_id: string | null; invoice_date: string | null; subtotal: number | null; total: number | null }[] = [];
+      let start = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("dealer_id, invoice_date, subtotal, total")
+          .gte("invoice_date", from)
+          .lte("invoice_date", to)
+          .not("dealer_id", "is", null)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = data ?? [];
+        rows.push(...(batch as any));
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      const agg = new Map<string, { dealer_id: string; year: number; month: string; revenue: number; order_count: number }>();
+      rows.forEach(r => {
+        if (!r.dealer_id || !r.invoice_date) return;
+        const d = new Date(r.invoice_date);
+        const y = d.getUTCFullYear();
+        const monthLabel = MONTH_ORDER[d.getUTCMonth()];
+        const amount = Number(r.subtotal ?? r.total ?? 0);
+        if (!amount) return;
+        const key = `${r.dealer_id}|${y}|${monthLabel}`;
+        let cur = agg.get(key);
+        if (!cur) { cur = { dealer_id: r.dealer_id, year: y, month: monthLabel, revenue: 0, order_count: 0 }; agg.set(key, cur); }
+        cur.revenue += amount;
+        cur.order_count += 1;
+      });
+      return Array.from(agg.values());
+    },
+    staleTime: 60_000,
+  });
+
+  // Prefer invoice-sourced data; fall back to dealerSales if empty.
+  const effectiveSales: any[] = invoiceSales.length > 0 ? invoiceSales : (dealerSales as any[]);
+
+  const isLoading = repsLoading || terLoading || dlrLoading || (salesLoading && invLoading);
 
   const totalOverdue = reps.reduce((s, r) => s + (r.tasks_overdue ?? 0), 0);
   const totalPending = reps.reduce((s, r) => s + (r.tasks_pending ?? 0), 0);
 
-  // Revenue from dealer_sales
-  const currentYear = new Date().getFullYear();
-  const currentYearSales = dealerSales.filter(s => s.year === currentYear);
-  const lastYearSales = dealerSales.filter(s => s.year === currentYear - 1);
-  const totalRevenue = currentYearSales.reduce((s, r) => s + (r.revenue ?? 0), 0);
-  const lastYearRevenue = lastYearSales.reduce((s, r) => s + (r.revenue ?? 0), 0);
-  const totalOrders = currentYearSales.reduce((s, r) => s + (r.order_count ?? 0), 0);
+  const currentYearSales = effectiveSales.filter((s: any) => s.year === currentYear);
+  const lastYearSales = effectiveSales.filter((s: any) => s.year === currentYear - 1);
+  const totalRevenue = currentYearSales.reduce((s: number, r: any) => s + (r.revenue ?? 0), 0);
+  const lastYearRevenue = lastYearSales.reduce((s: number, r: any) => s + (r.revenue ?? 0), 0);
+  const totalOrders = currentYearSales.reduce((s: number, r: any) => s + (r.order_count ?? 0), 0);
+
 
   // Resolve each dealer to a rep: prefer rep_id; else fall back to dealer.salesperson
   // loosely matching a rep name. Same logic as the Sales Targets card.

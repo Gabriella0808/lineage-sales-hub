@@ -329,7 +329,7 @@ export default function SalesRepsPage() {
               <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Manager</p>
-                  <p className="truncate">{managers.find(m => m.id === r.manager_id)?.name ?? "—"}</p>
+                  <p className="truncate">{resolveMgr(r.manager_id)?.name ?? "—"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Phone</p>

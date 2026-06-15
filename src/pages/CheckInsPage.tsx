@@ -330,6 +330,10 @@ export default function CheckInsPage() {
     const team = teamFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === teamFilter);
     return dealersWithMeta.filter((d) => {
       if (team && !dealerMatchesTeam(d, team)) return false;
+      if (colorFilter !== "all") {
+        const pinColor = recencyColor(d.daysSince);
+        if (pinColor !== colorFilter) return false;
+      }
       if (!q) return true;
       return (
         d.name.toLowerCase().includes(q) ||
@@ -337,7 +341,7 @@ export default function CheckInsPage() {
         (d.state ?? "").toLowerCase().includes(q)
       );
     });
-  }, [dealersWithMeta, search, teamFilter]);
+  }, [dealersWithMeta, search, teamFilter, colorFilter]);
 
   // Fetch token
   useEffect(() => {

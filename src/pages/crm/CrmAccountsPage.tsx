@@ -69,8 +69,10 @@ export default function CrmAccountsPage() {
   const [stateFilter, setStateFilter] = useState<string>("all");
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);
-  const repName = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name ?? "—" : "Unassigned");
-  const managerName = (id: string | null) => (id ? managers.find((m) => m.id === id)?.name ?? "—" : "Unassigned");
+  const repMap = useMemo(() => new Map(reps.map((r) => [r.id, r])), [reps]);
+  const managerMap = useMemo(() => new Map(managers.map((m) => [m.id, m])), [managers]);
+  const repName = (id: string | null) => (id ? repMap.get(id)?.name ?? "—" : "Unassigned");
+  const managerName = (id: string | null) => (id ? managerMap.get(id)?.name ?? "—" : "Unassigned");
 
   // Normalize text for forgiving search: lowercase, fold curly quotes to straight,
   // and strip punctuation/whitespace so "Wright's Furniture", "wrights furniture",
@@ -82,31 +84,63 @@ export default function CrmAccountsPage() {
       .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')
       .replace(/[^a-z0-9]+/g, "");
 
-  const filtered = useMemo(() => {
-    const needle = norm(q);
-    return accounts.filter((a) => {
-      // Prospects section shows all prospects, including those converted to dealers
-      // (converted dealers also appear on the Field Check-ins map)
-      if (repFilter !== "all" && a.assigned_rep_id !== repFilter) return false;
-      if (managerFilter !== "all" && a.assigned_manager_id !== managerFilter) return false;
-      if (brandFilters.length > 0) {
-        const accBrands = (a.brands && a.brands.length > 0) ? a.brands : (a.brand ? [a.brand] : []);
-        if (!accBrands.some((b) => brandFilters.includes(b as string))) return false;
-      }
-      if (prospectTypeFilters.length > 0) {
-        const hasNone = prospectTypeFilters.includes("__none__");
-        const regularTypes = prospectTypeFilters.filter((t) => t !== "__none__");
-        const accTypes = (a.prospect_types && a.prospect_types.length > 0) ? a.prospect_types : (a.prospect_type ? [a.prospect_type] : []);
-        const hasRegular = regularTypes.length > 0 && accTypes.some((t) => regularTypes.includes(t));
-        const hasEmpty = hasNone && accTypes.length === 0;
-        if (!hasRegular && !hasEmpty) return false;
-      }
-      if (stateFilter !== "all" && a.state !== stateFilter) return false;
-      if (!needle) return true;
+  // Pre-compute per-account search haystack and resolved brand/type arrays
+  // once per accounts change so the filter loop is just cheap comparisons.
+  const indexed = useMemo(() => {
+    return accounts.map((a) => {
+      const accBrands = (a.brands && a.brands.length > 0) ? a.brands : (a.brand ? [a.brand] : []);
+      const accTypes = (a.prospect_types && a.prospect_types.length > 0) ? a.prospect_types : (a.prospect_type ? [a.prospect_type] : []);
       const hay = norm(`${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""} ${a.state ?? ""}`);
-      return hay.includes(needle);
+      return { a, accBrands: accBrands as string[], accTypes: accTypes as string[], hay };
     });
-  }, [accounts, q, repFilter, managerFilter, brandFilters, prospectTypeFilters, stateFilter]);
+  }, [accounts]);
+
+  // Debounce search input so each keystroke doesn't re-render 3k rows synchronously.
+  const deferredQ = useDeferredValue(q);
+  const needle = useMemo(() => norm(deferredQ), [deferredQ]);
+  const brandSet = useMemo(() => new Set(brandFilters), [brandFilters.join(",")]);
+  const ptypeRegularSet = useMemo(() => new Set(prospectTypeFilters.filter((t) => t !== "__none__")), [prospectTypeFilters.join(",")]);
+  const ptypeHasNone = prospectTypeFilters.includes("__none__");
+
+  const filtered = useMemo(() => {
+    const out: typeof accounts = [];
+    for (let i = 0; i < indexed.length; i++) {
+      const { a, accBrands, accTypes, hay } = indexed[i];
+      if (repFilter !== "all" && a.assigned_rep_id !== repFilter) continue;
+      if (managerFilter !== "all" && a.assigned_manager_id !== managerFilter) continue;
+      if (brandSet.size > 0) {
+        let ok = false;
+        for (const b of accBrands) { if (brandSet.has(b)) { ok = true; break; } }
+        if (!ok) continue;
+      }
+      if (ptypeRegularSet.size > 0 || ptypeHasNone) {
+        let hasRegular = false;
+        if (ptypeRegularSet.size > 0) {
+          for (const t of accTypes) { if (ptypeRegularSet.has(t)) { hasRegular = true; break; } }
+        }
+        const hasEmpty = ptypeHasNone && accTypes.length === 0;
+        if (!hasRegular && !hasEmpty) continue;
+      }
+      if (stateFilter !== "all" && a.state !== stateFilter) continue;
+      if (needle && !hay.includes(needle)) continue;
+      out.push(a);
+    }
+    return out;
+  }, [indexed, needle, repFilter, managerFilter, brandSet, ptypeRegularSet, ptypeHasNone, stateFilter]);
+
+  // Incremental render: only mount a slice of rows, grow on scroll near bottom.
+  const PAGE = 100;
+  const [visibleCount, setVisibleCount] = useState(PAGE);
+  useEffect(() => { setVisibleCount(PAGE); }, [needle, repFilter, managerFilter, brandFilters.join(","), prospectTypeFilters.join(","), stateFilter]);
+  const visibleRows = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 400 && visibleCount < filtered.length) {
+      setVisibleCount((c) => Math.min(c + PAGE, filtered.length));
+    }
+  };
+
 
   const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();

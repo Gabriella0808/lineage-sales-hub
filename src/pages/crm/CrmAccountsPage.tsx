@@ -212,7 +212,7 @@ export default function CrmAccountsPage() {
           <SelectContent>
             <SelectItem value="all">All managers</SelectItem>
             {managers
-              .filter((m) => ["Will", "Mateo", "Kate", "Chris", "Justin"].includes(m.name))
+              .filter((m) => ["Will", "Mateo", "Kate", "Chris De Lisa", "Justin Jeangerard"].includes(m.name))
               .map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
           </SelectContent>
         </Select>

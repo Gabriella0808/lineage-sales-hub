@@ -713,6 +713,39 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // ============ SECTION 1: HIGH LEVEL SUMMARY ============
   const summary = useMemo(() => {
+    // Build fallback avg monthly sales by collection / brand / global for SKUs with no sales history
+    const isExcluded = (it: any) => {
+      const s = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${it.category ?? ""} ${it.supplier ?? ""}`.toLowerCase();
+      return /freight|dropship|drop ship|drop-ship/.test(s);
+    };
+    const sellers = items.filter((it) => (it.avgMonthlySales ?? 0) > 0 && !isExcluded(it));
+    const avgBy = (key: "collection" | "brand" | "category") => {
+      const m = new Map<string, { sum: number; n: number }>();
+      for (const it of sellers) {
+        const k = (it as any)[key];
+        if (!k) continue;
+        const cur = m.get(k) ?? { sum: 0, n: 0 };
+        cur.sum += it.avgMonthlySales; cur.n += 1;
+        m.set(k, cur);
+      }
+      const out = new Map<string, number>();
+      m.forEach((v, k) => out.set(k, v.sum / v.n));
+      return out;
+    };
+    const avgByCollection = avgBy("collection");
+    const avgByBrand = avgBy("brand");
+    const avgByCategory = avgBy("category");
+    const globalAvg = sellers.length > 0 ? sellers.reduce((s, it) => s + it.avgMonthlySales, 0) / sellers.length : 0;
+    const estMonthlyUnits = (it: any) => {
+      if ((it.avgMonthlySales ?? 0) > 0) return it.avgMonthlySales;
+      return (
+        avgByCollection.get(it.collection) ??
+        avgByBrand.get(it.brand) ??
+        avgByCategory.get(it.category) ??
+        globalAvg
+      );
+    };
+
     let value = 0, units = 0, monthlySales = 0, lostSales = 0;
     let outOfStockValue = 0, closeoutValue = 0, annualUnits = 0;
     for (const it of items) {
@@ -722,9 +755,12 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       units += it.onHand;
       monthlySales += it.avgMonthlySales * (it.listPrice ?? cost);
       annualUnits += it.avgMonthlySales * 12;
-      if (it.status === "out-of-stock") {
-        lostSales += it.avgMonthlySales * (it.listPrice ?? cost);
-        outOfStockValue += it.avgMonthlySales * (it.listPrice ?? cost);
+      const oos = it.status === "out-of-stock" || (it.onHand ?? 0) <= 0;
+      if (oos && !isExcluded(it)) {
+        const price = it.listPrice ?? cost;
+        const estUnits = estMonthlyUnits(it);
+        lostSales += estUnits * price;
+        outOfStockValue += estUnits * price;
       }
       if (it.isCloseout || it.isClearance) closeoutValue += lineValue;
     }
@@ -737,10 +773,10 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       .filter((p) => p.is_prepaid)
       .reduce((s, p) => s + Number(p.prepaid_amount ?? 0), 0);
     const salesToInv = value > 0 ? monthlySales / value : 0;
-    // Annual turnover ≈ annual COGS / avg inventory value (proxy: annual units * cost / value)
     const turnover = value > 0 ? (monthlySales * 12) / value : 0;
     return { value, units, monthlySales, backlogValue, backlogUnits, openPoValue, prepaidValue, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
   }, [items, hub.openOrders, hub.purchaseOrders]);
+
 
   // Value by collection / brand for drilldown
   const valueByCollection = useMemo(() => {

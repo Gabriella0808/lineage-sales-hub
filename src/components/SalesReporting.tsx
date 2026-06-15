@@ -940,6 +940,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         rowLabel={drillRow?.label ?? ""}
         from={primary.from}
         to={primary.to}
+        compareFrom={compareMode !== "none" ? comparative.from : undefined}
+        compareTo={compareMode !== "none" ? comparative.to : undefined}
         dealers={dealers}
         reps={reps}
         territories={territories}

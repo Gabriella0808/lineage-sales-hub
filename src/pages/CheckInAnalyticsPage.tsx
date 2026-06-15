@@ -29,11 +29,12 @@ import {
   format,
 } from "date-fns";
 
-type TeamId = "will" | "mateo" | "chris";
+type TeamId = "will" | "mateo" | "chris" | "justin";
 const TEAM: { id: TeamId; name: string; emails: string[]; repOwners: string[] }[] = [
   { id: "will", name: "Will Grisack", emails: ["will@lineage-collections.com"], repOwners: ["will"] },
   { id: "mateo", name: "Mateo De Lisa", emails: ["mateo@lineage-collections.com"], repOwners: ["mateo"] },
   { id: "chris", name: "Chris De Lisa", emails: ["chris@lineage-collections.com"], repOwners: ["chris"] },
+  { id: "justin", name: "Justin Jeangerard", emails: ["justin@lineage-collections.com"], repOwners: ["justin"] },
 ];
 
 interface CheckInRow {
@@ -347,6 +348,7 @@ export default function CheckInAnalyticsPage() {
       will: {},
       mateo: {},
       chris: {},
+      justin: {},
     };
     TEAM.forEach((t) => {
       periods.forEach((p) => {
@@ -389,6 +391,12 @@ export default function CheckInAnalyticsPage() {
         thisWeek: { checkIns: 0, placements: 0 },
         lastMonth: { checkIns: 41, placements: 6 },
         ytd: { checkIns: 110, placements: 14 },
+      },
+      justin: {
+        lastWeek: { checkIns: 0, placements: 0 },
+        thisWeek: { checkIns: 0, placements: 0 },
+        lastMonth: { checkIns: 0, placements: 0 },
+        ytd: { checkIns: 0, placements: 0 },
       },
     };
 

@@ -62,6 +62,13 @@ export function InvoiceDetailSheet({
   const cToStr = compareTo ? format(compareTo, "yyyy-MM-dd") : null;
   const hasCompare = !!(cFromStr && cToStr);
 
+  const compLabel = hasCompare
+    ? format(compareFrom!, "yyyy") === format(compareTo!, "yyyy")
+      ? format(compareFrom!, "yyyy")
+      : `${format(compareFrom!, "yyyy")}–${format(compareTo!, "yyyy")}`
+    : null;
+
+
   const fetchLines = async (fStr: string, tStr: string): Promise<InvoiceLine[]> => {
     const out: InvoiceLine[] = [];
     const chunkSize = 200;
@@ -324,9 +331,9 @@ export function InvoiceDetailSheet({
         </SheetHeader>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <StatCard label="Invoiced" value={formatCurrency(summary.totalAmt)} compValue={compSummary ? formatCurrency(compSummary.totalAmt) : undefined} delta={compSummary ? pctDelta(summary.totalAmt, compSummary.totalAmt) : undefined} />
-          <StatCard label="Invoices" value={summary.invoiceCount.toLocaleString()} compValue={compSummary ? compSummary.invoiceCount.toLocaleString() : undefined} delta={compSummary ? pctDelta(summary.invoiceCount, compSummary.invoiceCount) : undefined} />
-          <StatCard label="Units" value={summary.totalQty.toLocaleString()} compValue={compSummary ? compSummary.totalQty.toLocaleString() : undefined} delta={compSummary ? pctDelta(summary.totalQty, compSummary.totalQty) : undefined} />
+          <StatCard label="Invoiced" value={formatCurrency(summary.totalAmt)} compValue={compSummary ? formatCurrency(compSummary.totalAmt) : undefined} compLabel={compLabel ?? undefined} delta={compSummary ? pctDelta(summary.totalAmt, compSummary.totalAmt) : undefined} />
+          <StatCard label="Invoices" value={summary.invoiceCount.toLocaleString()} compValue={compSummary ? compSummary.invoiceCount.toLocaleString() : undefined} compLabel={compLabel ?? undefined} delta={compSummary ? pctDelta(summary.invoiceCount, compSummary.invoiceCount) : undefined} />
+          <StatCard label="Units" value={summary.totalQty.toLocaleString()} compValue={compSummary ? compSummary.totalQty.toLocaleString() : undefined} compLabel={compLabel ?? undefined} delta={compSummary ? pctDelta(summary.totalQty, compSummary.totalQty) : undefined} />
         </div>
 
         {isLoading && (
@@ -342,6 +349,17 @@ export function InvoiceDetailSheet({
             {branchSummary.rows.length > 0 && (
               <Section title="By Branch" count={branchSummary.rows.length}>
                 <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b text-muted-foreground">
+                      <th className="py-1 text-left font-normal">Branch</th>
+                      <th className="py-1 text-right font-normal">Invoices</th>
+                      <th className="py-1 text-right font-normal">%</th>
+                      <th className="py-1 text-right font-normal">Amount</th>
+                      {hasCompare && (
+                        <th className="py-1 text-right font-normal">{compLabel}</th>
+                      )}
+                    </tr>
+                  </thead>
                   <tbody>
                     {branchSummary.rows.map((b) => {
                       const cv = compBranchMap.get(b.label);
@@ -364,27 +382,27 @@ export function InvoiceDetailSheet({
 
             <div className="grid sm:grid-cols-2 gap-6">
               <Section title="By Brand" count={summary.byBrand.length}>
-                <BreakdownList rows={summary.byBrand.map((b) => ({ label: b.name, total: b.total, qty: b.qty, comp: compMaps.brand.get(b.name) }))} showComp={hasCompare} />
+                <BreakdownList rows={summary.byBrand.map((b) => ({ label: b.name, total: b.total, qty: b.qty, comp: compMaps.brand.get(b.name) }))} showComp={hasCompare} compLabel={compLabel ?? undefined} />
               </Section>
               <Section title="By Collection" count={summary.byCollection.length}>
-                <BreakdownList rows={summary.byCollection.map((b) => ({ label: b.name, total: b.total, qty: b.qty, comp: compMaps.collection.get(b.name) }))} showComp={hasCompare} />
+                <BreakdownList rows={summary.byCollection.map((b) => ({ label: b.name, total: b.total, qty: b.qty, comp: compMaps.collection.get(b.name) }))} showComp={hasCompare} compLabel={compLabel ?? undefined} />
               </Section>
               <Section title="By Category" count={summary.byCategory.length}>
-                <BreakdownList rows={summary.byCategory.map((b) => ({ label: b.name, total: b.total, qty: b.qty, comp: compMaps.category.get(b.name) }))} showComp={hasCompare} />
+                <BreakdownList rows={summary.byCategory.map((b) => ({ label: b.name, total: b.total, qty: b.qty, comp: compMaps.category.get(b.name) }))} showComp={hasCompare} compLabel={compLabel ?? undefined} />
               </Section>
               {showRepBreakdown && (
                 <Section title="By Rep" count={summary.byRep.length}>
-                  <BreakdownList rows={summary.byRep.map((b) => ({ label: b.name, total: b.total, comp: compMaps.rep.get(b.name) }))} showComp={hasCompare} />
+                  <BreakdownList rows={summary.byRep.map((b) => ({ label: b.name, total: b.total, comp: compMaps.rep.get(b.name) }))} showComp={hasCompare} compLabel={compLabel ?? undefined} />
                 </Section>
               )}
               {showTerritoryBreakdown && (
                 <Section title="By Territory" count={summary.byTerritory.length}>
-                  <BreakdownList rows={summary.byTerritory.map((b) => ({ label: b.name, total: b.total, comp: compMaps.territory.get(b.name) }))} showComp={hasCompare} />
+                  <BreakdownList rows={summary.byTerritory.map((b) => ({ label: b.name, total: b.total, comp: compMaps.territory.get(b.name) }))} showComp={hasCompare} compLabel={compLabel ?? undefined} />
                 </Section>
               )}
               {showDealerBreakdown && (
                 <Section title="By Dealer" count={summary.byDealer.length}>
-                  <BreakdownList rows={summary.byDealer.map((b) => ({ label: b.name, total: b.total, comp: compMaps.dealer.get(b.name) }))} showComp={hasCompare} />
+                  <BreakdownList rows={summary.byDealer.map((b) => ({ label: b.name, total: b.total, comp: compMaps.dealer.get(b.name) }))} showComp={hasCompare} compLabel={compLabel ?? undefined} />
                 </Section>
               )}
             </div>
@@ -401,14 +419,14 @@ function pctDelta(cur: number, prev: number): number | null {
   return ((cur - prev) / prev) * 100;
 }
 
-function StatCard({ label, value, compValue, delta }: { label: string; value: string; compValue?: string; delta?: number | null }) {
+function StatCard({ label, value, compValue, compLabel, delta }: { label: string; value: string; compValue?: string; compLabel?: string; delta?: number | null }) {
   return (
     <Card><CardContent className="p-3">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="text-lg font-semibold tabular-nums">{value}</p>
       {compValue !== undefined && (
         <p className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
-          vs {compValue}
+          {compLabel ? `${compLabel}: ` : "vs "}{compValue}
           {delta !== null && delta !== undefined && (
             <span className={`ml-1 ${delta >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
               {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
@@ -432,10 +450,25 @@ function Section({ title, count, children }: { title: string; count: number; chi
   );
 }
 
-function BreakdownList({ rows, showComp }: { rows: { label: string; total: number; qty?: number; comp?: number }[]; showComp?: boolean }) {
+function BreakdownList({ rows, showComp, compLabel }: { rows: { label: string; total: number; qty?: number; comp?: number }[]; showComp?: boolean; compLabel?: string }) {
   if (rows.length === 0) return <p className="text-xs text-muted-foreground">—</p>;
   return (
     <table className="w-full text-xs">
+      <thead>
+        <tr className="border-b text-muted-foreground">
+          <th className="py-1 text-left font-normal">Name</th>
+          {rows.some((r) => r.qty !== undefined) && (
+            <th className="py-1 text-right font-normal">Qty</th>
+          )}
+          <th className="py-1 text-right font-normal">Amount</th>
+          {showComp && (
+            <>
+              <th className="py-1 text-right font-normal">{compLabel ?? "Comp"}</th>
+              <th className="py-1 text-right font-normal">Δ</th>
+            </>
+          )}
+        </tr>
+      </thead>
       <tbody>
         {rows.slice(0, 25).map((r, i) => {
           const delta = showComp && r.comp ? ((r.total - r.comp) / r.comp) * 100 : null;

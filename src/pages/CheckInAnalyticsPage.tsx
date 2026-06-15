@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, TrendingUp, Users, CheckCircle2, Activity } from "lucide-react";
+import { Loader2, TrendingUp, Users, CheckCircle2, Activity, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   ChartContainer,
   ChartTooltip,

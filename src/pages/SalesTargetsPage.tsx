@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -39,8 +39,36 @@ export default function SalesTargetsPage() {
     return m;
   }, [targets]);
 
-  // Actuals per rep per month for selected year.
-  // Dealers link to reps via rep_id when set; otherwise we match by salesperson name.
+  // Pull all dealer invoices for the selected year (paged) and attribute to reps.
+  const { data: invoices = [] } = useQuery({
+    queryKey: ["rep_targets_invoices", year],
+    queryFn: async () => {
+      const from = `${year}-01-01`;
+      const to = `${year}-12-31`;
+      const pageSize = 1000;
+      const rows: { dealer_id: string | null; invoice_date: string | null; subtotal: number | null; total: number | null }[] = [];
+      let start = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("dealer_id, invoice_date, subtotal, total")
+          .gte("invoice_date", from)
+          .lte("invoice_date", to)
+          .not("dealer_id", "is", null)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = data ?? [];
+        rows.push(...(batch as any));
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      return rows;
+    },
+    staleTime: 60_000,
+  });
+
+  // Attribute each invoice to a rep via the dealer's rep_id (fallback to salesperson name match).
   const actualByRep = useMemo(() => {
     const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
     const repByName = new Map<string, string>();
@@ -51,7 +79,6 @@ export default function SalesTargetsPage() {
       const sp = norm(d?.salesperson);
       if (!sp) return null;
       if (repByName.has(sp)) return repByName.get(sp)!;
-      // loose match: contains either way (handles "Robertson" vs "Brad Robertson", etc.)
       for (const [name, id] of repByName) {
         if (name && (name.includes(sp) || sp.includes(name))) return id;
       }
@@ -61,16 +88,21 @@ export default function SalesTargetsPage() {
     const dealerRep = new Map<string, string | null>();
     dealers.forEach((d: any) => dealerRep.set(d.id, repForDealer(d)));
 
-    const m: Record<string, { months: Record<string, number>; total: number }> = {};
-    dealerSales.filter(s => s.year === year).forEach(s => {
-      const rid = dealerRep.get(s.dealer_id);
+    const m: Record<string, { months: Record<number, number>; total: number }> = {};
+    invoices.forEach(inv => {
+      if (!inv.dealer_id || !inv.invoice_date) return;
+      const rid = dealerRep.get(inv.dealer_id);
       if (!rid) return;
+      const amount = Number(inv.subtotal ?? inv.total ?? 0);
+      if (!amount) return;
+      const month = new Date(inv.invoice_date).getUTCMonth() + 1;
       if (!m[rid]) m[rid] = { months: {}, total: 0 };
-      m[rid].months[s.month] = (m[rid].months[s.month] ?? 0) + (s.revenue ?? 0);
-      m[rid].total += (s.revenue ?? 0);
+      m[rid].months[month] = (m[rid].months[month] ?? 0) + amount;
+      m[rid].total += amount;
     });
     return m;
-  }, [dealerSales, dealers, reps, year]);
+  }, [invoices, dealers, reps]);
+
 
   if (roleLoading) {
     return <div className="p-6"><Skeleton className="h-64 w-full" /></div>;

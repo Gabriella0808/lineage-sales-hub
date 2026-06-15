@@ -348,6 +348,7 @@ export default function CheckInAnalyticsPage() {
       will: {},
       mateo: {},
       chris: {},
+      justin: {},
     };
     TEAM.forEach((t) => {
       periods.forEach((p) => {

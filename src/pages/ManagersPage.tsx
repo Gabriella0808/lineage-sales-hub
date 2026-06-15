@@ -86,6 +86,13 @@ export default function ManagersPage() {
       managerReps.flatMap((r) => repTerritories.filter((rt) => rt.rep_id === r.id).map((rt) => rt.territory_id)),
     )];
     const mgrDealers = dealers.filter((d) => managerReps.some((r) => r.id === d.rep_id));
+    // Current-year revenue per rep = sum of YTD revenue of their dealers.
+    const revenueByRep = new Map<string, number>();
+    mgrDealers.forEach((d) => {
+      if (!d.rep_id) return;
+      revenueByRep.set(d.rep_id, (revenueByRep.get(d.rep_id) ?? 0) + (d.revenue ?? 0));
+    });
+
 
     return (
       <div className="animate-fade-in">

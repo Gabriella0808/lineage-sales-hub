@@ -34,14 +34,32 @@ export default function DashboardPage() {
   const lastYearRevenue = lastYearSales.reduce((s, r) => s + (r.revenue ?? 0), 0);
   const totalOrders = currentYearSales.reduce((s, r) => s + (r.order_count ?? 0), 0);
 
+  // Resolve each dealer to a rep: prefer rep_id; else fall back to dealer.salesperson
+  // loosely matching a rep name. Same logic as the Sales Targets card.
+  const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+  const repByName = new Map<string, string>();
+  reps.forEach(r => { if (r.name) repByName.set(norm(r.name), r.id); });
+  const repForDealer = (d: any): string | null => {
+    if (d?.rep_id) return d.rep_id;
+    const sp = norm(d?.salesperson);
+    if (!sp) return null;
+    if (repByName.has(sp)) return repByName.get(sp)!;
+    for (const [name, id] of repByName) {
+      if (name && (name.includes(sp) || sp.includes(name))) return id;
+    }
+    return null;
+  };
+  const dealerRep = new Map<string, string | null>();
+  dealers.forEach((d: any) => dealerRep.set(d.id, repForDealer(d)));
+
   // Monthly rep performance — sales per rep, per month (top 5 reps shown)
   const REP_COLORS = ['hsl(220 35% 22%)', 'hsl(38 75% 50%)', 'hsl(152 60% 40%)', 'hsl(0 65% 55%)', 'hsl(265 50% 55%)'];
   const repMonthlyMap: Record<string, Record<string, number>> = {};
   currentYearSales.forEach(s => {
-    const dealer = dealers.find(d => d.id === s.dealer_id);
-    if (!dealer?.rep_id) return;
-    if (!repMonthlyMap[dealer.rep_id]) repMonthlyMap[dealer.rep_id] = {};
-    repMonthlyMap[dealer.rep_id][s.month] = (repMonthlyMap[dealer.rep_id][s.month] ?? 0) + (s.revenue ?? 0);
+    const rid = dealerRep.get(s.dealer_id);
+    if (!rid) return;
+    if (!repMonthlyMap[rid]) repMonthlyMap[rid] = {};
+    repMonthlyMap[rid][s.month] = (repMonthlyMap[rid][s.month] ?? 0) + (s.revenue ?? 0);
   });
   const repTotals = Object.entries(repMonthlyMap)
     .map(([repId, months]) => ({ repId, total: Object.values(months).reduce((a, b) => a + b, 0) }))
@@ -73,13 +91,11 @@ export default function DashboardPage() {
       return { name: name.length > 18 ? name.slice(0, 18) + '…' : name, revenue: Math.round(revenue / 1000) };
     });
 
-  // Sales Leaderboard — rep revenue from dealer_sales via dealer.rep_id
+  // Sales Leaderboard — rep revenue via dealerRep map
   const repRevenueMap: Record<string, number> = {};
   currentYearSales.forEach(s => {
-    const dealer = dealers.find(d => d.id === s.dealer_id);
-    if (dealer?.rep_id) {
-      repRevenueMap[dealer.rep_id] = (repRevenueMap[dealer.rep_id] ?? 0) + (s.revenue ?? 0);
-    }
+    const rid = dealerRep.get(s.dealer_id);
+    if (rid) repRevenueMap[rid] = (repRevenueMap[rid] ?? 0) + (s.revenue ?? 0);
   });
   const leaderboard = reps
     .map(r => {
@@ -106,6 +122,7 @@ export default function DashboardPage() {
       const first = (rep?.name ?? 'Unknown').split(' ')[0];
       return { name: first, revenue: Math.round(revenue) };
     });
+
 
   // Accounts by Sales Manager (donut)
   const MANAGER_COLORS = ['hsl(38 75% 50%)', 'hsl(152 60% 40%)', 'hsl(220 35% 22%)', 'hsl(265 50% 55%)', 'hsl(0 65% 55%)'];

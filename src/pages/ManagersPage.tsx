@@ -28,24 +28,32 @@ export default function ManagersPage() {
       if (n === "scott grisack") return false;
       return true;
     });
-    // Dedupe: if a single-token name (e.g. "Mateo") has a longer full-name
-    // counterpart sharing the same first token (e.g. "Mateo De Lisa"), drop the short one.
-    const fullNameFirsts = new Set(
-      filtered
-        .map((m) => m.name.trim().split(/\s+/))
-        .filter((parts) => parts.length > 1)
-        .map((parts) => parts[0].toLowerCase()),
-    );
-    const seen = new Set<string>();
-    return filtered.filter((m) => {
-      const parts = m.name.trim().split(/\s+/);
-      if (parts.length === 1 && fullNameFirsts.has(parts[0].toLowerCase())) return false;
-      const key = m.name.trim().toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
+    // Dedupe by first-name token: keep the record that has the most reps assigned
+    // (it owns the dealer linkage), but prefer the longest display name available.
+    const repCountByMgr = new Map<string, number>();
+    reps.forEach((r) => {
+      if (!r.manager_id) return;
+      repCountByMgr.set(r.manager_id, (repCountByMgr.get(r.manager_id) ?? 0) + 1);
     });
-  }, [managers]);
+    const groups = new Map<string, typeof filtered>();
+    filtered.forEach((m) => {
+      const key = m.name.trim().split(/\s+/)[0].toLowerCase();
+      const arr = groups.get(key) ?? [];
+      arr.push(m);
+      groups.set(key, arr);
+    });
+    const out: typeof filtered = [];
+    groups.forEach((arr) => {
+      const winner = [...arr].sort((a, b) =>
+        (repCountByMgr.get(b.id) ?? 0) - (repCountByMgr.get(a.id) ?? 0)
+      )[0];
+      const bestName = [...arr]
+        .map((m) => m.name.trim())
+        .sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length)[0];
+      out.push({ ...winner, name: bestName });
+    });
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }, [managers, reps]);
 
   const repsById = useMemo(() => new Map(reps.map((r) => [r.id, r])), [reps]);
 

@@ -478,7 +478,7 @@ export default function SalesRepsPage() {
                 <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
                 <SelectContent className="max-h-72">
                   <SelectItem value="none">— None —</SelectItem>
-                  {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.email || m.name}</SelectItem>)}
+                  {displayManagers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

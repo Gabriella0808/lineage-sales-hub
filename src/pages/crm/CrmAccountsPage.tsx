@@ -72,8 +72,18 @@ export default function CrmAccountsPage() {
   const repName = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name ?? "—" : "Unassigned");
   const managerName = (id: string | null) => (id ? managers.find((m) => m.id === id)?.name ?? "—" : "Unassigned");
 
+  // Normalize text for forgiving search: lowercase, fold curly quotes to straight,
+  // and strip punctuation/whitespace so "Wright's Furniture", "wrights furniture",
+  // and "Wright’s  Furniture." all match.
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[\u2018\u2019\u201A\u201B\u2032]/g, "'")
+      .replace(/[\u201C\u201D\u201E\u201F\u2033]/g, '"')
+      .replace(/[^a-z0-9]+/g, "");
+
   const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
+    const needle = norm(q);
     return accounts.filter((a) => {
       // Prospects section shows all prospects, including those converted to dealers
       // (converted dealers also appear on the Field Check-ins map)
@@ -93,7 +103,7 @@ export default function CrmAccountsPage() {
       }
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;
-      const hay = `${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""}`.toLowerCase();
+      const hay = norm(`${a.company_name} ${a.contact_first_name ?? ""} ${a.contact_last_name ?? ""} ${a.city ?? ""} ${a.state ?? ""}`);
       return hay.includes(needle);
     });
   }, [accounts, q, repFilter, managerFilter, brandFilters, prospectTypeFilters, stateFilter]);

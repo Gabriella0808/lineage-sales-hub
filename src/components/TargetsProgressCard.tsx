@@ -88,8 +88,36 @@ export function TargetsProgressCard() {
 
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: targets = [], isLoading: tgtLoading } = useRepTargets(year);
-  const { data: dealerSales = [], isLoading: dsLoading } = useDealerSales();
   const { data: dealers = [] } = useDealers();
+
+  // Pull all dealer invoices for the year (paged) — same source as Sales Targets page.
+  const { data: invoices = [], isLoading: invLoading } = useQuery({
+    queryKey: ["targets_card_invoices", year],
+    queryFn: async () => {
+      const from = `${year}-01-01`;
+      const to = `${year}-12-31`;
+      const pageSize = 1000;
+      const rows: { dealer_id: string | null; invoice_date: string | null; subtotal: number | null; total: number | null }[] = [];
+      let start = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("dealer_id, invoice_date, subtotal, total")
+          .gte("invoice_date", from)
+          .lte("invoice_date", to)
+          .not("dealer_id", "is", null)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = data ?? [];
+        rows.push(...(batch as any));
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      return rows;
+    },
+    staleTime: 60_000,
+  });
 
   const targetByRep = useMemo(() => {
     const m: Record<string, RepTarget> = {};
@@ -97,20 +125,41 @@ export function TargetsProgressCard() {
     return m;
   }, [targets]);
 
-  // Actual revenue per rep, split YTD and current MTD
+  // Actual revenue per rep, split YTD and current MTD, attributed via dealer rep_id
+  // (fallback to dealer.salesperson loose-matching rep name).
   const actualByRep = useMemo(() => {
+    const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+    const repByName = new Map<string, string>();
+    reps.forEach(r => { if (r.name) repByName.set(norm(r.name), r.id); });
+    const repForDealer = (d: any): string | null => {
+      if (d?.rep_id) return d.rep_id;
+      const sp = norm(d?.salesperson);
+      if (!sp) return null;
+      if (repByName.has(sp)) return repByName.get(sp)!;
+      for (const [name, id] of repByName) {
+        if (name && (name.includes(sp) || sp.includes(name))) return id;
+      }
+      return null;
+    };
+    const dealerRep = new Map<string, string | null>();
+    dealers.forEach((d: any) => dealerRep.set(d.id, repForDealer(d)));
+
     const m: Record<string, { ytd: number; mtd: number }> = {};
-    dealerSales.filter(s => s.year === year).forEach(s => {
-      const dealer = dealers.find(d => d.id === s.dealer_id);
-      if (!dealer?.rep_id) return;
-      const rid = dealer.rep_id;
+    invoices.forEach(inv => {
+      if (!inv.dealer_id || !inv.invoice_date) return;
+      const rid = dealerRep.get(inv.dealer_id);
+      if (!rid) return;
+      const amount = Number(inv.subtotal ?? inv.total ?? 0);
+      if (!amount) return;
+      const d = new Date(inv.invoice_date);
+      const m0 = d.getUTCMonth();
       if (!m[rid]) m[rid] = { ytd: 0, mtd: 0 };
-      const rev = s.revenue ?? 0;
-      m[rid].ytd += rev;
-      if (s.month === MONTH_ORDER[monthIdx]) m[rid].mtd += rev;
+      m[rid].ytd += amount;
+      if (m0 === monthIdx) m[rid].mtd += amount;
     });
     return m;
-  }, [dealerSales, dealers, year, monthIdx]);
+  }, [invoices, dealers, reps, monthIdx]);
+
 
   const rows = reps
     .map(rep => {

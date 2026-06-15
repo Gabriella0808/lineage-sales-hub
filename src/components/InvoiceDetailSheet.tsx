@@ -58,68 +58,86 @@ export function InvoiceDetailSheet({
 
   const fromStr = format(from, "yyyy-MM-dd");
   const toStr = format(to, "yyyy-MM-dd");
+  const cFromStr = compareFrom ? format(compareFrom, "yyyy-MM-dd") : null;
+  const cToStr = compareTo ? format(compareTo, "yyyy-MM-dd") : null;
+  const hasCompare = !!(cFromStr && cToStr);
+
+  const fetchLines = async (fStr: string, tStr: string): Promise<InvoiceLine[]> => {
+    const out: InvoiceLine[] = [];
+    const chunkSize = 200;
+    for (let i = 0; i < dealerIds.length; i += chunkSize) {
+      const chunk = dealerIds.slice(i, i + chunkSize);
+      let start = 0;
+      const pageSize = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoice_lines")
+          .select("dealer_id, product_id, sku, product_name, invoice_date, invoice_acctivate_id, qty, unit_price, extended_price")
+          .in("dealer_id", chunk)
+          .gte("invoice_date", fStr)
+          .lte("invoice_date", tStr)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as InvoiceLine[];
+        out.push(...batch);
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+    }
+    return out;
+  };
+
+  const fetchHeaders = async (fStr: string, tStr: string) => {
+    const out: { acctivate_id: string | null; total: number | null; branch: string | null }[] = [];
+    const chunkSize = 200;
+    for (let i = 0; i < dealerIds.length; i += chunkSize) {
+      const chunk = dealerIds.slice(i, i + chunkSize);
+      let start = 0;
+      const pageSize = 1000;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("acctivate_id, total, branch")
+          .in("dealer_id", chunk)
+          .gte("invoice_date", fStr)
+          .lte("invoice_date", tStr)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as typeof out;
+        out.push(...batch);
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+    }
+    return out;
+  };
 
   const { data: lines = [], isLoading } = useQuery({
     queryKey: ["invoice_detail", groupBy, rowKey, fromStr, toStr, dealerIds.join(",")],
     enabled: open && dealerIds.length > 0,
-    queryFn: async () => {
-      const out: InvoiceLine[] = [];
-      // Batch dealer ids to keep .in() lists manageable
-      const chunkSize = 200;
-      for (let i = 0; i < dealerIds.length; i += chunkSize) {
-        const chunk = dealerIds.slice(i, i + chunkSize);
-        let start = 0;
-        const pageSize = 1000;
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { data, error } = await supabase
-            .from("dealer_invoice_lines")
-            .select("dealer_id, product_id, sku, product_name, invoice_date, invoice_acctivate_id, qty, unit_price, extended_price")
-            .in("dealer_id", chunk)
-            .gte("invoice_date", fromStr)
-            .lte("invoice_date", toStr)
-            .range(start, start + pageSize - 1);
-          if (error) throw error;
-          const batch = (data ?? []) as InvoiceLine[];
-          out.push(...batch);
-          if (batch.length < pageSize) break;
-          start += pageSize;
-        }
-      }
-      return out;
-    },
+    queryFn: () => fetchLines(fromStr, toStr),
   });
 
-  // Fetch invoice headers (for branch) for the same scope.
   const { data: headers = [] } = useQuery({
     queryKey: ["invoice_headers_branch", groupBy, rowKey, fromStr, toStr, dealerIds.join(",")],
     enabled: open && dealerIds.length > 0,
-    queryFn: async () => {
-      const out: { acctivate_id: string | null; total: number | null; branch: string | null }[] = [];
-      const chunkSize = 200;
-      for (let i = 0; i < dealerIds.length; i += chunkSize) {
-        const chunk = dealerIds.slice(i, i + chunkSize);
-        let start = 0;
-        const pageSize = 1000;
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { data, error } = await supabase
-            .from("dealer_invoices")
-            .select("acctivate_id, total, branch")
-            .in("dealer_id", chunk)
-            .gte("invoice_date", fromStr)
-            .lte("invoice_date", toStr)
-            .range(start, start + pageSize - 1);
-          if (error) throw error;
-          const batch = (data ?? []) as typeof out;
-          out.push(...batch);
-          if (batch.length < pageSize) break;
-          start += pageSize;
-        }
-      }
-      return out;
-    },
+    queryFn: () => fetchHeaders(fromStr, toStr),
   });
+
+  const { data: compLines = [] } = useQuery({
+    queryKey: ["invoice_detail_comp", groupBy, rowKey, cFromStr, cToStr, dealerIds.join(",")],
+    enabled: open && hasCompare && dealerIds.length > 0,
+    queryFn: () => fetchLines(cFromStr!, cToStr!),
+  });
+
+  const { data: compHeaders = [] } = useQuery({
+    queryKey: ["invoice_headers_branch_comp", groupBy, rowKey, cFromStr, cToStr, dealerIds.join(",")],
+    enabled: open && hasCompare && dealerIds.length > 0,
+    queryFn: () => fetchHeaders(cFromStr!, cToStr!),
+  });
+
 
 
   const productById = useMemo(() => {

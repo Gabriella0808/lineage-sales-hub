@@ -86,6 +86,13 @@ export default function ManagersPage() {
       managerReps.flatMap((r) => repTerritories.filter((rt) => rt.rep_id === r.id).map((rt) => rt.territory_id)),
     )];
     const mgrDealers = dealers.filter((d) => managerReps.some((r) => r.id === d.rep_id));
+    // Current-year revenue per rep = sum of YTD revenue of their dealers.
+    const revenueByRep = new Map<string, number>();
+    mgrDealers.forEach((d) => {
+      if (!d.rep_id) return;
+      revenueByRep.set(d.rep_id, (revenueByRep.get(d.rep_id) ?? 0) + (d.revenue ?? 0));
+    });
+
 
     return (
       <div className="animate-fade-in">
@@ -185,7 +192,7 @@ export default function ManagersPage() {
                     <p className="text-xs text-muted-foreground truncate">{rep.email || "—"}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold tabular-nums">{formatCurrency(rep.revenue ?? 0)}</p>
+                    <p className="text-sm font-semibold tabular-nums">{formatCurrency(revenueByRep.get(rep.id) ?? 0)}</p>
                     <Badge variant="secondary" className="capitalize text-[10px] mt-0.5">{rep.status}</Badge>
                   </div>
                 </div>
@@ -210,7 +217,7 @@ export default function ManagersPage() {
                     <tr key={rep.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="p-3 font-medium">{rep.name}</td>
                       <td className="p-3 text-muted-foreground text-xs hidden md:table-cell">{rep.email || "—"}</td>
-                      <td className="p-3 text-right tabular-nums">{formatCurrency(rep.revenue ?? 0)}</td>
+                      <td className="p-3 text-right tabular-nums">{formatCurrency(revenueByRep.get(rep.id) ?? 0)}</td>
                       <td className="p-3 text-right tabular-nums hidden md:table-cell">{formatCurrency(rep.quota ?? 0)}</td>
                       <td className="p-3"><Badge variant="secondary" className="capitalize">{rep.status}</Badge></td>
                     </tr>

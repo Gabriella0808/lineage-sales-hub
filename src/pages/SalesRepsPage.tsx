@@ -104,6 +104,27 @@ export default function SalesRepsPage() {
   const { data: managers = [] } = useManagers();
   const { data: repTerritories = [] } = useRepTerritories();
 
+  // Deduplicate managers by first-name token, keeping the entry with the longest (full) name.
+  // Build a map from every original manager id → preferred (deduped) manager id.
+  const { displayManagers, managerIdMap } = (() => {
+    const groups = new Map<string, typeof managers>();
+    for (const m of managers) {
+      const key = (m.name || "").trim().toLowerCase().split(/\s+/)[0] || m.id;
+      if (!groups.has(key)) groups.set(key, [] as any);
+      (groups.get(key) as any).push(m);
+    }
+    const preferred: typeof managers = [];
+    const idMap = new Map<string, string>();
+    for (const group of groups.values()) {
+      const best = [...group].sort((a, b) => (b.name?.length ?? 0) - (a.name?.length ?? 0))[0];
+      preferred.push(best);
+      for (const m of group) idMap.set(m.id, best.id);
+    }
+    preferred.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    return { displayManagers: preferred, managerIdMap: idMap };
+  })();
+  const resolveMgr = (mid: string | null) => (mid ? displayManagers.find(m => m.id === (managerIdMap.get(mid) ?? mid)) : undefined);
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -218,7 +239,7 @@ export default function SalesRepsPage() {
     return true;
   });
 
-  const managerEmail = (mid: string | null) => managers.find(m => m.id === mid)?.email ?? "—";
+  const managerEmail = (mid: string | null) => resolveMgr(mid)?.email ?? "—";
 
   if (repsLoading) {
     return (
@@ -270,11 +291,11 @@ export default function SalesRepsPage() {
                 <Input value={editForm!.email} onChange={e => setEditForm({ ...editForm!, email: e.target.value })} placeholder="Email" className="h-9" />
                 <Input value={editForm!.phone} onChange={e => setEditForm({ ...editForm!, phone: e.target.value })} placeholder="Phone" className="h-9" />
                 <Input value={editForm!.quota} onChange={e => setEditForm({ ...editForm!, quota: e.target.value })} placeholder="Quota" type="number" className="h-9" />
-                <Select value={editForm!.manager_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
+                <Select value={(editForm!.manager_id && (managerIdMap.get(editForm!.manager_id) ?? editForm!.manager_id)) ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Manager" /></SelectTrigger>
                   <SelectContent className="max-h-72">
                     <SelectItem value="none">— None —</SelectItem>
-                    {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                    {displayManagers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={editForm!.status} onValueChange={v => setEditForm({ ...editForm!, status: v })}>
@@ -308,7 +329,7 @@ export default function SalesRepsPage() {
               <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Manager</p>
-                  <p className="truncate">{managers.find(m => m.id === r.manager_id)?.name ?? "—"}</p>
+                  <p className="truncate">{resolveMgr(r.manager_id)?.name ?? "—"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Phone</p>
@@ -376,15 +397,15 @@ export default function SalesRepsPage() {
                   {/* Manager */}
                   <td className="p-3">
                     {isEditing ? (
-                      <Select value={editForm!.manager_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
+                      <Select value={(editForm!.manager_id && (managerIdMap.get(editForm!.manager_id) ?? editForm!.manager_id)) ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
                         <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Manager" /></SelectTrigger>
                         <SelectContent className="max-h-72">
                           <SelectItem value="none">— None —</SelectItem>
-                          {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                          {displayManagers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     ) : (
-                      <span className="text-foreground">{managers.find(m => m.id === r.manager_id)?.name ?? "—"}</span>
+                      <span className="text-foreground">{resolveMgr(r.manager_id)?.name ?? "—"}</span>
                     )}
                   </td>
 
@@ -457,7 +478,7 @@ export default function SalesRepsPage() {
                 <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
                 <SelectContent className="max-h-72">
                   <SelectItem value="none">— None —</SelectItem>
-                  {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.email || m.name}</SelectItem>)}
+                  {displayManagers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

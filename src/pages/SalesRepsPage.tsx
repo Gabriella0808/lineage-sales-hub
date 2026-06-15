@@ -291,11 +291,11 @@ export default function SalesRepsPage() {
                 <Input value={editForm!.email} onChange={e => setEditForm({ ...editForm!, email: e.target.value })} placeholder="Email" className="h-9" />
                 <Input value={editForm!.phone} onChange={e => setEditForm({ ...editForm!, phone: e.target.value })} placeholder="Phone" className="h-9" />
                 <Input value={editForm!.quota} onChange={e => setEditForm({ ...editForm!, quota: e.target.value })} placeholder="Quota" type="number" className="h-9" />
-                <Select value={editForm!.manager_id ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
+                <Select value={(editForm!.manager_id && (managerIdMap.get(editForm!.manager_id) ?? editForm!.manager_id)) ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Manager" /></SelectTrigger>
                   <SelectContent className="max-h-72">
                     <SelectItem value="none">— None —</SelectItem>
-                    {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                    {displayManagers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={editForm!.status} onValueChange={v => setEditForm({ ...editForm!, status: v })}>

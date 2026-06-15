@@ -33,6 +33,8 @@ interface Props {
   rowLabel: string;
   from: Date;
   to: Date;
+  compareFrom?: Date;
+  compareTo?: Date;
   dealers: DbDealer[];
   reps: DbSalesRep[];
   territories: DbTerritory[];
@@ -41,7 +43,7 @@ interface Props {
 
 export function InvoiceDetailSheet({
   open, onOpenChange, groupBy, rowKey, rowLabel,
-  from, to, dealers, reps, territories, products,
+  from, to, compareFrom, compareTo, dealers, reps, territories, products,
 }: Props) {
   // Resolve dealer ids in scope
   const dealerIds = useMemo(() => {

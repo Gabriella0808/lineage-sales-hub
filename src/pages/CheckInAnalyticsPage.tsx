@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, TrendingUp, Users, CheckCircle2, Activity } from "lucide-react";
+import { Loader2, TrendingUp, Users, CheckCircle2, Activity, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   ChartContainer,
   ChartTooltip,
@@ -159,6 +159,7 @@ export default function CheckInAnalyticsPage() {
   const [debugMsg, setDebugMsg] = useState<string | null>(null);
   const [lastTestId, setLastTestId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const debugEnabled =
     typeof window !== "undefined" &&
@@ -564,17 +565,36 @@ export default function CheckInAnalyticsPage() {
           </div>
         </div>
 
-        <div className="flex gap-5 overflow-x-auto pb-2">
-          {TEAM.map((member, idx) => (
-            <div key={member.id} className="min-w-[320px] flex-shrink-0">
-              <RepCard
-                name={member.name}
-                periods={periods}
-                data={stats[member.id]}
-                accentClass={["bg-primary", "bg-accent", "bg-success", "bg-primary"][idx % 4]}
-              />
-            </div>
-          ))}
+        <div className="relative">
+          <button
+            onClick={() => scrollRef.current?.scrollBy({ left: -340, behavior: "smooth" })}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-background border border-border shadow-sm flex items-center justify-center hover:bg-muted transition-colors"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div
+            ref={scrollRef}
+            className="flex gap-5 overflow-x-hidden scroll-smooth py-1 px-12"
+          >
+            {TEAM.map((member, idx) => (
+              <div key={member.id} className="min-w-[320px] flex-shrink-0">
+                <RepCard
+                  name={member.name}
+                  periods={periods}
+                  data={stats[member.id]}
+                  accentClass={["bg-primary", "bg-accent", "bg-success", "bg-primary"][idx % 4]}
+                />
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => scrollRef.current?.scrollBy({ left: 340, behavior: "smooth" })}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-background border border-border shadow-sm flex items-center justify-center hover:bg-muted transition-colors"
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       </section>
 

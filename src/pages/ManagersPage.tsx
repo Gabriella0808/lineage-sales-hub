@@ -230,8 +230,9 @@ export default function ManagersPage() {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {visibleManagers.map((mgr) => {
           const mgrReps = managerRepsById.get(mgr.id) ?? [];
-          const mgrRevenue = mgrReps.reduce((s, r) => s + (r.revenue ?? 0), 0);
-          const mgrDealerCount = dealers.filter((d) => mgrReps.some((r) => r.id === d.rep_id)).length;
+          const mgrDealersList = dealers.filter((d) => mgrReps.some((r) => r.id === d.rep_id));
+          const mgrRevenue = mgrDealersList.reduce((s, d) => s + (d.revenue ?? 0), 0);
+          const mgrDealerCount = mgrDealersList.length;
           const mgrTerCount = [...new Set(
             mgrReps.flatMap((r) => repTerritories.filter((rt) => rt.rep_id === r.id).map((rt) => rt.territory_id)),
           )].length;

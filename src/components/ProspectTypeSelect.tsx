@@ -103,6 +103,18 @@ export function ProspectTypeSelect(props: Props) {
                 <DropdownMenuSeparator />
               </>
             )}
+            <DropdownMenuCheckboxItem
+              checked={values.includes(NONE_VALUE)}
+              onCheckedChange={() => {
+                const set = new Set(values);
+                if (set.has(NONE_VALUE)) set.delete(NONE_VALUE); else set.add(NONE_VALUE);
+                onChangeMulti(Array.from(set));
+              }}
+              onSelect={(e) => e.preventDefault()}
+            >
+              — (No type)
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
             {types.map((t) => (
               <DropdownMenuCheckboxItem
                 key={t.id}

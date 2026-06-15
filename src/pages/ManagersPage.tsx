@@ -297,11 +297,11 @@ export default function ManagersPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <h1 className="page-title">Sales Managers</h1>
-        <p className="page-subtitle">{visibleManagers.length} managers · reports live in Company-Wide</p>
+        <p className="page-subtitle">{sortedVisibleManagers.length} managers · reports live in Company-Wide</p>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {visibleManagers.map((mgr) => {
+        {sortedVisibleManagers.map((mgr) => {
           const mgrReps = managerRepsById.get(mgr.id) ?? [];
           const mgrDealersList = dealersForReps(mgrReps);
           const mgrRevenue = mgrDealersList.reduce((s, d) => s + (d.revenue ?? 0), 0);

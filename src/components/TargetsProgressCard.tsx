@@ -189,7 +189,7 @@ export function TargetsProgressCard() {
 
   rows.sort((a: any, b: any) => b.ytdPct - a.ytdPct);
 
-  const isLoading = repsLoading || tgtLoading || dsLoading;
+  const isLoading = repsLoading || tgtLoading || invLoading;
 
   return (
     <div className="glass-card p-4 sm:p-6 mb-6">

@@ -20,16 +20,32 @@ export default function ManagersPage() {
   const [selectedManagerId, setSelectedManagerId] = useState<string | null>(null);
   const isLoading = mgrLoading || repsLoading;
 
-  const visibleManagers = useMemo(
-    () => managers.filter((m) => {
+  const visibleManagers = useMemo(() => {
+    const filtered = managers.filter((m) => {
       const n = m.name.trim().toLowerCase();
       const e = m.email?.trim().toLowerCase();
       if (n === "sales" || e === "sales@lineage-collections.com") return false;
       if (n === "scott grisack") return false;
       return true;
-    }),
-    [managers],
-  );
+    });
+    // Dedupe: if a single-token name (e.g. "Mateo") has a longer full-name
+    // counterpart sharing the same first token (e.g. "Mateo De Lisa"), drop the short one.
+    const fullNameFirsts = new Set(
+      filtered
+        .map((m) => m.name.trim().split(/\s+/))
+        .filter((parts) => parts.length > 1)
+        .map((parts) => parts[0].toLowerCase()),
+    );
+    const seen = new Set<string>();
+    return filtered.filter((m) => {
+      const parts = m.name.trim().split(/\s+/);
+      if (parts.length === 1 && fullNameFirsts.has(parts[0].toLowerCase())) return false;
+      const key = m.name.trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [managers]);
 
   const repsById = useMemo(() => new Map(reps.map((r) => [r.id, r])), [reps]);
 

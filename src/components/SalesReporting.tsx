@@ -91,34 +91,26 @@ function useDealerInvoiceLinesInRange(from: Date, to: Date, productIds: string[]
   });
 }
 
-/** Day-precise fetch of open_sales_orders in a date window. Used to source
- *  Bookings from the live Acctivate open-order backlog (extended_value summed
- *  by order_date) instead of the monthly dealer_sales rollup. */
+/** Day-precise fetch of ALL sales order bookings (every status) in a date
+ *  window, sourced from dbo_Orders via the bookings_all_in_range RPC. */
 function useOpenSalesOrdersInRange(from: Date, to: Date) {
   const fromStr = format(from, "yyyy-MM-dd");
   const toStr = format(to, "yyyy-MM-dd");
   return useQuery({
-    queryKey: ["open_sales_orders_range_v2", fromStr, toStr],
+    queryKey: ["bookings_all_in_range_v1", fromStr, toStr],
     queryFn: async () => {
-      const out: { dealer_id: string | null; dealer_acctivate_id: string | null; order_date: string | null; extended_value: number }[] = [];
-      const pageSize = 1000;
-      let start = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .from("open_sales_orders")
-          .select("dealer_id, dealer_acctivate_id, order_date, extended_value")
-          .gte("order_date", fromStr)
-          .lte("order_date", toStr)
-          .range(start, start + pageSize - 1);
-        if (error) throw error;
-        const batch = ((data ?? []) as { dealer_id: string | null; dealer_acctivate_id: string | null; order_date: string | null; extended_value: number | null }[])
-          .map((r) => ({ dealer_id: r.dealer_id, dealer_acctivate_id: r.dealer_acctivate_id, order_date: r.order_date, extended_value: Number(r.extended_value ?? 0) }));
-        out.push(...batch);
-        if (batch.length < pageSize) break;
-        start += pageSize;
-      }
-      return out;
+      const { data, error } = await supabase.rpc("bookings_all_in_range", {
+        p_from: fromStr,
+        p_to: toStr,
+      });
+      if (error) throw error;
+      return ((data ?? []) as { dealer_id: string | null; dealer_acctivate_id: string | null; order_date: string | null; extended_value: number | null }[])
+        .map((r) => ({
+          dealer_id: r.dealer_id,
+          dealer_acctivate_id: r.dealer_acctivate_id,
+          order_date: r.order_date,
+          extended_value: Number(r.extended_value ?? 0),
+        }));
     },
   });
 }

@@ -1813,7 +1813,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             })()} />}
             {drilldown === "prepaid" && <ReportPOs pos={hub.purchaseOrders.filter((p) => p.is_prepaid)} prepaidMode />}
             {drilldown === "backlog" && <BacklogSummary />}
-            {drilldown === "lost" && <ReportLost items={items.filter((it) => {
+            {drilldown === "lost" && <ReportLost allItems={items} items={items.filter((it) => {
               const isOOS = it.status === "out-of-stock" || (it.onHand ?? 0) <= 0;
               if (!isOOS) return false;
               const hay = `${it.sku ?? ""} ${it.product ?? ""} ${(it as any).brand ?? ""} ${it.collection ?? ""} ${(it as any).category ?? ""} ${it.supplier ?? ""}`.toLowerCase();

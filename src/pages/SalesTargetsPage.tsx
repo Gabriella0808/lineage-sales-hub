@@ -39,19 +39,38 @@ export default function SalesTargetsPage() {
     return m;
   }, [targets]);
 
-  // Actuals per rep per month for selected year
+  // Actuals per rep per month for selected year.
+  // Dealers link to reps via rep_id when set; otherwise we match by salesperson name.
   const actualByRep = useMemo(() => {
+    const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+    const repByName = new Map<string, string>();
+    reps.forEach(r => { if (r.name) repByName.set(norm(r.name), r.id); });
+
+    const repForDealer = (d: any): string | null => {
+      if (d?.rep_id) return d.rep_id;
+      const sp = norm(d?.salesperson);
+      if (!sp) return null;
+      if (repByName.has(sp)) return repByName.get(sp)!;
+      // loose match: contains either way (handles "Robertson" vs "Brad Robertson", etc.)
+      for (const [name, id] of repByName) {
+        if (name && (name.includes(sp) || sp.includes(name))) return id;
+      }
+      return null;
+    };
+
+    const dealerRep = new Map<string, string | null>();
+    dealers.forEach((d: any) => dealerRep.set(d.id, repForDealer(d)));
+
     const m: Record<string, { months: Record<string, number>; total: number }> = {};
     dealerSales.filter(s => s.year === year).forEach(s => {
-      const dealer = dealers.find(d => d.id === s.dealer_id);
-      if (!dealer?.rep_id) return;
-      const rid = dealer.rep_id;
+      const rid = dealerRep.get(s.dealer_id);
+      if (!rid) return;
       if (!m[rid]) m[rid] = { months: {}, total: 0 };
       m[rid].months[s.month] = (m[rid].months[s.month] ?? 0) + (s.revenue ?? 0);
       m[rid].total += (s.revenue ?? 0);
     });
     return m;
-  }, [dealerSales, dealers, year]);
+  }, [dealerSales, dealers, reps, year]);
 
   if (roleLoading) {
     return <div className="p-6"><Skeleton className="h-64 w-full" /></div>;

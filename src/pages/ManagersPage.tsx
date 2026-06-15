@@ -20,7 +20,7 @@ export default function ManagersPage() {
   const [selectedManagerId, setSelectedManagerId] = useState<string | null>(null);
   const isLoading = mgrLoading || repsLoading;
 
-  const visibleManagers = useMemo(() => {
+  const { visibleManagers, managerIdMap } = useMemo(() => {
     const filtered = managers.filter((m) => {
       const n = m.name.trim().toLowerCase();
       const e = m.email?.trim().toLowerCase();
@@ -28,8 +28,8 @@ export default function ManagersPage() {
       if (n === "scott grisack") return false;
       return true;
     });
-    // Dedupe by first-name token: keep the record that has the most reps assigned
-    // (it owns the dealer linkage), but prefer the longest display name available.
+    // Dedupe by first-name token: keep the record that owns the most reps
+    // (it owns the dealer linkage), but always display the longest full name.
     const repCountByMgr = new Map<string, number>();
     reps.forEach((r) => {
       if (!r.manager_id) return;
@@ -43,16 +43,21 @@ export default function ManagersPage() {
       groups.set(key, arr);
     });
     const out: typeof filtered = [];
+    const idMap = new Map<string, string>();
     groups.forEach((arr) => {
       const winner = [...arr].sort((a, b) =>
         (repCountByMgr.get(b.id) ?? 0) - (repCountByMgr.get(a.id) ?? 0)
       )[0];
       const bestName = [...arr]
         .map((m) => m.name.trim())
-        .sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length)[0];
+        .sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length || b.length - a.length)[0];
       out.push({ ...winner, name: bestName });
+      arr.forEach((m) => idMap.set(m.id, winner.id));
     });
-    return out.sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      visibleManagers: out.sort((a, b) => a.name.localeCompare(b.name)),
+      managerIdMap: idMap,
+    };
   }, [managers, reps]);
 
   const repsById = useMemo(() => new Map(reps.map((r) => [r.id, r])), [reps]);
@@ -60,11 +65,22 @@ export default function ManagersPage() {
   const managerRepsById = useMemo(() => {
     const map = new Map<string, DbSalesRep[]>();
     visibleManagers.forEach((mgr) => {
-      const direct = reps.filter((r) => r.manager_id === mgr.id).sort((a, b) => a.name.localeCompare(b.name));
-      map.set(mgr.id, direct);
+      map.set(mgr.id, []);
     });
+    // De-dupe reps by id (a rep may technically point to multiple manager records).
+    const seen = new Set<string>();
+    reps.forEach((r) => {
+      if (!r.manager_id || seen.has(r.id)) return;
+      const winnerId = managerIdMap.get(r.manager_id);
+      if (!winnerId) return;
+      const arr = map.get(winnerId);
+      if (!arr) return;
+      arr.push(r);
+      seen.add(r.id);
+    });
+    map.forEach((arr) => arr.sort((a, b) => a.name.localeCompare(b.name)));
     return map;
-  }, [visibleManagers, reps]);
+  }, [visibleManagers, managerIdMap, reps]);
 
   const selectedManager = visibleManagers.find((m) => m.id === selectedManagerId);
 

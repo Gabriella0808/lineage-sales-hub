@@ -84,8 +84,12 @@ export default function CrmAccountsPage() {
         if (!accBrands.some((b) => brandFilters.includes(b as string))) return false;
       }
       if (prospectTypeFilters.length > 0) {
+        const hasNone = prospectTypeFilters.includes("__none__");
+        const regularTypes = prospectTypeFilters.filter((t) => t !== "__none__");
         const accTypes = (a.prospect_types && a.prospect_types.length > 0) ? a.prospect_types : (a.prospect_type ? [a.prospect_type] : []);
-        if (!accTypes.some((t) => prospectTypeFilters.includes(t))) return false;
+        const hasRegular = regularTypes.length > 0 && accTypes.some((t) => regularTypes.includes(t));
+        const hasEmpty = hasNone && accTypes.length === 0;
+        if (!hasRegular && !hasEmpty) return false;
       }
       if (stateFilter !== "all" && a.state !== stateFilter) return false;
       if (!needle) return true;

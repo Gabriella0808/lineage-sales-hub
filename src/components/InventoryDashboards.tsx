@@ -647,15 +647,16 @@ function ReportTurnover({ items }: { items: InventoryItem[] }) {
 
 function ReportLost({ items }: { items: InventoryItem[] }) {
   const rows = useMemo(() => items.map((it) => ({
-    it, lost: it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0),
-  })).filter((r) => r.lost > 0).sort((a, b) => b.lost - a.lost), [items]);
-  if (rows.length === 0) return <EmptyState message="No active stockouts with sales history." />;
+    it, lost: (it.avgMonthlySales ?? 0) * (it.listPrice ?? it.unitCost ?? 0),
+  })).sort((a, b) => b.lost - a.lost), [items]);
+  if (rows.length === 0) return <EmptyState message="No SKUs are currently out of stock." />;
   return (
     <table className="w-full text-sm">
       <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
         <tr>
           <th className="text-left px-3 py-2">SKU</th>
           <th className="text-left px-3 py-2">Product</th>
+          <th className="text-right px-3 py-2">On Hand</th>
           <th className="text-right px-3 py-2">Mo Sales (units)</th>
           <th className="text-right px-3 py-2">On PO</th>
           <th className="text-right px-3 py-2">Lost / mo</th>
@@ -666,9 +667,12 @@ function ReportLost({ items }: { items: InventoryItem[] }) {
           <tr key={it.sku} className="border-t border-border hover:bg-muted/30">
             <td className="px-3 py-2 font-mono text-xs">{it.sku}</td>
             <td className="px-3 py-2 max-w-[260px] truncate">{it.product}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{it.avgMonthlySales.toFixed(1)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onHand ?? 0)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{(it.avgMonthlySales ?? 0).toFixed(1)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onPo ?? 0)}</td>
-            <td className="px-3 py-2 text-right tabular-nums font-semibold text-destructive">{fmtMoney(lost)}</td>
+            <td className={cn("px-3 py-2 text-right tabular-nums font-semibold", lost > 0 ? "text-destructive" : "text-muted-foreground")}>
+              {lost > 0 ? fmtMoney(lost) : "—"}
+            </td>
           </tr>
         ))}
       </tbody>

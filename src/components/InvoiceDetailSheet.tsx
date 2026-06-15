@@ -62,6 +62,13 @@ export function InvoiceDetailSheet({
   const cToStr = compareTo ? format(compareTo, "yyyy-MM-dd") : null;
   const hasCompare = !!(cFromStr && cToStr);
 
+  const compLabel = hasCompare
+    ? format(compareFrom!, "yyyy") === format(compareTo!, "yyyy")
+      ? format(compareFrom!, "yyyy")
+      : `${format(compareFrom!, "yyyy")}–${format(compareTo!, "yyyy")}`
+    : null;
+
+
   const fetchLines = async (fStr: string, tStr: string): Promise<InvoiceLine[]> => {
     const out: InvoiceLine[] = [];
     const chunkSize = 200;

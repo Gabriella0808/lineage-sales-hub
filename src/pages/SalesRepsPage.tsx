@@ -104,6 +104,27 @@ export default function SalesRepsPage() {
   const { data: managers = [] } = useManagers();
   const { data: repTerritories = [] } = useRepTerritories();
 
+  // Deduplicate managers by first-name token, keeping the entry with the longest (full) name.
+  // Build a map from every original manager id → preferred (deduped) manager id.
+  const { displayManagers, managerIdMap } = (() => {
+    const groups = new Map<string, typeof managers>();
+    for (const m of managers) {
+      const key = (m.name || "").trim().toLowerCase().split(/\s+/)[0] || m.id;
+      if (!groups.has(key)) groups.set(key, [] as any);
+      (groups.get(key) as any).push(m);
+    }
+    const preferred: typeof managers = [];
+    const idMap = new Map<string, string>();
+    for (const group of groups.values()) {
+      const best = [...group].sort((a, b) => (b.name?.length ?? 0) - (a.name?.length ?? 0))[0];
+      preferred.push(best);
+      for (const m of group) idMap.set(m.id, best.id);
+    }
+    preferred.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    return { displayManagers: preferred, managerIdMap: idMap };
+  })();
+  const resolveMgr = (mid: string | null) => (mid ? displayManagers.find(m => m.id === (managerIdMap.get(mid) ?? mid)) : undefined);
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editingId, setEditingId] = useState<string | null>(null);

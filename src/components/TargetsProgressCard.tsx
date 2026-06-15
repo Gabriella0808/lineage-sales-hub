@@ -1,5 +1,5 @@
-import { useMemo, useId } from "react";
-import { Target } from "lucide-react";
+import { useMemo, useId, useState } from "react";
+import { Target, ChevronLeft, ChevronRight } from "lucide-react";
 import { useSalesReps, useDealers, formatCurrency, getInitials } from "@/hooks/usePortalData";
 import { useRepTargets, MONTH_LABEL_TO_KEY, type RepTarget } from "@/hooks/useRepTargets";
 import { useUserRole } from "@/hooks/useUserRole";

@@ -287,11 +287,11 @@ export default function CrmAccountsPage() {
             <tbody className="divide-y divide-border/60">
               {isLoading && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
               {!isLoading && filtered.length === 0 && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">No prospects match your filters.</td></tr>}
-              {filtered.map((a, index) => {
+              {visibleRows.map((a) => {
                 const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
                 return (
                   <tr
-                    key={`${a.id}-${index}`}
+                    key={a.id}
                     className="hover:bg-muted/30 transition-colors cursor-pointer"
                     onClick={() => nav(`/crm/accounts/${a.id}`)}
                   >

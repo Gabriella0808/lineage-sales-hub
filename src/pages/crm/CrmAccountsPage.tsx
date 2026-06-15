@@ -268,7 +268,7 @@ export default function CrmAccountsPage() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-hidden overflow-y-auto max-h-[calc(100vh-240px)]">
+        <div ref={scrollRef} onScroll={onScroll} className="overflow-x-hidden overflow-y-auto max-h-[calc(100vh-240px)]">
           <table className="w-full text-xs table-fixed">
             <thead className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground sticky top-0 z-10">
               <tr>

@@ -68,7 +68,7 @@ import { STATE_TO_TERRITORY, STATE_NAME_TO_CODE, colorForTerritory } from "@/lib
 // Team member → match config. We match dealers by rep_owner (authoritative
 // when present, e.g. "will") OR by state code (so reps without a rep_owner
 // tag still get attributed to the right manager via territory).
-type TeamMemberId = "will" | "mateo" | "chris";
+type TeamMemberId = "will" | "mateo" | "chris" | "justin";
 const TEAM_MEMBERS: {
   id: TeamMemberId;
   name: string;

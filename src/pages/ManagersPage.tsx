@@ -192,7 +192,7 @@ export default function ManagersPage() {
                     <p className="text-xs text-muted-foreground truncate">{rep.email || "—"}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold tabular-nums">{formatCurrency(rep.revenue ?? 0)}</p>
+                    <p className="text-sm font-semibold tabular-nums">{formatCurrency(revenueByRep.get(rep.id) ?? 0)}</p>
                     <Badge variant="secondary" className="capitalize text-[10px] mt-0.5">{rep.status}</Badge>
                   </div>
                 </div>

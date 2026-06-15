@@ -645,10 +645,46 @@ function ReportTurnover({ items }: { items: InventoryItem[] }) {
   );
 }
 
-function ReportLost({ items }: { items: InventoryItem[] }) {
-  const rows = useMemo(() => items.map((it) => ({
-    it, lost: (it.avgMonthlySales ?? 0) * (it.listPrice ?? it.unitCost ?? 0),
-  })).sort((a, b) => b.lost - a.lost), [items]);
+function ReportLost({ items, allItems }: { items: InventoryItem[]; allItems?: InventoryItem[] }) {
+  const rows = useMemo(() => {
+    const pool = allItems ?? items;
+    const isExcluded = (it: any) => {
+      const s = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${it.category ?? ""} ${it.supplier ?? ""}`.toLowerCase();
+      return /freight|dropship|drop ship|drop-ship/.test(s);
+    };
+    const sellers = pool.filter((it) => (it.avgMonthlySales ?? 0) > 0 && !isExcluded(it));
+    const avgBy = (key: "collection" | "brand" | "category") => {
+      const m = new Map<string, { sum: number; n: number }>();
+      for (const it of sellers) {
+        const k = (it as any)[key];
+        if (!k) continue;
+        const cur = m.get(k) ?? { sum: 0, n: 0 };
+        cur.sum += it.avgMonthlySales!; cur.n += 1;
+        m.set(k, cur);
+      }
+      const out = new Map<string, number>();
+      m.forEach((v, k) => out.set(k, v.sum / v.n));
+      return out;
+    };
+    const avgByCollection = avgBy("collection");
+    const avgByBrand = avgBy("brand");
+    const avgByCategory = avgBy("category");
+    const globalAvg = sellers.length > 0 ? sellers.reduce((s, it) => s + (it.avgMonthlySales ?? 0), 0) / sellers.length : 0;
+    const estUnits = (it: any) => {
+      if ((it.avgMonthlySales ?? 0) > 0) return it.avgMonthlySales as number;
+      return (
+        avgByCollection.get(it.collection) ??
+        avgByBrand.get((it as any).brand) ??
+        avgByCategory.get((it as any).category) ??
+        globalAvg
+      );
+    };
+    return items.map((it) => {
+      const units = estUnits(it);
+      const price = it.listPrice ?? it.unitCost ?? 0;
+      return { it, units, lost: units * price };
+    }).sort((a, b) => b.lost - a.lost);
+  }, [items, allItems]);
   if (rows.length === 0) return <EmptyState message="No SKUs are currently out of stock." />;
   return (
     <table className="w-full text-sm">
@@ -657,18 +693,18 @@ function ReportLost({ items }: { items: InventoryItem[] }) {
           <th className="text-left px-3 py-2">SKU</th>
           <th className="text-left px-3 py-2">Product</th>
           <th className="text-right px-3 py-2">On Hand</th>
-          <th className="text-right px-3 py-2">Mo Sales (units)</th>
+          <th className="text-right px-3 py-2">Est Mo Sales (units)</th>
           <th className="text-right px-3 py-2">On PO</th>
           <th className="text-right px-3 py-2">Lost / mo</th>
         </tr>
       </thead>
       <tbody>
-        {rows.map(({ it, lost }) => (
+        {rows.map(({ it, units, lost }) => (
           <tr key={it.sku} className="border-t border-border hover:bg-muted/30">
             <td className="px-3 py-2 font-mono text-xs">{it.sku}</td>
             <td className="px-3 py-2 max-w-[260px] truncate">{it.product}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onHand ?? 0)}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{(it.avgMonthlySales ?? 0).toFixed(1)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{units.toFixed(1)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onPo ?? 0)}</td>
             <td className={cn("px-3 py-2 text-right tabular-nums font-semibold", lost > 0 ? "text-destructive" : "text-muted-foreground")}>
               {lost > 0 ? fmtMoney(lost) : "—"}
@@ -1777,7 +1813,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             })()} />}
             {drilldown === "prepaid" && <ReportPOs pos={hub.purchaseOrders.filter((p) => p.is_prepaid)} prepaidMode />}
             {drilldown === "backlog" && <BacklogSummary />}
-            {drilldown === "lost" && <ReportLost items={items.filter((it) => {
+            {drilldown === "lost" && <ReportLost allItems={items} items={items.filter((it) => {
               const isOOS = it.status === "out-of-stock" || (it.onHand ?? 0) <= 0;
               if (!isOOS) return false;
               const hay = `${it.sku ?? ""} ${it.product ?? ""} ${(it as any).brand ?? ""} ${it.collection ?? ""} ${(it as any).category ?? ""} ${it.supplier ?? ""}`.toLowerCase();

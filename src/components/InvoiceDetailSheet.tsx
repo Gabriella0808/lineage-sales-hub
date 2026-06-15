@@ -331,9 +331,9 @@ export function InvoiceDetailSheet({
         </SheetHeader>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <StatCard label="Invoiced" value={formatCurrency(summary.totalAmt)} compValue={compSummary ? formatCurrency(compSummary.totalAmt) : undefined} delta={compSummary ? pctDelta(summary.totalAmt, compSummary.totalAmt) : undefined} />
-          <StatCard label="Invoices" value={summary.invoiceCount.toLocaleString()} compValue={compSummary ? compSummary.invoiceCount.toLocaleString() : undefined} delta={compSummary ? pctDelta(summary.invoiceCount, compSummary.invoiceCount) : undefined} />
-          <StatCard label="Units" value={summary.totalQty.toLocaleString()} compValue={compSummary ? compSummary.totalQty.toLocaleString() : undefined} delta={compSummary ? pctDelta(summary.totalQty, compSummary.totalQty) : undefined} />
+          <StatCard label="Invoiced" value={formatCurrency(summary.totalAmt)} compValue={compSummary ? formatCurrency(compSummary.totalAmt) : undefined} compLabel={compLabel ?? undefined} delta={compSummary ? pctDelta(summary.totalAmt, compSummary.totalAmt) : undefined} />
+          <StatCard label="Invoices" value={summary.invoiceCount.toLocaleString()} compValue={compSummary ? compSummary.invoiceCount.toLocaleString() : undefined} compLabel={compLabel ?? undefined} delta={compSummary ? pctDelta(summary.invoiceCount, compSummary.invoiceCount) : undefined} />
+          <StatCard label="Units" value={summary.totalQty.toLocaleString()} compValue={compSummary ? compSummary.totalQty.toLocaleString() : undefined} compLabel={compLabel ?? undefined} delta={compSummary ? pctDelta(summary.totalQty, compSummary.totalQty) : undefined} />
         </div>
 
         {isLoading && (

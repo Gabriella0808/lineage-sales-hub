@@ -7076,6 +7076,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      bookings_all_in_range: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          dealer_acctivate_id: string
+          dealer_id: string
+          extended_value: number
+          order_date: string
+        }[]
+      }
       can_view_manager_task: { Args: { _task_id: string }; Returns: boolean }
       can_view_task_board: { Args: { _board_id: string }; Returns: boolean }
       current_dealer_id: { Args: never; Returns: string }

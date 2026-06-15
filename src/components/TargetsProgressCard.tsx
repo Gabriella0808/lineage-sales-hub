@@ -191,12 +191,45 @@ export function TargetsProgressCard() {
 
   const isLoading = repsLoading || tgtLoading || invLoading;
 
+  const PAGE_SIZE = 4;
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pagedRows = rows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+
   return (
     <div className="glass-card p-4 sm:p-6 mb-6">
-      <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
-        <Target className="h-5 w-5 text-accent" /> Sales Targets — {year}
-        <span className="text-xs font-normal text-muted-foreground">YTD & MTD attainment</span>
-      </h3>
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <h3 className="text-base font-semibold flex items-center gap-2">
+          <Target className="h-5 w-5 text-accent" /> Sales Targets — {year}
+          <span className="text-xs font-normal text-muted-foreground">YTD & MTD attainment</span>
+        </h3>
+        {!isLoading && rows.length > PAGE_SIZE && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, rows.length)} of {rows.length}
+            </span>
+            <button
+              type="button"
+              aria-label="Previous reps"
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next reps"
+              onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+              disabled={safePage >= pageCount - 1}
+              className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
@@ -206,7 +239,7 @@ export function TargetsProgressCard() {
         </p>
       ) : (
         <ul className="divide-y divide-border/40">
-          {rows.map((r: any) => (
+          {pagedRows.map((r: any) => (
             <li key={r.id} className="py-3 flex items-center gap-3 sm:gap-4">
               <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
                 <span className="text-xs font-bold text-primary">{getInitials(r.name)}</span>
@@ -233,5 +266,6 @@ export function TargetsProgressCard() {
         </ul>
       )}
     </div>
+
   );
 }

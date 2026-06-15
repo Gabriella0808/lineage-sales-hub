@@ -82,7 +82,19 @@ export default function ManagersPage() {
     return map;
   }, [visibleManagers, managerIdMap, reps]);
 
-  const selectedManager = visibleManagers.find((m) => m.id === selectedManagerId);
+  const sortedVisibleManagers = useMemo(() => {
+    return [...visibleManagers].sort((a, b) => {
+      const aReps = managerRepsById.get(a.id) ?? [];
+      const bReps = managerRepsById.get(b.id) ?? [];
+      const aDealers = dealersForReps(aReps);
+      const bDealers = dealersForReps(bReps);
+      const aRev = aDealers.reduce((s, d) => s + (d.revenue ?? 0), 0);
+      const bRev = bDealers.reduce((s, d) => s + (d.revenue ?? 0), 0);
+      return bRev - aRev;
+    });
+  }, [visibleManagers, managerRepsById, dealers]);
+
+  const selectedManager = sortedVisibleManagers.find((m) => m.id === selectedManagerId);
 
   if (isLoading) {
     return (

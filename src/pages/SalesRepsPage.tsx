@@ -239,7 +239,7 @@ export default function SalesRepsPage() {
     return true;
   });
 
-  const managerEmail = (mid: string | null) => managers.find(m => m.id === mid)?.email ?? "—";
+  const managerEmail = (mid: string | null) => resolveMgr(mid)?.email ?? "—";
 
   if (repsLoading) {
     return (

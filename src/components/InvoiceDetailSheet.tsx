@@ -408,14 +408,14 @@ function pctDelta(cur: number, prev: number): number | null {
   return ((cur - prev) / prev) * 100;
 }
 
-function StatCard({ label, value, compValue, delta }: { label: string; value: string; compValue?: string; delta?: number | null }) {
+function StatCard({ label, value, compValue, compLabel, delta }: { label: string; value: string; compValue?: string; compLabel?: string; delta?: number | null }) {
   return (
     <Card><CardContent className="p-3">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="text-lg font-semibold tabular-nums">{value}</p>
       {compValue !== undefined && (
         <p className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
-          vs {compValue}
+          {compLabel ? `${compLabel}: ` : "vs "}{compValue}
           {delta !== null && delta !== undefined && (
             <span className={`ml-1 ${delta >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
               {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%

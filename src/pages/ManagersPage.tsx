@@ -82,7 +82,19 @@ export default function ManagersPage() {
     return map;
   }, [visibleManagers, managerIdMap, reps]);
 
-  const selectedManager = visibleManagers.find((m) => m.id === selectedManagerId);
+  const sortedVisibleManagers = useMemo(() => {
+    return [...visibleManagers].sort((a, b) => {
+      const aReps = managerRepsById.get(a.id) ?? [];
+      const bReps = managerRepsById.get(b.id) ?? [];
+      const aDealers = dealersForReps(aReps);
+      const bDealers = dealersForReps(bReps);
+      const aRev = aDealers.reduce((s, d) => s + (d.revenue ?? 0), 0);
+      const bRev = bDealers.reduce((s, d) => s + (d.revenue ?? 0), 0);
+      return bRev - aRev;
+    });
+  }, [visibleManagers, managerRepsById, dealers]);
+
+  const selectedManager = sortedVisibleManagers.find((m) => m.id === selectedManagerId);
 
   if (isLoading) {
     return (
@@ -285,11 +297,11 @@ export default function ManagersPage() {
     <div className="animate-fade-in">
       <div className="page-header">
         <h1 className="page-title">Sales Managers</h1>
-        <p className="page-subtitle">{visibleManagers.length} managers · reports live in Company-Wide</p>
+        <p className="page-subtitle">{sortedVisibleManagers.length} managers · reports live in Company-Wide</p>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {visibleManagers.map((mgr) => {
+        {sortedVisibleManagers.map((mgr) => {
           const mgrReps = managerRepsById.get(mgr.id) ?? [];
           const mgrDealersList = dealersForReps(mgrReps);
           const mgrRevenue = mgrDealersList.reduce((s, d) => s + (d.revenue ?? 0), 0);
@@ -337,7 +349,7 @@ export default function ManagersPage() {
             </Card>
           );
         })}
-        {visibleManagers.length === 0 && (
+        {sortedVisibleManagers.length === 0 && (
           <p className="text-sm text-muted-foreground col-span-full py-12 text-center">No managers found.</p>
         )}
       </div>

@@ -392,6 +392,12 @@ export default function CheckInAnalyticsPage() {
         lastMonth: { checkIns: 41, placements: 6 },
         ytd: { checkIns: 110, placements: 14 },
       },
+      justin: {
+        lastWeek: { checkIns: 0, placements: 0 },
+        thisWeek: { checkIns: 0, placements: 0 },
+        lastMonth: { checkIns: 0, placements: 0 },
+        ytd: { checkIns: 0, placements: 0 },
+      },
     };
 
     (Object.keys(baselines) as TeamId[]).forEach((teamId) => {

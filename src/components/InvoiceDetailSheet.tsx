@@ -432,20 +432,31 @@ function Section({ title, count, children }: { title: string; count: number; chi
   );
 }
 
-function BreakdownList({ rows }: { rows: { label: string; total: number; qty?: number }[] }) {
+function BreakdownList({ rows, showComp }: { rows: { label: string; total: number; qty?: number; comp?: number }[]; showComp?: boolean }) {
   if (rows.length === 0) return <p className="text-xs text-muted-foreground">—</p>;
   return (
     <table className="w-full text-xs">
       <tbody>
-        {rows.slice(0, 25).map((r, i) => (
-          <tr key={`${r.label}-${i}`} className="border-b last:border-0">
-            <td className="py-1.5 truncate max-w-[180px]">{r.label}</td>
-            {r.qty !== undefined && (
-              <td className="py-1.5 text-right tabular-nums text-muted-foreground">{r.qty.toLocaleString()}</td>
-            )}
-            <td className="py-1.5 text-right tabular-nums">{formatCurrency(r.total)}</td>
-          </tr>
-        ))}
+        {rows.slice(0, 25).map((r, i) => {
+          const delta = showComp && r.comp ? ((r.total - r.comp) / r.comp) * 100 : null;
+          return (
+            <tr key={`${r.label}-${i}`} className="border-b last:border-0">
+              <td className="py-1.5 truncate max-w-[180px]">{r.label}</td>
+              {r.qty !== undefined && (
+                <td className="py-1.5 text-right tabular-nums text-muted-foreground">{r.qty.toLocaleString()}</td>
+              )}
+              <td className="py-1.5 text-right tabular-nums">{formatCurrency(r.total)}</td>
+              {showComp && (
+                <>
+                  <td className="py-1.5 text-right tabular-nums text-muted-foreground">{r.comp !== undefined ? formatCurrency(r.comp) : "—"}</td>
+                  <td className={`py-1.5 text-right tabular-nums text-[10px] ${delta === null ? "text-muted-foreground" : delta >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                    {delta === null ? "—" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`}
+                  </td>
+                </>
+              )}
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

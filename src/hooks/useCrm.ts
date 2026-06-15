@@ -108,12 +108,23 @@ export function useCrmAccounts() {
   return useQuery({
     queryKey: ["crm_accounts"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("crm_accounts")
-        .select("*")
-        .order("updated_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as CrmAccount[];
+      const PAGE = 1000;
+      let from = 0;
+      const all: CrmAccount[] = [];
+      // Paginate past PostgREST's default 1000-row cap so all prospects/dealers load.
+      while (true) {
+        const { data, error } = await supabase
+          .from("crm_accounts")
+          .select("*")
+          .order("updated_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const chunk = (data ?? []) as CrmAccount[];
+        all.push(...chunk);
+        if (chunk.length < PAGE) break;
+        from += PAGE;
+      }
+      return all;
     },
     staleTime: CRM_STALE_TIME,
   });

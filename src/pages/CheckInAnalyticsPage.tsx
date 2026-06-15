@@ -159,6 +159,7 @@ export default function CheckInAnalyticsPage() {
   const [debugMsg, setDebugMsg] = useState<string | null>(null);
   const [lastTestId, setLastTestId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const debugEnabled =
     typeof window !== "undefined" &&

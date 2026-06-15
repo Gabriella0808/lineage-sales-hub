@@ -349,7 +349,7 @@ export default function ManagersPage() {
             </Card>
           );
         })}
-        {visibleManagers.length === 0 && (
+        {sortedVisibleManagers.length === 0 && (
           <p className="text-sm text-muted-foreground col-span-full py-12 text-center">No managers found.</p>
         )}
       </div>

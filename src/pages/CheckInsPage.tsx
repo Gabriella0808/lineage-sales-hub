@@ -243,6 +243,7 @@ export default function CheckInsPage() {
   const [addSaving, setAddSaving] = useState(false);
   const [territoriesOnly, setTerritoriesOnly] = useState(false);
   const [teamFilter, setTeamFilter] = useState<TeamMemberId | "all">("all");
+  const [colorFilter, setColorFilter] = useState<string | "all">("all");
   const [salesReps, setSalesReps] = useState<{ id: string; name: string }[]>([]);
   const [newDealer, setNewDealer] = useState<{
     first_name: string;
@@ -329,6 +330,10 @@ export default function CheckInsPage() {
     const team = teamFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === teamFilter);
     return dealersWithMeta.filter((d) => {
       if (team && !dealerMatchesTeam(d, team)) return false;
+      if (colorFilter !== "all") {
+        const pinColor = recencyColor(d.daysSince);
+        if (pinColor !== colorFilter) return false;
+      }
       if (!q) return true;
       return (
         d.name.toLowerCase().includes(q) ||
@@ -336,7 +341,7 @@ export default function CheckInsPage() {
         (d.state ?? "").toLowerCase().includes(q)
       );
     });
-  }, [dealersWithMeta, search, teamFilter]);
+  }, [dealersWithMeta, search, teamFilter, colorFilter]);
 
   // Fetch token
   useEffect(() => {
@@ -1118,15 +1123,34 @@ export default function CheckInsPage() {
           { c: "#f97316", l: "≤ 90 days" },
           { c: "#dc2626", l: "> 90 days" },
           { c: "#94a3b8", l: "Never" },
-        ].map((x) => (
-          <span key={x.l} className="inline-flex items-center gap-1.5">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-full border border-white shadow"
-              style={{ backgroundColor: x.c }}
-            />
-            {x.l}
-          </span>
-        ))}
+        ].map((x) => {
+          const active = colorFilter === x.c;
+          return (
+            <button
+              key={x.l}
+              type="button"
+              onClick={() => setColorFilter(active ? "all" : x.c)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 transition-colors cursor-pointer ${active ? "bg-accent text-accent-foreground ring-1 ring-primary" : "hover:bg-accent/50"}`}
+            >
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full border border-white shadow"
+                style={{ backgroundColor: x.c }}
+              />
+              {x.l}
+            </button>
+          );
+        })}
+        {colorFilter !== "all" && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 text-[10px] px-2"
+            onClick={() => setColorFilter("all")}
+          >
+            Clear color
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"

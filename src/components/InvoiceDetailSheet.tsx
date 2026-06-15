@@ -161,7 +161,7 @@ export function InvoiceDetailSheet({
     return m;
   }, [territories]);
 
-  const summary = useMemo(() => {
+  const buildSummary = (arr: InvoiceLine[]) => {
     const bySku = new Map<string, { sku: string; name: string; qty: number; total: number; brand: string | null; collection: string | null }>();
     const byBrand = new Map<string, { qty: number; total: number }>();
     const byCollection = new Map<string, { qty: number; total: number }>();
@@ -174,7 +174,7 @@ export function InvoiceDetailSheet({
     let totalQty = 0;
     let totalAmt = 0;
 
-    for (const l of lines) {
+    for (const l of arr) {
       const ext = Number(l.extended_price ?? 0);
       const qty = Number(l.qty ?? 0);
       totalAmt += ext;
@@ -234,8 +234,8 @@ export function InvoiceDetailSheet({
       }
     }
 
-    const sortByTotal = <T extends { total: number }>(arr: T[]) =>
-      arr.sort((a, b) => b.total - a.total);
+    const sortByTotal = <T extends { total: number }>(arr2: T[]) =>
+      arr2.sort((a, b) => b.total - a.total);
 
     return {
       totalQty, totalAmt, invoiceCount: invoiceIds.size,
@@ -247,12 +247,15 @@ export function InvoiceDetailSheet({
       byTerritory: sortByTotal(Array.from(byTerritory.values())),
       byDealer: sortByTotal(Array.from(byDealer.values())),
     };
-  }, [lines, productById, dealerById, repById, territoryById]);
+  };
 
-  const branchSummary = useMemo(() => {
+  const summary = useMemo(() => buildSummary(lines), [lines, productById, dealerById, repById, territoryById]);
+  const compSummary = useMemo(() => hasCompare ? buildSummary(compLines) : null, [compLines, hasCompare, productById, dealerById, repById, territoryById]);
+
+  const buildBranchSummary = (hs: typeof headers) => {
     const buckets = new Map<string, { total: number; count: number }>();
     let grand = 0;
-    for (const h of headers) {
+    for (const h of hs) {
       const raw = (h.branch ?? "").trim();
       const lower = raw.toLowerCase();
       let label: string;
@@ -270,7 +273,36 @@ export function InvoiceDetailSheet({
       .map(([label, v]) => ({ label, ...v, pct: grand > 0 ? v.total / grand : 0 }))
       .sort((a, b) => b.total - a.total);
     return { rows, grand };
-  }, [headers]);
+  };
+
+  const branchSummary = useMemo(() => buildBranchSummary(headers), [headers]);
+  const compBranchSummary = useMemo(() => hasCompare ? buildBranchSummary(compHeaders) : null, [compHeaders, hasCompare]);
+
+  const compBranchMap = useMemo(() => {
+    const m = new Map<string, number>();
+    if (compBranchSummary) for (const r of compBranchSummary.rows) m.set(r.label, r.total);
+    return m;
+  }, [compBranchSummary]);
+
+  const toMap = (rows: { name?: string; label?: string; total: number }[] | undefined, keyField: "name" | "label" = "name") => {
+    const m = new Map<string, number>();
+    if (!rows) return m;
+    for (const r of rows) {
+      const k = (keyField === "name" ? (r as { name?: string }).name : (r as { label?: string }).label) ?? "";
+      m.set(k, r.total);
+    }
+    return m;
+  };
+
+  const compMaps = useMemo(() => ({
+    brand: toMap(compSummary?.byBrand, "name"),
+    collection: toMap(compSummary?.byCollection, "name"),
+    category: toMap(compSummary?.byCategory, "name"),
+    rep: toMap(compSummary?.byRep, "name"),
+    territory: toMap(compSummary?.byTerritory, "name"),
+    dealer: toMap(compSummary?.byDealer, "name"),
+  }), [compSummary]);
+
 
   const showDealerBreakdown = groupBy !== "dealer";
   const showRepBreakdown = groupBy !== "rep";

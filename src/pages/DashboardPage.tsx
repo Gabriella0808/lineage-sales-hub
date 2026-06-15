@@ -186,7 +186,7 @@ export default function DashboardPage() {
         {role !== "rep" && (
           <StatCard title={role === "manager" ? "My Reps" : "Sales Reps"} value={reps.length} icon={Users} trend="neutral" subtitle="assigned" />
         )}
-        <StatCard title="Territories" value={territories.length} icon={Map} trend="neutral" subtitle="active" />
+        <StatCard title="Territories" value={territories.length} icon={MapIcon} trend="neutral" subtitle="active" />
         <StatCard title="Dealers" value={dealers.length} icon={Store} trend="neutral" subtitle="total" />
         <StatCard title={`${currentYear} Revenue`} value={formatCurrency(totalRevenue)} trend="neutral" variant="accent" />
         <StatCard title="Orders" value={totalOrders.toLocaleString()} trend="neutral" subtitle={String(currentYear)} variant="success" />

@@ -34,7 +34,8 @@ const fmtNum = (n: number) => n.toLocaleString();
 const isOutOfStockSku = (it: InventoryItem) => (it.available ?? 0) <= 0;
 
 const isInventoryExcludedSku = (it: InventoryItem) => {
-  const hay = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${(it as any).category ?? ""} ${it.supplier ?? ""}`.toLowerCase();
+  const category = (it as InventoryItem & { category?: string }).category ?? "";
+  const hay = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${category} ${it.supplier ?? ""}`.toLowerCase();
   return /freight|dropship|drop ship|drop-ship/.test(hay);
 };
 

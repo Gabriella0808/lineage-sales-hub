@@ -148,8 +148,10 @@ interface Dealer {
 const PROSPECT_COLOR = "#36454F"; // charcoal — prospects (not yet a customer in Acctivate)
 
 function isProspectDealer(d: { source?: string | null }): boolean {
-  const s = (d.source ?? "").toLowerCase();
-  return s !== "acctivate";
+  // True only for CRM accounts marked as account_type='prospect' (injected
+  // client-side with source='crm_prospect'). Field-only and Acctivate
+  // dealers are NOT prospects.
+  return (d.source ?? "").toLowerCase() === "crm_prospect";
 }
 
 function pinColorFor(d: { source?: string | null; daysSince: number | null }): string {
@@ -239,6 +241,7 @@ export default function CheckInsPage() {
 
   const [token, setToken] = useState<string | null>(null);
   const [dealers, setDealers] = useState<Dealer[]>([]);
+  const [prospectDealers, setProspectDealers] = useState<Dealer[]>([]);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -336,14 +339,14 @@ export default function CheckInsPage() {
   }, [checkIns]);
 
   const dealersWithMeta = useMemo(() => {
-    return dealers.map((d) => {
+    return [...dealers, ...prospectDealers].map((d) => {
       const last = lastVisitMap.get(d.id) ?? null;
       const days = last
         ? Math.floor((Date.now() - new Date(last).getTime()) / 86400000)
         : null;
       return { ...d, lastVisit: last, daysSince: days };
     });
-  }, [dealers, lastVisitMap]);
+  }, [dealers, prospectDealers, lastVisitMap]);
 
   const filteredDealers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -378,6 +381,132 @@ export default function CheckInsPage() {
       setToken(data.token as string);
     })();
   }, [toast]);
+
+  // Fetch CRM prospects (account_type='prospect') and geocode their
+  // addresses client-side via Mapbox. Cached in localStorage so we only
+  // hit the geocoder once per address. Injected as charcoal pins.
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      const PAGE = 1000;
+      type CrmRow = {
+        id: string;
+        company_name: string;
+        street_1: string | null;
+        city: string | null;
+        state: string | null;
+        zip: string | null;
+        main_phone: string | null;
+        email: string | null;
+        website: string | null;
+        notes: string | null;
+        assigned_rep_id: string | null;
+        assigned_manager_id: string | null;
+      };
+      let from = 0;
+      const all: CrmRow[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from("crm_accounts")
+          .select(
+            "id, company_name, street_1, city, state, zip, main_phone, email, website, notes, assigned_rep_id, assigned_manager_id",
+          )
+          .eq("account_type", "prospect")
+          .range(from, from + PAGE - 1);
+        if (error) break;
+        const batch = (data ?? []) as CrmRow[];
+        all.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
+      if (cancelled) return;
+
+      const CACHE_KEY = "lineage:crm-prospect-geocode:v1";
+      let cache: Record<string, { lat: number; lng: number } | null> = {};
+      try {
+        cache = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+      } catch {
+        cache = {};
+      }
+
+      const buildAddr = (r: CrmRow) =>
+        [r.street_1, r.city, r.state, r.zip].filter((p) => p && String(p).trim()).join(", ");
+
+      const geocode = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
+        try {
+          const url =
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json` +
+            `?access_token=${encodeURIComponent(token)}&country=us&limit=1`;
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          const json = await res.json();
+          const feat = json?.features?.[0];
+          if (!feat?.center) return null;
+          return { lng: Number(feat.center[0]), lat: Number(feat.center[1]) };
+        } catch {
+          return null;
+        }
+      };
+
+      // Resolve coords for each prospect (cache first), then update state
+      // progressively in small batches so pins appear as they're geocoded.
+      const out: Dealer[] = [];
+      let pendingFlush = 0;
+      const flush = () => {
+        if (cancelled) return;
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+        } catch {
+          // ignore quota errors
+        }
+        setProspectDealers([...out]);
+      };
+
+      for (const r of all) {
+        const addr = buildAddr(r);
+        if (!addr) continue;
+        let coords = cache[addr];
+        if (coords === undefined) {
+          coords = await geocode(addr);
+          cache[addr] = coords;
+          pendingFlush++;
+        }
+        if (!coords) continue;
+        out.push({
+          id: `crm-prospect-${r.id}`,
+          name: r.company_name,
+          first_name: null,
+          last_name: null,
+          street_address: r.street_1,
+          city: r.city,
+          state: r.state,
+          status: "active",
+          rep_id: r.assigned_rep_id,
+          rep_owner: null,
+          manager_id: r.assigned_manager_id,
+          phone: r.main_phone,
+          email: r.email,
+          website: r.website,
+          notes: r.notes,
+          buying_group: null,
+          source: "crm_prospect",
+          lat: coords.lat,
+          lng: coords.lng,
+        });
+        if (pendingFlush >= 10) {
+          pendingFlush = 0;
+          flush();
+        }
+      }
+      flush();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
 
   // Load dealers + check-ins
   const load = async () => {

@@ -760,10 +760,13 @@ export default function CheckInsPage() {
       const el = document.createElement("button");
       el.type = "button";
       el.setAttribute("aria-label", `${d.name} marker`);
+      const isProspect = isProspectDealer(d);
+      const hasCheckIn = d.daysSince != null;
+      const ringCharcoal = isProspect && hasCheckIn;
       el.style.cssText = `
         width: 18px; height: 18px; border-radius: 9999px;
         background: ${pinColorFor(d)};
-        border: 2px solid white;
+        border: ${ringCharcoal ? `3px solid ${PROSPECT_COLOR}` : "2px solid white"};
         box-shadow: 0 1px 4px rgba(0,0,0,0.35);
         cursor: pointer; padding: 0;
         transition: background-color 200ms ease;

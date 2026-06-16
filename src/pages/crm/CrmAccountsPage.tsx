@@ -445,8 +445,8 @@ export default function CrmAccountsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
-                    <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{a.main_phone || "—"}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{fmtDate(a.created_at)}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{fmtDate(lastContactedMap.get(a.id))}</td>
                     <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select
                         value={a.account_type ?? "prospect"}

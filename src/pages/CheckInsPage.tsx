@@ -481,7 +481,7 @@ export default function CheckInsPage() {
         }
         if (!coords) continue;
         out.push({
-          id: `crm-prospect-${r.id}`,
+          id: r.id,
           name: r.company_name,
           first_name: null,
           last_name: null,

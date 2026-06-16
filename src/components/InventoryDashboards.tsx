@@ -721,37 +721,9 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // ============ SECTION 1: HIGH LEVEL SUMMARY ============
   const summary = useMemo(() => {
-    // Build fallback avg monthly sales by collection / brand / global for SKUs with no sales history
     const isExcluded = (it: any) => {
       const s = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${it.category ?? ""} ${it.supplier ?? ""}`.toLowerCase();
       return /freight|dropship|drop ship|drop-ship/.test(s);
-    };
-    const sellers = items.filter((it) => (it.avgMonthlySales ?? 0) > 0 && !isExcluded(it));
-    const avgBy = (key: "collection" | "brand" | "category") => {
-      const m = new Map<string, { sum: number; n: number }>();
-      for (const it of sellers) {
-        const k = (it as any)[key];
-        if (!k) continue;
-        const cur = m.get(k) ?? { sum: 0, n: 0 };
-        cur.sum += it.avgMonthlySales; cur.n += 1;
-        m.set(k, cur);
-      }
-      const out = new Map<string, number>();
-      m.forEach((v, k) => out.set(k, v.sum / v.n));
-      return out;
-    };
-    const avgByCollection = avgBy("collection");
-    const avgByBrand = avgBy("brand");
-    const avgByCategory = avgBy("category");
-    const globalAvg = sellers.length > 0 ? sellers.reduce((s, it) => s + it.avgMonthlySales, 0) / sellers.length : 0;
-    const estMonthlyUnits = (it: any) => {
-      if ((it.avgMonthlySales ?? 0) > 0) return it.avgMonthlySales;
-      return (
-        avgByCollection.get(it.collection) ??
-        avgByBrand.get(it.brand) ??
-        avgByCategory.get(it.category) ??
-        globalAvg
-      );
     };
 
     let value = 0, units = 0, monthlySales = 0, lostSales = 0;
@@ -764,11 +736,12 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       monthlySales += it.avgMonthlySales * (it.listPrice ?? cost);
       annualUnits += it.avgMonthlySales * 12;
       const oos = it.status === "out-of-stock" || (it.onHand ?? 0) <= 0;
-      if (oos && !isExcluded(it)) {
+      // Only count REAL lost sales: SKUs that are out-of-stock AND have actual
+      // Acctivate sales history (avgMonthlySales > 0). No estimates / fallbacks.
+      if (oos && !isExcluded(it) && (it.avgMonthlySales ?? 0) > 0) {
         const price = it.listPrice ?? cost;
-        const estUnits = estMonthlyUnits(it);
-        lostSales += estUnits * price;
-        outOfStockValue += estUnits * price;
+        lostSales += it.avgMonthlySales * price;
+        outOfStockValue += it.avgMonthlySales * price;
       }
       if (it.isCloseout || it.isClearance) closeoutValue += lineValue;
     }

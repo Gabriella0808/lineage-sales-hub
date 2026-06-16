@@ -45,9 +45,9 @@ interface DbInventoryRow {
 // Lead time per Acctivate model: ~32 weeks
 const LEAD_WEEKS = 32;
 
-function deriveStatus(onHand: number, weeks: number | null): InventoryStatus {
-  if (onHand <= 0) return "out-of-stock";
-  if (weeks == null) return onHand <= 5 ? "critical" : "healthy";
+function deriveStatus(available: number, weeks: number | null): InventoryStatus {
+  if (available <= 0) return "out-of-stock";
+  if (weeks == null) return available <= 5 ? "critical" : "healthy";
   if (weeks < LEAD_WEEKS * 0.5) return "critical";       // < 16 wk
   if (weeks < LEAD_WEEKS) return "reorder-soon";          // < 32 wk
   if (weeks > LEAD_WEEKS * 2) return "overstock";         // > 64 wk
@@ -60,9 +60,10 @@ const ALLOWED: ReadonlySet<InventoryStatus> = new Set([
   "fast-moving", "overstock", "liquidate", "healthy",
 ]);
 
-function normalizeStatus(raw: string | null, onHand: number, weeks: number | null): InventoryStatus {
-  if (raw && ALLOWED.has(raw as InventoryStatus)) return raw as InventoryStatus;
-  return deriveStatus(onHand, weeks);
+function normalizeStatus(raw: string | null, available: number, weeks: number | null): InventoryStatus {
+  if (available <= 0) return "out-of-stock";
+  if (raw && raw !== "out-of-stock" && ALLOWED.has(raw as InventoryStatus)) return raw as InventoryStatus;
+  return deriveStatus(available, weeks);
 }
 
 export function useInventory() {
@@ -114,7 +115,7 @@ export function useInventory() {
           available,
           avgMonthlySales: avg,
           monthsSupply: mos,
-          status: normalizeStatus(r.status, onHand, weeks),
+          status: normalizeStatus(r.status, available, weeks),
           link: r.link ?? undefined,
           unitCost: r.unit_cost == null ? undefined : Number(r.unit_cost),
           onHandValue: r.on_hand_value == null ? undefined : Number(r.on_hand_value),

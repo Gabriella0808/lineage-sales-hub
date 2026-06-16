@@ -148,8 +148,10 @@ interface Dealer {
 const PROSPECT_COLOR = "#36454F"; // charcoal — prospects (not yet a customer in Acctivate)
 
 function isProspectDealer(d: { source?: string | null }): boolean {
-  const s = (d.source ?? "").toLowerCase();
-  return s !== "acctivate";
+  // True only for CRM accounts marked as account_type='prospect' (injected
+  // client-side with source='crm_prospect'). Field-only and Acctivate
+  // dealers are NOT prospects.
+  return (d.source ?? "").toLowerCase() === "crm_prospect";
 }
 
 function pinColorFor(d: { source?: string | null; daysSince: number | null }): string {

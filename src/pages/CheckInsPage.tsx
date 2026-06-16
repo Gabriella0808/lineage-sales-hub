@@ -140,8 +140,20 @@ interface Dealer {
   website?: string | null;
   notes?: string | null;
   buying_group?: string | null;
+  source?: string | null;
   lat: number | null;
   lng: number | null;
+}
+
+const PROSPECT_COLOR = "#8b5cf6"; // violet — prospects (not yet a customer in Acctivate)
+
+function isProspectDealer(d: { source?: string | null }): boolean {
+  const s = (d.source ?? "").toLowerCase();
+  return s !== "acctivate";
+}
+
+function pinColorFor(d: { source?: string | null; daysSince: number | null }): string {
+  return isProspectDealer(d) ? PROSPECT_COLOR : recencyColor(d.daysSince);
 }
 
 interface CheckIn {

@@ -27,5 +27,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'task-assigned': taskAssigned,
   'weekly-checkin-report': weeklyCheckinReport,
   'clearance-weekly-report': clearanceWeeklyReport,
-  
+  'prospects-checkins-update': prospectsCheckinsUpdate,
 }

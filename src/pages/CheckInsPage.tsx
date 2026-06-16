@@ -140,8 +140,20 @@ interface Dealer {
   website?: string | null;
   notes?: string | null;
   buying_group?: string | null;
+  source?: string | null;
   lat: number | null;
   lng: number | null;
+}
+
+const PROSPECT_COLOR = "#8b5cf6"; // violet — prospects (not yet a customer in Acctivate)
+
+function isProspectDealer(d: { source?: string | null }): boolean {
+  const s = (d.source ?? "").toLowerCase();
+  return s !== "acctivate";
+}
+
+function pinColorFor(d: { source?: string | null; daysSince: number | null }): string {
+  return isProspectDealer(d) ? PROSPECT_COLOR : recencyColor(d.daysSince);
 }
 
 interface CheckIn {
@@ -339,7 +351,7 @@ export default function CheckInsPage() {
     return dealersWithMeta.filter((d) => {
       if (team && !dealerMatchesTeam(d, team)) return false;
       if (colorFilter !== "all") {
-        const pinColor = recencyColor(d.daysSince);
+        const pinColor = pinColorFor(d);
         if (pinColor !== colorFilter) return false;
       }
       if (!q) return true;
@@ -378,7 +390,7 @@ export default function CheckInsPage() {
       while (true) {
         const { data, error } = await supabase
           .from("dealers")
-          .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, lat, lng")
+          .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, source, lat, lng")
           .order("name")
           .range(from, from + PAGE - 1);
         if (error) return { data: null, error };
@@ -614,7 +626,7 @@ export default function CheckInsPage() {
       el.setAttribute("aria-label", `${d.name} marker`);
       el.style.cssText = `
         width: 18px; height: 18px; border-radius: 9999px;
-        background: ${recencyColor(d.daysSince)};
+        background: ${pinColorFor(d)};
         border: 2px solid white;
         box-shadow: 0 1px 4px rgba(0,0,0,0.35);
         cursor: pointer; padding: 0;
@@ -872,7 +884,7 @@ export default function CheckInsPage() {
         rep_owner: owner,
         rep_id: newDealer.rep_id || null,
       })
-      .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, lat, lng")
+      .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, source, lat, lng")
       .single();
     setAddSaving(false);
     if (error) {
@@ -1131,6 +1143,7 @@ export default function CheckInsPage() {
           { c: "#f97316", l: "≤ 90 days" },
           { c: "#dc2626", l: "> 90 days" },
           { c: "#94a3b8", l: "Never" },
+          { c: PROSPECT_COLOR, l: "Prospect" },
         ].map((x) => {
           const active = colorFilter === x.c;
           return (

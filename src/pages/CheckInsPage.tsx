@@ -155,7 +155,14 @@ function isProspectDealer(d: { source?: string | null }): boolean {
 }
 
 function pinColorFor(d: { source?: string | null; daysSince: number | null }): string {
-  return isProspectDealer(d) ? PROSPECT_COLOR : recencyColor(d.daysSince);
+  // Prospects with no check-in yet stay fully charcoal. Once a check-in is
+  // logged the fill switches to the recency color, and a charcoal ring (added
+  // at marker render time) keeps signalling "still a prospect" until the
+  // account is promoted to dealer in Acctivate.
+  if (isProspectDealer(d)) {
+    return d.daysSince == null ? PROSPECT_COLOR : recencyColor(d.daysSince);
+  }
+  return recencyColor(d.daysSince);
 }
 
 interface CheckIn {
@@ -753,10 +760,13 @@ export default function CheckInsPage() {
       const el = document.createElement("button");
       el.type = "button";
       el.setAttribute("aria-label", `${d.name} marker`);
+      const isProspect = isProspectDealer(d);
+      const hasCheckIn = d.daysSince != null;
+      const ringCharcoal = isProspect && hasCheckIn;
       el.style.cssText = `
         width: 18px; height: 18px; border-radius: 9999px;
         background: ${pinColorFor(d)};
-        border: 2px solid white;
+        border: ${ringCharcoal ? `3px solid ${PROSPECT_COLOR}` : "2px solid white"};
         box-shadow: 0 1px 4px rgba(0,0,0,0.35);
         cursor: pointer; padding: 0;
         transition: background-color 200ms ease;

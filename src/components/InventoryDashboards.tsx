@@ -646,46 +646,18 @@ function ReportTurnover({ items }: { items: InventoryItem[] }) {
 }
 
 function ReportLost({ items, allItems }: { items: InventoryItem[]; allItems?: InventoryItem[] }) {
+  void allItems;
   const rows = useMemo(() => {
-    const pool = allItems ?? items;
-    const isExcluded = (it: any) => {
-      const s = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${it.category ?? ""} ${it.supplier ?? ""}`.toLowerCase();
-      return /freight|dropship|drop ship|drop-ship/.test(s);
-    };
-    const sellers = pool.filter((it) => (it.avgMonthlySales ?? 0) > 0 && !isExcluded(it));
-    const avgBy = (key: "collection" | "brand" | "category") => {
-      const m = new Map<string, { sum: number; n: number }>();
-      for (const it of sellers) {
-        const k = (it as any)[key];
-        if (!k) continue;
-        const cur = m.get(k) ?? { sum: 0, n: 0 };
-        cur.sum += it.avgMonthlySales!; cur.n += 1;
-        m.set(k, cur);
-      }
-      const out = new Map<string, number>();
-      m.forEach((v, k) => out.set(k, v.sum / v.n));
-      return out;
-    };
-    const avgByCollection = avgBy("collection");
-    const avgByBrand = avgBy("brand");
-    const avgByCategory = avgBy("category");
-    const globalAvg = sellers.length > 0 ? sellers.reduce((s, it) => s + (it.avgMonthlySales ?? 0), 0) / sellers.length : 0;
-    const estUnits = (it: any) => {
-      if ((it.avgMonthlySales ?? 0) > 0) return it.avgMonthlySales as number;
-      return (
-        avgByCollection.get(it.collection) ??
-        avgByBrand.get((it as any).brand) ??
-        avgByCategory.get((it as any).category) ??
-        globalAvg
-      );
-    };
-    return items.map((it) => {
-      const units = estUnits(it);
-      const price = it.listPrice ?? it.unitCost ?? 0;
-      return { it, units, lost: units * price };
-    }).sort((a, b) => b.lost - a.lost);
-  }, [items, allItems]);
-  if (rows.length === 0) return <EmptyState message="No SKUs are currently out of stock." />;
+    return items
+      .filter((it) => (it.avgMonthlySales ?? 0) > 0)
+      .map((it) => {
+        const units = it.avgMonthlySales as number;
+        const price = it.listPrice ?? it.unitCost ?? 0;
+        return { it, units, lost: units * price };
+      })
+      .sort((a, b) => b.lost - a.lost);
+  }, [items]);
+  if (rows.length === 0) return <EmptyState message="No out-of-stock SKUs with sales history." />;
   return (
     <table className="w-full text-sm">
       <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
@@ -693,7 +665,7 @@ function ReportLost({ items, allItems }: { items: InventoryItem[]; allItems?: In
           <th className="text-left px-3 py-2">SKU</th>
           <th className="text-left px-3 py-2">Product</th>
           <th className="text-right px-3 py-2">On Hand</th>
-          <th className="text-right px-3 py-2">Est Mo Sales (units)</th>
+          <th className="text-right px-3 py-2">Avg Mo Sales (units)</th>
           <th className="text-right px-3 py-2">On PO</th>
           <th className="text-right px-3 py-2">Lost / mo</th>
         </tr>

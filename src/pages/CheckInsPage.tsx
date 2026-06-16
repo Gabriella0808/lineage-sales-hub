@@ -1143,6 +1143,7 @@ export default function CheckInsPage() {
           { c: "#f97316", l: "≤ 90 days" },
           { c: "#dc2626", l: "> 90 days" },
           { c: "#94a3b8", l: "Never" },
+          { c: PROSPECT_COLOR, l: "Prospect" },
         ].map((x) => {
           const active = colorFilter === x.c;
           return (

@@ -155,7 +155,14 @@ function isProspectDealer(d: { source?: string | null }): boolean {
 }
 
 function pinColorFor(d: { source?: string | null; daysSince: number | null }): string {
-  return isProspectDealer(d) ? PROSPECT_COLOR : recencyColor(d.daysSince);
+  // Prospects with no check-in yet stay fully charcoal. Once a check-in is
+  // logged the fill switches to the recency color, and a charcoal ring (added
+  // at marker render time) keeps signalling "still a prospect" until the
+  // account is promoted to dealer in Acctivate.
+  if (isProspectDealer(d)) {
+    return d.daysSince == null ? PROSPECT_COLOR : recencyColor(d.daysSince);
+  }
+  return recencyColor(d.daysSince);
 }
 
 interface CheckIn {

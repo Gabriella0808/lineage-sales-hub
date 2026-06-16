@@ -886,6 +886,35 @@ export default function CheckInsPage() {
       return;
     }
     setSaving(true);
+    // Prospects live in crm_accounts and have no dealers row yet. The
+    // dealer_check_ins.dealer_id FK points to dealers(id), so we upsert a
+    // matching dealers row (same uuid) before inserting the check-in.
+    if (isProspectDealer(selected)) {
+      const { error: upsertErr } = await supabase
+        .from("dealers")
+        .upsert(
+          {
+            id: selected.id,
+            name: selected.name,
+            status: "active",
+            source: "crm_prospect",
+            street_address: selected.street_address,
+            city: selected.city,
+            state: selected.state,
+            phone: selected.phone,
+            email: selected.email,
+            website: selected.website,
+            rep_id: selected.rep_id,
+            manager_id: selected.manager_id,
+          },
+          { onConflict: "id" },
+        );
+      if (upsertErr) {
+        setSaving(false);
+        toast({ title: "Failed to save check-in", description: upsertErr.message, variant: "destructive" });
+        return;
+      }
+    }
     const { data, error } = await supabase
       .from("dealer_check_ins")
       .insert({

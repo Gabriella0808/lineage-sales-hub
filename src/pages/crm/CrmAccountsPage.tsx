@@ -77,19 +77,32 @@ export default function CrmAccountsPage() {
   };
   const [stateFilter, setStateFilter] = useState<string>("all");
 
-  // Last contacted = most recent note per account
+  // Last contacted = most recent of crm note OR field check-in per account.
+  // Prospect-shell dealers share the same id as the crm_account, so dealer_id
+  // on dealer_check_ins maps directly to the account id for prospects.
   const { data: lastContactedMap = new Map<string, string>() } = useQuery({
     queryKey: ["crm_last_contacted_map"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("crm_account_notes")
-        .select("account_id, created_at")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+      const [notesRes, checkInsRes] = await Promise.all([
+        supabase
+          .from("crm_account_notes")
+          .select("account_id, created_at")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("dealer_check_ins")
+          .select("dealer_id, visit_date")
+          .order("visit_date", { ascending: false }),
+      ]);
+      if (notesRes.error) throw notesRes.error;
+      if (checkInsRes.error) throw checkInsRes.error;
       const map = new Map<string, string>();
-      for (const row of data ?? []) {
-        if (!map.has(row.account_id)) map.set(row.account_id, row.created_at);
-      }
+      const consider = (id: string | null | undefined, ts: string | null | undefined) => {
+        if (!id || !ts) return;
+        const prev = map.get(id);
+        if (!prev || new Date(ts).getTime() > new Date(prev).getTime()) map.set(id, ts);
+      };
+      for (const row of notesRes.data ?? []) consider(row.account_id, row.created_at);
+      for (const row of checkInsRes.data ?? []) consider(row.dealer_id, row.visit_date);
       return map;
     },
     staleTime: 60_000,

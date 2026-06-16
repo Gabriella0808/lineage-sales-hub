@@ -103,7 +103,7 @@ const TEAM_MEMBERS: {
   },
   {
     id: "justin",
-    name: "Justin Jeangerard",
+    name: "Kate Jones",
     managerIds: ["970f22fb-f3bf-4c14-9b11-ce399b71b70f"],
     repOwners: ["justin"],
     states: [],

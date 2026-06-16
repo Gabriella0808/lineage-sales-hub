@@ -34,7 +34,7 @@ const TEAM: { id: TeamId; name: string; emails: string[]; repOwners: string[] }[
   { id: "will", name: "Will Grisack", emails: ["will@lineage-collections.com"], repOwners: ["will"] },
   { id: "mateo", name: "Mateo De Lisa", emails: ["mateo@lineage-collections.com"], repOwners: ["mateo"] },
   { id: "chris", name: "Chris De Lisa", emails: ["chris@lineage-collections.com"], repOwners: ["chris"] },
-  { id: "justin", name: "Justin Jeangerard", emails: ["justin@lineage-collections.com"], repOwners: ["justin"] },
+  { id: "justin", name: "Kate Jones", emails: ["kate@lineage-collections.com"], repOwners: ["kate"] },
 ];
 
 interface CheckInRow {

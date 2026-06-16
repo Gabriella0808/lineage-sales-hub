@@ -339,14 +339,14 @@ export default function CheckInsPage() {
   }, [checkIns]);
 
   const dealersWithMeta = useMemo(() => {
-    return dealers.map((d) => {
+    return [...dealers, ...prospectDealers].map((d) => {
       const last = lastVisitMap.get(d.id) ?? null;
       const days = last
         ? Math.floor((Date.now() - new Date(last).getTime()) / 86400000)
         : null;
       return { ...d, lastVisit: last, daysSince: days };
     });
-  }, [dealers, lastVisitMap]);
+  }, [dealers, prospectDealers, lastVisitMap]);
 
   const filteredDealers = useMemo(() => {
     const q = search.trim().toLowerCase();

@@ -31,6 +31,13 @@ const fmtMoney = (n: number) =>
   `$${n.toFixed(0)}`;
 const fmtNum = (n: number) => n.toLocaleString();
 
+const isOutOfStockSku = (it: InventoryItem) => (it.available ?? 0) <= 0;
+
+const isInventoryExcludedSku = (it: InventoryItem) => {
+  const hay = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${(it as any).category ?? ""} ${it.supplier ?? ""}`.toLowerCase();
+  return /freight|dropship|drop ship|drop-ship/.test(hay);
+};
+
 const STAGES = [
   { key: "in_manufacturing", label: "In Manufacturing" },
   { key: "loaded", label: "Loaded" },
@@ -649,6 +656,7 @@ function ReportLost({ items, allItems }: { items: InventoryItem[]; allItems?: In
   void allItems;
   const rows = useMemo(() => {
     return items
+      .filter((it) => isOutOfStockSku(it))
       .filter((it) => (it.avgMonthlySales ?? 0) > 0)
       .map((it) => {
         const units = it.avgMonthlySales as number;
@@ -664,7 +672,7 @@ function ReportLost({ items, allItems }: { items: InventoryItem[]; allItems?: In
         <tr>
           <th className="text-left px-3 py-2">SKU</th>
           <th className="text-left px-3 py-2">Product</th>
-          <th className="text-right px-3 py-2">On Hand</th>
+          <th className="text-right px-3 py-2">Available</th>
           <th className="text-right px-3 py-2">Avg Mo Sales (units)</th>
           <th className="text-right px-3 py-2">On PO</th>
           <th className="text-right px-3 py-2">Lost / mo</th>
@@ -675,7 +683,7 @@ function ReportLost({ items, allItems }: { items: InventoryItem[]; allItems?: In
           <tr key={it.sku} className="border-t border-border hover:bg-muted/30">
             <td className="px-3 py-2 font-mono text-xs">{it.sku}</td>
             <td className="px-3 py-2 max-w-[260px] truncate">{it.product}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onHand ?? 0)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.available ?? 0)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{units.toFixed(1)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onPo ?? 0)}</td>
             <td className={cn("px-3 py-2 text-right tabular-nums font-semibold", lost > 0 ? "text-destructive" : "text-muted-foreground")}>

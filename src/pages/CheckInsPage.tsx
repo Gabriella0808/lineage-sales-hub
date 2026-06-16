@@ -241,6 +241,7 @@ export default function CheckInsPage() {
 
   const [token, setToken] = useState<string | null>(null);
   const [dealers, setDealers] = useState<Dealer[]>([]);
+  const [prospectDealers, setProspectDealers] = useState<Dealer[]>([]);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);

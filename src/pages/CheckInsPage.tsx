@@ -145,7 +145,7 @@ interface Dealer {
   lng: number | null;
 }
 
-const PROSPECT_COLOR = "#8b5cf6"; // violet — prospects (not yet a customer in Acctivate)
+const PROSPECT_COLOR = "#36454F"; // charcoal — prospects (not yet a customer in Acctivate)
 
 function isProspectDealer(d: { source?: string | null }): boolean {
   const s = (d.source ?? "").toLowerCase();

@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, ArrowLeft, ChevronDown } from "lucide-react";
 import { ImportAccountsDialog } from "@/components/ImportAccountsDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export default function CrmAccountsPage() {
   const nav = useNavigate();
@@ -75,6 +76,31 @@ export default function CrmAccountsPage() {
     setSearchParams(next, { replace: true });
   };
   const [stateFilter, setStateFilter] = useState<string>("all");
+
+  // Last contacted = most recent note per account
+  const { data: lastContactedMap = new Map<string, string>() } = useQuery({
+    queryKey: ["crm_last_contacted_map"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("crm_account_notes")
+        .select("account_id, created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const row of data ?? []) {
+        if (!map.has(row.account_id)) map.set(row.account_id, row.created_at);
+      }
+      return map;
+    },
+    staleTime: 60_000,
+  });
+
+  const fmtDate = (s?: string | null) => {
+    if (!s) return "—";
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  };
 
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);
@@ -295,8 +321,8 @@ export default function CrmAccountsPage() {
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Contact</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Rep</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Manager</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">City / State</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Phone</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Date Added</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Last Contacted</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Account Type</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[13%]">Prospect Type</th>
               </tr>
@@ -419,8 +445,8 @@ export default function CrmAccountsPage() {
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</td>
-                    <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{a.main_phone || "—"}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{fmtDate(a.created_at)}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground tabular-nums truncate">{fmtDate(lastContactedMap.get(a.id))}</td>
                     <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select
                         value={a.account_type ?? "prospect"}

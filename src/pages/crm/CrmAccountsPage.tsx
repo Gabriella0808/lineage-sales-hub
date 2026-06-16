@@ -269,6 +269,13 @@ export default function CrmAccountsPage() {
           allLabel="All prospect types"
           triggerClassName="w-full sm:w-52"
         />
+        <Select value={accountTypeFilter} onValueChange={setAccountTypeFilter}>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All account types</SelectItem>
+            {ACCOUNT_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={stateFilter} onValueChange={setStateFilter}>
           <SelectTrigger className="w-full sm:w-32"><SelectValue /></SelectTrigger>
           <SelectContent>

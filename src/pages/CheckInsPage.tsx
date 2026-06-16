@@ -626,7 +626,7 @@ export default function CheckInsPage() {
       el.setAttribute("aria-label", `${d.name} marker`);
       el.style.cssText = `
         width: 18px; height: 18px; border-radius: 9999px;
-        background: ${recencyColor(d.daysSince)};
+        background: ${pinColorFor(d)};
         border: 2px solid white;
         box-shadow: 0 1px 4px rgba(0,0,0,0.35);
         cursor: pointer; padding: 0;

@@ -362,7 +362,13 @@ export default function CheckInsPage() {
       if (team && !dealerMatchesTeam(d, team)) return false;
       if (colorFilter !== "all") {
         const pinColor = pinColorFor(d);
-        if (pinColor !== colorFilter) return false;
+        // Prospect filter: include any prospect, even if the fill color has
+        // switched to a recency color after a check-in (the charcoal ring
+        // still marks them as a prospect).
+        // Recency filter: include prospects whose current fill matches the
+        // selected recency color too.
+        const matchesProspect = colorFilter === PROSPECT_COLOR && isProspectDealer(d);
+        if (!matchesProspect && pinColor !== colorFilter) return false;
       }
       if (!q) return true;
       return (

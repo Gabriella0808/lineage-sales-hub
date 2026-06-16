@@ -31,6 +31,14 @@ const fmtMoney = (n: number) =>
   `$${n.toFixed(0)}`;
 const fmtNum = (n: number) => n.toLocaleString();
 
+const isOutOfStockSku = (it: InventoryItem) => (it.available ?? 0) <= 0;
+
+const isInventoryExcludedSku = (it: InventoryItem) => {
+  const category = (it as InventoryItem & { category?: string }).category ?? "";
+  const hay = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${category} ${it.supplier ?? ""}`.toLowerCase();
+  return /freight|dropship|drop ship|drop-ship|tariff surcharge|delivery charge/.test(hay);
+};
+
 const STAGES = [
   { key: "in_manufacturing", label: "In Manufacturing" },
   { key: "loaded", label: "Loaded" },
@@ -649,6 +657,7 @@ function ReportLost({ items, allItems }: { items: InventoryItem[]; allItems?: In
   void allItems;
   const rows = useMemo(() => {
     return items
+      .filter((it) => isOutOfStockSku(it))
       .filter((it) => (it.avgMonthlySales ?? 0) > 0)
       .map((it) => {
         const units = it.avgMonthlySales as number;
@@ -664,7 +673,7 @@ function ReportLost({ items, allItems }: { items: InventoryItem[]; allItems?: In
         <tr>
           <th className="text-left px-3 py-2">SKU</th>
           <th className="text-left px-3 py-2">Product</th>
-          <th className="text-right px-3 py-2">On Hand</th>
+          <th className="text-right px-3 py-2">Available</th>
           <th className="text-right px-3 py-2">Avg Mo Sales (units)</th>
           <th className="text-right px-3 py-2">On PO</th>
           <th className="text-right px-3 py-2">Lost / mo</th>
@@ -675,7 +684,7 @@ function ReportLost({ items, allItems }: { items: InventoryItem[]; allItems?: In
           <tr key={it.sku} className="border-t border-border hover:bg-muted/30">
             <td className="px-3 py-2 font-mono text-xs">{it.sku}</td>
             <td className="px-3 py-2 max-w-[260px] truncate">{it.product}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onHand ?? 0)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.available ?? 0)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{units.toFixed(1)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onPo ?? 0)}</td>
             <td className={cn("px-3 py-2 text-right tabular-nums font-semibold", lost > 0 ? "text-destructive" : "text-muted-foreground")}>
@@ -721,11 +730,6 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // ============ SECTION 1: HIGH LEVEL SUMMARY ============
   const summary = useMemo(() => {
-    const isExcluded = (it: any) => {
-      const s = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${it.category ?? ""} ${it.supplier ?? ""}`.toLowerCase();
-      return /freight|dropship|drop ship|drop-ship/.test(s);
-    };
-
     let value = 0, units = 0, monthlySales = 0, lostSales = 0;
     let outOfStockValue = 0, closeoutValue = 0, annualUnits = 0;
     for (const it of items) {
@@ -735,10 +739,10 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       units += it.onHand;
       monthlySales += it.avgMonthlySales * (it.listPrice ?? cost);
       annualUnits += it.avgMonthlySales * 12;
-      const oos = it.status === "out-of-stock" || (it.onHand ?? 0) <= 0;
+      const oos = isOutOfStockSku(it);
       // Only count REAL lost sales: SKUs that are out-of-stock AND have actual
       // Acctivate sales history (avgMonthlySales > 0). No estimates / fallbacks.
-      if (oos && !isExcluded(it) && (it.avgMonthlySales ?? 0) > 0) {
+      if (oos && !isInventoryExcludedSku(it) && (it.avgMonthlySales ?? 0) > 0) {
         const price = it.listPrice ?? cost;
         lostSales += it.avgMonthlySales * price;
         outOfStockValue += it.avgMonthlySales * price;
@@ -1416,7 +1420,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   // ============ STOCKOUTS / LOST SALES ============
   const stockoutRows = useMemo(() => {
     return items
-      .filter((it) => it.onHand <= 0 || it.status === "out-of-stock")
+      .filter((it) => isOutOfStockSku(it) && !isInventoryExcludedSku(it))
       .map((it) => {
         const dailySales = (it.avgMonthlySales || 0) / 30;
         const monthlyLost = it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
@@ -1759,10 +1763,8 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             {drilldown === "prepaid" && <ReportPOs pos={hub.purchaseOrders.filter((p) => p.is_prepaid)} prepaidMode />}
             {drilldown === "backlog" && <BacklogSummary />}
             {drilldown === "lost" && <ReportLost allItems={items} items={items.filter((it) => {
-              const isOOS = it.status === "out-of-stock" || (it.onHand ?? 0) <= 0;
-              if (!isOOS) return false;
-              const hay = `${it.sku ?? ""} ${it.product ?? ""} ${(it as any).brand ?? ""} ${it.collection ?? ""} ${(it as any).category ?? ""} ${it.supplier ?? ""}`.toLowerCase();
-              if (/freight|dropship|drop ship|drop-ship/.test(hay)) return false;
+              if (!isOutOfStockSku(it)) return false;
+              if (isInventoryExcludedSku(it)) return false;
               return true;
             })} />}
           </div>
@@ -1789,7 +1791,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
           <h3 className="text-base font-semibold mb-3">Top Lost-Sales SKUs</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stockoutRows.slice(0, 10).map((r) => ({ sku: r.sku, lost: r.monthlyLost }))} layout="vertical" margin={{ left: 4, right: 12 }}>
+              <BarChart data={stockoutRows.filter((r) => r.monthlyLost > 0).slice(0, 10).map((r) => ({ sku: r.sku, lost: r.monthlyLost }))} layout="vertical" margin={{ left: 4, right: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis type="category" dataKey="sku" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
@@ -1809,6 +1811,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                     <th className="text-left px-3 py-2">SKU</th>
                     <th className="text-left px-3 py-2">Product</th>
                     <th className="text-left px-3 py-2">Collection</th>
+                    <th className="text-right px-3 py-2">Available</th>
                     <th className="text-right px-3 py-2">Mo Sales</th>
                     <th className="text-right px-3 py-2">Lost / mo</th>
                     <th className="text-right px-3 py-2">On PO</th>
@@ -1828,6 +1831,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                         <td className="px-3 py-2 font-mono">{r.sku}</td>
                         <td className="px-3 py-2 max-w-[220px] truncate">{r.product}</td>
                         <td className="px-3 py-2">{r.collection}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{r.available}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.avgMonthlySales.toFixed(1)}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-semibold text-destructive">{fmtMoney(r.monthlyLost)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.onPo ?? 0}</td>

@@ -351,7 +351,7 @@ export default function CheckInsPage() {
     return dealersWithMeta.filter((d) => {
       if (team && !dealerMatchesTeam(d, team)) return false;
       if (colorFilter !== "all") {
-        const pinColor = recencyColor(d.daysSince);
+        const pinColor = pinColorFor(d);
         if (pinColor !== colorFilter) return false;
       }
       if (!q) return true;

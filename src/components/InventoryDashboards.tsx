@@ -729,11 +729,6 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // ============ SECTION 1: HIGH LEVEL SUMMARY ============
   const summary = useMemo(() => {
-    const isExcluded = (it: any) => {
-      const s = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${it.category ?? ""} ${it.supplier ?? ""}`.toLowerCase();
-      return /freight|dropship|drop ship|drop-ship/.test(s);
-    };
-
     let value = 0, units = 0, monthlySales = 0, lostSales = 0;
     let outOfStockValue = 0, closeoutValue = 0, annualUnits = 0;
     for (const it of items) {
@@ -743,10 +738,10 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       units += it.onHand;
       monthlySales += it.avgMonthlySales * (it.listPrice ?? cost);
       annualUnits += it.avgMonthlySales * 12;
-      const oos = it.status === "out-of-stock" || (it.onHand ?? 0) <= 0;
+      const oos = isOutOfStockSku(it);
       // Only count REAL lost sales: SKUs that are out-of-stock AND have actual
       // Acctivate sales history (avgMonthlySales > 0). No estimates / fallbacks.
-      if (oos && !isExcluded(it) && (it.avgMonthlySales ?? 0) > 0) {
+      if (oos && !isInventoryExcludedSku(it) && (it.avgMonthlySales ?? 0) > 0) {
         const price = it.listPrice ?? cost;
         lostSales += it.avgMonthlySales * price;
         outOfStockValue += it.avgMonthlySales * price;

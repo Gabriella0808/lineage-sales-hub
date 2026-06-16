@@ -28,6 +28,8 @@ export default function CrmAccountsPage() {
   const stageParam = searchParams.get("stage") ?? "all";
   const brandParam = searchParams.get("brand") ?? "all";
   const prospectTypeParam = searchParams.get("ptype") ?? "all";
+  const accountTypeParam = searchParams.get("atype") ?? "all";
+
   const [q, setQ] = useState("");
   const repFilter = repParam;
   const setRepFilter = (v: string) => {
@@ -66,7 +68,14 @@ export default function CrmAccountsPage() {
     if (vs.length === 0) next.delete("ptype"); else next.set("ptype", vs.join(","));
     setSearchParams(next, { replace: true });
   };
+  const accountTypeFilter = accountTypeParam;
+  const setAccountTypeFilter = (v: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (v === "all") next.delete("atype"); else next.set("atype", v);
+    setSearchParams(next, { replace: true });
+  };
   const [stateFilter, setStateFilter] = useState<string>("all");
+
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);
   const repMap = useMemo(() => new Map(reps.map((r) => [r.id, r])), [reps]);
@@ -122,16 +131,18 @@ export default function CrmAccountsPage() {
         if (!hasRegular && !hasEmpty) continue;
       }
       if (stateFilter !== "all" && a.state !== stateFilter) continue;
+      if (accountTypeFilter !== "all" && (a.account_type ?? "prospect") !== accountTypeFilter) continue;
       if (needle && !hay.includes(needle)) continue;
       out.push(a);
     }
     return out;
-  }, [indexed, needle, repFilter, managerFilter, brandSet, ptypeRegularSet, ptypeHasNone, stateFilter]);
+  }, [indexed, needle, repFilter, managerFilter, brandSet, ptypeRegularSet, ptypeHasNone, stateFilter, accountTypeFilter]);
 
   // Incremental render: only mount a slice of rows, grow on scroll near bottom.
   const PAGE = 100;
   const [visibleCount, setVisibleCount] = useState(PAGE);
-  useEffect(() => { setVisibleCount(PAGE); }, [needle, repFilter, managerFilter, brandFilters.join(","), prospectTypeFilters.join(","), stateFilter]);
+  useEffect(() => { setVisibleCount(PAGE); }, [needle, repFilter, managerFilter, brandFilters.join(","), prospectTypeFilters.join(","), stateFilter, accountTypeFilter]);
+
   const visibleRows = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -258,6 +269,13 @@ export default function CrmAccountsPage() {
           allLabel="All prospect types"
           triggerClassName="w-full sm:w-52"
         />
+        <Select value={accountTypeFilter} onValueChange={setAccountTypeFilter}>
+          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All account types</SelectItem>
+            {ACCOUNT_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Select value={stateFilter} onValueChange={setStateFilter}>
           <SelectTrigger className="w-full sm:w-32"><SelectValue /></SelectTrigger>
           <SelectContent>

@@ -77,6 +77,31 @@ export default function CrmAccountsPage() {
   };
   const [stateFilter, setStateFilter] = useState<string>("all");
 
+  // Last contacted = most recent note per account
+  const { data: lastContactedMap = new Map<string, string>() } = useQuery({
+    queryKey: ["crm_last_contacted_map"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("crm_account_notes")
+        .select("account_id, created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const row of data ?? []) {
+        if (!map.has(row.account_id)) map.set(row.account_id, row.created_at);
+      }
+      return map;
+    },
+    staleTime: 60_000,
+  });
+
+  const fmtDate = (s?: string | null) => {
+    if (!s) return "—";
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  };
+
 
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);
   const repMap = useMemo(() => new Map(reps.map((r) => [r.id, r])), [reps]);

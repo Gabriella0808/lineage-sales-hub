@@ -1419,7 +1419,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   // ============ STOCKOUTS / LOST SALES ============
   const stockoutRows = useMemo(() => {
     return items
-      .filter((it) => it.onHand <= 0 || it.status === "out-of-stock")
+      .filter((it) => isOutOfStockSku(it) && !isInventoryExcludedSku(it))
       .map((it) => {
         const dailySales = (it.avgMonthlySales || 0) / 30;
         const monthlyLost = it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
@@ -1792,7 +1792,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
           <h3 className="text-base font-semibold mb-3">Top Lost-Sales SKUs</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stockoutRows.slice(0, 10).map((r) => ({ sku: r.sku, lost: r.monthlyLost }))} layout="vertical" margin={{ left: 4, right: 12 }}>
+              <BarChart data={stockoutRows.filter((r) => r.monthlyLost > 0).slice(0, 10).map((r) => ({ sku: r.sku, lost: r.monthlyLost }))} layout="vertical" margin={{ left: 4, right: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis type="category" dataKey="sku" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
@@ -1812,6 +1812,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                     <th className="text-left px-3 py-2">SKU</th>
                     <th className="text-left px-3 py-2">Product</th>
                     <th className="text-left px-3 py-2">Collection</th>
+                    <th className="text-right px-3 py-2">Available</th>
                     <th className="text-right px-3 py-2">Mo Sales</th>
                     <th className="text-right px-3 py-2">Lost / mo</th>
                     <th className="text-right px-3 py-2">On PO</th>
@@ -1831,6 +1832,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                         <td className="px-3 py-2 font-mono">{r.sku}</td>
                         <td className="px-3 py-2 max-w-[220px] truncate">{r.product}</td>
                         <td className="px-3 py-2">{r.collection}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{r.available}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.avgMonthlySales.toFixed(1)}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-semibold text-destructive">{fmtMoney(r.monthlyLost)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.onPo ?? 0}</td>

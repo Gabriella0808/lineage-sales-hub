@@ -906,6 +906,9 @@ export default function CheckInsPage() {
             website: selected.website,
             rep_id: selected.rep_id,
             manager_id: selected.manager_id,
+            lat: selected.lat,
+            lng: selected.lng,
+            crm_account_id: selected.id,
           },
           { onConflict: "id" },
         );

@@ -131,16 +131,18 @@ export default function CrmAccountsPage() {
         if (!hasRegular && !hasEmpty) continue;
       }
       if (stateFilter !== "all" && a.state !== stateFilter) continue;
+      if (accountTypeFilter !== "all" && (a.account_type ?? "prospect") !== accountTypeFilter) continue;
       if (needle && !hay.includes(needle)) continue;
       out.push(a);
     }
     return out;
-  }, [indexed, needle, repFilter, managerFilter, brandSet, ptypeRegularSet, ptypeHasNone, stateFilter]);
+  }, [indexed, needle, repFilter, managerFilter, brandSet, ptypeRegularSet, ptypeHasNone, stateFilter, accountTypeFilter]);
 
   // Incremental render: only mount a slice of rows, grow on scroll near bottom.
   const PAGE = 100;
   const [visibleCount, setVisibleCount] = useState(PAGE);
-  useEffect(() => { setVisibleCount(PAGE); }, [needle, repFilter, managerFilter, brandFilters.join(","), prospectTypeFilters.join(","), stateFilter]);
+  useEffect(() => { setVisibleCount(PAGE); }, [needle, repFilter, managerFilter, brandFilters.join(","), prospectTypeFilters.join(","), stateFilter, accountTypeFilter]);
+
   const visibleRows = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const onScroll = (e: React.UIEvent<HTMLDivElement>) => {

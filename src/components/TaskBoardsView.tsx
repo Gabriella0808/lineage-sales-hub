@@ -525,6 +525,54 @@ export default function TaskBoardsView() {
       toast({ title: "Status update failed", description: error.message, variant: "destructive" });
     }
   };
+
+  const updateTaskDueDate = async (id: string, date: Date | null) => {
+    const iso = date ? format(date, "yyyy-MM-dd") : null;
+    const prev = tasks;
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, due_date: iso } : t)));
+    const { error } = await supabase.from("manager_tasks").update({ due_date: iso }).eq("id", id);
+    if (error) {
+      setTasks(prev);
+      toast({ title: "Date update failed", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const setTaskAssigneesInline = async (id: string, ids: string[]) => {
+    const prev = taskAssignees;
+    setTaskAssignees((m) => ({ ...m, [id]: ids }));
+    await supabase.from("manager_task_assignees").delete().eq("task_id", id);
+    if (ids.length) {
+      const rows = ids.map((uid) => ({ task_id: id, user_id: uid }));
+      const { error } = await supabase.from("manager_task_assignees").insert(rows);
+      if (error) {
+        setTaskAssignees(prev);
+        toast({ title: "Assign failed", description: error.message, variant: "destructive" });
+        return;
+      }
+    }
+    await supabase
+      .from("manager_tasks")
+      .update({ assigned_user_id: ids[0] ?? null })
+      .eq("id", id);
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, assigned_user_id: ids[0] ?? null } : t)));
+  };
+
+  const quickCreateTask = async (groupId: string, title: string, status: Status = "todo") => {
+    if (!user || !activeBoardId || !title.trim()) return;
+    const group = groups.find((g) => g.id === groupId);
+    const inferred = inferStatusFromGroupName(group?.name);
+    const finalStatus = inferred ?? status;
+    const { error } = await supabase.from("manager_tasks").insert({
+      title: title.trim(),
+      status: finalStatus,
+      board_id: activeBoardId,
+      group_id: groupId,
+      user_id: user.id,
+    });
+    if (error) {
+      toast({ title: "Create failed", description: error.message, variant: "destructive" });
+    }
+  };
   const inferStatusFromGroupName = (name: string | undefined): Status | null => {
     if (!name) return null;
     const n = name.toLowerCase().trim();

@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import {
@@ -51,6 +52,7 @@ import {
   UserPlus,
   X,
   Check,
+  Filter,
 } from "lucide-react";
 import { format } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";

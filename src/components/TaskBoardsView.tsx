@@ -925,13 +925,10 @@ export default function TaskBoardsView() {
                           style={{ borderLeftColor: color }}
                         >
                           {columnHeader}
-                          {groupTasks.length === 0 ? (
-                            <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
-                              Drag tasks here or click "+ Item".
-                            </div>
-                          ) : (
-                            <ul>{groupTasks.map(renderTaskRow)}</ul>
-                          )}
+                          <ul>
+                            {groupTasks.map(renderTaskRow)}
+                            {renderAddRow(g.id)}
+                          </ul>
                         </div>
                       )}
                     </div>

@@ -53,7 +53,9 @@ import {
   X,
   Check,
   Filter,
+  MessageSquarePlus,
 } from "lucide-react";
+import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
 import { format } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 
@@ -118,6 +120,8 @@ export default function TaskBoardsView() {
   const [newItemTitle, setNewItemTitle] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatesTaskId, setUpdatesTaskId] = useState<string | null>(null);
+  const [updateCounts, setUpdateCounts] = useState<Record<string, number>>({});
 
   // dialogs
   const [boardDlgOpen, setBoardDlgOpen] = useState(false);
@@ -183,8 +187,19 @@ export default function TaskBoardsView() {
           (map[r.task_id] ||= []).push(r.user_id);
         });
         setTaskAssignees(map);
+
+        const { data: uData } = await supabase
+          .from("manager_task_updates" as any)
+          .select("task_id")
+          .in("task_id", ids);
+        const counts: Record<string, number> = {};
+        (uData ?? []).forEach((r: any) => {
+          counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+        });
+        setUpdateCounts(counts);
       } else {
         setTaskAssignees({});
+        setUpdateCounts({});
       }
     }
     if (!uRes.error) setAssignableUsers((uRes.data ?? []) as any);
@@ -783,7 +798,7 @@ export default function TaskBoardsView() {
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
                   onClick={() => openEditTask(t)}
-                  className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card"
+                  className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card"
                 >
                   <div
                     className="flex items-center justify-center text-muted-foreground/40 border-r border-border cursor-grab active:cursor-grabbing"
@@ -796,6 +811,23 @@ export default function TaskBoardsView() {
                     {t.description && (
                       <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                     )}
+                  </div>
+                  <div
+                    className="flex items-center justify-center border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => setUpdatesTaskId(t.id)}
+                      title="Updates & attachments"
+                      className="relative inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    >
+                      <MessageSquarePlus className="h-4 w-4" />
+                      {updateCounts[t.id] > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 inline-flex h-3.5 min-w-3.5 px-1 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                          {updateCounts[t.id]}
+                        </span>
+                      )}
+                    </button>
                   </div>
                   <div
                     className="hidden md:flex items-center justify-center px-2 border-r border-border"
@@ -946,7 +978,7 @@ export default function TaskBoardsView() {
                       setNewItemTitle("");
                     }
                   }}
-                  className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-t border-border bg-card text-xs text-muted-foreground"
+                  className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-t border-border bg-card text-xs text-muted-foreground"
                 >
                   <div className="border-r border-border h-full" />
                   <div className="px-3 py-1.5" onClick={(e) => isActive && e.stopPropagation()}>
@@ -970,6 +1002,7 @@ export default function TaskBoardsView() {
                       <span className="italic">+ Add item</span>
                     )}
                   </div>
+                  <div className="border-r border-border h-full" />
                   <div className="hidden md:block border-r border-border h-full" />
                   <div className="hidden md:block border-r border-border h-full" />
                   <div className="hidden md:block border-r border-border h-full" />
@@ -980,9 +1013,12 @@ export default function TaskBoardsView() {
 
 
             const columnHeader = (
-              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
+              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="border-r border-border h-8" />
                 <div className="px-3 py-1.5 border-r border-border text-center">Item</div>
+                <div className="px-1 py-1.5 border-r border-border text-center" title="Updates & attachments">
+                  <MessageSquarePlus className="h-3.5 w-3.5 mx-auto opacity-70" />
+                </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">Responsible</div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
                   <Popover>
@@ -1591,6 +1627,32 @@ export default function TaskBoardsView() {
           })()}
         </SheetContent>
       </Sheet>
+
+      <TaskUpdatesDialog
+        taskId={updatesTaskId}
+        taskTitle={tasks.find((t) => t.id === updatesTaskId)?.title}
+        open={!!updatesTaskId}
+        onOpenChange={(v) => {
+          if (!v) {
+            setUpdatesTaskId(null);
+            // refresh counts after dialog closes
+            (async () => {
+              const ids = tasks.map((t) => t.id);
+              if (!ids.length) return;
+              const { data } = await supabase
+                .from("manager_task_updates" as any)
+                .select("task_id")
+                .in("task_id", ids);
+              const counts: Record<string, number> = {};
+              (data ?? []).forEach((r: any) => {
+                counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+              });
+              setUpdateCounts(counts);
+            })();
+          }
+        }}
+        users={assignableUsers}
+      />
     </div>
   );
 }

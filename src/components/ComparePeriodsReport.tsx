@@ -98,7 +98,7 @@ const REMAPPED_ACCOUNTS: SeedAccount[] = SEED.accounts.map((acc) => ({
     : null,
 }));
 
-// Account -†’ warehouse/source + brand mapping
+// Account -  warehouse/source + brand mapping
 function classifyAccount(account: string): { source: string; brand: string; type: "sales" | "discount" | "qc" | "samples" | "other" } {
   const a = account.toLowerCase();
   let type: "sales" | "discount" | "qc" | "samples" | "other" = "other";
@@ -133,7 +133,7 @@ function EditableNote({ value, onSave }: { value: string; onSave: (v: string) =>
     return (
       <div className="group flex items-start gap-1.5 mb-1 min-h-[20px]">
         <div className={cn("flex-1 whitespace-pre-wrap", value ? "text-foreground/80" : "text-muted-foreground/60 italic")}>
-          {value || "Add note--¦"}
+          {value || "Add note..."}
         </div>
         <button
           type="button"
@@ -167,7 +167,7 @@ function EditableNote({ value, onSave }: { value: string; onSave: (v: string) =>
         <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={() => { setDraft(value); setEditing(false); }}>
           <X className="h-3 w-3 mr-1" />Cancel
         </Button>
-        <span className="text-[10px] text-muted-foreground ml-1">-Œ˜-†µ to save</span>
+        <span className="text-[10px] text-muted-foreground ml-1">- -  to save</span>
       </div>
     </div>
   );
@@ -196,7 +196,7 @@ export default function ComparePeriodsReport(_props: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(REMAPPED_ACCOUNTS.map((a) => a.account)));
   const [drillRow, setDrillRow] = useState<{ account: string; row: SeedRow } | null>(null);
 
-  // -------------------- Preset -†’ indices --------------------
+  // -------------------- Preset -  indices --------------------
   function applyPreset(p: Preset) {
     setPreset(p);
     if (p === "L3M_VS_PRIOR") {
@@ -428,7 +428,7 @@ export default function ComparePeriodsReport(_props: Props) {
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Search</Label>
             <div className="relative mt-1">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Collection, account--¦" className="pl-8 h-9 text-sm" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Collection, account..." className="pl-8 h-9 text-sm" />
             </div>
           </div>
 
@@ -627,8 +627,8 @@ export default function ComparePeriodsReport(_props: Props) {
                 ))}
                 <th className="text-right px-3 py-2 border-l border-border bg-muted/40">P1 Total</th>
                 <th className="text-right px-3 py-2 bg-primary/5">P2 Total</th>
-                <th className="text-right px-3 py-2">$ Î-</th>
-                <th className="text-right px-3 py-2">% Î-</th>
+                <th className="text-right px-3 py-2">$ -</th>
+                <th className="text-right px-3 py-2">% -</th>
                 <th className="text-right px-3 py-2">3M Growth</th>
                 <th className="text-left px-3 py-2 min-w-[180px]">Notes / Flags</th>
               </tr>

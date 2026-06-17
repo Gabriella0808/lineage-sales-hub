@@ -337,7 +337,7 @@ export function InvoiceDetailSheet({
         </div>
 
         {isLoading && (
-          <p className="mt-6 text-sm text-muted-foreground">Loading invoice detail--¦</p>
+          <p className="mt-6 text-sm text-muted-foreground">Loading invoice detail...</p>
         )}
 
         {!isLoading && lines.length === 0 && (
@@ -464,7 +464,7 @@ function BreakdownList({ rows, showComp, compLabel }: { rows: { label: string; t
           {showComp && (
             <>
               <th className="py-1 text-right font-normal">{compLabel ?? "Comp"}</th>
-              <th className="py-1 text-right font-normal">Î-</th>
+              <th className="py-1 text-right font-normal">-</th>
             </>
           )}
         </tr>

@@ -65,13 +65,13 @@ export default function SalesRepsAcctivatePage() {
 
       <div className="flex items-center justify-between gap-3">
         <Input
-          placeholder="Search reps, codes, managers, territories--¦"
+          placeholder="Search reps, codes, managers, territories..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="max-w-sm"
         />
         <div className="text-sm text-muted-foreground">
-          {loading ? "Loading--¦" : `${filtered.length} of ${rows.length} reps`}
+          {loading ? "Loading..." : `${filtered.length} of ${rows.length} reps`}
         </div>
       </div>
 

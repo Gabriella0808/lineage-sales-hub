@@ -85,7 +85,7 @@ export default function CustomerQuotesPage() {
       </div>
 
       {loading ? (
-        <Card className="p-12 text-center text-muted-foreground">Loading--¦</Card>
+        <Card className="p-12 text-center text-muted-foreground">Loading...</Card>
       ) : rows.length === 0 ? (
         <Card className="p-12 text-center text-muted-foreground space-y-3">
           <p>No customer quotes yet.</p>

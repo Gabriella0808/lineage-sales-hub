@@ -165,7 +165,7 @@ export default function CatalogPage() {
           </Select>
         </div>
         <div className="mt-3 text-sm text-muted-foreground">
-          {loading ? "Loading--¦" : `${filtered.length.toLocaleString()} products found`}
+          {loading ? "Loading..." : `${filtered.length.toLocaleString()} products found`}
         </div>
       </Card>
 

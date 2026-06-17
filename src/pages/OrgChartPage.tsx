@@ -242,7 +242,7 @@ export default function OrgChartPage() {
 
 
       {loading ? (
-        <Card><CardContent className="p-8 text-sm text-muted-foreground">Loading--¦</CardContent></Card>
+        <Card><CardContent className="p-8 text-sm text-muted-foreground">Loading...</CardContent></Card>
       ) : positions.length === 0 ? (
         <Card><CardContent className="p-8 text-sm text-muted-foreground">
           No positions yet.{isAdmin && " Click 'Add position' to start."}
@@ -442,7 +442,7 @@ export default function OrgChartPage() {
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full justify-between">
                       {editingDotted.length === 0
-                        ? "Select positions--¦"
+                        ? "Select positions..."
                         : `${editingDotted.length} selected`}
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
@@ -675,7 +675,7 @@ function ChartViewport({ children }: { children: React.ReactNode }) {
         <button
           className="px-2 py-0.5 rounded border hover:bg-muted"
           onClick={() => { const z = Math.max(0.4, zoom - 0.1); setZoom(z); if (innerRef.current) innerRef.current.style.transform = `scale(${z})`; }}
-        >-ˆ’</button>
+        >- </button>
         <span className="tabular-nums w-10 text-center">{Math.round(zoom * 100)}%</span>
         <button
           className="px-2 py-0.5 rounded border hover:bg-muted"

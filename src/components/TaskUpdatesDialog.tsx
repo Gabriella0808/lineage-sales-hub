@@ -241,7 +241,7 @@ export function TaskUpdatesDialog({
               </div>
               <Button size="sm" onClick={send} disabled={!body.trim() || sending}>
                 <Send className="h-3.5 w-3.5 mr-1" />
-                {sending ? "Posting--¦" : "Post update"}
+                {sending ? "Posting..." : "Post update"}
               </Button>
             </div>
           </div>

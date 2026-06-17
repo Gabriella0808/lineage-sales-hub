@@ -29,7 +29,7 @@ export default function CrmPipelinePage() {
     if (acct && acct.lifecycle_stage !== stage) {
       update.mutate(
         { id: acct.id, patch: { lifecycle_stage: stage } },
-        { onSuccess: () => toast({ title: "Stage updated", description: `${acct.company_name} -†’ ${LIFECYCLE_STAGES.find((s) => s.id === stage)?.label}` }) }
+        { onSuccess: () => toast({ title: "Stage updated", description: `${acct.company_name} -  ${LIFECYCLE_STAGES.find((s) => s.id === stage)?.label}` }) }
       );
     }
     setDraggingId(null);

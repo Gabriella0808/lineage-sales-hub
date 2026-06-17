@@ -176,7 +176,7 @@ export default function InventoryPage() {
           className="h-9"
         >
           <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} />
-          {refreshing ? "Refreshing--¦" : "Refresh inventory"}
+          {refreshing ? "Refreshing..." : "Refresh inventory"}
         </Button>
       </div>
 

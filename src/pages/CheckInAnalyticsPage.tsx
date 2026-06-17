@@ -317,7 +317,7 @@ export default function CheckInAnalyticsPage() {
       if (iErr) throw iErr;
 
       setLastTestId(inserted.id);
-      setDebugMsg(`Inserted check-in ${inserted.id.slice(0, 8)}--¦ - analytics refreshed.`);
+      setDebugMsg(`Inserted check-in ${inserted.id.slice(0, 8)}... - analytics refreshed.`);
       setRefreshTick((t) => t + 1);
     } catch (e: any) {
       setDebugMsg(`Insert failed: ${e?.message ?? String(e)}`);
@@ -332,7 +332,7 @@ export default function CheckInAnalyticsPage() {
     try {
       const { error } = await supabase.from("dealer_check_ins").delete().eq("id", lastTestId);
       if (error) throw error;
-      setDebugMsg(`Removed test check-in ${lastTestId.slice(0, 8)}--¦ - analytics refreshed.`);
+      setDebugMsg(`Removed test check-in ${lastTestId.slice(0, 8)}... - analytics refreshed.`);
       setLastTestId(null);
       setRefreshTick((t) => t + 1);
     } catch (e: any) {
@@ -469,7 +469,7 @@ export default function CheckInAnalyticsPage() {
           <CardHeader className="pb-3">
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Badge variant="outline" className="uppercase text-[10px]">Debug</Badge>
-              Check-In -†’ Analytics sync test
+              Check-In -  Analytics sync test
             </CardTitle>
             <CardDescription>
               Inserts a real check-in for the signed-in user (today, new placement = yes) and refetches.
@@ -500,7 +500,7 @@ export default function CheckInAnalyticsPage() {
                 disabled={debugBusy}
                 className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
-                {debugBusy ? "Working--¦" : "Log test check-in"}
+                {debugBusy ? "Working..." : "Log test check-in"}
               </button>
               <button
                 onClick={undoLastTest}

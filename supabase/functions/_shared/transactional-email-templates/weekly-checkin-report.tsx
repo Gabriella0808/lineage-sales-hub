@@ -70,7 +70,7 @@ const WeeklyCheckinReportEmail = ({
 
         <Text style={text}>
           View the full breakdown anytime in the portal under
-          Field Check-Ins -†’ Visit Analytics.
+          Field Check-Ins -  Visit Analytics.
         </Text>
 
         {portalUrl && (

@@ -292,7 +292,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const today = new Date();
   const yearStart = startOfYear(today);
   // Default primary window covers the full lifetime of synced sales orders
-  // (2024 -†’ today) so Dealer/Rep reporting shows all-time bookings by default.
+  // (2024 -  today) so Dealer/Rep reporting shows all-time bookings by default.
   // Only the Live KPI view is scoped to the current year.
   const lifetimeStart = new Date(2024, 0, 1);
 
@@ -697,7 +697,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   applyPrimary(from, to);
                 }}
               >
-                <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Select preset--¦" /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Select preset..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="mtd">Month to date</SelectItem>
@@ -969,8 +969,8 @@ function TotalTable({
           <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-muted/30">{leftHeader}</th>
           <th className="text-right p-3 font-medium text-muted-foreground">Primary</th>
           {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Comparative</th>}
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Î-</th>}
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">% Î-</th>}
+          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">-</th>}
+          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">% -</th>}
         </tr>
       </thead>
       <tbody>

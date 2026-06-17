@@ -678,7 +678,7 @@ export default function TaskBoardsView() {
     await updateTaskStatus(id, status);
   };
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading boards--¦</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Loading boards...</p>;
 
   return (
     <div className="space-y-4">
@@ -690,7 +690,7 @@ export default function TaskBoardsView() {
             onValueChange={(v) => setActiveBoardId(v)}
           >
             <SelectTrigger className="h-9 w-[280px] bg-card">
-              <SelectValue placeholder={boards.length ? "Select a board--¦" : "No boards yet"} />
+              <SelectValue placeholder={boards.length ? "Select a board..." : "No boards yet"} />
             </SelectTrigger>
             <SelectContent>
               {boards.map((b) => (
@@ -858,7 +858,7 @@ export default function TaskBoardsView() {
                     onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
                     className="flex items-center justify-center border-r border-border cursor-grab active:cursor-grabbing"
                     onClick={(e) => e.stopPropagation()}
-                    title="Drag to move --¢ check to complete"
+                    title="Drag to move ... check to complete"
                   >
                     <Checkbox
                       checked={t.status === "done"}
@@ -927,7 +927,7 @@ export default function TaskBoardsView() {
                       </PopoverTrigger>
                       <PopoverContent className="w-72 p-0" align="center">
                         <Command>
-                          <CommandInput placeholder="Search people--¦" />
+                          <CommandInput placeholder="Search people..." />
                           <CommandList>
                             <CommandEmpty>No people found.</CommandEmpty>
                             <CommandGroup heading="People">
@@ -1538,7 +1538,7 @@ export default function TaskBoardsView() {
             <div className="flex gap-2">
               <Select value={addUserId} onValueChange={setAddUserId}>
                 <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select a person to add--¦" />
+                  <SelectValue placeholder="Select a person to add..." />
                 </SelectTrigger>
                 <SelectContent>
                   {Array.from(

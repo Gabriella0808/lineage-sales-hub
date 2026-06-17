@@ -58,7 +58,7 @@ const STOCK_CLASS_TONE: Record<string, string> = {
   Contract: "bg-muted text-foreground border border-border",
 };
 
-// Rep -†’ territory mapping (from DB). Falls back to rep name if unknown.
+// Rep -  territory mapping (from DB). Falls back to rep name if unknown.
 const REP_TO_TERRITORY: Record<string, string> = {
   "Skip Camillo": "Skip Camillo / New England",
   "Skip": "Skip Camillo / New England",
@@ -384,7 +384,7 @@ export function BacklogSummary() {
           {liveOrders.length > 0 ? (
             <>Live Acctivate Â· <span className="font-medium text-foreground">{new Set(liveOrders.map((o) => o.order_number).filter(Boolean)).size.toLocaleString()} open orders</span></>
           ) : liveLoading ? (
-            <>Loading open orders--¦</>
+            <>Loading open orders...</>
           ) : (
             <>Snapshot as of{" "}
               <span className="font-medium text-foreground">

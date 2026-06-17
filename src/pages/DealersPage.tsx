@@ -278,12 +278,12 @@ function PaginationBar({ page, totalPages, total, pageSize, onPageChange }: {
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
-  const pages: (number | "--¦")[] = [];
-  const add = (n: number | "--¦") => pages.push(n);
+  const pages: (number | "...")[] = [];
+  const add = (n: number | "...") => pages.push(n);
   const window = 1;
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= page - window && i <= page + window)) add(i);
-    else if (pages[pages.length - 1] !== "--¦") add("--¦");
+    else if (pages[pages.length - 1] !== "...") add("...");
   }
 
   return (
@@ -294,8 +294,8 @@ function PaginationBar({ page, totalPages, total, pageSize, onPageChange }: {
       {totalPages > 1 && (
         <div className="flex items-center gap-1 flex-wrap justify-center">
           <Button variant="outline" size="sm" className="h-8" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Previous</Button>
-          {pages.map((p, i) => p === "--¦" ? (
-            <span key={`e${i}`} className="px-2 text-muted-foreground text-sm">--¦</span>
+          {pages.map((p, i) => p === "..." ? (
+            <span key={`e${i}`} className="px-2 text-muted-foreground text-sm">...</span>
           ) : (
             <Button
               key={p}

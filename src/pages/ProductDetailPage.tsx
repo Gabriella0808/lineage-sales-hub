@@ -62,7 +62,7 @@ export default function ProductDetailPage() {
   }, [sku]);
 
   if (loading) {
-    return <div className="p-12 text-center text-muted-foreground">Loading product--¦</div>;
+    return <div className="p-12 text-center text-muted-foreground">Loading product...</div>;
   }
   if (!product) {
     return (

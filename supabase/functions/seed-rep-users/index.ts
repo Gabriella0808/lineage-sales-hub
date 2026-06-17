@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Link user -†’ rep
+    // Link user -  rep
     const { error: linkErr } = await admin
       .from("user_reps")
       .upsert({ user_id: userId, rep_id: rep.id }, { onConflict: "user_id" });

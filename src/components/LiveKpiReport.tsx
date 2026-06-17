@@ -28,7 +28,7 @@ function loadOverrides(): ProjOverrides {
 }
 
 
-// Static seed data mirroring KPI_2026.01.15_Live.xlsx -†’ Summary tab
+// Static seed data mirroring KPI_2026.01.15_Live.xlsx -  Summary tab
 // Wire to live aggregates once monthly_projections + bookings_by_line tables exist.
 
 const MONTHLY = [
@@ -67,7 +67,7 @@ const REP_BOOK = [
   { name: "WI/IL",            book: 0,         pct: 0 },
 ];
 
-// Maps display rep names (REP_BOOK) -†’ keys in REP_MONTHLY (spreadsheet tabs).
+// Maps display rep names (REP_BOOK) -  keys in REP_MONTHLY (spreadsheet tabs).
 // When a rep has multiple tabs (e.g. Shindell 1 + 2), list them all and they'll be summed.
 const REP_NAME_TO_MONTHLY_KEYS: Record<string, string[]> = {
   "Internet":         ["Internet"],
@@ -89,7 +89,7 @@ const REP_NAME_TO_MONTHLY_KEYS: Record<string, string[]> = {
   "WI/IL":            ["WI/IL"],
 };
 
-// Maps Live KPI display rep names -†’ matching name(s) in the sales_reps table
+// Maps Live KPI display rep names -  matching name(s) in the sales_reps table
 // (used to pull `rep_targets` for the 26 Proj column). Names not listed fall
 // back to an exact match against the display name.
 const REP_NAME_TO_DB_NAMES: Record<string, string[]> = {
@@ -114,7 +114,7 @@ function sumRepMonthly(keys: string[]): RepMonthRow[] | null {
   });
 }
 
-// Maps REP_BOOK display names -†’ list of territory names they cover.
+// Maps REP_BOOK display names -  list of territory names they cover.
 // Used by the Territory filter on the Live KPI report.
 const REP_TO_TERRITORIES: Record<string, string[]> = {
   "Internet":         ["Internet"],
@@ -282,7 +282,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     const currentYear = new Date().getFullYear();
     const prevYear = currentYear - 1;
     (async () => {
-      // Resolve scoped rep names -†’ dealer_ids (only when a scope is active).
+      // Resolve scoped rep names -  dealer_ids (only when a scope is active).
       let scopedDealerIds: string[] | null = null;
       if (scopedDbRepNames && scopedDbRepNames.length > 0) {
         const scopedRepIds = dbReps
@@ -404,7 +404,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
 
   const scaledMonthly = useMemo(() => {
     // Determine which rep names should be summed for the table/chart.
-    // Priority: explicit rep selection -†’ territory filter -†’ manager scope -†’ all.
+    // Priority: explicit rep selection -  territory filter -  manager scope -  all.
     let repNames: string[] | null = null;
     if (hasRepSelection) {
       repNames = repFilter;

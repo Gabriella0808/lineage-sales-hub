@@ -94,7 +94,7 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
         }]),
       );
 
-      // Resolve rep scope -†’ dealer ids.
+      // Resolve rep scope -  dealer ids.
       let dealerIds: string[] | null = null;
       if (repNames && repNames.length > 0) {
         const { data: repRows, error: repErr } = await supabase

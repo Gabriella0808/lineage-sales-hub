@@ -534,7 +534,7 @@ export default function CaptureLeadsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading--¦
+          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading...
         </div>
       ) : markets.length === 0 ? (
         <Card className="p-10 text-center text-muted-foreground">
@@ -691,7 +691,7 @@ export default function CaptureLeadsPage() {
                   multi
                   values={leadForm.prospect_types}
                   onChangeMulti={(vs) => setLeadForm({ ...leadForm, prospect_types: vs })}
-                  placeholder="Select one or more prospect types--¦"
+                  placeholder="Select one or more prospect types..."
                   triggerClassName="bg-transparent border border-input shadow-none"
                 />
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -795,7 +795,7 @@ export default function CaptureLeadsPage() {
                       value={leadForm.followup_description}
                       onChange={(e) => setLeadForm({ ...leadForm, followup_description: e.target.value })}
                       rows={2}
-                      placeholder="Anything specific the rep should do--¦"
+                      placeholder="Anything specific the rep should do..."
                     />
                   </Field>
                 </div>

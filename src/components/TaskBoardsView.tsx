@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarPicker } from "@/components/ui/calendar";
 import {
@@ -51,6 +52,7 @@ import {
   UserPlus,
   X,
   Check,
+  Filter,
 } from "lucide-react";
 import { format } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
@@ -114,6 +116,7 @@ export default function TaskBoardsView() {
   const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
   const [addingGroupId, setAddingGroupId] = useState<string | null>(null);
   const [newItemTitle, setNewItemTitle] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Status[]>([]);
   const [loading, setLoading] = useState(true);
 
   // dialogs
@@ -981,7 +984,56 @@ export default function TaskBoardsView() {
                 <div className="border-r border-border h-8" />
                 <div className="px-3 py-1.5 border-r border-border text-center">Item</div>
                 <div className="px-2 py-1.5 border-r border-border text-center">Responsible</div>
-                <div className="px-2 py-1.5 border-r border-border text-center">Status</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Status
+                        {statusFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {statusFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by status</div>
+                      <div className="space-y-1">
+                        {(Object.keys(STATUS_META) as Status[]).map((s) => {
+                          const meta = STATUS_META[s];
+                          const checked = statusFilter.includes(s);
+                          return (
+                            <label
+                              key={s}
+                              className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  setStatusFilter((prev) =>
+                                    val ? [...prev, s] : prev.filter((x) => x !== s)
+                                  );
+                                }}
+                              />
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.pillBg} ${meta.pillText}`}>
+                                {meta.label}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {statusFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => setStatusFilter([])}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">Due date</div>
                 <div />
               </div>
@@ -998,7 +1050,9 @@ export default function TaskBoardsView() {
                 {/* Default workflow groups — merged into one Monday-style flat table */}
                 {defaultGroups.length > 0 && (() => {
                   const defaultGroupIds = new Set(defaultGroups.map((g) => g.id));
-                  const items = boardTasks.filter((t) => t.group_id && defaultGroupIds.has(t.group_id));
+                  const items = boardTasks
+                    .filter((t) => t.group_id && defaultGroupIds.has(t.group_id))
+                    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status));
                   const firstGroup = defaultGroups[0];
                   const isCollapsed = collapsed[firstGroup.id];
                   const color = firstGroup.color ?? "#6366f1";
@@ -1041,7 +1095,9 @@ export default function TaskBoardsView() {
 
                 {/* Custom groups — each its own section with internal status sub-rows */}
                 {customGroups.map((g) => {
-                  const groupTasks = boardTasks.filter((t) => t.group_id === g.id);
+                  const groupTasks = boardTasks
+                    .filter((t) => t.group_id === g.id)
+                    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status));
                   const isCollapsed = collapsed[g.id];
                   const color = g.color ?? "#6366f1";
                   return (

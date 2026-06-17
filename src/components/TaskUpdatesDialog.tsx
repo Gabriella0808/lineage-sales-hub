@@ -137,30 +137,8 @@ export function TaskUpdatesDialog({
     load();
     onActivityChange?.();
 
-    // Notify mentioned users by email (best-effort, fire-and-forget)
-    if (mentions.length > 0) {
-      const mentioner = users.find((u) => u.user_id === user.id);
-      const mentionerName = displayName(mentioner) || user.email?.split("@")[0] || "Someone";
-      const link = `${window.location.origin}/tasks`;
-      for (const uid of mentions) {
-        const target = users.find((u) => u.user_id === uid);
-        if (!target?.email || target.user_id === user.id) continue;
-        supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "task-mention",
-            recipientEmail: target.email,
-            idempotencyKey: `task-mention-${taskId}-${uid}-${Date.now()}`,
-            templateData: {
-              recipientName: displayName(target),
-              mentionerName,
-              taskTitle: taskTitle ?? "a task",
-              updateBody: bodyText,
-              link,
-            },
-          },
-        }).catch(() => {});
-      }
-    }
+    // Mentioned users receive an email via the manager_task_updates DB trigger
+    // (notify_task_mention_on_insert -> notify-task-mention edge function).
   };
 
   const remove = async (u: UpdateRow) => {

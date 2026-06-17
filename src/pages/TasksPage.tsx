@@ -949,7 +949,55 @@ export default function TasksPage() {
               <div className="hidden md:grid grid-cols-[minmax(0,1fr)_180px_160px_120px_180px_80px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="px-3 py-1.5 border-r border-border text-center">Item</div>
                 <div className="px-3 py-1.5 border-r border-border text-center">Owner</div>
-                <div className="px-3 py-1.5 border-r border-border text-center">Status</div>
+                <div className="px-3 py-1.5 border-r border-border text-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Status
+                        {statusFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {statusFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by status</div>
+                      <div className="space-y-1">
+                        {COLUMNS.map((c) => {
+                          const checked = statusFilter.includes(c.key);
+                          return (
+                            <label
+                              key={c.key}
+                              className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  setStatusFilter((prev) =>
+                                    val ? [...prev, c.key] : prev.filter((x) => x !== c.key)
+                                  );
+                                }}
+                              />
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.pillBg} ${c.pillText}`}>
+                                {c.label}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {statusFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => setStatusFilter([])}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="px-3 py-1.5 border-r border-border text-center">Due date</div>
                 <div className="px-3 py-1.5 border-r border-border text-center">Board</div>
                 <div className="px-3 py-1.5 text-center">Actions</div>

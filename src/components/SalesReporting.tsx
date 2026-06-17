@@ -654,7 +654,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   }, [primary, useAggregates, useInvoiceLines, lines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealerIdSet, dealerIdByAcctivateId, unscopedOpenOrderView, filteredProductIds]);
 
   // Warn when a product-level filter is active but dealer_sales_lines has no rows
-  // overlapping the primary date range --- common right now since line sync is sparse.
+  // overlapping the primary date range - common right now since line sync is sparse.
   const productFilterActive = !useAggregates;
   const lineCoverageMissing = useMemo(() => {
     if (!productFilterActive) return false;
@@ -837,7 +837,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             />
             <MultiSelect
               label="SKU" selected={skus} onChange={setSkus}
-              options={visibleSkus.map((p) => ({ value: p.id, label: p.name ? `${p.sku} --- ${p.name}` : p.sku }))}
+              options={visibleSkus.map((p) => ({ value: p.id, label: p.name ? `${p.sku} - ${p.name}` : p.sku }))}
               searchable
               searchPlaceholder="Search SKU or name..."
             />
@@ -853,7 +853,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <div className="space-y-1">
               <p className="text-sm font-medium">No invoice line items in this date range</p>
               <p className="text-xs text-muted-foreground">
-                Brand, category, collection, and SKU filters use the per-SKU invoice line table. There are no matching rows in the selected window --- try a wider date range or clear the product filters to see aggregate totals.
+                Brand, category, collection, and SKU filters use the per-SKU invoice line table. There are no matching rows in the selected window - try a wider date range or clear the product filters to see aggregate totals.
               </p>
             </div>
           </CardContent>
@@ -880,7 +880,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Bookings</p>
             <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.bookings)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(primary.from, "MMM d, yyyy")} --- {format(primary.to, "MMM d, yyyy")}
+              {format(primary.from, "MMM d, yyyy")} - {format(primary.to, "MMM d, yyyy")}
             </p>
           </CardContent>
         </Card>
@@ -889,7 +889,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Invoices</p>
             <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.invoices)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(primary.from, "MMM d, yyyy")} --- {format(primary.to, "MMM d, yyyy")}
+              {format(primary.from, "MMM d, yyyy")} - {format(primary.to, "MMM d, yyyy")}
             </p>
           </CardContent>
         </Card>

@@ -223,7 +223,7 @@ export default function CaptureLeadsPage() {
     const lastName = rest.join(" ") || null;
 
     if (types.length === 0) {
-      // User cleared all prospect types --- unlink (and remove the auto-created prospect if it's still a prospect).
+      // User cleared all prospect types - unlink (and remove the auto-created prospect if it's still a prospect).
       if (existingCrmAccountId) {
         await supabase.from("trade_show_leads").update({ crm_account_id: null }).eq("id", leadId);
         const { data: acct } = await supabase
@@ -335,7 +335,7 @@ export default function CaptureLeadsPage() {
         });
       }
 
-      // Sync to Mailchimp on edit too --- lets you trigger the automation by re-saving with a dealer email
+      // Sync to Mailchimp on edit too - lets you trigger the automation by re-saving with a dealer email
       const editedDealerEmail = leadForm.email.trim();
       const editIsMailchimpMarket = market?.name && /high point|furniture first|atlanta/i.test(market.name);
       if (editedDealerEmail && editIsMailchimpMarket) {
@@ -678,7 +678,7 @@ export default function CaptureLeadsPage() {
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingLeadId ? "Edit Lead" : "Capture Lead"} --- {markets.find((m) => m.id === leadDialog)?.name}
+              {editingLeadId ? "Edit Lead" : "Capture Lead"} - {markets.find((m) => m.id === leadDialog)?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -733,7 +733,7 @@ export default function CaptureLeadsPage() {
                   <SelectContent>
                     {salesReps.map((rep) => (
                       <SelectItem key={rep.id} value={rep.id}>
-                        {rep.name}{rep.email ? ` --- ${rep.email}` : ""}
+                        {rep.name}{rep.email ? ` - ${rep.email}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

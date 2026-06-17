@@ -50,7 +50,7 @@ export interface InventoryItem {
   isClearance?: boolean;
 }
 
-// Dummy SKUs --- modeled on Acctivate-style codes. Replace with real feed once cleaned.
+// Dummy SKUs - modeled on Acctivate-style codes. Replace with real feed once cleaned.
 export const inventoryItems: InventoryItem[] = [
   { sku: "LUX-DIN-2204", product: "Marbella Dining Table", collection: "Lux 26", supplier: "Vietnam Atelier", onHand: 0, available: 0, avgMonthlySales: 6, monthsSupply: 0, status: "out-of-stock" },
   { sku: "SW-SOFA-118", product: "Coastline 3-Seat Sofa", collection: "SW 26", supplier: "Pacific Mill", onHand: 2, available: 1, avgMonthlySales: 8, monthsSupply: 0.25, status: "critical" },

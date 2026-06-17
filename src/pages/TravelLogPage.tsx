@@ -149,7 +149,7 @@ export default function TravelLogPage() {
     // Combine state + purpose for the purpose field (since travel_log lacks a state column)
     const purposeText = [form.state_visited.trim(), form.purpose.trim()]
       .filter(Boolean)
-      .join(" --- ");
+      .join(" - ");
     const { data, error } = await supabase
       .from("travel_log")
       .insert({
@@ -217,7 +217,7 @@ export default function TravelLogPage() {
     return tripsByDay.get(key) ?? [];
   }, [selectedDate, tripsByDay]);
 
-  // Last traveled per salesperson (most recent past trip --- start date before today)
+  // Last traveled per salesperson (most recent past trip - start date before today)
   const lastTraveled = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);

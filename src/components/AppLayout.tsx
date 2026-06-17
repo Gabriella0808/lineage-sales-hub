@@ -35,7 +35,7 @@ type NavSection = {
 };
 
 /**
- * Lineage Collections --- internal operating system navigation.
+ * Lineage Collections - internal operating system navigation.
  * Items are grouped into operational sections so the shell reads
  * like a purpose-built tool, not a generic admin template.
  */

@@ -112,7 +112,7 @@ export function ProspectTypeSelect(props: Props) {
               }}
               onSelect={(e) => e.preventDefault()}
             >
-              --- (No type)
+              - (No type)
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             {types.map((t) => (

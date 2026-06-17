@@ -145,7 +145,7 @@ interface Dealer {
   lng: number | null;
 }
 
-const PROSPECT_COLOR = "#36454F"; // charcoal --- prospects (not yet a customer in Acctivate)
+const PROSPECT_COLOR = "#36454F"; // charcoal - prospects (not yet a customer in Acctivate)
 
 function isProspectDealer(d: { source?: string | null }): boolean {
   // True only for CRM accounts marked as account_type='prospect' (injected
@@ -609,7 +609,7 @@ export default function CheckInsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Client-side geocoding disabled --- too slow at this volume and many
+  // Client-side geocoding disabled - too slow at this volume and many
   // street_address values contain business names rather than real streets.
   // Geocoding should be done server-side during the Acctivate sync.
   // (Keeping the state var so existing UI references still work.)
@@ -652,7 +652,7 @@ export default function CheckInsPage() {
         // Tag each feature with its territory
         for (const f of geo.features ?? []) {
           // Feature 'id' is the FIPS code; we need the 2-letter state code.
-          // The GeoJSON uses `properties.name` (full state name) --- convert.
+          // The GeoJSON uses `properties.name` (full state name) - convert.
           const code = STATE_NAME_TO_CODE[f.properties?.name] ?? null;
           const territory = code ? STATE_TO_TERRITORY[code] ?? null : null;
           f.properties.territory = territory;
@@ -982,7 +982,7 @@ export default function CheckInsPage() {
           user_id: user.id,
           type: "follow_up_scheduled",
           title: "Follow-up scheduled",
-          body: `${taskTitle} --- due ${format(parseDateOnly(form.follow_up_date), "MMM d, yyyy")}`,
+          body: `${taskTitle} - due ${format(parseDateOnly(form.follow_up_date), "MMM d, yyyy")}`,
           link: "/tasks",
           related_id: taskRow?.id ?? null,
         });
@@ -1360,7 +1360,7 @@ export default function CheckInsPage() {
         </Button>
       </div>
 
-      {/* My Team --- filter dealers on the map by team member */}
+      {/* My Team - filter dealers on the map by team member */}
       <Card className="p-3">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

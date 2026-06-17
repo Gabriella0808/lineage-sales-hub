@@ -321,10 +321,10 @@ export function InvoiceDetailSheet({
         <SheetHeader>
           <SheetTitle className="text-xl">{rowLabel}</SheetTitle>
           <SheetDescription>
-            Invoice detail · {format(from, "MMM d, yyyy")} --- {format(to, "MMM d, yyyy")}
+            Invoice detail · {format(from, "MMM d, yyyy")} - {format(to, "MMM d, yyyy")}
             {hasCompare && (
               <span className="block text-[11px] mt-0.5">
-                vs {format(compareFrom!, "MMM d, yyyy")} --- {format(compareTo!, "MMM d, yyyy")}
+                vs {format(compareFrom!, "MMM d, yyyy")} - {format(compareTo!, "MMM d, yyyy")}
               </span>
             )}
           </SheetDescription>

@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
       : endOfWeek(anchor, { weekStartsOn: 1 });
     const startStr = format(weekStart, "yyyy-MM-dd");
     const endStr = format(weekEnd, "yyyy-MM-dd");
-    const weekLabel = `${format(weekStart, "MMM d")} --- ${format(weekEnd, "MMM d, yyyy")}`;
+    const weekLabel = `${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d, yyyy")}`;
 
     // 1. Pull this week's clearance sales rows
     const salesRows = await fetchAll<{
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Recipient list --- TESTING: only testEmail or Gabriella.
+    // 4. Recipient list - TESTING: only testEmail or Gabriella.
     const recipients = testEmail
       ? [{ name: testEmail.split("@")[0], email: testEmail }]
       : [{ name: "Gabriella", email: "gabriella@lineage-collections.com" }];

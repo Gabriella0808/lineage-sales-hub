@@ -1157,7 +1157,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       .slice(0, 30),
     [items]);
 
-  // Inventory aging (received_date based --- only available items shown)
+  // Inventory aging (received_date based - only available items shown)
   const aging = useMemo(() => {
     const today = Date.now();
     const buckets = { d030: 0, d3160: 0, d6190: 0, d90plus: 0, unknown: 0 };
@@ -1852,7 +1852,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
       {/* ============ SECTION 1: SUMMARY ============ */}
       <TabsContent value="summary" className="space-y-6 mt-4">
-        {/* Clickable status tiles --- filter the SKU table below */}
+        {/* Clickable status tiles - filter the SKU table below */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {([
             { key: "all" as StatusFilter, label: "Total SKUs", value: statusCounts.total, icon: Package, accent: undefined as string | undefined, hint: undefined as string | undefined },
@@ -2020,7 +2020,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 <h3 className="text-base font-semibold">Arrival Calendar</h3>
               </div>
               {hub.purchaseOrders.length === 0 && (
-                <div className="text-xs text-muted-foreground mb-3">Showing sample data --- Acctivate sync hasn't run yet.</div>
+                <div className="text-xs text-muted-foreground mb-3">Showing sample data - Acctivate sync hasn't run yet.</div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 {([
@@ -2326,7 +2326,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                         </>
                       );
                     })() : (() => {
-                      // Item mode --- YTD POs by SKU, joined with item metadata
+                      // Item mode - YTD POs by SKU, joined with item metadata
                       const itemMeta = new Map(items.map((it) => [it.sku, it]));
                       const itemRows = itemPoYtd.rows
                         .filter((r) => itemPassesFilter(r.sku))
@@ -2511,7 +2511,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-3">
             <Factory className="h-4 w-4 text-primary" />
-            <h3 className="text-base font-semibold">Reorder by Factory --- Suggested vs MOQ</h3>
+            <h3 className="text-base font-semibold">Reorder by Factory - Suggested vs MOQ</h3>
           </div>
           {reorderByFactory.length === 0 ? <EmptyState message="Nothing to reorder right now." /> : (
             <div className="overflow-x-auto mb-4">
@@ -2580,7 +2580,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-            <h3 className="text-base font-semibold">InvCut --- Reorder Worksheet</h3>
+            <h3 className="text-base font-semibold">InvCut - Reorder Worksheet</h3>
           </div>
           {reorderRows.length === 0 ? <EmptyState message="No items." /> : (
             <div className="overflow-x-auto">
@@ -2678,7 +2678,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                       out.push(
                         <tr key={`sub-${vendor}`} className="bg-muted/30 font-semibold">
                           <td colSpan={14} className="px-2 py-1.5 text-right border border-border">
-                            {vendor} --- Total Cubes / Containers (40&apos; HC = 2,350 cu ft):
+                            {vendor} - Total Cubes / Containers (40&apos; HC = 2,350 cu ft):
                           </td>
                           <td className="px-2 py-1.5 text-right tabular-nums border border-border" colSpan={2}>
                             {groupCubes.toFixed(2)} cu ft · {containers.toFixed(2)} cont.

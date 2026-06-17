@@ -160,7 +160,7 @@ export function TaskAttachments({ taskId, onChange }: { taskId: string; onChange
   );
 }
 
-/** Pending attachment picker --- used in Create dialog before task exists. */
+/** Pending attachment picker - used in Create dialog before task exists. */
 export function PendingAttachmentPicker({
   files,
   onChange,

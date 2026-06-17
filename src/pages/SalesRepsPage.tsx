@@ -186,7 +186,7 @@ export default function SalesRepsPage() {
     }).eq("id", editingId);
     if (error) { toast.error(error.message); return; }
 
-    // Sync rep_territories --- replace with the selected set
+    // Sync rep_territories - replace with the selected set
     const currentIds = repTerritoryIds(editingId);
     const desiredIds = editForm.territory_ids;
     const toRemove = currentIds.filter(id => !desiredIds.includes(id));

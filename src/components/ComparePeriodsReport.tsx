@@ -81,7 +81,7 @@ function buildRollingWindow(windowSize = 6) {
 
 const ROLLING = buildRollingWindow(6);
 
-// Remap seed account rows into the rolling window --- values for months
+// Remap seed account rows into the rolling window - values for months
 // outside the seed coverage default to 0 so the column appears empty
 // until live data arrives for that month.
 const REMAPPED_ACCOUNTS: SeedAccount[] = SEED.accounts.map((acc) => ({

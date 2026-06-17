@@ -224,7 +224,7 @@ export default function OrgChartPage() {
   };
 
   const formatPos = (p: Position) =>
-    `${p.title}${p.holder_name ? ` --- ${p.holder_name}` : ""}`;
+    `${p.title}${p.holder_name ? ` - ${p.holder_name}` : ""}`;
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -414,7 +414,7 @@ export default function OrgChartPage() {
                 </div>
               </div>
               <div>
-                <Label>Reports to (solid line --- primary manager)</Label>
+                <Label>Reports to (solid line - primary manager)</Label>
                 <Select
                   value={editing.parent_id ?? "__none__"}
                   onValueChange={(v) => setEditing({ ...editing, parent_id: v === "__none__" ? null : v })}
@@ -605,7 +605,7 @@ function ChartViewport({ children }: { children: React.ReactNode }) {
   };
 
   useLayoutEffect(() => {
-    // Start at 100% --- user can pinch / use buttons to zoom
+    // Start at 100% - user can pinch / use buttons to zoom
     if (innerRef.current) innerRef.current.style.transform = "scale(1)";
   }, []);
 
@@ -718,7 +718,7 @@ function OrgChartCanvas({
   // Walk offsetParent chain up to (but not including) the container to get
   // unscaled coordinates. getBoundingClientRect would include the CSS zoom
   // transform on an ancestor, which would then be applied again to the SVG
-  // (since the SVG is inside the same scaled container) --- causing the lines
+  // (since the SVG is inside the same scaled container) - causing the lines
   // to drift away from the boxes whenever zoom !== 100%.
   const offsetWithin = (el: HTMLElement, container: HTMLElement) => {
     let x = 0;

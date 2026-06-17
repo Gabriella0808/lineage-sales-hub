@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ClipboardList } from "lucide-react";
 
 interface NoteToTaskProps {
-  /** "rep" or "dealer" --- controls reference text and title */
+  /** "rep" or "dealer" - controls reference text and title */
   refType: "rep" | "dealer";
   /** Display name of the rep/dealer (used in task title + description). */
   refName: string;

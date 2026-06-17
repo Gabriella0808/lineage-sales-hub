@@ -289,7 +289,7 @@ export default function CheckInAnalyticsPage() {
 
   async function logTestCheckIn() {
     if (!currentUserId) {
-      setDebugMsg("Not signed in --- can't insert test check-in.");
+      setDebugMsg("Not signed in - can't insert test check-in.");
       return;
     }
     setDebugBusy(true);
@@ -317,7 +317,7 @@ export default function CheckInAnalyticsPage() {
       if (iErr) throw iErr;
 
       setLastTestId(inserted.id);
-      setDebugMsg(`Inserted check-in ${inserted.id.slice(0, 8)}--¦ --- analytics refreshed.`);
+      setDebugMsg(`Inserted check-in ${inserted.id.slice(0, 8)}--¦ - analytics refreshed.`);
       setRefreshTick((t) => t + 1);
     } catch (e: any) {
       setDebugMsg(`Insert failed: ${e?.message ?? String(e)}`);
@@ -332,7 +332,7 @@ export default function CheckInAnalyticsPage() {
     try {
       const { error } = await supabase.from("dealer_check_ins").delete().eq("id", lastTestId);
       if (error) throw error;
-      setDebugMsg(`Removed test check-in ${lastTestId.slice(0, 8)}--¦ --- analytics refreshed.`);
+      setDebugMsg(`Removed test check-in ${lastTestId.slice(0, 8)}--¦ - analytics refreshed.`);
       setLastTestId(null);
       setRefreshTick((t) => t + 1);
     } catch (e: any) {

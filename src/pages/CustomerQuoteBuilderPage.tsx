@@ -324,7 +324,7 @@ export default function CustomerQuoteBuilderPage() {
         <h2 className="font-medium">Message</h2>
         <div>
           <Label>Intro</Label>
-          <Textarea rows={2} value={intro} onChange={(e) => setIntro(e.target.value)} disabled={readonly} placeholder="Thanks for stopping by --- here is the quote we discussed." />
+          <Textarea rows={2} value={intro} onChange={(e) => setIntro(e.target.value)} disabled={readonly} placeholder="Thanks for stopping by - here is the quote we discussed." />
         </div>
         <div>
           <Label>Footer / terms</Label>

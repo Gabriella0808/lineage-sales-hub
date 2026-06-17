@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     });
 
     if (createErr) {
-      // Likely already exists --- look it up
+      // Likely already exists - look it up
       const { data: list, error: listErr } = await admin.auth.admin.listUsers({
         page: 1,
         perPage: 1000,
@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    // Assign rep role (idempotent --- unique constraint on (user_id, role) prevents dupes if exists)
+    // Assign rep role (idempotent - unique constraint on (user_id, role) prevents dupes if exists)
     const { error: roleErr } = await admin
       .from("user_roles")
       .insert({ user_id: userId, role: "rep" });

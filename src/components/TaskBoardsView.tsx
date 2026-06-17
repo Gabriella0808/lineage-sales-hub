@@ -278,7 +278,7 @@ export default function TaskBoardsView() {
     [tasks, activeBoardId],
   );
 
-  // --- Board CRUD ---
+  // - Board CRUD ---
   const openNewBoard = async () => {
     setEditingBoard(null);
     setBoardForm({ name: "", description: "", color: GROUP_COLORS[0] });
@@ -338,7 +338,7 @@ export default function TaskBoardsView() {
     load();
   };
 
-  // --- Members / Subscribers ---
+  // - Members / Subscribers ---
   const openSubscribeDialog = async () => {
     if (!activeBoardId) return;
     setAddUserId("");
@@ -403,7 +403,7 @@ export default function TaskBoardsView() {
     setMembers((m) => m.filter((x) => x.user_id !== uid));
   };
 
-  // --- Group CRUD ---
+  // - Group CRUD ---
   const openNewGroup = () => {
     setEditingGroup(null);
     setGroupForm({ name: "", color: GROUP_COLORS[boardGroups.length % GROUP_COLORS.length] });
@@ -455,7 +455,7 @@ export default function TaskBoardsView() {
     setInlineEditName("");
   };
 
-  // --- Task CRUD ---
+  // - Task CRUD ---
   const openNewTask = (groupId: string | null, status: Status = "todo") => {
     setEditingTask(null);
     setTaskForm({ title: "", description: "", status, due_date: "", group_id: groupId, assignee_ids: [] });
@@ -1169,7 +1169,7 @@ export default function TaskBoardsView() {
                   </div>
                 )}
 
-                {/* Default workflow groups --- merged into one Monday-style flat table */}
+                {/* Default workflow groups - merged into one Monday-style flat table */}
                 {defaultGroups.length > 0 && (() => {
                   const defaultGroupIds = new Set(defaultGroups.map((g) => g.id));
                   const items = boardTasks
@@ -1243,7 +1243,7 @@ export default function TaskBoardsView() {
                   );
                 })()}
 
-                {/* Custom groups --- each its own section with internal status sub-rows */}
+                {/* Custom groups - each its own section with internal status sub-rows */}
                 {customGroups.map((g) => {
                   const groupTasks = boardTasks
                     .filter((t) => t.group_id === g.id)

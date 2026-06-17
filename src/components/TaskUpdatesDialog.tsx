@@ -245,7 +245,7 @@ export function TaskUpdatesDialog({
           {/* Attachments */}
           {taskId && (
             <div className="rounded-lg border bg-card p-3">
-              <TaskAttachments taskId={taskId} />
+              <TaskAttachments taskId={taskId} onChange={onActivityChange} />
             </div>
           )}
 

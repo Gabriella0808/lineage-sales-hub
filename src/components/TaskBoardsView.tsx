@@ -187,8 +187,19 @@ export default function TaskBoardsView() {
           (map[r.task_id] ||= []).push(r.user_id);
         });
         setTaskAssignees(map);
+
+        const { data: uData } = await supabase
+          .from("manager_task_updates" as any)
+          .select("task_id")
+          .in("task_id", ids);
+        const counts: Record<string, number> = {};
+        (uData ?? []).forEach((r: any) => {
+          counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+        });
+        setUpdateCounts(counts);
       } else {
         setTaskAssignees({});
+        setUpdateCounts({});
       }
     }
     if (!uRes.error) setAssignableUsers((uRes.data ?? []) as any);

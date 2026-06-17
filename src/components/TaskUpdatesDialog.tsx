@@ -182,7 +182,7 @@ export function TaskUpdatesDialog({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-base">
-            Updates {taskTitle && <span className="text-muted-foreground font-normal">--- {taskTitle}</span>}
+            Updates {taskTitle && <span className="text-muted-foreground font-normal">- {taskTitle}</span>}
           </DialogTitle>
         </DialogHeader>
 

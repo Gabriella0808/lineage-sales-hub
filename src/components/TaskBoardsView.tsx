@@ -993,7 +993,7 @@ export default function TaskBoardsView() {
                               {format(parseDateOnly(t.due_date)!, "MMM d")}
                             </>
                           ) : (
-                            <span className="italic">---</span>
+                            <span className="italic">-</span>
                           )}
                         </button>
                       </PopoverTrigger>
@@ -1689,7 +1689,7 @@ export default function TaskBoardsView() {
                             {format(parseDateOnly(live.due_date)!, "EEE, MMM d, yyyy")}
                           </>
                         ) : (
-                          <span className="italic text-muted-foreground">---</span>
+                          <span className="italic text-muted-foreground">-</span>
                         )}
                       </p>
                     </div>

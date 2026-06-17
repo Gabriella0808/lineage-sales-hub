@@ -40,7 +40,7 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm space-y-1">
-          <p>Role: <Badge variant="secondary" className="capitalize">{roleInfo?.role ?? "---"}</Badge></p>
+          <p>Role: <Badge variant="secondary" className="capitalize">{roleInfo?.role ?? "-"}</Badge></p>
           {roleInfo?.managerId && <p className="text-xs text-muted-foreground">Linked manager record: {roleInfo.managerId}</p>}
           {roleInfo?.repId && <p className="text-xs text-muted-foreground">Linked rep record: {roleInfo.repId}</p>}
         </CardContent>

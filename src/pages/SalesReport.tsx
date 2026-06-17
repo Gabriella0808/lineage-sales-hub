@@ -157,8 +157,8 @@ export default function SalesReport({ metric }: SalesReportProps) {
         dealer: d.name,
         rep: rep?.name ?? "Unassigned",
         repCode: rep?.acctivate_id ?? "",
-        manager: mgr?.name ?? "---",
-        territory: territory?.name ?? "---",
+        manager: mgr?.name ?? "-",
+        territory: territory?.name ?? "-",
         state: d.state ?? "",
         value: map.get(d.id) ?? 0,
       };
@@ -446,7 +446,7 @@ export default function SalesReport({ metric }: SalesReportProps) {
         </CardContent></Card>
         <Card><CardContent className="pt-5 pb-4">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Top Dealer</p>
-          <p className="text-sm font-semibold truncate">{topDealer?.dealer ?? "---"}</p>
+          <p className="text-sm font-semibold truncate">{topDealer?.dealer ?? "-"}</p>
           <p className="text-xs text-muted-foreground">{formatCurrency(topDealer?.value ?? 0)}</p>
         </CardContent></Card>
       </div>

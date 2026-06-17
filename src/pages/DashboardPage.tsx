@@ -154,7 +154,7 @@ export default function DashboardPage() {
       return {
         id: r.id,
         name: r.name,
-        territory: territoryNames.join(", ") || "---",
+        territory: territoryNames.join(", ") || "-",
         revenue: repRevenueMap[r.id] ?? 0,
       };
     })

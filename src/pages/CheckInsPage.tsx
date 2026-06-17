@@ -1582,7 +1582,7 @@ export default function CheckInsPage() {
                             {selected.phone}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">---</span>
+                          <span className="text-muted-foreground italic">-</span>
                         )}
                       </dd>
                     </div>
@@ -1594,7 +1594,7 @@ export default function CheckInsPage() {
                             {selected.email}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">---</span>
+                          <span className="text-muted-foreground italic">-</span>
                         )}
                       </dd>
                     </div>
@@ -1611,7 +1611,7 @@ export default function CheckInsPage() {
                             {selected.website}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">---</span>
+                          <span className="text-muted-foreground italic">-</span>
                         )}
                       </dd>
                     </div>
@@ -1633,7 +1633,7 @@ export default function CheckInsPage() {
                       <dd className="mt-0.5">
                         {(() => {
                           const rep = salesReps.find((r) => r.id === selected.rep_id);
-                          return rep ? rep.name : <span className="text-muted-foreground italic">---</span>;
+                          return rep ? rep.name : <span className="text-muted-foreground italic">-</span>;
                         })()}
                       </dd>
                     </div>
@@ -1648,7 +1648,7 @@ export default function CheckInsPage() {
                             furniture_first: "Furniture First",
                             nationwide: "Nationwide",
                           };
-                          return bg ? (map[bg] ?? bg) : <span className="text-muted-foreground italic">---</span>;
+                          return bg ? (map[bg] ?? bg) : <span className="text-muted-foreground italic">-</span>;
                         })()}
                       </dd>
                     </div>
@@ -1660,7 +1660,7 @@ export default function CheckInsPage() {
                             .filter(Boolean)
                             .join(", ");
                           if (!addr && selected.lat == null) {
-                            return <span className="text-muted-foreground italic">---</span>;
+                            return <span className="text-muted-foreground italic">-</span>;
                           }
                           const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
                             selected.lat != null && selected.lng != null
@@ -1671,7 +1671,7 @@ export default function CheckInsPage() {
 
                           return (
                             <div className="flex items-start justify-between gap-2">
-                              <span className="flex-1">{addr || "---"}</span>
+                              <span className="flex-1">{addr || "-"}</span>
                               <a
                                 href={mapsUrl}
                                 target={linkTarget}
@@ -1712,7 +1712,7 @@ export default function CheckInsPage() {
                     <div className="px-3 py-2">
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Notes</dt>
                       <dd className="mt-0.5 whitespace-pre-wrap text-sm">
-                        {selected.notes || <span className="text-muted-foreground italic">---</span>}
+                        {selected.notes || <span className="text-muted-foreground italic">-</span>}
                       </dd>
                     </div>
                   </dl>
@@ -1944,7 +1944,7 @@ export default function CheckInsPage() {
                       {LOG_TYPES.find((l) => l.value === (detailCheckIn.log_type ?? detailCheckIn.outcome))?.label
                         ?? detailCheckIn.log_type
                         ?? detailCheckIn.outcome
-                        ?? "---"}
+                        ?? "-"}
                     </p>
                   </div>
                   <div>
@@ -1954,7 +1954,7 @@ export default function CheckInsPage() {
                     <p className="mt-1 font-medium">
                       {PLACEMENT_OPTIONS.find((p) => p.value === detailCheckIn.new_placement)?.label
                         ?? detailCheckIn.new_placement
-                        ?? "---"}
+                        ?? "-"}
                     </p>
                   </div>
                 </div>
@@ -1974,7 +1974,7 @@ export default function CheckInsPage() {
                             </Badge>
                           );
                         })
-                      : <span className="text-muted-foreground">---</span>}
+                      : <span className="text-muted-foreground">-</span>}
                   </div>
                 </div>
 

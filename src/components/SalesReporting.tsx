@@ -464,9 +464,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     const rowLabel = (key: Key): string => {
       if (key === "__unassigned") return "Unassigned";
       if (key.startsWith("acctivate:")) return `Dealer ID ${key.replace("acctivate:", "")}`;
-      if (groupBy === "dealer") return dealers.find((d) => d.id === key)?.name ?? "---";
-      if (groupBy === "rep") return reps.find((r) => r.id === key)?.name ?? "---";
-      return territories.find((t) => t.id === key)?.name ?? "---";
+      if (groupBy === "dealer") return dealers.find((d) => d.id === key)?.name ?? "-";
+      if (groupBy === "rep") return reps.find((r) => r.id === key)?.name ?? "-";
+      return territories.find((t) => t.id === key)?.name ?? "-";
     };
 
     const rows = new Map<Key, { primary: number; comparative: number; byMonth: Map<string, number> }>();
@@ -997,7 +997,7 @@ function TotalTable({
               )}
               {showComparison && (
                 <td className={cn("p-3 text-right tabular-nums", pct >= 0 ? "text-green-600" : "text-destructive")}>
-                  {r.comparative === 0 ? "---" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
+                  {r.comparative === 0 ? "-" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
                 </td>
               )}
             </tr>
@@ -1014,7 +1014,7 @@ function TotalTable({
             {showComparison && <td className="p-3 text-right tabular-nums">{formatCurrency(totalP - totalC)}</td>}
             {showComparison && (
               <td className="p-3 text-right tabular-nums">
-                {totalC === 0 ? "---" : `${((totalP - totalC) / totalC * 100).toFixed(1)}%`}
+                {totalC === 0 ? "-" : `${((totalP - totalC) / totalC * 100).toFixed(1)}%`}
               </td>
             )}
           </tr>

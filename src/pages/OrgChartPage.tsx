@@ -303,12 +303,12 @@ export default function OrgChartPage() {
 
                 <Section title="Job description">
                   <p className="text-sm whitespace-pre-wrap text-muted-foreground">
-                    {selected.job_description || "---"}
+                    {selected.job_description || "-"}
                   </p>
                 </Section>
                 <Section title="Main objectives">
                   <p className="text-sm whitespace-pre-wrap text-muted-foreground">
-                    {selected.main_objectives || "---"}
+                    {selected.main_objectives || "-"}
                   </p>
                 </Section>
 

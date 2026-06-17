@@ -1287,7 +1287,7 @@ export default function TasksPage() {
                                         {format(parseDateOnly(t.due_date)!, "MMM d")}
                                       </>
                                     ) : (
-                                      <span className="italic">---</span>
+                                      <span className="italic">-</span>
                                     )}
                                   </button>
                                 </PopoverTrigger>
@@ -1448,7 +1448,7 @@ export default function TasksPage() {
                         <Calendar className="h-3 w-3" /> Due date
                       </p>
                       <p className="text-sm">
-                        {t.due_date ? format(parseDateOnly(t.due_date)!, "MMM d, yyyy") : <span className="italic text-muted-foreground">---</span>}
+                        {t.due_date ? format(parseDateOnly(t.due_date)!, "MMM d, yyyy") : <span className="italic text-muted-foreground">-</span>}
                       </p>
                     </div>
                     <div>
@@ -1456,7 +1456,7 @@ export default function TasksPage() {
                         <Clock className="h-3 w-3" /> Completed
                       </p>
                       <p className="text-sm">
-                        {t.completed_at ? format(new Date(t.completed_at), "MMM d, yyyy") : <span className="italic text-muted-foreground">---</span>}
+                        {t.completed_at ? format(new Date(t.completed_at), "MMM d, yyyy") : <span className="italic text-muted-foreground">-</span>}
                       </p>
                     </div>
                   </div>

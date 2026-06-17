@@ -92,13 +92,13 @@ export default function SalesRepsAcctivatePage() {
           <TableBody>
             {filtered.map((r) => (
               <TableRow key={r.id}>
-                <TableCell className="font-mono text-xs">{r.rep_code ?? r.acctivate_id ?? "---"}</TableCell>
-                <TableCell className="font-medium">{r.name ?? "---"}</TableCell>
-                <TableCell>{r.email ?? "---"}</TableCell>
-                <TableCell>{r.phone ?? "---"}</TableCell>
-                <TableCell>{r.manager_name ?? "---"}</TableCell>
-                <TableCell>{r.territory_name ?? "---"}</TableCell>
-                <TableCell className="font-mono text-xs">{r.territory_acctivate_id ?? "---"}</TableCell>
+                <TableCell className="font-mono text-xs">{r.rep_code ?? r.acctivate_id ?? "-"}</TableCell>
+                <TableCell className="font-medium">{r.name ?? "-"}</TableCell>
+                <TableCell>{r.email ?? "-"}</TableCell>
+                <TableCell>{r.phone ?? "-"}</TableCell>
+                <TableCell>{r.manager_name ?? "-"}</TableCell>
+                <TableCell>{r.territory_name ?? "-"}</TableCell>
+                <TableCell className="font-mono text-xs">{r.territory_acctivate_id ?? "-"}</TableCell>
                 <TableCell>
                   <Badge variant={r.active ? "default" : "secondary"}>
                     {r.active ? "Active" : "Inactive"}

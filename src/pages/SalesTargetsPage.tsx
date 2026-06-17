@@ -262,7 +262,7 @@ export default function SalesTargetsPage() {
                               />
                             ) : (
                               <div className="h-8 flex items-center justify-end text-xs tabular-nums text-muted-foreground px-1.5">
-                                {val ? formatCurrency(val) : "---"}
+                                {val ? formatCurrency(val) : "-"}
                               </div>
                             )}
                           </td>
@@ -271,7 +271,7 @@ export default function SalesTargetsPage() {
                       <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatCurrency(annual)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatCurrency(actual)}</td>
                       <td className={`px-3 py-2 text-right font-semibold tabular-nums ${pct >= 100 ? "text-success" : pct >= 75 ? "text-accent" : pct >= 50 ? "text-amber-600" : "text-destructive"}`}>
-                        {annual > 0 ? `${pct}%` : "---"}
+                        {annual > 0 ? `${pct}%` : "-"}
                       </td>
                       {canEdit && (
                         <td className="px-3 py-2 text-right">

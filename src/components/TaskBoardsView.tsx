@@ -56,6 +56,7 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
+import { SopTemplatesManager, type SopTemplate } from "@/components/SopTemplatesManager";
 import { format } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 

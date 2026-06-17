@@ -1087,9 +1087,31 @@ export default function TasksPage() {
                                 />
                               )}
                               <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium leading-snug break-words">
-                                {t.title}
-                              </p>
+                              {inlineEditingTaskId === t.id ? (
+                                <input
+                                  autoFocus
+                                  value={inlineEditTaskTitle}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => setInlineEditTaskTitle(e.target.value)}
+                                  onBlur={() => saveInlineTaskTitle(t.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") { e.preventDefault(); saveInlineTaskTitle(t.id); }
+                                    else if (e.key === "Escape") { e.preventDefault(); setInlineEditingTaskId(null); }
+                                  }}
+                                  className="text-sm font-medium leading-snug w-full bg-background border border-input rounded px-1.5 py-0.5 outline-none focus:ring-2 focus:ring-ring"
+                                />
+                              ) : (
+                                <p
+                                  className="text-sm font-medium leading-snug break-words cursor-text hover:bg-muted/40 rounded px-1 -mx-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setInlineEditingTaskId(t.id);
+                                    setInlineEditTaskTitle(t.title);
+                                  }}
+                                >
+                                  {t.title}
+                                </p>
+                              )}
                               {t.description && (
                                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                                   {t.description}

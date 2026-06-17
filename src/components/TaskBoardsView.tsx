@@ -880,12 +880,25 @@ export default function TaskBoardsView() {
                   onClick={() => openEditTask(t)}
                   className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card"
                 >
-                  <div
-                    className="flex items-center justify-center text-muted-foreground/40 border-r border-border cursor-grab active:cursor-grabbing"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <GripVertical className="h-3.5 w-3.5" />
-                  </div>
+                  {t.is_sop ? (
+                    <div
+                      className="flex items-center justify-center border-r border-border"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={t.status === "done"}
+                        onCheckedChange={(v) => updateTaskStatus(t.id, v ? "done" : "todo")}
+                        className="h-4 w-4"
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center justify-center text-muted-foreground/40 border-r border-border cursor-grab active:cursor-grabbing"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical className="h-3.5 w-3.5" />
+                    </div>
+                  )}
                   <div className="px-3 py-2 min-w-0 text-left border-r border-border" onClick={(e) => e.stopPropagation()}>
                     {inlineEditingTaskId === t.id ? (
                       <input

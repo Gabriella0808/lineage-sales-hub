@@ -1125,9 +1125,36 @@ export default function TaskBoardsView() {
                         ) : (
                           <ChevronDown className="h-4 w-4" style={{ color }} />
                         )}
-                        <h3 className="text-base font-bold" style={{ color }}>
-                          Tasks
-                        </h3>
+                        {inlineEditingGroupId === firstGroup.id ? (
+                          <input
+                            autoFocus
+                            value={inlineEditName}
+                            onChange={(e) => setInlineEditName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveInlineGroupName(firstGroup.id, inlineEditName);
+                              if (e.key === "Escape") {
+                                setInlineEditingGroupId(null);
+                                setInlineEditName("");
+                              }
+                            }}
+                            onBlur={() => saveInlineGroupName(firstGroup.id, inlineEditName)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-base font-bold bg-transparent border-b-2 border-current outline-none px-1 py-0 min-w-[120px]"
+                            style={{ color }}
+                          />
+                        ) : (
+                          <h3
+                            className="text-base font-bold cursor-text hover:opacity-80"
+                            style={{ color }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInlineEditingGroupId(firstGroup.id);
+                              setInlineEditName(firstGroup.name);
+                            }}
+                          >
+                            {firstGroup.name}
+                          </h3>
+                        )}
                         <span className="text-xs text-muted-foreground ml-1">
                           {items.length} {items.length === 1 ? "task" : "tasks"}
                         </span>
@@ -1167,9 +1194,36 @@ export default function TaskBoardsView() {
                           ) : (
                             <ChevronDown className="h-4 w-4" style={{ color }} />
                           )}
-                          <h3 className="text-base font-bold" style={{ color }}>
-                            {g.name}
-                          </h3>
+                          {inlineEditingGroupId === g.id ? (
+                            <input
+                              autoFocus
+                              value={inlineEditName}
+                              onChange={(e) => setInlineEditName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveInlineGroupName(g.id, inlineEditName);
+                                if (e.key === "Escape") {
+                                  setInlineEditingGroupId(null);
+                                  setInlineEditName("");
+                                }
+                              }}
+                              onBlur={() => saveInlineGroupName(g.id, inlineEditName)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-base font-bold bg-transparent border-b-2 border-current outline-none px-1 py-0 min-w-[120px]"
+                              style={{ color }}
+                            />
+                          ) : (
+                            <h3
+                              className="text-base font-bold cursor-text hover:opacity-80"
+                              style={{ color }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInlineEditingGroupId(g.id);
+                                setInlineEditName(g.name);
+                              }}
+                            >
+                              {g.name}
+                            </h3>
+                          )}
                           <span className="text-xs text-muted-foreground ml-1">
                             {groupTasks.length} {groupTasks.length === 1 ? "task" : "tasks"}
                           </span>

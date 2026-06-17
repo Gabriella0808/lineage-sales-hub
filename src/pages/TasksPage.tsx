@@ -210,7 +210,7 @@ export default function TasksPage() {
     setInlineEditingTaskId(null);
     if (!title) return;
     const { error } = await supabase.from("manager_tasks").update({ title }).eq("id", id);
-    if (error) { toast.error("Failed to update title"); return; }
+    if (error) { toast({ title: "Failed to update title", variant: "destructive" }); return; }
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, title } : t)));
   };
   const toggleSelect = (id: string) => {

@@ -35,12 +35,14 @@ export function TaskUpdatesDialog({
   open,
   onOpenChange,
   users,
+  onActivityChange,
 }: {
   taskId: string | null;
   taskTitle?: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   users: User[];
+  onActivityChange?: () => void;
 }) {
   const { user } = useAuth();
   const { toast } = useToast();

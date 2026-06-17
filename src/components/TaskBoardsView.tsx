@@ -798,7 +798,7 @@ export default function TaskBoardsView() {
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
                   onClick={() => openEditTask(t)}
-                  className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card"
+                  className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card"
                 >
                   <div
                     className="flex items-center justify-center text-muted-foreground/40 border-r border-border cursor-grab active:cursor-grabbing"
@@ -811,6 +811,23 @@ export default function TaskBoardsView() {
                     {t.description && (
                       <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                     )}
+                  </div>
+                  <div
+                    className="flex items-center justify-center border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => setUpdatesTaskId(t.id)}
+                      title="Updates & attachments"
+                      className="relative inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    >
+                      <MessageSquarePlus className="h-4 w-4" />
+                      {updateCounts[t.id] > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 inline-flex h-3.5 min-w-3.5 px-1 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                          {updateCounts[t.id]}
+                        </span>
+                      )}
+                    </button>
                   </div>
                   <div
                     className="hidden md:flex items-center justify-center px-2 border-r border-border"

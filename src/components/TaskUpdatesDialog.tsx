@@ -121,10 +121,11 @@ export function TaskUpdatesDialog({
     if (!taskId || !user || !body.trim()) return;
     setSending(true);
     const mentions = extractMentionIds(body);
+    const bodyText = body.trim();
     const { error } = await supabase.from("manager_task_updates" as any).insert({
       task_id: taskId,
       author_id: user.id,
-      body: body.trim(),
+      body: bodyText,
       mentions,
     });
     setSending(false);
@@ -135,6 +136,31 @@ export function TaskUpdatesDialog({
     setBody("");
     load();
     onActivityChange?.();
+
+    // Notify mentioned users by email (best-effort, fire-and-forget)
+    if (mentions.length > 0) {
+      const mentioner = users.find((u) => u.user_id === user.id);
+      const mentionerName = displayName(mentioner) || user.email?.split("@")[0] || "Someone";
+      const link = `${window.location.origin}/tasks`;
+      for (const uid of mentions) {
+        const target = users.find((u) => u.user_id === uid);
+        if (!target?.email || target.user_id === user.id) continue;
+        supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "task-mention",
+            recipientEmail: target.email,
+            idempotencyKey: `task-mention-${taskId}-${uid}-${Date.now()}`,
+            templateData: {
+              recipientName: displayName(target),
+              mentionerName,
+              taskTitle: taskTitle ?? "a task",
+              updateBody: bodyText,
+              link,
+            },
+          },
+        }).catch(() => {});
+      }
+    }
   };
 
   const remove = async (u: UpdateRow) => {

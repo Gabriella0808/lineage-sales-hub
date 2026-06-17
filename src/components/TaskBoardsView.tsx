@@ -29,6 +29,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Plus,
   LayoutGrid,
@@ -40,6 +50,7 @@ import {
   GripVertical,
   UserPlus,
   X,
+  Check,
 } from "lucide-react";
 import { format } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
@@ -101,6 +112,8 @@ export default function TaskBoardsView() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [tasks, setTasks] = useState<BoardTask[]>([]);
   const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
+  const [addingGroupId, setAddingGroupId] = useState<string | null>(null);
+  const [newItemTitle, setNewItemTitle] = useState("");
   const [loading, setLoading] = useState(true);
 
   // dialogs
@@ -514,6 +527,54 @@ export default function TaskBoardsView() {
       toast({ title: "Status update failed", description: error.message, variant: "destructive" });
     }
   };
+
+  const updateTaskDueDate = async (id: string, date: Date | null) => {
+    const iso = date ? format(date, "yyyy-MM-dd") : null;
+    const prev = tasks;
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, due_date: iso } : t)));
+    const { error } = await supabase.from("manager_tasks").update({ due_date: iso }).eq("id", id);
+    if (error) {
+      setTasks(prev);
+      toast({ title: "Date update failed", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const setTaskAssigneesInline = async (id: string, ids: string[]) => {
+    const prev = taskAssignees;
+    setTaskAssignees((m) => ({ ...m, [id]: ids }));
+    await supabase.from("manager_task_assignees").delete().eq("task_id", id);
+    if (ids.length) {
+      const rows = ids.map((uid) => ({ task_id: id, user_id: uid }));
+      const { error } = await supabase.from("manager_task_assignees").insert(rows);
+      if (error) {
+        setTaskAssignees(prev);
+        toast({ title: "Assign failed", description: error.message, variant: "destructive" });
+        return;
+      }
+    }
+    await supabase
+      .from("manager_tasks")
+      .update({ assigned_user_id: ids[0] ?? null })
+      .eq("id", id);
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, assigned_user_id: ids[0] ?? null } : t)));
+  };
+
+  const quickCreateTask = async (groupId: string, title: string, status: Status = "todo") => {
+    if (!user || !activeBoardId || !title.trim()) return;
+    const group = groups.find((g) => g.id === groupId);
+    const inferred = inferStatusFromGroupName(group?.name);
+    const finalStatus = inferred ?? status;
+    const { error } = await supabase.from("manager_tasks").insert({
+      title: title.trim(),
+      status: finalStatus,
+      board_id: activeBoardId,
+      group_id: groupId,
+      user_id: user.id,
+    });
+    if (error) {
+      toast({ title: "Create failed", description: error.message, variant: "destructive" });
+    }
+  };
   const inferStatusFromGroupName = (name: string | undefined): Status | null => {
     if (!name) return null;
     const n = name.toLowerCase().trim();
@@ -733,8 +794,51 @@ export default function TaskBoardsView() {
                       <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                     )}
                   </div>
-                  <div className="hidden md:flex items-center justify-center px-2 border-r border-border">
-                    {renderAssignees(t)}
+                  <div
+                    className="hidden md:flex items-center justify-center px-2 border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="flex items-center justify-center w-full h-full py-1 hover:bg-muted/40 rounded">
+                          {renderAssignees(t)}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-0" align="center">
+                        <Command>
+                          <CommandInput placeholder="Search people…" />
+                          <CommandList>
+                            <CommandEmpty>No people found.</CommandEmpty>
+                            <CommandGroup heading="People">
+                              {assignableUsers.map((u) => {
+                                const current = assigneeIdsFor(t);
+                                const selected = current.includes(u.user_id);
+                                const name = u.full_name || u.email || u.user_id.slice(0, 8);
+                                return (
+                                  <CommandItem
+                                    key={u.user_id}
+                                    value={`${u.full_name ?? ""} ${u.email ?? ""}`}
+                                    onSelect={() => {
+                                      const next = selected
+                                        ? current.filter((x) => x !== u.user_id)
+                                        : [...current, u.user_id];
+                                      setTaskAssigneesInline(t.id, next);
+                                    }}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
+                                      {getInitials(name)}
+                                    </span>
+                                    <span className="flex-1 text-sm">{name}</span>
+                                    {selected && <Check className="h-4 w-4 text-primary" />}
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div
                     className="hidden md:flex items-stretch border-r border-border"
@@ -755,15 +859,44 @@ export default function TaskBoardsView() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="hidden md:flex items-center justify-center px-2 text-xs text-muted-foreground border-r border-border">
-                    {t.due_date ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {format(parseDateOnly(t.due_date)!, "MMM d")}
-                      </span>
-                    ) : (
-                      <span className="italic">—</span>
-                    )}
+                  <div
+                    className="hidden md:flex items-stretch border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="flex w-full h-full items-center justify-center gap-1 px-2 text-xs text-muted-foreground hover:bg-muted/40">
+                          {t.due_date ? (
+                            <>
+                              <Calendar className="h-3 w-3" />
+                              {format(parseDateOnly(t.due_date)!, "MMM d")}
+                            </>
+                          ) : (
+                            <span className="italic">—</span>
+                          )}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="center">
+                        <CalendarPicker
+                          mode="single"
+                          selected={t.due_date ? parseDateOnly(t.due_date)! : undefined}
+                          onSelect={(d) => updateTaskDueDate(t.id, d ?? null)}
+                          initialFocus
+                        />
+                        {t.due_date && (
+                          <div className="p-2 border-t">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="w-full text-xs"
+                              onClick={() => updateTaskDueDate(t.id, null)}
+                            >
+                              Clear date
+                            </Button>
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div
                     className="hidden md:flex items-center justify-center gap-0.5 px-1"
@@ -793,19 +926,55 @@ export default function TaskBoardsView() {
               );
             };
 
-            const renderAddRow = (groupId: string, status: Status = "todo") => (
-              <li
-                onClick={() => openNewTask(groupId, status)}
-                className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-t border-border bg-card text-xs text-muted-foreground"
-              >
-                <div className="border-r border-border h-full" />
-                <div className="px-3 py-2 italic">+ Add item</div>
-                <div className="hidden md:block border-r border-border h-full" />
-                <div className="hidden md:block border-r border-border h-full" />
-                <div className="hidden md:block border-r border-border h-full" />
-                <div className="hidden md:block" />
-              </li>
-            );
+            const renderAddRow = (groupId: string, status: Status = "todo") => {
+              const isActive = addingGroupId === groupId;
+              const submit = async () => {
+                if (newItemTitle.trim()) {
+                  await quickCreateTask(groupId, newItemTitle, status);
+                }
+                setNewItemTitle("");
+                setAddingGroupId(null);
+              };
+              return (
+                <li
+                  onClick={() => {
+                    if (!isActive) {
+                      setAddingGroupId(groupId);
+                      setNewItemTitle("");
+                    }
+                  }}
+                  className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-t border-border bg-card text-xs text-muted-foreground"
+                >
+                  <div className="border-r border-border h-full" />
+                  <div className="px-3 py-1.5" onClick={(e) => isActive && e.stopPropagation()}>
+                    {isActive ? (
+                      <Input
+                        autoFocus
+                        value={newItemTitle}
+                        onChange={(e) => setNewItemTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") submit();
+                          if (e.key === "Escape") {
+                            setNewItemTitle("");
+                            setAddingGroupId(null);
+                          }
+                        }}
+                        onBlur={submit}
+                        placeholder="Enter item name and press Enter"
+                        className="h-7 text-sm"
+                      />
+                    ) : (
+                      <span className="italic">+ Add item</span>
+                    )}
+                  </div>
+                  <div className="hidden md:block border-r border-border h-full" />
+                  <div className="hidden md:block border-r border-border h-full" />
+                  <div className="hidden md:block border-r border-border h-full" />
+                  <div className="hidden md:block" />
+                </li>
+              );
+            };
+
 
             const columnHeader = (
               <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">

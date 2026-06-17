@@ -82,7 +82,7 @@ export function ProspectTypeSelect(props: Props) {
               className={cn(
                 compact
                   ? "h-7 text-[11px] bg-muted/60 hover:bg-muted px-2 py-0 rounded-md w-full min-w-0 inline-flex items-center gap-1.5 text-muted-foreground font-medium"
-                  : "h-10 px-3 py-2 border border-input bg-background hover:bg-accent/10 rounded-md w-full inline-flex items-center gap-2 text-sm",
+                  : "h-10 px-3 py-2 border border-input bg-background rounded-md w-full inline-flex items-center gap-2 text-sm",
                 triggerClassName,
               )}
             >

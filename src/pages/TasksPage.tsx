@@ -1225,7 +1225,7 @@ export default function TasksPage() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-72 p-0" align="center">
                                   <Command>
-                                    <CommandInput placeholder="Search people--¦" />
+                                    <CommandInput placeholder="Search people..." />
                                     <CommandList>
                                       <CommandEmpty>No people found.</CommandEmpty>
                                       <CommandGroup heading="People">

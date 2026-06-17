@@ -82,7 +82,7 @@ export default function ManagersPage() {
     return map;
   }, [visibleManagers, managerIdMap, reps]);
 
-  // Helpers - match dealers to a rep by rep_id OR by salesperson name overlap (-‰¥2 tokens),
+  // Helpers - match dealers to a rep by rep_id OR by salesperson name overlap (- 2 tokens),
   // so reps whose dealers aren't linked via rep_id still roll up their YTD revenue.
   const tokenize = (s: string | null | undefined) =>
     (s ?? "").toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 2);

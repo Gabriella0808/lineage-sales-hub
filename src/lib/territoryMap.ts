@@ -1,4 +1,4 @@
-// Maps US state names -†’ 2-letter codes (matches PublicaMundi us-states.json)
+// Maps US state names -  2-letter codes (matches PublicaMundi us-states.json)
 export const STATE_NAME_TO_CODE: Record<string, string> = {
   Alabama: "AL", Alaska: "AK", Arizona: "AZ", Arkansas: "AR", California: "CA",
   Colorado: "CO", Connecticut: "CT", Delaware: "DE", "District of Columbia": "DC",

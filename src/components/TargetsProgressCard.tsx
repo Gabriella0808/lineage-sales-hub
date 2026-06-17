@@ -247,7 +247,7 @@ export function TargetsProgressCard() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold truncate">{r.name}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Annual goal {formatCurrency(r.annualTarget)} --¢ {r.annualPct}% of full year
+                  Annual goal {formatCurrency(r.annualTarget)} ... {r.annualPct}% of full year
                 </p>
                 <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
                   <div

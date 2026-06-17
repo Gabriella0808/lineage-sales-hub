@@ -105,7 +105,7 @@ export default function SalesRepsPage() {
   const { data: repTerritories = [] } = useRepTerritories();
 
   // Deduplicate managers by first-name token, keeping the entry with the longest (full) name.
-  // Build a map from every original manager id -†’ preferred (deduped) manager id.
+  // Build a map from every original manager id -  preferred (deduped) manager id.
   const { displayManagers, managerIdMap } = (() => {
     const groups = new Map<string, typeof managers>();
     for (const m of managers) {
@@ -256,7 +256,7 @@ export default function SalesRepsPage() {
       <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="page-title">Sales Rep Database</h1>
-          <p className="page-subtitle">{reps.length} reps --¢ inline edit any field</p>
+          <p className="page-subtitle">{reps.length} reps ... inline edit any field</p>
         </div>
         <Button onClick={() => setAddOpen(true)} className="gap-2 w-full sm:w-auto">
           <Plus className="h-4 w-4" /> Add Rep

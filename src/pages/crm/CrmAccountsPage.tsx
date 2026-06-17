@@ -126,7 +126,7 @@ export default function CrmAccountsPage() {
 
   // Normalize text for forgiving search: lowercase, fold curly quotes to straight,
   // and strip punctuation/whitespace so "Wright's Furniture", "wrights furniture",
-  // and "Wright--™s  Furniture." all match.
+  // and "Wright...s  Furniture." all match.
   const norm = (s: string) =>
     s
       .toLowerCase()
@@ -250,7 +250,7 @@ export default function CrmAccountsPage() {
       <Card className="p-3 flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1 min-w-[180px]">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, contact, city--¦" className="pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, contact, city..." className="pl-9" />
         </div>
         <Select value={repFilter} onValueChange={setRepFilter}>
           <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
@@ -345,7 +345,7 @@ export default function CrmAccountsPage() {
             </thead>
 
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Loading--¦</td></tr>}
+              {isLoading && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Loading...</td></tr>}
               {!isLoading && filtered.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">No prospects match your filters.</td></tr>}
               {visibleRows.map((a) => {
                 const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;

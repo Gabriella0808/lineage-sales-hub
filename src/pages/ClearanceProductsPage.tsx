@@ -420,7 +420,7 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
             <div className="py-8 text-center space-y-4">
               <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
               <div>
-                <p className="font-medium">Importing sales data--¦</p>
+                <p className="font-medium">Importing sales data...</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {importProgress.done} of {importProgress.total} SKUs updated
                 </p>
@@ -588,7 +588,7 @@ export default function ClearanceProductsPage() {
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Search SKU or product--¦"
+            placeholder="Search SKU or product..."
             className="pl-8 h-8 text-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -615,7 +615,7 @@ export default function ClearanceProductsPage() {
 
       {/* Inventory table */}
       {loading ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">Loading clearance inventory--¦</div>
+        <div className="text-center py-16 text-muted-foreground text-sm">Loading clearance inventory...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">No clearance products found.</div>
       ) : (

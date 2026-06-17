@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       if (r.product) skuProductName[r.sku] = r.product;
     });
 
-    // 3. Aggregate by rep -†’ collection
+    // 3. Aggregate by rep -  collection
     type CollAgg = { collection: string; qty: number; revenue: number };
     const repAgg: Record<string, {
       totalQty: number;

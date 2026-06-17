@@ -138,7 +138,7 @@ export default function DashboardPage() {
     .map(([dealerId, revenue]) => {
       const dealer = dealers.find(d => d.id === dealerId);
       const name = dealer?.name ?? 'Unknown';
-      return { name: name.length > 18 ? name.slice(0, 18) + '--¦' : name, revenue: Math.round(revenue / 1000) };
+      return { name: name.length > 18 ? name.slice(0, 18) + '...' : name, revenue: Math.round(revenue / 1000) };
     });
 
   // Sales Leaderboard - rep revenue via dealerRep map
@@ -227,8 +227,8 @@ export default function DashboardPage() {
         </h1>
         <p className="page-subtitle">
           {role === "rep"
-            ? `${dealers.length} dealers --¢ ${territories.length} territories assigned to you`
-            : `${reps.length} reps --¢ ${territories.length} territories --¢ ${dealers.length} dealers`}
+            ? `${dealers.length} dealers ... ${territories.length} territories assigned to you`
+            : `${reps.length} reps ... ${territories.length} territories ... ${dealers.length} dealers`}
         </p>
       </div>
 

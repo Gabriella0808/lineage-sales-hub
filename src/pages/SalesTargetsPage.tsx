@@ -144,7 +144,7 @@ export default function SalesTargetsPage() {
         annual_target: annualSum(repId),
       } as any);
       setDraft(prev => { const next = { ...prev }; delete next[repId]; return next; });
-      toast({ title: "Target saved", description: `${reps.find(r=>r.id===repId)?.name ?? "Rep"} --¢ ${year}` });
+      toast({ title: "Target saved", description: `${reps.find(r=>r.id===repId)?.name ?? "Rep"} ... ${year}` });
     } catch (e: any) {
       toast({ title: "Failed to save", description: e.message, variant: "destructive" });
     } finally {

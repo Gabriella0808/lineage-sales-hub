@@ -1724,7 +1724,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         <KPI label="Total Inventory Value" value={fmtMoney(summary.value)} hint={`${fmtNum(summary.units)} units`} icon={DollarSign} onClick={() => toggleDrill("value")} active={drilldown === "value"} />
         <KPI label="Total Open POs" value={fmtMoney(summary.openPoValue)} hint="not yet arrived" icon={Truck} onClick={() => toggleDrill("openpo")} active={drilldown === "openpo"} />
         <KPI label="Prepaid Inventory" value={fmtMoney(summary.prepaidValue)} icon={DollarSign} onClick={() => toggleDrill("prepaid")} active={drilldown === "prepaid"} />
-        <KPI label="Backlog (Open Orders)" value={hub.loading ? "-" : fmtMoney(summary.backlogValue)} hint={hub.loading ? "loading--¦" : `${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} onClick={() => toggleDrill("backlog")} active={drilldown === "backlog"} />
+        <KPI label="Backlog (Open Orders)" value={hub.loading ? "-" : fmtMoney(summary.backlogValue)} hint={hub.loading ? "loading..." : `${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} onClick={() => toggleDrill("backlog")} active={drilldown === "backlog"} />
         <KPI label="Closeout Inventory" value={fmtMoney(summary.closeoutValue)} hint="clearance + closeout" icon={Tag} onClick={() => toggleDrill("closeout")} active={drilldown === "closeout"} />
         <KPI label="OUT OF STOCK - LOST SALES" value={fmtMoney(summary.lostSales)} hint="per month" icon={AlertCircle} accent="text-destructive" onClick={() => toggleDrill("lost")} active={drilldown === "lost"} />
         <KPI label="Sales / Inv Ratio" value={summary.salesToInv.toFixed(2)} hint={summary.salesToInv > 0.5 ? "healthy" : summary.salesToInv > 0.2 ? "OK" : "carrying too much"} icon={Activity} accent={summary.salesToInv < 0.2 ? "text-warning-foreground" : undefined} />
@@ -1960,7 +1960,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 </div>
                 <div className="relative w-64">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input value={skuSearch} onChange={(e) => setSkuSearch(e.target.value)} placeholder="Search SKU, product, brand--¦" className="pl-8 h-9 text-sm" />
+                  <Input value={skuSearch} onChange={(e) => setSkuSearch(e.target.value)} placeholder="Search SKU, product, brand..." className="pl-8 h-9 text-sm" />
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -2123,7 +2123,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                           <Input
                             value={itemQuery}
                             onChange={(e) => setItemQuery(e.target.value)}
-                            placeholder="Search SKU or product--¦"
+                            placeholder="Search SKU or product..."
                             className="pl-8 h-9 text-sm bg-background"
                           />
                         </div>
@@ -2196,7 +2196,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                       const needsScroll = chartData.length > fitRows;
                       const yWidth = perfMode === "vendor" ? 160 : 220;
                       const maxChars = perfMode === "vendor" ? 22 : 30;
-                      const truncate = (s: string) => (s.length > maxChars ? s.slice(0, maxChars - 1).trimEnd() + "--¦" : s);
+                      const truncate = (s: string) => (s.length > maxChars ? s.slice(0, maxChars - 1).trimEnd() + "..." : s);
                       const renderTick = (props: any) => {
                         const x = Number(props?.x ?? 0);
                         const y = Number(props?.y ?? 0);
@@ -2239,9 +2239,9 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                       );
                     })()}
                     <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                      <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-success" /> Growing -‰¥ +10%</span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-success" /> Growing -  +10%</span>
                       <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Stable</span>
-                      <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-destructive" /> Declining -‰¤ -10%</span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-destructive" /> Declining -  -10%</span>
                     </div>
 
                     {perfMode === "vendor" ? (() => {
@@ -2283,7 +2283,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                                   {compareLY && (
                                     <>
                                       <th className="text-right px-3 py-2">YTD PO&apos;s ({ly})</th>
-                                      <th className="text-right px-3 py-2">YoY Î-</th>
+                                      <th className="text-right px-3 py-2">YoY -</th>
                                     </>
                                   )}
                                 </tr>
@@ -2429,7 +2429,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingDown className="h-4 w-4 text-warning-foreground" />
-                <h3 className="text-base font-semibold">Slow Movers (-‰¥6 months supply)</h3>
+                <h3 className="text-base font-semibold">Slow Movers (- 6 months supply)</h3>
               </div>
               {slowMovers.length === 0 ? <EmptyState message="No slow movers." /> : (
                 <div className="overflow-x-auto">
@@ -2440,7 +2440,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                         <th className="text-left px-3 py-2">Product</th>
                         <th className="text-left px-3 py-2">Collection</th>
                         <th className="text-right px-3 py-2">On Hand</th>
-                        <th className="text-right px-3 py-2" title={`Lead time -‰ˆ ${LEAD_TIME_WEEKS} weeks`}>Weeks Supply</th>
+                        <th className="text-right px-3 py-2" title={`Lead time -  ${LEAD_TIME_WEEKS} weeks`}>Weeks Supply</th>
                         <th className="text-right px-3 py-2">Tied-up Value</th>
                       </tr>
                     </thead>
@@ -2529,7 +2529,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 </thead>
                 <tbody>
                   {reorderByFactory.map((f) => {
-                    // 40' HC -‰ˆ 2,350 cu ft usable
+                    // 40' HC -  2,350 cu ft usable
                     const containers = f.totalCubes > 0 ? f.totalCubes / 2350 : 0;
                     return (
                       <tr key={f.factory} className="border-t border-border">

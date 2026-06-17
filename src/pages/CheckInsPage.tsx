@@ -65,7 +65,7 @@ const parseDateOnly = (s: string | null | undefined): Date => {
 import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Plus, Users, Navigation } from "lucide-react";
 import { STATE_TO_TERRITORY, STATE_NAME_TO_CODE, colorForTerritory } from "@/lib/territoryMap";
 
-// Team member -†’ match config. We match dealers by rep_owner (authoritative
+// Team member -  match config. We match dealers by rep_owner (authoritative
 // when present, e.g. "will") OR by state code (so reps without a rep_owner
 // tag still get attributed to the right manager via territory).
 type TeamMemberId = "will" | "mateo" | "chris" | "justin";
@@ -1301,7 +1301,7 @@ export default function CheckInsPage() {
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             {geocoding && (
               <span className="inline-flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Geocoding--¦
+                <Loader2 className="h-3 w-3 animate-spin" /> Geocoding...
               </span>
             )}
             <span>
@@ -1315,9 +1315,9 @@ export default function CheckInsPage() {
       <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
         <span className="font-medium text-foreground">Last visit:</span>
         {[
-          { c: "#16a34a", l: "-‰¤ 2 weeks" },
-          { c: "#eab308", l: "-‰¤ 45 days" },
-          { c: "#f97316", l: "-‰¤ 90 days" },
+          { c: "#16a34a", l: "-  2 weeks" },
+          { c: "#eab308", l: "-  45 days" },
+          { c: "#f97316", l: "-  90 days" },
           { c: "#dc2626", l: "> 90 days" },
           { c: "#94a3b8", l: "Never" },
           { c: PROSPECT_COLOR, l: "Prospect" },
@@ -1412,7 +1412,7 @@ export default function CheckInsPage() {
           style={{ height: "calc(100vh - 280px)", minHeight: 420 }}
         />
         {!token && (
-          <div className="p-6 text-sm text-muted-foreground">Loading map--¦</div>
+          <div className="p-6 text-sm text-muted-foreground">Loading map...</div>
         )}
       </Card>
 
@@ -1474,12 +1474,12 @@ export default function CheckInsPage() {
               <div className="flex items-center justify-end -mt-1 mb-2">
                 <span className="text-xs text-muted-foreground">
                   {hasRange
-                    ? `${filtered.length} in range --¢ ${teamScoped.length} total`
+                    ? `${filtered.length} in range ... ${teamScoped.length} total`
                     : `${teamScoped.length} total`}
                 </span>
               </div>
               {loading ? (
-                <p className="text-sm text-muted-foreground">Loading--¦</p>
+                <p className="text-sm text-muted-foreground">Loading...</p>
               ) : filtered.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">
                   {teamScoped.length === 0
@@ -1913,7 +1913,7 @@ export default function CheckInsPage() {
                   {(selected?.id === detailCheckIn.dealer_id
                     ? selected?.name
                     : dealers.find((d) => d.id === detailCheckIn.dealer_id)?.name) ?? "Dealer"}{" "}
-                  --¢ {format(parseDateOnly(detailCheckIn.visit_date), "EEEE, MMM d, yyyy")}
+                  ... {format(parseDateOnly(detailCheckIn.visit_date), "EEEE, MMM d, yyyy")}
                 </DialogDescription>
               </DialogHeader>
 

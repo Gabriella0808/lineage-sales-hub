@@ -198,7 +198,7 @@ export default function ClearanceAnalyticsPage() {
       </div>
 
       {loadingData ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">Loading sales data--¦</div>
+        <div className="text-center py-16 text-muted-foreground text-sm">Loading sales data...</div>
       ) : repRows.length === 0 ? (
         <div className="text-center py-16 space-y-2">
           <p className="text-muted-foreground text-sm">No clearance sales data for this week.</p>

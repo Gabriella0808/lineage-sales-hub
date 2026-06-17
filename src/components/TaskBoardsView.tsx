@@ -901,36 +901,19 @@ export default function TaskBoardsView() {
                       </div>
                       {!isCollapsed && (
                         <div
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => onDropToGroup(e, g.id)}
                           className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
                           style={{ borderLeftColor: color }}
                         >
-                          {STATUS_ORDER.map(({ key: status, label }) => {
-                            const items = groupTasks.filter((t) => t.status === status);
-                            const meta = STATUS_META[status];
-                            return (
-                              <div
-                                key={status}
-                                onDragOver={(e) => e.preventDefault()}
-                                onDrop={(e) => onDropToCustomSubsection(e, g.id, status)}
-                                className="border-b-2 border-border last:border-b-0"
-                              >
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-b border-border">
-                                  <Badge className={`${meta.pillBg} ${meta.pillText} border-0 text-[10px]`}>
-                                    {label}
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground tabular-nums">{items.length}</span>
-                                </div>
-                                {columnHeader}
-                                {items.length === 0 ? (
-                                  <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
-                                    Drag tasks here or click "+ Item".
-                                  </div>
-                                ) : (
-                                  <ul>{items.map(renderTaskRow)}</ul>
-                                )}
-                              </div>
-                            );
-                          })}
+                          {columnHeader}
+                          {groupTasks.length === 0 ? (
+                            <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
+                              Drag tasks here or click "+ Item".
+                            </div>
+                          ) : (
+                            <ul>{groupTasks.map(renderTaskRow)}</ul>
+                          )}
                         </div>
                       )}
                     </div>

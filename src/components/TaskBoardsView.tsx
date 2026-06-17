@@ -279,7 +279,6 @@ export default function TaskBoardsView() {
   );
 
   // --- Board CRUD ---
-  const loadSopTemplates = async () => {
   const openNewBoard = async () => {
     setEditingBoard(null);
     setBoardForm({ name: "", description: "", color: GROUP_COLORS[0] });

@@ -678,7 +678,7 @@ export default function TaskBoardsView() {
     await updateTaskStatus(id, status);
   };
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading boardsâ€¦</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Loading boards--¦</p>;
 
   return (
     <div className="space-y-4">
@@ -690,7 +690,7 @@ export default function TaskBoardsView() {
             onValueChange={(v) => setActiveBoardId(v)}
           >
             <SelectTrigger className="h-9 w-[280px] bg-card">
-              <SelectValue placeholder={boards.length ? "Select a boardâ€¦" : "No boards yet"} />
+              <SelectValue placeholder={boards.length ? "Select a board--¦" : "No boards yet"} />
             </SelectTrigger>
             <SelectContent>
               {boards.map((b) => (
@@ -858,7 +858,7 @@ export default function TaskBoardsView() {
                     onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
                     className="flex items-center justify-center border-r border-border cursor-grab active:cursor-grabbing"
                     onClick={(e) => e.stopPropagation()}
-                    title="Drag to move â€¢ check to complete"
+                    title="Drag to move --¢ check to complete"
                   >
                     <Checkbox
                       checked={t.status === "done"}
@@ -927,7 +927,7 @@ export default function TaskBoardsView() {
                       </PopoverTrigger>
                       <PopoverContent className="w-72 p-0" align="center">
                         <Command>
-                          <CommandInput placeholder="Search peopleâ€¦" />
+                          <CommandInput placeholder="Search people--¦" />
                           <CommandList>
                             <CommandEmpty>No people found.</CommandEmpty>
                             <CommandGroup heading="People">
@@ -993,7 +993,7 @@ export default function TaskBoardsView() {
                               {format(parseDateOnly(t.due_date)!, "MMM d")}
                             </>
                           ) : (
-                            <span className="italic">â€”</span>
+                            <span className="italic">---</span>
                           )}
                         </button>
                       </PopoverTrigger>
@@ -1169,7 +1169,7 @@ export default function TaskBoardsView() {
                   </div>
                 )}
 
-                {/* Default workflow groups â€” merged into one Monday-style flat table */}
+                {/* Default workflow groups --- merged into one Monday-style flat table */}
                 {defaultGroups.length > 0 && (() => {
                   const defaultGroupIds = new Set(defaultGroups.map((g) => g.id));
                   const items = boardTasks
@@ -1243,7 +1243,7 @@ export default function TaskBoardsView() {
                   );
                 })()}
 
-                {/* Custom groups â€” each its own section with internal status sub-rows */}
+                {/* Custom groups --- each its own section with internal status sub-rows */}
                 {customGroups.map((g) => {
                   const groupTasks = boardTasks
                     .filter((t) => t.group_id === g.id)
@@ -1538,7 +1538,7 @@ export default function TaskBoardsView() {
             <div className="flex gap-2">
               <Select value={addUserId} onValueChange={setAddUserId}>
                 <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select a person to addâ€¦" />
+                  <SelectValue placeholder="Select a person to add--¦" />
                 </SelectTrigger>
                 <SelectContent>
                   {Array.from(
@@ -1689,7 +1689,7 @@ export default function TaskBoardsView() {
                             {format(parseDateOnly(live.due_date)!, "EEE, MMM d, yyyy")}
                           </>
                         ) : (
-                          <span className="italic text-muted-foreground">â€”</span>
+                          <span className="italic text-muted-foreground">---</span>
                         )}
                       </p>
                     </div>

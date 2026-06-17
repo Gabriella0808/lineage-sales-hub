@@ -111,9 +111,9 @@ export default function CrmAccountsPage() {
   });
 
   const fmtDate = (s?: string | null) => {
-    if (!s) return "—";
+    if (!s) return "---";
     const d = new Date(s);
-    if (isNaN(d.getTime())) return "—";
+    if (isNaN(d.getTime())) return "---";
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   };
 
@@ -121,12 +121,12 @@ export default function CrmAccountsPage() {
   const states = useMemo(() => Array.from(new Set(accounts.map((a) => a.state).filter(Boolean))).sort() as string[], [accounts]);
   const repMap = useMemo(() => new Map(reps.map((r) => [r.id, r])), [reps]);
   const managerMap = useMemo(() => new Map(managers.map((m) => [m.id, m])), [managers]);
-  const repName = (id: string | null) => (id ? repMap.get(id)?.name ?? "—" : "Unassigned");
-  const managerName = (id: string | null) => (id ? managerMap.get(id)?.name ?? "—" : "Unassigned");
+  const repName = (id: string | null) => (id ? repMap.get(id)?.name ?? "---" : "Unassigned");
+  const managerName = (id: string | null) => (id ? managerMap.get(id)?.name ?? "---" : "Unassigned");
 
   // Normalize text for forgiving search: lowercase, fold curly quotes to straight,
   // and strip punctuation/whitespace so "Wright's Furniture", "wrights furniture",
-  // and "Wright’s  Furniture." all match.
+  // and "Wright--�s  Furniture." all match.
   const norm = (s: string) =>
     s
       .toLowerCase()
@@ -250,7 +250,7 @@ export default function CrmAccountsPage() {
       <Card className="p-3 flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1 min-w-[180px]">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, contact, city…" className="pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, contact, city--�" className="pl-9" />
         </div>
         <Select value={repFilter} onValueChange={setRepFilter}>
           <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
@@ -345,7 +345,7 @@ export default function CrmAccountsPage() {
             </thead>
 
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
+              {isLoading && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Loading--�</td></tr>}
               {!isLoading && filtered.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">No prospects match your filters.</td></tr>}
               {visibleRows.map((a) => {
                 const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
@@ -364,7 +364,7 @@ export default function CrmAccountsPage() {
                           ? (a.brands as Brand[])
                           : (a.brand ? [a.brand as Brand] : []);
                         const label = rowBrands.length === 0
-                          ? "—"
+                          ? "---"
                           : rowBrands.length === BRANDS.length
                             ? "All brands"
                             : rowBrands.length === 1
@@ -413,7 +413,7 @@ export default function CrmAccountsPage() {
                         );
                       })()}
                     </td>
-                    <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "—"}</td>
+                    <td className="px-2 py-2.5 text-muted-foreground truncate">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "---"}</td>
                     <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       <Select
                         value={a.assigned_rep_id ?? "unassigned"}

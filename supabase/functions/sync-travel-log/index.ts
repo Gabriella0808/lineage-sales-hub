@@ -33,7 +33,7 @@ function normalizeFull(name: string): string {
   return name.toLowerCase().replace(/[^a-z]/g, "");
 }
 
-// Extract last name — take last word
+// Extract last name --- take last word
 function lastName(name: string): string {
   const parts = name.trim().split(/\s+/);
   return parts[parts.length - 1].toLowerCase().replace(/[^a-z]/g, "");
@@ -194,7 +194,7 @@ Deno.serve(async (req: Request) => {
     // Delete existing travel_log entries from Monday
     await supabase.from("travel_log").delete().not("monday_id", "is", null);
 
-    // Build rows — one per manager per item, with rep_id from rep code
+    // Build rows --- one per manager per item, with rep_id from rep code
     const rows: {
       monday_id: string;
       notes: string | null;
@@ -222,7 +222,7 @@ Deno.serve(async (req: Request) => {
         } catch { /* fallback */ }
       }
 
-      const notes = `${item.name}${getCol(item, COL.notes) ? " — " + getCol(item, COL.notes) : ""}`;
+      const notes = `${item.name}${getCol(item, COL.notes) ? " --- " + getCol(item, COL.notes) : ""}`;
       const purpose = getCol(item, COL.purpose) || null;
       const approvalStatus = getCol(item, COL.approvalStatus) || null;
 

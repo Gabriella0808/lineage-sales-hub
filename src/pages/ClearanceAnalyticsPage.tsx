@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// --------- Types ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 interface SalesRow {
   sku: string;
@@ -44,13 +44,13 @@ interface ImportBatch {
   totalQty: number;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// --------- Helpers ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 function fmtWeekLabel(start: Date, end: Date) {
-  return `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")}`;
+  return `${format(start, "MMM d")} --- ${format(end, "MMM d, yyyy")}`;
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// --------- Page ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export default function ClearanceAnalyticsPage() {
   const [anchor, setAnchor] = useState<Date>(() => new Date());
@@ -198,7 +198,7 @@ export default function ClearanceAnalyticsPage() {
       </div>
 
       {loadingData ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">Loading sales data…</div>
+        <div className="text-center py-16 text-muted-foreground text-sm">Loading sales data--�</div>
       ) : repRows.length === 0 ? (
         <div className="text-center py-16 space-y-2">
           <p className="text-muted-foreground text-sm">No clearance sales data for this week.</p>

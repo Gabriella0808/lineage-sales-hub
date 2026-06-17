@@ -65,7 +65,7 @@ const parseDateOnly = (s: string | null | undefined): Date => {
 import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Plus, Users, Navigation } from "lucide-react";
 import { STATE_TO_TERRITORY, STATE_NAME_TO_CODE, colorForTerritory } from "@/lib/territoryMap";
 
-// Team member â†’ match config. We match dealers by rep_owner (authoritative
+// Team member -†’ match config. We match dealers by rep_owner (authoritative
 // when present, e.g. "will") OR by state code (so reps without a rep_owner
 // tag still get attributed to the right manager via territory).
 type TeamMemberId = "will" | "mateo" | "chris" | "justin";
@@ -145,7 +145,7 @@ interface Dealer {
   lng: number | null;
 }
 
-const PROSPECT_COLOR = "#36454F"; // charcoal â€” prospects (not yet a customer in Acctivate)
+const PROSPECT_COLOR = "#36454F"; // charcoal --- prospects (not yet a customer in Acctivate)
 
 function isProspectDealer(d: { source?: string | null }): boolean {
   // True only for CRM accounts marked as account_type='prospect' (injected
@@ -609,7 +609,7 @@ export default function CheckInsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Client-side geocoding disabled â€” too slow at this volume and many
+  // Client-side geocoding disabled --- too slow at this volume and many
   // street_address values contain business names rather than real streets.
   // Geocoding should be done server-side during the Acctivate sync.
   // (Keeping the state var so existing UI references still work.)
@@ -652,7 +652,7 @@ export default function CheckInsPage() {
         // Tag each feature with its territory
         for (const f of geo.features ?? []) {
           // Feature 'id' is the FIPS code; we need the 2-letter state code.
-          // The GeoJSON uses `properties.name` (full state name) â€” convert.
+          // The GeoJSON uses `properties.name` (full state name) --- convert.
           const code = STATE_NAME_TO_CODE[f.properties?.name] ?? null;
           const territory = code ? STATE_TO_TERRITORY[code] ?? null : null;
           f.properties.territory = territory;
@@ -982,7 +982,7 @@ export default function CheckInsPage() {
           user_id: user.id,
           type: "follow_up_scheduled",
           title: "Follow-up scheduled",
-          body: `${taskTitle} â€” due ${format(parseDateOnly(form.follow_up_date), "MMM d, yyyy")}`,
+          body: `${taskTitle} --- due ${format(parseDateOnly(form.follow_up_date), "MMM d, yyyy")}`,
           link: "/tasks",
           related_id: taskRow?.id ?? null,
         });
@@ -1301,7 +1301,7 @@ export default function CheckInsPage() {
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             {geocoding && (
               <span className="inline-flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Geocodingâ€¦
+                <Loader2 className="h-3 w-3 animate-spin" /> Geocoding--¦
               </span>
             )}
             <span>
@@ -1315,9 +1315,9 @@ export default function CheckInsPage() {
       <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
         <span className="font-medium text-foreground">Last visit:</span>
         {[
-          { c: "#16a34a", l: "â‰¤ 2 weeks" },
-          { c: "#eab308", l: "â‰¤ 45 days" },
-          { c: "#f97316", l: "â‰¤ 90 days" },
+          { c: "#16a34a", l: "-‰¤ 2 weeks" },
+          { c: "#eab308", l: "-‰¤ 45 days" },
+          { c: "#f97316", l: "-‰¤ 90 days" },
           { c: "#dc2626", l: "> 90 days" },
           { c: "#94a3b8", l: "Never" },
           { c: PROSPECT_COLOR, l: "Prospect" },
@@ -1360,7 +1360,7 @@ export default function CheckInsPage() {
         </Button>
       </div>
 
-      {/* My Team â€” filter dealers on the map by team member */}
+      {/* My Team --- filter dealers on the map by team member */}
       <Card className="p-3">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1412,7 +1412,7 @@ export default function CheckInsPage() {
           style={{ height: "calc(100vh - 280px)", minHeight: 420 }}
         />
         {!token && (
-          <div className="p-6 text-sm text-muted-foreground">Loading mapâ€¦</div>
+          <div className="p-6 text-sm text-muted-foreground">Loading map--¦</div>
         )}
       </Card>
 
@@ -1474,12 +1474,12 @@ export default function CheckInsPage() {
               <div className="flex items-center justify-end -mt-1 mb-2">
                 <span className="text-xs text-muted-foreground">
                   {hasRange
-                    ? `${filtered.length} in range â€¢ ${teamScoped.length} total`
+                    ? `${filtered.length} in range --¢ ${teamScoped.length} total`
                     : `${teamScoped.length} total`}
                 </span>
               </div>
               {loading ? (
-                <p className="text-sm text-muted-foreground">Loadingâ€¦</p>
+                <p className="text-sm text-muted-foreground">Loading--¦</p>
               ) : filtered.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">
                   {teamScoped.length === 0
@@ -1582,7 +1582,7 @@ export default function CheckInsPage() {
                             {selected.phone}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">â€”</span>
+                          <span className="text-muted-foreground italic">---</span>
                         )}
                       </dd>
                     </div>
@@ -1594,7 +1594,7 @@ export default function CheckInsPage() {
                             {selected.email}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">â€”</span>
+                          <span className="text-muted-foreground italic">---</span>
                         )}
                       </dd>
                     </div>
@@ -1611,7 +1611,7 @@ export default function CheckInsPage() {
                             {selected.website}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">â€”</span>
+                          <span className="text-muted-foreground italic">---</span>
                         )}
                       </dd>
                     </div>
@@ -1633,7 +1633,7 @@ export default function CheckInsPage() {
                       <dd className="mt-0.5">
                         {(() => {
                           const rep = salesReps.find((r) => r.id === selected.rep_id);
-                          return rep ? rep.name : <span className="text-muted-foreground italic">â€”</span>;
+                          return rep ? rep.name : <span className="text-muted-foreground italic">---</span>;
                         })()}
                       </dd>
                     </div>
@@ -1648,7 +1648,7 @@ export default function CheckInsPage() {
                             furniture_first: "Furniture First",
                             nationwide: "Nationwide",
                           };
-                          return bg ? (map[bg] ?? bg) : <span className="text-muted-foreground italic">â€”</span>;
+                          return bg ? (map[bg] ?? bg) : <span className="text-muted-foreground italic">---</span>;
                         })()}
                       </dd>
                     </div>
@@ -1660,7 +1660,7 @@ export default function CheckInsPage() {
                             .filter(Boolean)
                             .join(", ");
                           if (!addr && selected.lat == null) {
-                            return <span className="text-muted-foreground italic">â€”</span>;
+                            return <span className="text-muted-foreground italic">---</span>;
                           }
                           const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
                             selected.lat != null && selected.lng != null
@@ -1671,7 +1671,7 @@ export default function CheckInsPage() {
 
                           return (
                             <div className="flex items-start justify-between gap-2">
-                              <span className="flex-1">{addr || "â€”"}</span>
+                              <span className="flex-1">{addr || "---"}</span>
                               <a
                                 href={mapsUrl}
                                 target={linkTarget}
@@ -1712,7 +1712,7 @@ export default function CheckInsPage() {
                     <div className="px-3 py-2">
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Notes</dt>
                       <dd className="mt-0.5 whitespace-pre-wrap text-sm">
-                        {selected.notes || <span className="text-muted-foreground italic">â€”</span>}
+                        {selected.notes || <span className="text-muted-foreground italic">---</span>}
                       </dd>
                     </div>
                   </dl>
@@ -1913,7 +1913,7 @@ export default function CheckInsPage() {
                   {(selected?.id === detailCheckIn.dealer_id
                     ? selected?.name
                     : dealers.find((d) => d.id === detailCheckIn.dealer_id)?.name) ?? "Dealer"}{" "}
-                  â€¢ {format(parseDateOnly(detailCheckIn.visit_date), "EEEE, MMM d, yyyy")}
+                  --¢ {format(parseDateOnly(detailCheckIn.visit_date), "EEEE, MMM d, yyyy")}
                 </DialogDescription>
               </DialogHeader>
 
@@ -1944,7 +1944,7 @@ export default function CheckInsPage() {
                       {LOG_TYPES.find((l) => l.value === (detailCheckIn.log_type ?? detailCheckIn.outcome))?.label
                         ?? detailCheckIn.log_type
                         ?? detailCheckIn.outcome
-                        ?? "â€”"}
+                        ?? "---"}
                     </p>
                   </div>
                   <div>
@@ -1954,7 +1954,7 @@ export default function CheckInsPage() {
                     <p className="mt-1 font-medium">
                       {PLACEMENT_OPTIONS.find((p) => p.value === detailCheckIn.new_placement)?.label
                         ?? detailCheckIn.new_placement
-                        ?? "â€”"}
+                        ?? "---"}
                     </p>
                   </div>
                 </div>
@@ -1974,7 +1974,7 @@ export default function CheckInsPage() {
                             </Badge>
                           );
                         })
-                      : <span className="text-muted-foreground">â€”</span>}
+                      : <span className="text-muted-foreground">---</span>}
                   </div>
                 </div>
 

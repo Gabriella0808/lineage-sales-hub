@@ -223,7 +223,7 @@ export default function CaptureLeadsPage() {
     const lastName = rest.join(" ") || null;
 
     if (types.length === 0) {
-      // User cleared all prospect types — unlink (and remove the auto-created prospect if it's still a prospect).
+      // User cleared all prospect types --- unlink (and remove the auto-created prospect if it's still a prospect).
       if (existingCrmAccountId) {
         await supabase.from("trade_show_leads").update({ crm_account_id: null }).eq("id", leadId);
         const { data: acct } = await supabase
@@ -335,7 +335,7 @@ export default function CaptureLeadsPage() {
         });
       }
 
-      // Sync to Mailchimp on edit too — lets you trigger the automation by re-saving with a dealer email
+      // Sync to Mailchimp on edit too --- lets you trigger the automation by re-saving with a dealer email
       const editedDealerEmail = leadForm.email.trim();
       const editIsMailchimpMarket = market?.name && /high point|furniture first|atlanta/i.test(market.name);
       if (editedDealerEmail && editIsMailchimpMarket) {
@@ -421,7 +421,7 @@ export default function CaptureLeadsPage() {
       const title = leadForm.followup_title.trim() || `Follow up: ${leadForm.contact_name.trim()}${leadForm.dealer.trim() ? ` (${leadForm.dealer.trim()})` : ""}`;
       const descParts = [
         leadForm.followup_description.trim(),
-        `— Lead from ${market?.name ?? "Trade Show"}`,
+        `--- Lead from ${market?.name ?? "Trade Show"}`,
         leadForm.dealer.trim() ? `Dealer: ${leadForm.dealer.trim()}` : "",
         leadForm.email.trim() ? `Dealer Email: ${leadForm.email.trim()}` : "",
         leadForm.product_interest.trim() ? `Collections: ${leadForm.product_interest.trim()}` : "",
@@ -534,7 +534,7 @@ export default function CaptureLeadsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
+          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading--�
         </div>
       ) : markets.length === 0 ? (
         <Card className="p-10 text-center text-muted-foreground">
@@ -581,8 +581,8 @@ export default function CaptureLeadsPage() {
                           <div key={l.id} role="button" tabIndex={0} onClick={() => setViewingLead(l)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setViewingLead(l); } }} className="border rounded-lg p-3 bg-background/40 cursor-pointer hover:bg-muted/30 transition-colors">
                             <div className="flex items-start justify-between gap-2 mb-1.5">
                               <div className="min-w-0">
-                                <p className="font-medium text-sm">{l.contact_name || "—"}</p>
-                                <p className="text-xs text-muted-foreground truncate">{l.dealer || "—"}</p>
+                                <p className="font-medium text-sm">{l.contact_name || "---"}</p>
+                                <p className="text-xs text-muted-foreground truncate">{l.dealer || "---"}</p>
                               </div>
                               <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
@@ -602,7 +602,7 @@ export default function CaptureLeadsPage() {
                               </div>
                             )}
                             <div className="flex items-center justify-between mt-2 pt-2 border-t">
-                              {l.status ? <Badge variant="secondary">{l.status}</Badge> : <span className="text-xs text-muted-foreground">—</span>}
+                              {l.status ? <Badge variant="secondary">{l.status}</Badge> : <span className="text-xs text-muted-foreground">---</span>}
                               <span className="font-medium text-sm">{l.order_amount ? fmt(l.order_amount) : ""}</span>
                             </div>
                           </div>
@@ -629,14 +629,14 @@ export default function CaptureLeadsPage() {
                           <tbody>
                             {ml.map((l) => (
                               <tr key={l.id} onClick={() => setViewingLead(l)} className="border-t hover:bg-muted/30 cursor-pointer">
-                                <td className="px-3 py-2 font-medium">{l.contact_name || "—"}</td>
-                                <td className="px-3 py-2 text-muted-foreground">{l.dealer || "—"}</td>
+                                <td className="px-3 py-2 font-medium">{l.contact_name || "---"}</td>
+                                <td className="px-3 py-2 text-muted-foreground">{l.dealer || "---"}</td>
                                 <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">
-                                  {l.email ? <a href={`mailto:${l.email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.email}</a> : "—"}
+                                  {l.email ? <a href={`mailto:${l.email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.email}</a> : "---"}
                                 </td>
-                                <td className="px-3 py-2">{l.sales_rep || "—"}</td>
+                                <td className="px-3 py-2">{l.sales_rep || "---"}</td>
                                 <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">
-                                  {l.rep_email ? <a href={`mailto:${l.rep_email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.rep_email}</a> : "—"}
+                                  {l.rep_email ? <a href={`mailto:${l.rep_email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.rep_email}</a> : "---"}
                                 </td>
                                 <td className="px-3 py-2 text-muted-foreground max-w-[220px] hidden md:table-cell">
                                   {l.product_interest ? (
@@ -645,11 +645,11 @@ export default function CaptureLeadsPage() {
                                         <Badge key={i} variant="outline" className="text-xs font-normal">{c.trim()}</Badge>
                                       ))}
                                     </div>
-                                  ) : "—"}
+                                  ) : "---"}
                                 </td>
-                                <td className="px-3 py-2 text-muted-foreground hidden md:table-cell">{l.phone || "—"}</td>
-                                <td className="px-3 py-2">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "—"}</td>
-                                <td className="px-3 py-2 text-right font-medium">{l.order_amount ? fmt(l.order_amount) : "—"}</td>
+                                <td className="px-3 py-2 text-muted-foreground hidden md:table-cell">{l.phone || "---"}</td>
+                                <td className="px-3 py-2">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "---"}</td>
+                                <td className="px-3 py-2 text-right font-medium">{l.order_amount ? fmt(l.order_amount) : "---"}</td>
                                 <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex items-center justify-end gap-1">
                                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit lead">
@@ -678,7 +678,7 @@ export default function CaptureLeadsPage() {
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingLeadId ? "Edit Lead" : "Capture Lead"} — {markets.find((m) => m.id === leadDialog)?.name}
+              {editingLeadId ? "Edit Lead" : "Capture Lead"} --- {markets.find((m) => m.id === leadDialog)?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -691,7 +691,7 @@ export default function CaptureLeadsPage() {
                   multi
                   values={leadForm.prospect_types}
                   onChangeMulti={(vs) => setLeadForm({ ...leadForm, prospect_types: vs })}
-                  placeholder="Select one or more prospect types…"
+                  placeholder="Select one or more prospect types--�"
                   triggerClassName="bg-transparent border border-input shadow-none"
                 />
                 <p className="text-xs text-muted-foreground leading-relaxed">
@@ -733,7 +733,7 @@ export default function CaptureLeadsPage() {
                   <SelectContent>
                     {salesReps.map((rep) => (
                       <SelectItem key={rep.id} value={rep.id}>
-                        {rep.name}{rep.email ? ` — ${rep.email}` : ""}
+                        {rep.name}{rep.email ? ` --- ${rep.email}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -795,7 +795,7 @@ export default function CaptureLeadsPage() {
                       value={leadForm.followup_description}
                       onChange={(e) => setLeadForm({ ...leadForm, followup_description: e.target.value })}
                       rows={2}
-                      placeholder="Anything specific the rep should do…"
+                      placeholder="Anything specific the rep should do--�"
                     />
                   </Field>
                 </div>
@@ -875,10 +875,10 @@ export default function CaptureLeadsPage() {
                             <Badge key={i} variant="outline" className="text-xs font-normal">{c.trim()}</Badge>
                           ))}
                         </div>
-                      ) : <p className="text-sm">—</p>}
+                      ) : <p className="text-sm">---</p>}
                     </div>
                   </div>
-                  <DetailRow icon={DollarSign} label="Order Amount" value={viewingLead.order_amount ? fmt(viewingLead.order_amount) : "—"} />
+                  <DetailRow icon={DollarSign} label="Order Amount" value={viewingLead.order_amount ? fmt(viewingLead.order_amount) : "---"} />
                 </DetailSection>
 
                 <DetailSection title="Notes">
@@ -936,13 +936,13 @@ function DetailSection({ title, children }: { title: string; children: React.Rea
 }
 
 function DetailRow({ icon: Icon, label, value, href }: { icon: any; label: string; value: string | null | undefined; href?: string }) {
-  if (!value) value = "—";
+  if (!value) value = "---";
   return (
     <div className="flex items-start gap-2 text-sm">
       <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="text-xs text-muted-foreground">{label}</p>
-        {href && value !== "—" ? (
+        {href && value !== "---" ? (
           <a href={href} className="hover:underline break-all">{value}</a>
         ) : (
           <p className="break-words">{value}</p>

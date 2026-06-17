@@ -35,7 +35,7 @@ export default function CrmAccountDetailPage() {
 
   useEffect(() => { if (account) setForm(account); }, [account]);
 
-  if (isLoading || !form || !account) return <div className="p-8 text-muted-foreground">Loadingâ€¦</div>;
+  if (isLoading || !form || !account) return <div className="p-8 text-muted-foreground">Loading--¦</div>;
 
   const type = ACCOUNT_TYPES.find((s) => s.id === (form.account_type ?? "prospect"))!;
   const repName = reps.find((r) => r.id === form.assigned_rep_id)?.name ?? "Unassigned";
@@ -83,7 +83,7 @@ export default function CrmAccountDetailPage() {
       <PageHeader
         eyebrow={repName}
         title={account.company_name}
-        subtitle={[account.city, account.state].filter(Boolean).join(", ") || "â€”"}
+        subtitle={[account.city, account.state].filter(Boolean).join(", ") || "---"}
         actions={
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <span className={`h-1.5 w-1.5 rounded-full ${type.dot}`} />
@@ -155,7 +155,7 @@ export default function CrmAccountDetailPage() {
               <Field label="Notes"><Textarea value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} /></Field>
             </div>
             <div className="sm:col-span-2 flex justify-end">
-              <Button onClick={save} disabled={update.isPending}><Save className="h-4 w-4 mr-1.5" />{update.isPending ? "Savingâ€¦" : "Save changes"}</Button>
+              <Button onClick={save} disabled={update.isPending}><Save className="h-4 w-4 mr-1.5" />{update.isPending ? "Saving--¦" : "Save changes"}</Button>
             </div>
           </CardContent>
         </Card>
@@ -175,7 +175,7 @@ export default function CrmAccountDetailPage() {
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ClipboardList className="h-4 w-4" />Notes</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
-                <Textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Add a follow-up noteâ€¦" rows={2} />
+                <Textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Add a follow-up note--¦" rows={2} />
                 <Button size="sm" disabled={!newNote.trim() || addNote.isPending} onClick={() => addNote.mutate({ accountId: account.id, body: newNote }, { onSuccess: () => setNewNote("") })}>Add note</Button>
               </div>
               <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -207,7 +207,7 @@ export default function CrmAccountDetailPage() {
             <CardContent className="space-y-1.5">
               {history.map((h: any) => (
                 <div key={h.id} className="text-[11px] flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">{h.from_stage ? `${h.from_stage} â†’ ${h.to_stage}` : `Set to ${h.to_stage}`}</span>
+                  <span className="text-muted-foreground">{h.from_stage ? `${h.from_stage} -†’ ${h.to_stage}` : `Set to ${h.to_stage}`}</span>
                   <span className="text-muted-foreground/70 tabular-nums">{formatDistanceToNow(new Date(h.changed_at), { addSuffix: true })}</span>
                 </div>
               ))}

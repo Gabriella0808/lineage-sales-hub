@@ -40,7 +40,7 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm space-y-1">
-          <p>Role: <Badge variant="secondary" className="capitalize">{roleInfo?.role ?? "â€”"}</Badge></p>
+          <p>Role: <Badge variant="secondary" className="capitalize">{roleInfo?.role ?? "---"}</Badge></p>
           {roleInfo?.managerId && <p className="text-xs text-muted-foreground">Linked manager record: {roleInfo.managerId}</p>}
           {roleInfo?.repId && <p className="text-xs text-muted-foreground">Linked rep record: {roleInfo.repId}</p>}
         </CardContent>
@@ -59,7 +59,7 @@ export default function SettingsPage() {
           </div>
           <div className="flex justify-between items-center py-2 border-b">
             <span className="text-muted-foreground">Sync Method</span>
-            <span className="font-medium">Local Node.js script â†’ Backend</span>
+            <span className="font-medium">Local Node.js script -†’ Backend</span>
           </div>
           <div className="flex justify-between items-center py-2">
             <span className="text-muted-foreground">Data</span>
@@ -140,7 +140,7 @@ function ChangePasswordPanel() {
             />
           </div>
           <Button type="submit" disabled={submitting} size="sm">
-            {submitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Updatingâ€¦</>) : "Update password"}
+            {submitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Updating--¦</>) : "Update password"}
           </Button>
         </form>
       </CardContent>
@@ -307,7 +307,7 @@ function RoleAdminPanel() {
         </div>
         {loading ? (
           <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading usersâ€¦
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Loading users--¦
           </div>
         ) : users.length === 0 ? (
           <p className="text-sm text-muted-foreground">No users found yet.</p>
@@ -345,7 +345,7 @@ function RoleAdminPanel() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-medium truncate">{label}</p>
-                            <p className="text-[11px] text-muted-foreground truncate">{u.email || `${u.user_id.slice(0, 8)}â€¦`}</p>
+                            <p className="text-[11px] text-muted-foreground truncate">{u.email || `${u.user_id.slice(0, 8)}--¦`}</p>
                           </div>
                         </div>
                       </td>
@@ -368,7 +368,7 @@ function RoleAdminPanel() {
                         >
                           <SelectTrigger className="h-8 w-44"><SelectValue placeholder="No manager link" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">â€” No link â€”</SelectItem>
+                            <SelectItem value="none">--- No link ---</SelectItem>
                             {managers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
@@ -381,7 +381,7 @@ function RoleAdminPanel() {
                         >
                           <SelectTrigger className="h-8 w-44"><SelectValue placeholder="No rep link" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">â€” No link â€”</SelectItem>
+                            <SelectItem value="none">--- No link ---</SelectItem>
                             {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                           </SelectContent>
                         </Select>

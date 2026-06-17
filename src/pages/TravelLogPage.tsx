@@ -149,7 +149,7 @@ export default function TravelLogPage() {
     // Combine state + purpose for the purpose field (since travel_log lacks a state column)
     const purposeText = [form.state_visited.trim(), form.purpose.trim()]
       .filter(Boolean)
-      .join(" â€” ");
+      .join(" --- ");
     const { data, error } = await supabase
       .from("travel_log")
       .insert({
@@ -217,7 +217,7 @@ export default function TravelLogPage() {
     return tripsByDay.get(key) ?? [];
   }, [selectedDate, tripsByDay]);
 
-  // Last traveled per salesperson (most recent past trip â€” start date before today)
+  // Last traveled per salesperson (most recent past trip --- start date before today)
   const lastTraveled = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -400,7 +400,7 @@ export default function TravelLogPage() {
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                     rows={3}
                     maxLength={2000}
-                    placeholder="Meeting objectives, key contacts, special arrangementsâ€¦"
+                    placeholder="Meeting objectives, key contacts, special arrangements--¦"
                   />
                 </div>
               </div>
@@ -409,7 +409,7 @@ export default function TravelLogPage() {
                   Cancel
                 </Button>
                 <Button onClick={addTrip} disabled={saving}>
-                  {saving ? "Savingâ€¦" : (<><Plus className="h-4 w-4" /> Add trip</>)}
+                  {saving ? "Saving--¦" : (<><Plus className="h-4 w-4" /> Add trip</>)}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -542,7 +542,7 @@ export default function TravelLogPage() {
                             </p>
                             {multi && (
                               <p className="text-[10px] text-muted-foreground mt-0.5">
-                                {format(ts, "MMM d")} â†’ {format(te, "MMM d")}
+                                {format(ts, "MMM d")} -†’ {format(te, "MMM d")}
                               </p>
                             )}
                           </div>
@@ -584,7 +584,7 @@ export default function TravelLogPage() {
         </div>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loadingâ€¦</p>
+          <p className="text-sm text-muted-foreground">Loading--¦</p>
         ) : upcomingTrips.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">No upcoming trips scheduled.</p>
         ) : (
@@ -651,7 +651,7 @@ export default function TravelLogPage() {
           </span>
         </div>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loadingâ€¦</p>
+          <p className="text-sm text-muted-foreground">Loading--¦</p>
         ) : lastTraveled.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">No travel records yet.</p>
         ) : (
@@ -684,7 +684,7 @@ export default function TravelLogPage() {
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <CalendarDays className="h-3 w-3" />
                     {isMulti
-                      ? `${format(start, "MMM d")} â†’ ${format(end, "MMM d, yyyy")}`
+                      ? `${format(start, "MMM d")} -†’ ${format(end, "MMM d, yyyy")}`
                       : format(start, "MMM d, yyyy")}
                   </p>
                   {t.purpose && (
@@ -727,7 +727,7 @@ export default function TravelLogPage() {
                     </p>
                     <p className="text-sm">
                       {isMulti
-                        ? `${format(start, "EEE, MMM d, yyyy")} â†’ ${format(end, "EEE, MMM d, yyyy")}`
+                        ? `${format(start, "EEE, MMM d, yyyy")} -†’ ${format(end, "EEE, MMM d, yyyy")}`
                         : format(start, "EEEE, MMMM d, yyyy")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">{daysAgo(detailTrip.travel_date)}</p>
@@ -760,7 +760,7 @@ export default function TravelLogPage() {
                       className="sm:mr-auto"
                     >
                       <Trash2 className="h-4 w-4" />
-                      {deleting ? "Deletingâ€¦" : "Delete trip"}
+                      {deleting ? "Deleting--¦" : "Delete trip"}
                     </Button>
                   )}
                   <Button variant="outline" onClick={() => setDetailTrip(null)}>Close</Button>

@@ -114,7 +114,7 @@ export default function DealerBrandingDialog({
             </div>
             <div>
               <Label>Default intro message</Label>
-              <Textarea rows={2} value={b.intro_message || ""} onChange={(e) => setB({ ...b, intro_message: e.target.value })} placeholder="Thanks for stopping by — here is the quote we discussed." />
+              <Textarea rows={2} value={b.intro_message || ""} onChange={(e) => setB({ ...b, intro_message: e.target.value })} placeholder="Thanks for stopping by --- here is the quote we discussed." />
             </div>
             <div>
               <Label>Default footer / terms</Label>

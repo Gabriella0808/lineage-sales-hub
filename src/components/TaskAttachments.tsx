@@ -117,7 +117,7 @@ export function TaskAttachments({ taskId, onChange }: { taskId: string; onChange
         </p>
         <Button size="sm" variant="outline" onClick={onPick} disabled={uploading}>
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
-          {uploading ? "Uploadingâ€¦" : "Attach files"}
+          {uploading ? "Uploading--¦" : "Attach files"}
         </Button>
         <input
           ref={inputRef}
@@ -128,7 +128,7 @@ export function TaskAttachments({ taskId, onChange }: { taskId: string; onChange
         />
       </div>
       {loading ? (
-        <p className="text-xs italic text-muted-foreground">Loadingâ€¦</p>
+        <p className="text-xs italic text-muted-foreground">Loading--¦</p>
       ) : items.length === 0 ? (
         <p className="text-xs italic text-muted-foreground">No attachments</p>
       ) : (
@@ -160,7 +160,7 @@ export function TaskAttachments({ taskId, onChange }: { taskId: string; onChange
   );
 }
 
-/** Pending attachment picker â€” used in Create dialog before task exists. */
+/** Pending attachment picker --- used in Create dialog before task exists. */
 export function PendingAttachmentPicker({
   files,
   onChange,

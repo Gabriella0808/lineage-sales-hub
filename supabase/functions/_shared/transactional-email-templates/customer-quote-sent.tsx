@@ -53,7 +53,7 @@ const CustomerQuoteSentEmail = ({
 
           <Section style={summaryBox}>
             <Text style={summaryLine}>
-              <strong>Quote total:</strong> {total || '—'}
+              <strong>Quote total:</strong> {total || '---'}
             </Text>
             {itemCount ? (
               <Text style={summaryLine}>
@@ -91,13 +91,13 @@ export const template = {
   component: CustomerQuoteSentEmail,
   subject: (data: Record<string, any>) => {
     const brand = data?.companyName || 'Your quote'
-    return `${brand} — your quote${data?.total ? ` (${data.total})` : ''}`
+    return `${brand} --- your quote${data?.total ? ` (${data.total})` : ''}`
   },
   displayName: 'Customer quote sent',
   previewData: {
     customerName: 'Jane Smith',
     companyName: 'Acme Furniture Co.',
-    introMessage: 'Thanks for stopping by — here is the quote we discussed.',
+    introMessage: 'Thanks for stopping by --- here is the quote we discussed.',
     footerMessage: 'Quote valid for 30 days. Reply with any questions.',
     contactEmail: 'sales@acme.com',
     contactPhone: '(555) 123-4567',

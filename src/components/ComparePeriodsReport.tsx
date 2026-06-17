@@ -23,7 +23,7 @@ import seed from "@/data/comparePeriodsSeed.json";
 import { cn } from "@/lib/utils";
 
 const fmtMoney = (n: number) => {
-  if (!isFinite(n) || n === 0) return "â€”";
+  if (!isFinite(n) || n === 0) return "---";
   const sign = n < 0 ? "-" : "";
   const v = Math.abs(n);
   if (v >= 1_000_000) return `${sign}$${(v / 1_000_000).toFixed(2)}M`;
@@ -31,9 +31,9 @@ const fmtMoney = (n: number) => {
   return `${sign}$${v.toFixed(0)}`;
 };
 const fmtMoneyFull = (n: number) =>
-  n === 0 ? "â€”" : `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  n === 0 ? "---" : `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 const fmtPct = (n: number | null) => {
-  if (n === null || n === undefined || !isFinite(n)) return "â€”";
+  if (n === null || n === undefined || !isFinite(n)) return "---";
   const sign = n > 0 ? "+" : "";
   return `${sign}${(n * 100).toFixed(1)}%`;
 };
@@ -81,7 +81,7 @@ function buildRollingWindow(windowSize = 6) {
 
 const ROLLING = buildRollingWindow(6);
 
-// Remap seed account rows into the rolling window â€” values for months
+// Remap seed account rows into the rolling window --- values for months
 // outside the seed coverage default to 0 so the column appears empty
 // until live data arrives for that month.
 const REMAPPED_ACCOUNTS: SeedAccount[] = SEED.accounts.map((acc) => ({
@@ -98,7 +98,7 @@ const REMAPPED_ACCOUNTS: SeedAccount[] = SEED.accounts.map((acc) => ({
     : null,
 }));
 
-// Account â†’ warehouse/source + brand mapping
+// Account -†’ warehouse/source + brand mapping
 function classifyAccount(account: string): { source: string; brand: string; type: "sales" | "discount" | "qc" | "samples" | "other" } {
   const a = account.toLowerCase();
   let type: "sales" | "discount" | "qc" | "samples" | "other" = "other";
@@ -133,7 +133,7 @@ function EditableNote({ value, onSave }: { value: string; onSave: (v: string) =>
     return (
       <div className="group flex items-start gap-1.5 mb-1 min-h-[20px]">
         <div className={cn("flex-1 whitespace-pre-wrap", value ? "text-foreground/80" : "text-muted-foreground/60 italic")}>
-          {value || "Add noteâ€¦"}
+          {value || "Add note--¦"}
         </div>
         <button
           type="button"
@@ -167,7 +167,7 @@ function EditableNote({ value, onSave }: { value: string; onSave: (v: string) =>
         <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={() => { setDraft(value); setEditing(false); }}>
           <X className="h-3 w-3 mr-1" />Cancel
         </Button>
-        <span className="text-[10px] text-muted-foreground ml-1">âŒ˜â†µ to save</span>
+        <span className="text-[10px] text-muted-foreground ml-1">-Œ˜-†µ to save</span>
       </div>
     </div>
   );
@@ -196,7 +196,7 @@ export default function ComparePeriodsReport(_props: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(REMAPPED_ACCOUNTS.map((a) => a.account)));
   const [drillRow, setDrillRow] = useState<{ account: string; row: SeedRow } | null>(null);
 
-  // -------------------- Preset â†’ indices --------------------
+  // -------------------- Preset -†’ indices --------------------
   function applyPreset(p: Preset) {
     setPreset(p);
     if (p === "L3M_VS_PRIOR") {
@@ -428,7 +428,7 @@ export default function ComparePeriodsReport(_props: Props) {
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Search</Label>
             <div className="relative mt-1">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Collection, accountâ€¦" className="pl-8 h-9 text-sm" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Collection, account--¦" className="pl-8 h-9 text-sm" />
             </div>
           </div>
 
@@ -627,8 +627,8 @@ export default function ComparePeriodsReport(_props: Props) {
                 ))}
                 <th className="text-right px-3 py-2 border-l border-border bg-muted/40">P1 Total</th>
                 <th className="text-right px-3 py-2 bg-primary/5">P2 Total</th>
-                <th className="text-right px-3 py-2">$ Î”</th>
-                <th className="text-right px-3 py-2">% Î”</th>
+                <th className="text-right px-3 py-2">$ Î-</th>
+                <th className="text-right px-3 py-2">% Î-</th>
                 <th className="text-right px-3 py-2">3M Growth</th>
                 <th className="text-left px-3 py-2 min-w-[180px]">Notes / Flags</th>
               </tr>
@@ -664,7 +664,7 @@ export default function ComparePeriodsReport(_props: Props) {
                       <td className="px-3 py-2 text-right tabular-nums bg-primary/10">{fmtMoney(aP2)}</td>
                       <td className={cn("px-3 py-2 text-right tabular-nums", aDiff > 0 ? "text-success" : aDiff < 0 ? "text-destructive" : "")}>{aDiff > 0 ? "+" : ""}{fmtMoney(aDiff)}</td>
                       <td className={cn("px-3 py-2 text-right tabular-nums", aPct && aPct > 0 ? "text-success" : aPct && aPct < 0 ? "text-destructive" : "text-muted-foreground")}>{fmtPct(aPct)}</td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">â€”</td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">---</td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">{acc.meta.brand}</td>
                     </tr>
                     {isOpen && acc.rows.map((r) => {

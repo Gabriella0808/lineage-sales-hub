@@ -15,7 +15,7 @@ const supabase = createClient(
 const QBWC_USER = Deno.env.get("QBWC_USERNAME") ?? "";
 const QBWC_PASS = Deno.env.get("QBWC_PASSWORD") ?? "";
 
-// Session state — kept in DB so it survives between SOAP calls
+// Session state --- kept in DB so it survives between SOAP calls
 type SessionStep = "customers" | "invoices" | "done";
 interface Session { ticket: string; step: SessionStep; iterator?: string; total: number; }
 
@@ -33,7 +33,7 @@ function soapResponse(method: string, inner: string): string {
   return soapEnvelope(`<${method}Response xmlns="${QBWC_NS}">${inner}</${method}Response>`);
 }
 
-// Cheap tag extractor — works for the small, well-formed XML QBWC sends.
+// Cheap tag extractor --- works for the small, well-formed XML QBWC sends.
 function tag(xml: string, name: string): string | null {
   const re = new RegExp(`<(?:\\w+:)?${name}[^>]*>([\\s\\S]*?)</(?:\\w+:)?${name}>`, "i");
   const m = xml.match(re);
@@ -69,7 +69,7 @@ function qbxmlInvoiceQuery(iterator?: string): string {
   const iterAttr = iterator
     ? `iterator="Continue" iteratorID="${iterator}"`
     : `iterator="Start"`;
-  // Pull last 2 years of invoices on each sync — tune as needed
+  // Pull last 2 years of invoices on each sync --- tune as needed
   const from = new Date();
   from.setFullYear(from.getFullYear() - 2);
   const fromStr = from.toISOString().slice(0, 10);

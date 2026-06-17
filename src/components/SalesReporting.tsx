@@ -292,7 +292,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const today = new Date();
   const yearStart = startOfYear(today);
   // Default primary window covers the full lifetime of synced sales orders
-  // (2024 → today) so Dealer/Rep reporting shows all-time bookings by default.
+  // (2024 -�� today) so Dealer/Rep reporting shows all-time bookings by default.
   // Only the Live KPI view is scoped to the current year.
   const lifetimeStart = new Date(2024, 0, 1);
 
@@ -464,9 +464,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     const rowLabel = (key: Key): string => {
       if (key === "__unassigned") return "Unassigned";
       if (key.startsWith("acctivate:")) return `Dealer ID ${key.replace("acctivate:", "")}`;
-      if (groupBy === "dealer") return dealers.find((d) => d.id === key)?.name ?? "—";
-      if (groupBy === "rep") return reps.find((r) => r.id === key)?.name ?? "—";
-      return territories.find((t) => t.id === key)?.name ?? "—";
+      if (groupBy === "dealer") return dealers.find((d) => d.id === key)?.name ?? "---";
+      if (groupBy === "rep") return reps.find((r) => r.id === key)?.name ?? "---";
+      return territories.find((t) => t.id === key)?.name ?? "---";
     };
 
     const rows = new Map<Key, { primary: number; comparative: number; byMonth: Map<string, number> }>();
@@ -654,7 +654,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   }, [primary, useAggregates, useInvoiceLines, lines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealerIdSet, dealerIdByAcctivateId, unscopedOpenOrderView, filteredProductIds]);
 
   // Warn when a product-level filter is active but dealer_sales_lines has no rows
-  // overlapping the primary date range — common right now since line sync is sparse.
+  // overlapping the primary date range --- common right now since line sync is sparse.
   const productFilterActive = !useAggregates;
   const lineCoverageMissing = useMemo(() => {
     if (!productFilterActive) return false;
@@ -697,7 +697,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   applyPrimary(from, to);
                 }}
               >
-                <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Select preset…" /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Select preset--�" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="mtd">Month to date</SelectItem>
@@ -837,7 +837,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             />
             <MultiSelect
               label="SKU" selected={skus} onChange={setSkus}
-              options={visibleSkus.map((p) => ({ value: p.id, label: p.name ? `${p.sku} — ${p.name}` : p.sku }))}
+              options={visibleSkus.map((p) => ({ value: p.id, label: p.name ? `${p.sku} --- ${p.name}` : p.sku }))}
               searchable
               searchPlaceholder="Search SKU or name..."
             />
@@ -853,7 +853,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <div className="space-y-1">
               <p className="text-sm font-medium">No invoice line items in this date range</p>
               <p className="text-xs text-muted-foreground">
-                Brand, category, collection, and SKU filters use the per-SKU invoice line table. There are no matching rows in the selected window — try a wider date range or clear the product filters to see aggregate totals.
+                Brand, category, collection, and SKU filters use the per-SKU invoice line table. There are no matching rows in the selected window --- try a wider date range or clear the product filters to see aggregate totals.
               </p>
             </div>
           </CardContent>
@@ -880,7 +880,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Bookings</p>
             <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.bookings)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
+              {format(primary.from, "MMM d, yyyy")} --- {format(primary.to, "MMM d, yyyy")}
             </p>
           </CardContent>
         </Card>
@@ -889,7 +889,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Invoices</p>
             <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.invoices)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
+              {format(primary.from, "MMM d, yyyy")} --- {format(primary.to, "MMM d, yyyy")}
             </p>
           </CardContent>
         </Card>
@@ -969,8 +969,8 @@ function TotalTable({
           <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-muted/30">{leftHeader}</th>
           <th className="text-right p-3 font-medium text-muted-foreground">Primary</th>
           {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Comparative</th>}
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Δ</th>}
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">% Δ</th>}
+          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">�-</th>}
+          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">% �-</th>}
         </tr>
       </thead>
       <tbody>
@@ -997,7 +997,7 @@ function TotalTable({
               )}
               {showComparison && (
                 <td className={cn("p-3 text-right tabular-nums", pct >= 0 ? "text-green-600" : "text-destructive")}>
-                  {r.comparative === 0 ? "—" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
+                  {r.comparative === 0 ? "---" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
                 </td>
               )}
             </tr>
@@ -1014,7 +1014,7 @@ function TotalTable({
             {showComparison && <td className="p-3 text-right tabular-nums">{formatCurrency(totalP - totalC)}</td>}
             {showComparison && (
               <td className="p-3 text-right tabular-nums">
-                {totalC === 0 ? "—" : `${((totalP - totalC) / totalC * 100).toFixed(1)}%`}
+                {totalC === 0 ? "---" : `${((totalP - totalC) / totalC * 100).toFixed(1)}%`}
               </td>
             )}
           </tr>

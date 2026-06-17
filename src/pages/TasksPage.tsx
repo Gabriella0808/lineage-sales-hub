@@ -951,68 +951,47 @@ export default function TasksPage() {
                 <div className="px-3 py-1.5 text-center">Actions</div>
               </div>
             );
-            return COLUMNS.map((col) => {
-              const items = filteredTasks.filter((t) => t.status === col.key);
-              const isCollapsed = !!collapsedGroups[col.key];
-              const color = HEX_BY_STATUS[col.key];
-              return (
-                <div key={col.key}>
-                  {/* Group title — Monday-style colored heading */}
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setCollapsedGroups((p) => ({ ...p, [col.key]: !p[col.key] }))}
-                      aria-label={isCollapsed ? `Expand ${col.label}` : `Collapse ${col.label}`}
-                      aria-expanded={!isCollapsed}
-                      className="flex items-center gap-1.5"
-                    >
-                      <ChevronDown
-                        className={`h-4 w-4 transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
-                        style={{ color }}
-                      />
-                      <h2 className="text-base font-bold" style={{ color }}>
-                        {col.label}
-                      </h2>
-                      <span className="text-xs text-muted-foreground ml-1 tabular-nums">
-                        {items.length} {items.length === 1 ? "task" : "tasks"}
-                      </span>
-                    </button>
-                    {selectMode && items.length > 0 && (
-                      <Checkbox
-                        className="ml-2"
-                        checked={items.every((t) => selectedIds.has(t.id))}
-                        onCheckedChange={(v) => {
-                          setSelectedIds((prev) => {
-                            const next = new Set(prev);
-                            if (v) items.forEach((t) => next.add(t.id));
-                            else items.forEach((t) => next.delete(t.id));
-                            return next;
-                          });
-                        }}
-                        aria-label={`Select all ${col.label}`}
-                      />
-                    )}
-                  </div>
+            const items = filteredTasks;
+            return (
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <h2 className="text-base font-bold text-foreground">All Tasks</h2>
+                  <span className="text-xs text-muted-foreground ml-1 tabular-nums">
+                    {items.length} {items.length === 1 ? "task" : "tasks"}
+                  </span>
+                  {selectMode && items.length > 0 && (
+                    <Checkbox
+                      className="ml-2"
+                      checked={items.every((t) => selectedIds.has(t.id))}
+                      onCheckedChange={(v) => {
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (v) items.forEach((t) => next.add(t.id));
+                          else items.forEach((t) => next.delete(t.id));
+                          return next;
+                        });
+                      }}
+                      aria-label="Select all"
+                    />
+                  )}
+                </div>
 
-                  {!isCollapsed && (
-                    <div
-                      className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
-                      style={{ borderLeftColor: color }}
-                    >
-                      {columnHeader}
-                      {items.length === 0 ? (
-                        <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
-                          No items in this lane.
-                        </div>
-                      ) : (
-                        <ul>
-
+                <div className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] border-l-primary bg-card">
+                  {columnHeader}
+                  {items.length === 0 ? (
+                    <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
+                      No tasks match your filters.
+                    </div>
+                  ) : (
+                    <ul>
                       {items.map((t) => {
+                        const col = COLUMNS.find((c) => c.key === t.status) ?? COLUMNS[0];
                         const ownerIds = getAssigneeIds(t);
                         const owners = ownerIds.map((uid) => ({
                           id: uid,
                           name: assigneeName(uid) ?? "Unknown",
                         }));
+
                         const primary = owners[0];
                         const initialsOf = (n: string) =>
                           n
@@ -1265,13 +1244,11 @@ export default function TasksPage() {
                           </li>
                         );
                       })}
-                        </ul>
-                      )}
-                    </div>
+                    </ul>
                   )}
                 </div>
-              );
-            });
+              </div>
+            );
           })()}
         </div>
       )}

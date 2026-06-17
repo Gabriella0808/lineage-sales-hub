@@ -806,118 +806,104 @@ export default function TaskBoardsView() {
                   </div>
                 )}
 
-                {/* Main workflow — the 4 default groups treated as ONE section */}
-                {defaultGroups.length > 0 && (
-                  <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
-                    <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30">
-                      <LayoutGrid className="h-4 w-4 text-primary" />
-                      <h3 className="text-sm font-semibold">Main workflow</h3>
-                      <span className="text-xs text-muted-foreground">
-                        · {boardTasks.filter((t) => defaultGroups.some((g) => g.id === t.group_id)).length} tasks
-                      </span>
-                    </div>
-                    <div className="divide-y-2 divide-border">
-                      {defaultGroups.map((g) => {
-                        const items = boardTasks.filter((t) => t.group_id === g.id);
-                        const isCollapsed = collapsed[g.id];
-                        return (
-                          <div
-                            key={g.id}
-                            onDragOver={(e) => e.preventDefault()}
-                            onDrop={(e) => onDropToGroup(e, g.id)}
-                          >
-                            <div
-                              className="flex items-center gap-2 px-3 py-2 border-b-2 border-border"
-                              style={{ backgroundColor: `${g.color ?? "#6366f1"}10` }}
-                            >
-                              <button
-                                onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
-                                className="text-muted-foreground hover:text-foreground"
-                              >
-                                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                              </button>
-                              <span
-                                className="inline-block h-2 w-2 rounded-full"
-                                style={{ backgroundColor: g.color ?? "#6366f1" }}
-                              />
-                              <h4 className="text-sm font-medium" style={{ color: g.color ?? undefined }}>
-                                {g.name}
-                              </h4>
-                              <span className="text-xs text-muted-foreground tabular-nums">{items.length}</span>
-                               <span className="flex-1" />
+                {/* Default workflow groups — each rendered as Monday-style colored group */}
+                {defaultGroups.map((g) => {
+                  const items = boardTasks.filter((t) => t.group_id === g.id);
+                  const isCollapsed = collapsed[g.id];
+                  const color = g.color ?? "#6366f1";
+                  return (
+                    <div
+                      key={g.id}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => onDropToGroup(e, g.id)}
+                    >
+                      <button
+                        onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
+                        className="flex items-center gap-1.5 mb-1.5 group"
+                      >
+                        {isCollapsed ? (
+                          <ChevronRight className="h-4 w-4" style={{ color }} />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" style={{ color }} />
+                        )}
+                        <h3 className="text-base font-bold" style={{ color }}>
+                          {g.name}
+                        </h3>
+                        <span className="text-xs text-muted-foreground ml-1">
+                          {items.length} {items.length === 1 ? "task" : "tasks"}
+                        </span>
+                      </button>
+                      {!isCollapsed && (
+                        <div
+                          className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
+                          style={{ borderLeftColor: color }}
+                        >
+                          {columnHeader}
+                          {items.length === 0 ? (
+                            <div className="px-4 py-3 text-xs italic text-muted-foreground/70 bg-card">
+                              Drag tasks here or click "+ Item".
                             </div>
-                            {!isCollapsed && (
-                              <>
-                                {columnHeader}
-                                {items.length === 0 ? (
-                                  <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
-                                    Drag tasks here or click "+ Item".
-                                  </div>
-                                ) : (
-                                  <ul className="divide-y divide-border">{items.map(renderTaskRow)}</ul>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        );
-                      })}
+                          ) : (
+                            <ul>{items.map(renderTaskRow)}</ul>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })}
 
                 {/* Custom groups — each its own section with internal status sub-rows */}
                 {customGroups.map((g) => {
                   const groupTasks = boardTasks.filter((t) => t.group_id === g.id);
                   const isCollapsed = collapsed[g.id];
+                  const color = g.color ?? "#6366f1";
                   return (
-                    <div
-                      key={g.id}
-                      className="rounded-lg border border-border bg-card overflow-hidden shadow-sm"
-                    >
-                      <div
-                        className="flex items-center gap-2 px-3 py-2.5 border-b border-border"
-                        style={{ backgroundColor: `${g.color ?? "#6366f1"}14` }}
-                      >
+                    <div key={g.id}>
+                      <div className="flex items-center gap-1.5 mb-1.5">
                         <button
                           onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
-                          className="text-muted-foreground hover:text-foreground"
+                          className="flex items-center gap-1.5"
                         >
-                          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          {isCollapsed ? (
+                            <ChevronRight className="h-4 w-4" style={{ color }} />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" style={{ color }} />
+                          )}
+                          <h3 className="text-base font-bold" style={{ color }}>
+                            {g.name}
+                          </h3>
+                          <span className="text-xs text-muted-foreground ml-1">
+                            {groupTasks.length} {groupTasks.length === 1 ? "task" : "tasks"}
+                          </span>
                         </button>
-                        <span
-                          className="inline-block h-2 w-2 rounded-full"
-                          style={{ backgroundColor: g.color ?? "#6366f1" }}
-                        />
-                        <h3 className="text-sm font-semibold" style={{ color: g.color ?? undefined }}>
-                          {g.name}
-                        </h3>
-                        <span className="text-xs text-muted-foreground tabular-nums">{groupTasks.length}</span>
-                        <span className="flex-1" />
                         {isBoardOwner && (
-                          <>
+                          <div className="flex items-center gap-0.5 ml-1">
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                               onClick={() => openEditGroup(g)}
                               title="Edit group"
                             >
-                              <Pencil className="h-3.5 w-3.5" />
+                              <Pencil className="h-3 w-3" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                               onClick={() => deleteGroup(g)}
                               title="Delete group"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-3 w-3" />
                             </Button>
-                          </>
+                          </div>
                         )}
                       </div>
                       {!isCollapsed && (
-                        <div className="divide-y-2 divide-border">
+                        <div
+                          className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
+                          style={{ borderLeftColor: color }}
+                        >
                           {STATUS_ORDER.map(({ key: status, label }) => {
                             const items = groupTasks.filter((t) => t.status === status);
                             const meta = STATUS_META[status];
@@ -926,13 +912,13 @@ export default function TaskBoardsView() {
                                 key={status}
                                 onDragOver={(e) => e.preventDefault()}
                                 onDrop={(e) => onDropToCustomSubsection(e, g.id, status)}
+                                className="border-b-2 border-border last:border-b-0"
                               >
-                                <div className="flex items-center gap-2 px-3 py-2 bg-muted/20 border-b-2 border-border">
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-b border-border">
                                   <Badge className={`${meta.pillBg} ${meta.pillText} border-0 text-[10px]`}>
                                     {label}
                                   </Badge>
                                   <span className="text-xs text-muted-foreground tabular-nums">{items.length}</span>
-                                   <span className="flex-1" />
                                 </div>
                                 {columnHeader}
                                 {items.length === 0 ? (
@@ -940,7 +926,7 @@ export default function TaskBoardsView() {
                                     Drag tasks here or click "+ Item".
                                   </div>
                                 ) : (
-                                  <ul className="divide-y divide-border">{items.map(renderTaskRow)}</ul>
+                                  <ul>{items.map(renderTaskRow)}</ul>
                                 )}
                               </div>
                             );

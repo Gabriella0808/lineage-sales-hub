@@ -529,6 +529,36 @@ export default function CrmAccountsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the prospect from the list and removes its pin from the Field Check-ins map. Any check-ins logged for this account will also be deleted. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!deleteTarget) return;
+                const target = deleteTarget;
+                del.mutate(
+                  { id: target.id },
+                  {
+                    onSuccess: () => toast({ title: "Prospect deleted", description: `${target.name} was removed from prospects and the check-ins map.` }),
+                    onError: (e: any) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+                  },
+                );
+                setDeleteTarget(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

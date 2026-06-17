@@ -108,6 +108,7 @@ interface BoardTask {
   group_id: string | null;
   user_id: string;
   assigned_user_id: string | null;
+  is_sop?: boolean;
 }
 
 export default function TaskBoardsView() {

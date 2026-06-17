@@ -382,9 +382,13 @@ export default function CaptureLeadsPage() {
       trade_show: market?.name ?? null,
       lead_date: new Date().toISOString().slice(0, 10),
       created_by: user?.id ?? null,
+      prospect_types: leadForm.prospect_types ?? [],
     });
     if (error) return toast.error(error.message);
     toast.success("Lead captured");
+
+    // Create linked Prospect account if prospect types were selected
+    await syncProspectAccount(newLeadId, null);
 
     // Notify the assigned rep by email with the lead summary
     const repEmailToNotify = leadForm.rep_email.trim();

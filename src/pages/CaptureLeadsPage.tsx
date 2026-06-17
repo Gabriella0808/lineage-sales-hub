@@ -206,6 +206,8 @@ export default function CaptureLeadsPage() {
       product_interest: l.product_interest ?? "",
       order_amount: l.order_amount != null ? String(l.order_amount) : "",
       status: l.status ?? "New",
+      notes: l.notes ?? "",
+      prospect_types: Array.isArray(l.prospect_types) ? l.prospect_types : [],
     });
     setEditingLeadId(l.id);
     setEditingOriginalRepEmail((l.rep_email ?? "").trim().toLowerCase());

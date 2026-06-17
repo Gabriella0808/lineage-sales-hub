@@ -1510,6 +1510,8 @@ export default function TasksPage() {
         taskId={updatesTaskId}
         open={!!updatesTaskId}
         onOpenChange={(o) => { if (!o) { setUpdatesTaskId(null); refreshUpdateCounts(); } }}
+        users={assignees.map((a) => ({ user_id: a.user_id, full_name: a.full_name, email: a.email }))}
+        onActivityChange={refreshUpdateCounts}
       />
     </div>
   );

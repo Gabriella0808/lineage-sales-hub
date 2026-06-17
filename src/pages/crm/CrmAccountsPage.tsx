@@ -22,6 +22,8 @@ export default function CrmAccountsPage() {
   const { data: managers = [] } = useCrmManagers();
   const { data: prospectTypes = [] } = useProspectTypes();
   const update = useUpdateAccount();
+  const del = useDeleteAccount();
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const repParam = searchParams.get("rep") ?? "all";

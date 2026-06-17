@@ -294,9 +294,14 @@ export default function CaptureLeadsPage() {
         notes: leadForm.notes.trim() || null,
         market_id: leadDialog,
         trade_show: market?.name ?? null,
+        prospect_types: leadForm.prospect_types ?? [],
       }).eq("id", editingLeadIdSnapshot);
       if (error) return toast.error(error.message);
       toast.success("Lead updated");
+
+      // Sync prospect link
+      const existingLead = leads.find((l) => l.id === editingLeadIdSnapshot);
+      await syncProspectAccount(editingLeadIdSnapshot, existingLead?.crm_account_id ?? null);
 
       // Trigger rep notification if the rep was (re)assigned during this edit:
       // - rep was cleared and re-selected (even if same rep), OR

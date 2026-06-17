@@ -53,7 +53,9 @@ import {
   X,
   Check,
   Filter,
+  MessageSquarePlus,
 } from "lucide-react";
+import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
 import { format } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 

@@ -127,7 +127,7 @@ export default function TaskBoardsView() {
   const [detailsTask, setDetailsTask] = useState<BoardTask | null>(null);
 
   // members / subscribers
-  const [shareDlgOpen, setShareDlgOpen] = useState(false);
+  const [subscribeDlgOpen, setSubscribeDlgOpen] = useState(false);
   const [members, setMembers] = useState<{ user_id: string }[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<{ user_id: string; full_name: string | null; email: string | null }[]>([]);
   const [taskAssignees, setTaskAssignees] = useState<Record<string, string[]>>({});
@@ -297,10 +297,10 @@ export default function TaskBoardsView() {
   };
 
   // --- Members / Subscribers ---
-  const openShareDialog = async () => {
+  const openSubscribeDialog = async () => {
     if (!activeBoardId) return;
     setAddUserId("");
-    setShareDlgOpen(true);
+    setSubscribeDlgOpen(true);
     const [mRes, uRes] = await Promise.all([
       supabase.from("task_board_members" as any).select("user_id").eq("board_id", activeBoardId),
       supabase.rpc("assignable_users"),
@@ -623,8 +623,8 @@ export default function TaskBoardsView() {
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              <Button size="sm" variant="outline" onClick={openShareDialog}>
-                <UserPlus className="h-3.5 w-3.5" /> Share
+              <Button size="sm" variant="outline" onClick={openSubscribeDialog}>
+                <UserPlus className="h-3.5 w-3.5" /> Subscribe
               </Button>
               {isBoardOwner && (
                 <>
@@ -1137,11 +1137,11 @@ export default function TaskBoardsView() {
         </DialogContent>
       </Dialog>
 
-      {/* Share / subscribers dialog */}
-      <Dialog open={shareDlgOpen} onOpenChange={setShareDlgOpen}>
+      {/* Subscribe / subscribers dialog */}
+      <Dialog open={subscribeDlgOpen} onOpenChange={setSubscribeDlgOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">Share board</DialogTitle>
+            <DialogTitle className="font-display text-xl">Subscribe board</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground -mt-1">
             Subscribers can view this board and add tasks to it.
@@ -1209,7 +1209,7 @@ export default function TaskBoardsView() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setShareDlgOpen(false)}>Done</Button>
+            <Button onClick={() => setSubscribeDlgOpen(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

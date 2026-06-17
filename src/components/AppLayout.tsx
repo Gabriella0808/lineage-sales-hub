@@ -211,6 +211,7 @@ function SidebarNav() {
       ...s,
       items: s.items
         .filter((i) => (cs ? CS_ALLOWED.has(i.url) : i.roles.includes(role)))
+        .filter((i) => !(i.url === "/org-chart" && user?.email?.toLowerCase() === "andrew@lineage-collections.com"))
         .map((i) => (cs ? { ...i, children: undefined } : i)),
     }))
     .filter((s) => s.items.length > 0);

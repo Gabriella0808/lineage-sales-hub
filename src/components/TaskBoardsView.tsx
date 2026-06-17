@@ -280,22 +280,14 @@ export default function TaskBoardsView() {
 
   // --- Board CRUD ---
   const loadSopTemplates = async () => {
-    const { data, error } = await supabase
-      .from("sop_templates" as any)
-      .select("*")
-      .order("is_builtin", { ascending: false })
-      .order("name");
-    if (!error) setSopTemplates((data ?? []) as unknown as SopTemplate[]);
-  };
   const openNewBoard = async () => {
     setEditingBoard(null);
-    setBoardForm({ name: "", description: "", color: GROUP_COLORS[0], templateId: "" });
-    await loadSopTemplates();
+    setBoardForm({ name: "", description: "", color: GROUP_COLORS[0] });
     setBoardDlgOpen(true);
   };
   const openEditBoard = (b: Board) => {
     setEditingBoard(b);
-    setBoardForm({ name: b.name, description: b.description ?? "", color: b.color ?? GROUP_COLORS[0], templateId: "" });
+    setBoardForm({ name: b.name, description: b.description ?? "", color: b.color ?? GROUP_COLORS[0] });
     setBoardDlgOpen(true);
   };
   const saveBoard = async () => {

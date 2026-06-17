@@ -98,7 +98,7 @@ const COLUMNS: {
   },
   {
     key: "in_progress",
-    label: "IN PROGRESS",
+    label: "In Progress",
     tone: "border-accent/40",
     accent: "bg-accent",
     headerBg: "bg-accent/15",

@@ -794,8 +794,51 @@ export default function TaskBoardsView() {
                       <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                     )}
                   </div>
-                  <div className="hidden md:flex items-center justify-center px-2 border-r border-border">
-                    {renderAssignees(t)}
+                  <div
+                    className="hidden md:flex items-center justify-center px-2 border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="flex items-center justify-center w-full h-full py-1 hover:bg-muted/40 rounded">
+                          {renderAssignees(t)}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-0" align="center">
+                        <Command>
+                          <CommandInput placeholder="Search people…" />
+                          <CommandList>
+                            <CommandEmpty>No people found.</CommandEmpty>
+                            <CommandGroup heading="People">
+                              {assignableUsers.map((u) => {
+                                const current = assigneeIdsFor(t);
+                                const selected = current.includes(u.user_id);
+                                const name = u.full_name || u.email || u.user_id.slice(0, 8);
+                                return (
+                                  <CommandItem
+                                    key={u.user_id}
+                                    value={`${u.full_name ?? ""} ${u.email ?? ""}`}
+                                    onSelect={() => {
+                                      const next = selected
+                                        ? current.filter((x) => x !== u.user_id)
+                                        : [...current, u.user_id];
+                                      setTaskAssigneesInline(t.id, next);
+                                    }}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
+                                      {getInitials(name)}
+                                    </span>
+                                    <span className="flex-1 text-sm">{name}</span>
+                                    {selected && <Check className="h-4 w-4 text-primary" />}
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div
                     className="hidden md:flex items-stretch border-r border-border"
@@ -816,15 +859,44 @@ export default function TaskBoardsView() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="hidden md:flex items-center justify-center px-2 text-xs text-muted-foreground border-r border-border">
-                    {t.due_date ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {format(parseDateOnly(t.due_date)!, "MMM d")}
-                      </span>
-                    ) : (
-                      <span className="italic">—</span>
-                    )}
+                  <div
+                    className="hidden md:flex items-stretch border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="flex w-full h-full items-center justify-center gap-1 px-2 text-xs text-muted-foreground hover:bg-muted/40">
+                          {t.due_date ? (
+                            <>
+                              <Calendar className="h-3 w-3" />
+                              {format(parseDateOnly(t.due_date)!, "MMM d")}
+                            </>
+                          ) : (
+                            <span className="italic">—</span>
+                          )}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="center">
+                        <CalendarPicker
+                          mode="single"
+                          selected={t.due_date ? parseDateOnly(t.due_date)! : undefined}
+                          onSelect={(d) => updateTaskDueDate(t.id, d ?? null)}
+                          initialFocus
+                        />
+                        {t.due_date && (
+                          <div className="p-2 border-t">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="w-full text-xs"
+                              onClick={() => updateTaskDueDate(t.id, null)}
+                            >
+                              Clear date
+                            </Button>
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div
                     className="hidden md:flex items-center justify-center gap-0.5 px-1"

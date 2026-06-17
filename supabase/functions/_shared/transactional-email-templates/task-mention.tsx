@@ -41,7 +41,7 @@ const TaskMentionEmail = ({
         {updateBody ? <Text style={quote}>{updateBody}</Text> : null}
         {link ? (
           <Button href={link} style={button}>
-            View update
+            Open task
           </Button>
         ) : null}
         <Hr style={hr} />

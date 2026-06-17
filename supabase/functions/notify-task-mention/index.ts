@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     const results: Array<Record<string, unknown>> = [];
 
     for (const uid of mentions) {
-      if (!uid || uid === upd.author_id) continue;
+      if (!uid) continue;
       const { data: userResp, error: gErr } = await supabase.auth.admin.getUserById(uid);
       if (gErr || !userResp?.user?.email) {
         results.push({ uid, skipped: "no_email" });

@@ -806,19 +806,20 @@ export default function TaskBoardsView() {
                   </div>
                 )}
 
-                {/* Default workflow groups — each rendered as Monday-style colored group */}
-                {defaultGroups.map((g) => {
-                  const items = boardTasks.filter((t) => t.group_id === g.id);
-                  const isCollapsed = collapsed[g.id];
-                  const color = g.color ?? "#6366f1";
+                {/* Default workflow groups — merged into one Monday-style flat table */}
+                {defaultGroups.length > 0 && (() => {
+                  const defaultGroupIds = new Set(defaultGroups.map((g) => g.id));
+                  const items = boardTasks.filter((t) => t.group_id && defaultGroupIds.has(t.group_id));
+                  const firstGroup = defaultGroups[0];
+                  const isCollapsed = collapsed[firstGroup.id];
+                  const color = firstGroup.color ?? "#6366f1";
                   return (
                     <div
-                      key={g.id}
                       onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => onDropToGroup(e, g.id)}
+                      onDrop={(e) => onDropToGroup(e, firstGroup.id)}
                     >
                       <button
-                        onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
+                        onClick={() => setCollapsed((c) => ({ ...c, [firstGroup.id]: !c[firstGroup.id] }))}
                         className="flex items-center gap-1.5 mb-1.5 group"
                       >
                         {isCollapsed ? (
@@ -827,7 +828,7 @@ export default function TaskBoardsView() {
                           <ChevronDown className="h-4 w-4" style={{ color }} />
                         )}
                         <h3 className="text-base font-bold" style={{ color }}>
-                          {g.name}
+                          Tasks
                         </h3>
                         <span className="text-xs text-muted-foreground ml-1">
                           {items.length} {items.length === 1 ? "task" : "tasks"}
@@ -850,7 +851,7 @@ export default function TaskBoardsView() {
                       )}
                     </div>
                   );
-                })}
+                })()}
 
                 {/* Custom groups — each its own section with internal status sub-rows */}
                 {customGroups.map((g) => {

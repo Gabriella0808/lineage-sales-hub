@@ -131,6 +131,8 @@ export default function TaskBoardsView() {
   const [groupDlgOpen, setGroupDlgOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [groupForm, setGroupForm] = useState({ name: "", color: GROUP_COLORS[0] });
+  const [inlineEditingGroupId, setInlineEditingGroupId] = useState<string | null>(null);
+  const [inlineEditName, setInlineEditName] = useState("");
 
   const [taskDlgOpen, setTaskDlgOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<BoardTask | null>(null);
@@ -431,6 +433,20 @@ export default function TaskBoardsView() {
     const { error } = await supabase.from("task_board_groups" as any).delete().eq("id", g.id);
     if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     load();
+  };
+  const saveInlineGroupName = async (groupId: string, name: string) => {
+    if (!name.trim()) return;
+    const { error } = await supabase
+      .from("task_board_groups" as any)
+      .update({ name: name.trim() })
+      .eq("id", groupId);
+    if (error) {
+      toast({ title: "Rename failed", description: error.message, variant: "destructive" });
+    } else {
+      setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, name: name.trim() } : g)));
+    }
+    setInlineEditingGroupId(null);
+    setInlineEditName("");
   };
 
   // --- Task CRUD ---
@@ -1109,9 +1125,36 @@ export default function TaskBoardsView() {
                         ) : (
                           <ChevronDown className="h-4 w-4" style={{ color }} />
                         )}
-                        <h3 className="text-base font-bold" style={{ color }}>
-                          Tasks
-                        </h3>
+                        {inlineEditingGroupId === firstGroup.id ? (
+                          <input
+                            autoFocus
+                            value={inlineEditName}
+                            onChange={(e) => setInlineEditName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveInlineGroupName(firstGroup.id, inlineEditName);
+                              if (e.key === "Escape") {
+                                setInlineEditingGroupId(null);
+                                setInlineEditName("");
+                              }
+                            }}
+                            onBlur={() => saveInlineGroupName(firstGroup.id, inlineEditName)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-base font-bold bg-transparent border-b-2 border-current outline-none px-1 py-0 min-w-[120px]"
+                            style={{ color }}
+                          />
+                        ) : (
+                          <h3
+                            className="text-base font-bold cursor-text hover:opacity-80"
+                            style={{ color }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInlineEditingGroupId(firstGroup.id);
+                              setInlineEditName(firstGroup.name);
+                            }}
+                          >
+                            {firstGroup.name}
+                          </h3>
+                        )}
                         <span className="text-xs text-muted-foreground ml-1">
                           {items.length} {items.length === 1 ? "task" : "tasks"}
                         </span>
@@ -1151,9 +1194,36 @@ export default function TaskBoardsView() {
                           ) : (
                             <ChevronDown className="h-4 w-4" style={{ color }} />
                           )}
-                          <h3 className="text-base font-bold" style={{ color }}>
-                            {g.name}
-                          </h3>
+                          {inlineEditingGroupId === g.id ? (
+                            <input
+                              autoFocus
+                              value={inlineEditName}
+                              onChange={(e) => setInlineEditName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveInlineGroupName(g.id, inlineEditName);
+                                if (e.key === "Escape") {
+                                  setInlineEditingGroupId(null);
+                                  setInlineEditName("");
+                                }
+                              }}
+                              onBlur={() => saveInlineGroupName(g.id, inlineEditName)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-base font-bold bg-transparent border-b-2 border-current outline-none px-1 py-0 min-w-[120px]"
+                              style={{ color }}
+                            />
+                          ) : (
+                            <h3
+                              className="text-base font-bold cursor-text hover:opacity-80"
+                              style={{ color }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInlineEditingGroupId(g.id);
+                                setInlineEditName(g.name);
+                              }}
+                            >
+                              {g.name}
+                            </h3>
+                          )}
                           <span className="text-xs text-muted-foreground ml-1">
                             {groupTasks.length} {groupTasks.length === 1 ? "task" : "tasks"}
                           </span>

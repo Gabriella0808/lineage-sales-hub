@@ -120,6 +120,8 @@ export default function TaskBoardsView() {
   const [newItemTitle, setNewItemTitle] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatesTaskId, setUpdatesTaskId] = useState<string | null>(null);
+  const [updateCounts, setUpdateCounts] = useState<Record<string, number>>({});
 
   // dialogs
   const [boardDlgOpen, setBoardDlgOpen] = useState(false);

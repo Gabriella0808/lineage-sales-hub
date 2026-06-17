@@ -130,7 +130,6 @@ export default function TaskBoardsView() {
   const [editingBoard, setEditingBoard] = useState<Board | null>(null);
   const [boardForm, setBoardForm] = useState({ name: "", description: "", color: GROUP_COLORS[0] });
   const [showCompletedSop, setShowCompletedSop] = useState(false);
-  const [showCompletedSop, setShowCompletedSop] = useState(false);
 
   const [groupDlgOpen, setGroupDlgOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);

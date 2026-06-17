@@ -223,7 +223,7 @@ export default function TasksPage() {
   const refreshUpdateCounts = async () => {
     const { data } = await supabase.from("manager_task_updates" as any).select("task_id");
     const counts: Record<string, number> = {};
-    ((data ?? []) as { task_id: string }[]).forEach((r) => {
+    ((data ?? []) as unknown as { task_id: string }[]).forEach((r) => {
       counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
     });
     setUpdateCounts(counts);

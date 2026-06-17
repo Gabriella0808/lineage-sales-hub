@@ -1109,7 +1109,7 @@ export default function TasksPage() {
                             </div>
 
                             {/* Owner column (md+) */}
-                            <div className="hidden md:flex items-center gap-2 px-3 py-2 min-w-0">
+                            <div className="hidden md:flex items-center gap-2 px-3 py-2 min-w-0 border-r border-border">
                               {owners.length === 0 ? (
                                 <span className="text-xs italic text-muted-foreground">
                                   Unassigned
@@ -1144,14 +1144,14 @@ export default function TasksPage() {
                               )}
                             </div>
 
-                            {/* Status pill (md+) */}
-                            <div className="hidden md:flex items-center px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                            {/* Status cell (md+) — full-bleed colored */}
+                            <div className="hidden md:flex items-stretch border-r border-border" onClick={(e) => e.stopPropagation()}>
                               <Select
                                 value={t.status}
                                 onValueChange={(v: Status) => updateStatus(t.id, v)}
                               >
                                 <SelectTrigger
-                                  className={`h-7 px-3 text-xs font-semibold border-0 ${col.pillBg} ${col.pillText} rounded-md w-full justify-center gap-1 shadow-sm`}
+                                  className={`h-auto w-full rounded-none border-0 ${col.pillBg} ${col.pillText} text-xs font-semibold justify-center gap-1 focus:ring-0 focus:ring-offset-0 [&>svg]:hidden hover:opacity-90`}
                                 >
                                   <SelectValue />
                                 </SelectTrigger>
@@ -1170,7 +1170,7 @@ export default function TasksPage() {
                             </div>
 
                             {/* Due date (md+) */}
-                            <div className="hidden md:flex items-center px-3 py-2 text-xs text-muted-foreground">
+                            <div className="hidden md:flex items-center justify-center px-3 py-2 text-xs text-muted-foreground border-r border-border">
                               {t.due_date ? (
                                 <span className="inline-flex items-center gap-1">
                                   <Calendar className="h-3.5 w-3.5" />
@@ -1182,7 +1182,8 @@ export default function TasksPage() {
                             </div>
 
                             {/* Board (md+) */}
-                            <div className="hidden md:flex items-center px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="hidden md:flex items-center px-3 py-2 border-r border-border" onClick={(e) => e.stopPropagation()}>
+
                               {(isMine || assignedToMe) ? (
                                 <Select
                                   value={t.board_id ?? "__none__"}

@@ -56,7 +56,7 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
-import { SopTemplatesManager, type SopTemplate } from "@/components/SopTemplatesManager";
+
 import { format } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 
@@ -128,9 +128,7 @@ export default function TaskBoardsView() {
   // dialogs
   const [boardDlgOpen, setBoardDlgOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<Board | null>(null);
-  const [boardForm, setBoardForm] = useState({ name: "", description: "", color: GROUP_COLORS[0], templateId: "" });
-  const [sopTemplates, setSopTemplates] = useState<SopTemplate[]>([]);
-  const [sopManagerOpen, setSopManagerOpen] = useState(false);
+  const [boardForm, setBoardForm] = useState({ name: "", description: "", color: GROUP_COLORS[0] });
   const [showCompletedSop, setShowCompletedSop] = useState(false);
 
   const [groupDlgOpen, setGroupDlgOpen] = useState(false);
@@ -281,23 +279,14 @@ export default function TaskBoardsView() {
   );
 
   // --- Board CRUD ---
-  const loadSopTemplates = async () => {
-    const { data, error } = await supabase
-      .from("sop_templates" as any)
-      .select("*")
-      .order("is_builtin", { ascending: false })
-      .order("name");
-    if (!error) setSopTemplates((data ?? []) as unknown as SopTemplate[]);
-  };
   const openNewBoard = async () => {
     setEditingBoard(null);
-    setBoardForm({ name: "", description: "", color: GROUP_COLORS[0], templateId: "" });
-    await loadSopTemplates();
+    setBoardForm({ name: "", description: "", color: GROUP_COLORS[0] });
     setBoardDlgOpen(true);
   };
   const openEditBoard = (b: Board) => {
     setEditingBoard(b);
-    setBoardForm({ name: b.name, description: b.description ?? "", color: b.color ?? GROUP_COLORS[0], templateId: "" });
+    setBoardForm({ name: b.name, description: b.description ?? "", color: b.color ?? GROUP_COLORS[0] });
     setBoardDlgOpen(true);
   };
   const saveBoard = async () => {
@@ -329,39 +318,13 @@ export default function TaskBoardsView() {
       if (error || !data) return toast({ title: "Create failed", description: error?.message, variant: "destructive" });
       const newId = (data as any).id as string;
 
-      if (boardForm.templateId) {
-        // Seed from SOP template: one "SOP Checklist" group + tasks with is_sop=true
-        const { data: tplItems } = await supabase
-          .from("sop_template_items" as any)
-          .select("title,position")
-          .eq("template_id", boardForm.templateId)
-          .order("position");
-        const { data: groupRow } = await supabase
-          .from("task_board_groups" as any)
-          .insert({ board_id: newId, name: "SOP Checklist", color: "#0ea5e9", position: 0 })
-          .select("id")
-          .single();
-        const groupId = (groupRow as any)?.id as string | undefined;
-        if (groupId && tplItems && tplItems.length) {
-          const rows = (tplItems as any[]).map((it) => ({
-            title: it.title,
-            status: "todo" as const,
-            board_id: newId,
-            group_id: groupId,
-            user_id: user.id,
-            is_sop: true,
-          }));
-          await supabase.from("manager_tasks").insert(rows);
-        }
-      } else {
-        // seed default groups
-        await supabase.from("task_board_groups" as any).insert([
-          { board_id: newId, name: "To Do", color: "#6366f1", position: 0 },
-          { board_id: newId, name: "In Progress", color: "#f59e0b", position: 1 },
-          { board_id: newId, name: "Stuck", color: "#ef4444", position: 2 },
-          { board_id: newId, name: "Done", color: "#10b981", position: 3 },
-        ]);
-      }
+      // seed default groups
+      await supabase.from("task_board_groups" as any).insert([
+        { board_id: newId, name: "To Do", color: "#6366f1", position: 0 },
+        { board_id: newId, name: "In Progress", color: "#f59e0b", position: 1 },
+        { board_id: newId, name: "Stuck", color: "#ef4444", position: 2 },
+        { board_id: newId, name: "Done", color: "#10b981", position: 3 },
+      ]);
       setActiveBoardId(newId);
     }
     setBoardDlgOpen(false);
@@ -1414,39 +1377,6 @@ export default function TaskBoardsView() {
                 ))}
               </div>
             </div>
-            {!editingBoard && (
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-xs text-muted-foreground">Start from template</p>
-                  <button
-                    type="button"
-                    onClick={() => setSopManagerOpen(true)}
-                    className="text-[11px] text-primary hover:underline"
-                  >
-                    Manage SOP templates
-                  </button>
-                </div>
-                <Select
-                  value={boardForm.templateId || "__blank__"}
-                  onValueChange={(v) =>
-                    setBoardForm({ ...boardForm, templateId: v === "__blank__" ? "" : v })
-                  }
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__blank__">Blank board (default columns)</SelectItem>
-                    {sopTemplates.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name}
-                        {t.is_builtin ? " (built-in)" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setBoardDlgOpen(false)}>Cancel</Button>
@@ -1454,12 +1384,6 @@ export default function TaskBoardsView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <SopTemplatesManager
-        open={sopManagerOpen}
-        onOpenChange={setSopManagerOpen}
-        onChanged={loadSopTemplates}
-      />
 
 
       {/* Group dialog */}

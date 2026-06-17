@@ -1285,7 +1285,7 @@ export default function TaskBoardsView() {
                   const groupTasks = boardTasks
                     .filter((t) => t.group_id === g.id)
                     .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
-                    .filter((t) => !t.is_sop || showCompletedSop || t.status !== "done");
+                    .filter((t) => showCompletedSop || t.status !== "done");
                   const isCollapsed = collapsed[g.id];
                   const color = g.color ?? "#6366f1";
                   return (

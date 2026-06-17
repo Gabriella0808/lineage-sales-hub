@@ -961,7 +961,16 @@ export default function TasksPage() {
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {filteredTasks.length} of {tasks.length}
               </span>
-              <Button
+              {tasks.some((t) => t.status === "done") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-xs"
+                  onClick={() => setShowCompleted((v) => !v)}
+                >
+                  {showCompleted ? "Hide completed" : `Show completed (${tasks.filter((t) => t.status === "done").length})`}
+                </Button>
+              )}
                 size="sm"
                 variant={selectMode ? "default" : "outline"}
                 className="h-8 text-xs"

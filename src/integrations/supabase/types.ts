@@ -7348,6 +7348,7 @@ export type Database = {
           contact_name: string | null
           created_at: string
           created_by: string | null
+          crm_account_id: string | null
           dealer: string | null
           email: string | null
           id: string
@@ -7358,6 +7359,7 @@ export type Database = {
           order_amount: number | null
           phone: string | null
           product_interest: string | null
+          prospect_types: string[]
           raw: Json | null
           rep_email: string | null
           sales_rep: string | null
@@ -7370,6 +7372,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
+          crm_account_id?: string | null
           dealer?: string | null
           email?: string | null
           id?: string
@@ -7380,6 +7383,7 @@ export type Database = {
           order_amount?: number | null
           phone?: string | null
           product_interest?: string | null
+          prospect_types?: string[]
           raw?: Json | null
           rep_email?: string | null
           sales_rep?: string | null
@@ -7392,6 +7396,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
+          crm_account_id?: string | null
           dealer?: string | null
           email?: string | null
           id?: string
@@ -7402,6 +7407,7 @@ export type Database = {
           order_amount?: number | null
           phone?: string | null
           product_interest?: string | null
+          prospect_types?: string[]
           raw?: Json | null
           rep_email?: string | null
           sales_rep?: string | null
@@ -7410,6 +7416,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trade_show_leads_crm_account_id_fkey"
+            columns: ["crm_account_id"]
+            isOneToOne: false
+            referencedRelation: "crm_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trade_show_leads_market_id_fkey"
             columns: ["market_id"]

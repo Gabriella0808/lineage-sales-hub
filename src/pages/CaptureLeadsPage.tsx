@@ -22,6 +22,7 @@ import {
 import { Loader2, Plus, MapPin, Calendar, Trash2, Pencil, Mail, Phone, User, Building2, Tag, DollarSign, FileText, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
+import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 
 type Market = {
   id: string;
@@ -49,6 +50,8 @@ type Lead = {
   market_id: string | null;
   notes: string | null;
   created_at: string;
+  prospect_types?: string[] | null;
+  crm_account_id?: string | null;
 };
 
 type SalesRep = {
@@ -63,6 +66,7 @@ const fmt = (n: number | null) =>
 const emptyLead = {
   contact_name: "", dealer: "", email: "", additional_email: "", phone: "",
   sales_rep: "", sales_rep_id: "", rep_email: "", product_interest: "", order_amount: "", status: "New", notes: "",
+  prospect_types: [] as string[],
   followup_enabled: false, followup_title: "", followup_description: "", followup_due_date: "",
 };
 
@@ -202,11 +206,72 @@ export default function CaptureLeadsPage() {
       product_interest: l.product_interest ?? "",
       order_amount: l.order_amount != null ? String(l.order_amount) : "",
       status: l.status ?? "New",
+      notes: l.notes ?? "",
+      prospect_types: Array.isArray(l.prospect_types) ? l.prospect_types : [],
     });
     setEditingLeadId(l.id);
     setEditingOriginalRepEmail((l.rep_email ?? "").trim().toLowerCase());
     setEditRepCleared(false);
     setLeadDialog(l.market_id ?? markets.find((m) => m.name === l.trade_show)?.id ?? null);
+  };
+
+  // Create / update / unlink the linked CRM Prospect account based on selected prospect_types.
+  const syncProspectAccount = async (leadId: string, existingCrmAccountId: string | null) => {
+    const types = (leadForm.prospect_types || []).filter(Boolean);
+    const companyName = (leadForm.dealer.trim() || leadForm.contact_name.trim());
+    const [firstName, ...rest] = leadForm.contact_name.trim().split(/\s+/);
+    const lastName = rest.join(" ") || null;
+
+    if (types.length === 0) {
+      // User cleared all prospect types — unlink (and remove the auto-created prospect if it's still a prospect).
+      if (existingCrmAccountId) {
+        await supabase.from("trade_show_leads").update({ crm_account_id: null }).eq("id", leadId);
+        const { data: acct } = await supabase
+          .from("crm_accounts")
+          .select("id, account_type")
+          .eq("id", existingCrmAccountId)
+          .maybeSingle();
+        if (acct && acct.account_type === "prospect") {
+          await supabase.from("crm_accounts").delete().eq("id", existingCrmAccountId);
+        }
+      }
+      return;
+    }
+
+    if (!companyName) return;
+
+    if (existingCrmAccountId) {
+      await supabase.from("crm_accounts").update({
+        company_name: companyName,
+        prospect_types: types,
+        prospect_type: types[0] ?? null,
+        contact_first_name: firstName || null,
+        contact_last_name: lastName,
+        main_phone: leadForm.phone.trim() || null,
+        email: leadForm.email.trim() || null,
+        notes: leadForm.notes.trim() || null,
+      }).eq("id", existingCrmAccountId);
+    } else {
+      const { data: created, error: cErr } = await supabase.from("crm_accounts").insert({
+        company_name: companyName,
+        account_type: "prospect",
+        lifecycle_stage: "lead",
+        status: "active",
+        prospect_types: types,
+        prospect_type: types[0] ?? null,
+        contact_first_name: firstName || null,
+        contact_last_name: lastName,
+        main_phone: leadForm.phone.trim() || null,
+        email: leadForm.email.trim() || null,
+        notes: leadForm.notes.trim() || null,
+        created_by: user?.id ?? null,
+      }).select("id").single();
+      if (cErr) {
+        toast.error(`Prospect sync: ${cErr.message}`);
+        return;
+      }
+      await supabase.from("trade_show_leads").update({ crm_account_id: created!.id }).eq("id", leadId);
+    }
   };
 
   const submitLead = async () => {
@@ -229,9 +294,14 @@ export default function CaptureLeadsPage() {
         notes: leadForm.notes.trim() || null,
         market_id: leadDialog,
         trade_show: market?.name ?? null,
+        prospect_types: leadForm.prospect_types ?? [],
       }).eq("id", editingLeadIdSnapshot);
       if (error) return toast.error(error.message);
       toast.success("Lead updated");
+
+      // Sync prospect link
+      const existingLead = leads.find((l) => l.id === editingLeadIdSnapshot);
+      await syncProspectAccount(editingLeadIdSnapshot, existingLead?.crm_account_id ?? null);
 
       // Trigger rep notification if the rep was (re)assigned during this edit:
       // - rep was cleared and re-selected (even if same rep), OR
@@ -312,9 +382,13 @@ export default function CaptureLeadsPage() {
       trade_show: market?.name ?? null,
       lead_date: new Date().toISOString().slice(0, 10),
       created_by: user?.id ?? null,
+      prospect_types: leadForm.prospect_types ?? [],
     });
     if (error) return toast.error(error.message);
     toast.success("Lead captured");
+
+    // Create linked Prospect account if prospect types were selected
+    await syncProspectAccount(newLeadId, null);
 
     // Notify the assigned rep by email with the lead summary
     const repEmailToNotify = leadForm.rep_email.trim();
@@ -608,6 +682,19 @@ export default function CaptureLeadsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            <div className="rounded-lg border border-accent/40 bg-accent/5 p-3">
+              <Field label="Add as Prospect">
+                <ProspectTypeSelect
+                  multi
+                  values={leadForm.prospect_types}
+                  onChangeMulti={(vs) => setLeadForm({ ...leadForm, prospect_types: vs })}
+                  placeholder="Select one or more prospect types…"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Picking any type will also add this lead to the Prospects list. Leave empty to keep it as a lead only.
+                </p>
+              </Field>
+            </div>
             <Field label="Contact First and Last Name" required>
               <Input value={leadForm.contact_name} onChange={(e) => setLeadForm({ ...leadForm, contact_name: e.target.value })} placeholder="Enter contact name" />
             </Field>

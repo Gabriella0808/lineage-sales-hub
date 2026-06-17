@@ -239,7 +239,7 @@ export default function SalesRepsPage() {
     return true;
   });
 
-  const managerEmail = (mid: string | null) => resolveMgr(mid)?.email ?? "---";
+  const managerEmail = (mid: string | null) => resolveMgr(mid)?.email ?? "-";
 
   if (repsLoading) {
     return (
@@ -319,7 +319,7 @@ export default function SalesRepsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm leading-tight">{r.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{r.email || "---"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{r.email || "-"}</p>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(r.id)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -329,19 +329,19 @@ export default function SalesRepsPage() {
               <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Manager</p>
-                  <p className="truncate">{resolveMgr(r.manager_id)?.name ?? "---"}</p>
+                  <p className="truncate">{resolveMgr(r.manager_id)?.name ?? "-"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Phone</p>
-                  <p className="truncate">{r.phone || "---"}</p>
+                  <p className="truncate">{r.phone || "-"}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">Territories</p>
                   <div className="flex flex-wrap gap-1">
-                    {tids.length === 0 ? <span className="text-muted-foreground">---</span> :
+                    {tids.length === 0 ? <span className="text-muted-foreground">-</span> :
                       tids.map(id => (
                         <Badge key={id} variant="secondary" className="font-normal text-[10px]">
-                          {territories.find(t => t.id === id)?.name ?? "---"}
+                          {territories.find(t => t.id === id)?.name ?? "-"}
                         </Badge>
                       ))}
                   </div>
@@ -390,7 +390,7 @@ export default function SalesRepsPage() {
                     {isEditing ? (
                       <Input value={editForm!.email} onChange={e => setEditForm({ ...editForm!, email: e.target.value })} className="h-8" />
                     ) : (
-                      <span className="text-primary">{r.email || "---"}</span>
+                      <span className="text-primary">{r.email || "-"}</span>
                     )}
                   </td>
 
@@ -405,7 +405,7 @@ export default function SalesRepsPage() {
                         </SelectContent>
                       </Select>
                     ) : (
-                      <span className="text-foreground">{resolveMgr(r.manager_id)?.name ?? "---"}</span>
+                      <span className="text-foreground">{resolveMgr(r.manager_id)?.name ?? "-"}</span>
                     )}
                   </td>
 
@@ -427,11 +427,11 @@ export default function SalesRepsPage() {
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {tids.length === 0 ? (
-                          <span className="text-muted-foreground">---</span>
+                          <span className="text-muted-foreground">-</span>
                         ) : (
                           tids.map(id => (
                             <Badge key={id} variant="secondary" className="font-normal">
-                              {territories.find(t => t.id === id)?.name ?? "---"}
+                              {territories.find(t => t.id === id)?.name ?? "-"}
                             </Badge>
                           ))
                         )}

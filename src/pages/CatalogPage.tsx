@@ -30,7 +30,7 @@ type Product = {
 const PAGE_SIZE = 24;
 
 function formatPrice(n: number | null) {
-  if (n == null) return "---";
+  if (n == null) return "-";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 }
 

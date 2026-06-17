@@ -189,7 +189,7 @@ export function InvoiceDetailSheet({
       if (l.invoice_acctivate_id) invoiceIds.add(l.invoice_acctivate_id);
 
       const p = l.product_id ? productById.get(l.product_id) : null;
-      const sku = l.sku ?? p?.sku ?? "---";
+      const sku = l.sku ?? p?.sku ?? "-";
       const name = l.product_name ?? p?.name ?? sku;
       const brand = p?.brand ?? null;
       const collection = p?.collection ?? null;
@@ -227,14 +227,14 @@ export function InvoiceDetailSheet({
         if (dealer.rep_id) {
           const rep = repById.get(dealer.rep_id);
           const rKey = dealer.rep_id;
-          const rCur = byRep.get(rKey) ?? { name: rep?.name ?? "---", total: 0 };
+          const rCur = byRep.get(rKey) ?? { name: rep?.name ?? "-", total: 0 };
           rCur.total += ext;
           byRep.set(rKey, rCur);
         }
         if (dealer.territory_id) {
           const terr = territoryById.get(dealer.territory_id);
           const tKey = dealer.territory_id;
-          const tCur = byTerritory.get(tKey) ?? { name: terr?.name ?? "---", total: 0 };
+          const tCur = byTerritory.get(tKey) ?? { name: terr?.name ?? "-", total: 0 };
           tCur.total += ext;
           byTerritory.set(tKey, tCur);
         }
@@ -370,7 +370,7 @@ export function InvoiceDetailSheet({
                           <td className="py-1.5 text-right tabular-nums">{(b.pct * 100).toFixed(1)}%</td>
                           <td className="py-1.5 text-right tabular-nums">{formatCurrency(b.total)}</td>
                           {hasCompare && (
-                            <td className="py-1.5 text-right tabular-nums text-muted-foreground">{cv !== undefined ? formatCurrency(cv) : "---"}</td>
+                            <td className="py-1.5 text-right tabular-nums text-muted-foreground">{cv !== undefined ? formatCurrency(cv) : "-"}</td>
                           )}
                         </tr>
                       );
@@ -451,7 +451,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
 }
 
 function BreakdownList({ rows, showComp, compLabel }: { rows: { label: string; total: number; qty?: number; comp?: number }[]; showComp?: boolean; compLabel?: string }) {
-  if (rows.length === 0) return <p className="text-xs text-muted-foreground">---</p>;
+  if (rows.length === 0) return <p className="text-xs text-muted-foreground">-</p>;
   return (
     <table className="w-full text-xs">
       <thead>
@@ -481,9 +481,9 @@ function BreakdownList({ rows, showComp, compLabel }: { rows: { label: string; t
               <td className="py-1.5 text-right tabular-nums">{formatCurrency(r.total)}</td>
               {showComp && (
                 <>
-                  <td className="py-1.5 text-right tabular-nums text-muted-foreground">{r.comp !== undefined ? formatCurrency(r.comp) : "---"}</td>
+                  <td className="py-1.5 text-right tabular-nums text-muted-foreground">{r.comp !== undefined ? formatCurrency(r.comp) : "-"}</td>
                   <td className={`py-1.5 text-right tabular-nums text-[10px] ${delta === null ? "text-muted-foreground" : delta >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                    {delta === null ? "---" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`}
+                    {delta === null ? "-" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`}
                   </td>
                 </>
               )}

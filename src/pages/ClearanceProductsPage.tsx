@@ -393,13 +393,13 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
                           </td>
                           <td className="px-3 py-1.5 font-mono">{row.sku}</td>
                           <td className="px-3 py-1.5 text-muted-foreground max-w-[160px] truncate">
-                            {row.matched ? row.productName || "---" : <span className="text-warning-foreground">Not in clearance inventory</span>}
+                            {row.matched ? row.productName || "-" : <span className="text-warning-foreground">Not in clearance inventory</span>}
                           </td>
                           <td className="px-3 py-1.5 text-right tabular-nums font-medium">{row.qty}</td>
                           <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
-                            {row.revenue > 0 ? `$${row.revenue.toFixed(2)}` : "---"}
+                            {row.revenue > 0 ? `$${row.revenue.toFixed(2)}` : "-"}
                           </td>
-                          <td className="px-3 py-1.5 text-muted-foreground">{row.repName || "---"}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{row.repName || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -649,13 +649,13 @@ export default function ClearanceProductsPage() {
                     )}
                   >
                     <td className="px-4 py-2.5 font-mono text-xs font-medium">{item.sku}</td>
-                    <td className="px-4 py-2.5 text-foreground max-w-[220px] truncate">{item.product ?? "---"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{item.collection ?? "---"}</td>
+                    <td className="px-4 py-2.5 text-foreground max-w-[220px] truncate">{item.product ?? "-"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{item.collection ?? "-"}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-medium">
                       {item.available.toLocaleString()}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
-                      {item.list_price != null ? `$${item.list_price.toFixed(2)}` : "---"}
+                      {item.list_price != null ? `$${item.list_price.toFixed(2)}` : "-"}
                     </td>
                     <td className="px-4 py-2.5">
                       <StatusPill status={item.status} onHand={item.available} />

@@ -83,7 +83,7 @@ export default function CrmAccountDetailPage() {
       <PageHeader
         eyebrow={repName}
         title={account.company_name}
-        subtitle={[account.city, account.state].filter(Boolean).join(", ") || "---"}
+        subtitle={[account.city, account.state].filter(Boolean).join(", ") || "-"}
         actions={
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <span className={`h-1.5 w-1.5 rounded-full ${type.dot}`} />

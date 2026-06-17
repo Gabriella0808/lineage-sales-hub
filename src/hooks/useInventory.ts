@@ -110,7 +110,7 @@ export function useInventory() {
           product: r.product,
           collection: r.collection ?? "Uncategorized",
           brand: brandBySku.get(r.sku),
-          supplier: r.supplier ?? "---",
+          supplier: r.supplier ?? "-",
           onHand,
           available,
           avgMonthlySales: avg,

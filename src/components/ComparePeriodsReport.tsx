@@ -23,7 +23,7 @@ import seed from "@/data/comparePeriodsSeed.json";
 import { cn } from "@/lib/utils";
 
 const fmtMoney = (n: number) => {
-  if (!isFinite(n) || n === 0) return "---";
+  if (!isFinite(n) || n === 0) return "-";
   const sign = n < 0 ? "-" : "";
   const v = Math.abs(n);
   if (v >= 1_000_000) return `${sign}$${(v / 1_000_000).toFixed(2)}M`;
@@ -31,9 +31,9 @@ const fmtMoney = (n: number) => {
   return `${sign}$${v.toFixed(0)}`;
 };
 const fmtMoneyFull = (n: number) =>
-  n === 0 ? "---" : `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  n === 0 ? "-" : `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 const fmtPct = (n: number | null) => {
-  if (n === null || n === undefined || !isFinite(n)) return "---";
+  if (n === null || n === undefined || !isFinite(n)) return "-";
   const sign = n > 0 ? "+" : "";
   return `${sign}${(n * 100).toFixed(1)}%`;
 };
@@ -664,7 +664,7 @@ export default function ComparePeriodsReport(_props: Props) {
                       <td className="px-3 py-2 text-right tabular-nums bg-primary/10">{fmtMoney(aP2)}</td>
                       <td className={cn("px-3 py-2 text-right tabular-nums", aDiff > 0 ? "text-success" : aDiff < 0 ? "text-destructive" : "")}>{aDiff > 0 ? "+" : ""}{fmtMoney(aDiff)}</td>
                       <td className={cn("px-3 py-2 text-right tabular-nums", aPct && aPct > 0 ? "text-success" : aPct && aPct < 0 ? "text-destructive" : "text-muted-foreground")}>{fmtPct(aPct)}</td>
-                      <td className="px-3 py-2 text-right text-muted-foreground">---</td>
+                      <td className="px-3 py-2 text-right text-muted-foreground">-</td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">{acc.meta.brand}</td>
                     </tr>
                     {isOpen && acc.rows.map((r) => {

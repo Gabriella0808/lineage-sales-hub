@@ -165,7 +165,7 @@ const TODAY = new Date();
 const END = new Date(TODAY.getFullYear(), 11, 31);
 const DAYS_REMAINING = Math.max(0, Math.ceil((END.getTime() - TODAY.getTime()) / 86400000));
 
-const fmtPct = (n: number) => n === 0 ? "---" : `${(n * 100).toFixed(1)}%`;
+const fmtPct = (n: number) => n === 0 ? "-" : `${(n * 100).toFixed(1)}%`;
 const growth = (p: number, a: number) => a === 0 ? 0 : (p - a) / a;
 
 const MONTHS = ["All","January","February","March","April","May","June","July","August","September","October","November","December"] as const;
@@ -895,8 +895,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                       <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdB / r.b26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.b25)}</td>
-                      <td className="p-2 text-right text-muted-foreground">---</td>
-                      <td className="p-2 text-right text-muted-foreground">---</td>
+                      <td className="p-2 text-right text-muted-foreground">-</td>
+                      <td className="p-2 text-right text-muted-foreground">-</td>
                     </>}
                     {showI && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
@@ -916,8 +916,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                   <td className="p-2 text-right">{formatCurrency(sumB26P)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdB / sumB26P)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumB25)}</td>
-                  <td className="p-2 text-right text-muted-foreground">---</td>
-                  <td className="p-2 text-right text-muted-foreground">---</td>
+                  <td className="p-2 text-right text-muted-foreground">-</td>
+                  <td className="p-2 text-right text-muted-foreground">-</td>
                 </>}
                 {showI && <>
                   <td className="p-2 text-right border-l">{formatCurrency(sumYtdI)}</td>

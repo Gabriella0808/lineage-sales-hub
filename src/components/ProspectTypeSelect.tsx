@@ -63,7 +63,7 @@ export function ProspectTypeSelect(props: Props) {
   };
 
   if (props.multi) {
-    const { values, onChangeMulti, showAllOption, allLabel = "All prospect types", compact, className, triggerClassName, placeholder = "---" } = props;
+    const { values, onChangeMulti, showAllOption, allLabel = "All prospect types", compact, className, triggerClassName, placeholder = "-" } = props;
     const toggle = (n: string) => {
       const set = new Set(values);
       if (set.has(n)) set.delete(n); else set.add(n);
@@ -159,7 +159,7 @@ export function ProspectTypeSelect(props: Props) {
     );
   }
 
-  const { value, onChange, className, triggerClassName, compact, placeholder = "---" } = props as SingleProps;
+  const { value, onChange, className, triggerClassName, compact, placeholder = "-" } = props as SingleProps;
   const handleSelect = (v: string) => {
     if (v === NEW_VALUE) {
       setName("");
@@ -189,7 +189,7 @@ export function ProspectTypeSelect(props: Props) {
           )}
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={NONE_VALUE}>---</SelectItem>
+          <SelectItem value={NONE_VALUE}>-</SelectItem>
           {types.map((t) => (
             <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
           ))}

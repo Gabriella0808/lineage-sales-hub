@@ -85,7 +85,7 @@ export default function DealersPage() {
   const PAGE_SIZE = 100;
 
   const visibleDealers = useMemo(() => dealers.filter(d => {
-    // Hide field-only imports — they exist solely for Field Check-ins
+    // Hide field-only imports --- they exist solely for Field Check-ins
     if ((d as any).source === 'field_only') return false;
     // Only show commercially-active Acctivate dealers (real salesperson or territory assignment).
     // Lead-style records without these stay in the DB for Field Check-ins but are hidden here.
@@ -156,12 +156,12 @@ export default function DealersPage() {
             </div>
             <p className="text-xs text-muted-foreground mb-2">
               {d.city || ''}{d.city && d.state ? ', ' : ''}{d.state || ''}
-              {!d.city && !d.state && '—'}
+              {!d.city && !d.state && '---'}
             </p>
             <div className="flex items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="bg-muted px-2 py-0.5 rounded-full truncate">{getTerritoryName(territories, d.territory_id) || (d as any).territory || '—'}</span>
-                <span className="text-muted-foreground truncate">{getRepName(reps, d.rep_id) || (d as any).salesperson || '—'}</span>
+                <span className="bg-muted px-2 py-0.5 rounded-full truncate">{getTerritoryName(territories, d.territory_id) || (d as any).territory || '---'}</span>
+                <span className="text-muted-foreground truncate">{getRepName(reps, d.rep_id) || (d as any).salesperson || '---'}</span>
               </div>
               <span className="font-medium tabular-nums shrink-0">{formatCurrency(getYtd(d.id))}</span>
             </div>
@@ -198,11 +198,11 @@ export default function DealersPage() {
                 <td className="p-3 text-muted-foreground">{d.city || ''}{d.city && d.state ? ', ' : ''}{d.state || ''}</td>
                 <td className="p-3 hidden lg:table-cell">
                   <span className="text-xs bg-muted px-2 py-0.5 rounded-full">
-                    {getTerritoryName(territories, d.territory_id) || (d as any).territory || '—'}
+                    {getTerritoryName(territories, d.territory_id) || (d as any).territory || '---'}
                   </span>
                 </td>
                 <td className="p-3 hidden lg:table-cell text-muted-foreground">
-                  {getRepName(reps, d.rep_id) || (d as any).salesperson || '—'}
+                  {getRepName(reps, d.rep_id) || (d as any).salesperson || '---'}
                 </td>
                 <td className="p-3"><StatusBadge status={d.status} /></td>
                 <td className="p-3"><StatusBadge status={d.engagement ?? 'medium'} /></td>
@@ -238,13 +238,13 @@ export default function DealersPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">YTD Revenue</p><p className="text-lg font-semibold">{formatCurrency(getYtd(dealer.id))}</p></div>
-                  <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">Last Contact</p><p className="text-lg font-semibold">{dealer.last_contact ? new Date(dealer.last_contact).toLocaleDateString() : '—'}</p></div>
+                  <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">Last Contact</p><p className="text-lg font-semibold">{dealer.last_contact ? new Date(dealer.last_contact).toLocaleDateString() : '---'}</p></div>
                 </div>
 
                 <div className="space-y-3">
-                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Territory</p><p className="text-sm">{getTerritoryName(territories, dealer.territory_id) || (dealer as any).territory || '—'}</p></div>
-                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Salesperson</p><p className="text-sm">{getRepName(reps, dealer.rep_id) || (dealer as any).salesperson || '—'}</p></div>
-                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Sales Manager</p><p className="text-sm">{(dealer as any).sales_manager || '—'}</p></div>
+                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Territory</p><p className="text-sm">{getTerritoryName(territories, dealer.territory_id) || (dealer as any).territory || '---'}</p></div>
+                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Salesperson</p><p className="text-sm">{getRepName(reps, dealer.rep_id) || (dealer as any).salesperson || '---'}</p></div>
+                  <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Sales Manager</p><p className="text-sm">{(dealer as any).sales_manager || '---'}</p></div>
                   {dealer.phone && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Phone</p><p className="text-sm">{dealer.phone}</p></div>}
                   {dealer.email && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Email</p><p className="text-sm">{dealer.email}</p></div>}
                   {dealer.website && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Website</p>
@@ -278,24 +278,24 @@ function PaginationBar({ page, totalPages, total, pageSize, onPageChange }: {
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
-  const pages: (number | "…")[] = [];
-  const add = (n: number | "…") => pages.push(n);
+  const pages: (number | "--�")[] = [];
+  const add = (n: number | "--�") => pages.push(n);
   const window = 1;
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= page - window && i <= page + window)) add(i);
-    else if (pages[pages.length - 1] !== "…") add("…");
+    else if (pages[pages.length - 1] !== "--�") add("--�");
   }
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 px-1">
       <p className="text-xs text-muted-foreground">
-        Showing <span className="font-medium">{from}–{to}</span> of <span className="font-medium">{total}</span> dealers
+        Showing <span className="font-medium">{from}---{to}</span> of <span className="font-medium">{total}</span> dealers
       </p>
       {totalPages > 1 && (
         <div className="flex items-center gap-1 flex-wrap justify-center">
           <Button variant="outline" size="sm" className="h-8" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>Previous</Button>
-          {pages.map((p, i) => p === "…" ? (
-            <span key={`e${i}`} className="px-2 text-muted-foreground text-sm">…</span>
+          {pages.map((p, i) => p === "--�" ? (
+            <span key={`e${i}`} className="px-2 text-muted-foreground text-sm">--�</span>
           ) : (
             <Button
               key={p}

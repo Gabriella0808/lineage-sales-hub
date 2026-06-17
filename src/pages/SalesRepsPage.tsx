@@ -105,7 +105,7 @@ export default function SalesRepsPage() {
   const { data: repTerritories = [] } = useRepTerritories();
 
   // Deduplicate managers by first-name token, keeping the entry with the longest (full) name.
-  // Build a map from every original manager id → preferred (deduped) manager id.
+  // Build a map from every original manager id -�� preferred (deduped) manager id.
   const { displayManagers, managerIdMap } = (() => {
     const groups = new Map<string, typeof managers>();
     for (const m of managers) {
@@ -186,7 +186,7 @@ export default function SalesRepsPage() {
     }).eq("id", editingId);
     if (error) { toast.error(error.message); return; }
 
-    // Sync rep_territories — replace with the selected set
+    // Sync rep_territories --- replace with the selected set
     const currentIds = repTerritoryIds(editingId);
     const desiredIds = editForm.territory_ids;
     const toRemove = currentIds.filter(id => !desiredIds.includes(id));
@@ -239,7 +239,7 @@ export default function SalesRepsPage() {
     return true;
   });
 
-  const managerEmail = (mid: string | null) => resolveMgr(mid)?.email ?? "—";
+  const managerEmail = (mid: string | null) => resolveMgr(mid)?.email ?? "---";
 
   if (repsLoading) {
     return (
@@ -256,7 +256,7 @@ export default function SalesRepsPage() {
       <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="page-title">Sales Rep Database</h1>
-          <p className="page-subtitle">{reps.length} reps • inline edit any field</p>
+          <p className="page-subtitle">{reps.length} reps --� inline edit any field</p>
         </div>
         <Button onClick={() => setAddOpen(true)} className="gap-2 w-full sm:w-auto">
           <Plus className="h-4 w-4" /> Add Rep
@@ -294,7 +294,7 @@ export default function SalesRepsPage() {
                 <Select value={(editForm!.manager_id && (managerIdMap.get(editForm!.manager_id) ?? editForm!.manager_id)) ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Manager" /></SelectTrigger>
                   <SelectContent className="max-h-72">
-                    <SelectItem value="none">— None —</SelectItem>
+                    <SelectItem value="none">--- None ---</SelectItem>
                     {displayManagers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -319,7 +319,7 @@ export default function SalesRepsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm leading-tight">{r.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{r.email || "—"}</p>
+                  <p className="text-xs text-muted-foreground truncate">{r.email || "---"}</p>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(r.id)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -329,19 +329,19 @@ export default function SalesRepsPage() {
               <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Manager</p>
-                  <p className="truncate">{resolveMgr(r.manager_id)?.name ?? "—"}</p>
+                  <p className="truncate">{resolveMgr(r.manager_id)?.name ?? "---"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide">Phone</p>
-                  <p className="truncate">{r.phone || "—"}</p>
+                  <p className="truncate">{r.phone || "---"}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-[10px] uppercase text-muted-foreground tracking-wide mb-1">Territories</p>
                   <div className="flex flex-wrap gap-1">
-                    {tids.length === 0 ? <span className="text-muted-foreground">—</span> :
+                    {tids.length === 0 ? <span className="text-muted-foreground">---</span> :
                       tids.map(id => (
                         <Badge key={id} variant="secondary" className="font-normal text-[10px]">
-                          {territories.find(t => t.id === id)?.name ?? "—"}
+                          {territories.find(t => t.id === id)?.name ?? "---"}
                         </Badge>
                       ))}
                   </div>
@@ -390,7 +390,7 @@ export default function SalesRepsPage() {
                     {isEditing ? (
                       <Input value={editForm!.email} onChange={e => setEditForm({ ...editForm!, email: e.target.value })} className="h-8" />
                     ) : (
-                      <span className="text-primary">{r.email || "—"}</span>
+                      <span className="text-primary">{r.email || "---"}</span>
                     )}
                   </td>
 
@@ -400,12 +400,12 @@ export default function SalesRepsPage() {
                       <Select value={(editForm!.manager_id && (managerIdMap.get(editForm!.manager_id) ?? editForm!.manager_id)) ?? "none"} onValueChange={v => setEditForm({ ...editForm!, manager_id: v === "none" ? null : v })}>
                         <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Manager" /></SelectTrigger>
                         <SelectContent className="max-h-72">
-                          <SelectItem value="none">— None —</SelectItem>
+                          <SelectItem value="none">--- None ---</SelectItem>
                           {displayManagers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     ) : (
-                      <span className="text-foreground">{resolveMgr(r.manager_id)?.name ?? "—"}</span>
+                      <span className="text-foreground">{resolveMgr(r.manager_id)?.name ?? "---"}</span>
                     )}
                   </td>
 
@@ -427,11 +427,11 @@ export default function SalesRepsPage() {
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {tids.length === 0 ? (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">---</span>
                         ) : (
                           tids.map(id => (
                             <Badge key={id} variant="secondary" className="font-normal">
-                              {territories.find(t => t.id === id)?.name ?? "—"}
+                              {territories.find(t => t.id === id)?.name ?? "---"}
                             </Badge>
                           ))
                         )}
@@ -477,7 +477,7 @@ export default function SalesRepsPage() {
               <Select value={newRep.manager_id ?? "none"} onValueChange={v => setNewRep({ ...newRep, manager_id: v === "none" ? null : v })}>
                 <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
                 <SelectContent className="max-h-72">
-                  <SelectItem value="none">— None —</SelectItem>
+                  <SelectItem value="none">--- None ---</SelectItem>
                   {displayManagers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                 </SelectContent>
               </Select>

@@ -25,7 +25,7 @@ export default function DashboardPage() {
 
   const currentYear = new Date().getFullYear();
 
-  // Authoritative monthly revenue per dealer for current + prev year — pulled directly
+  // Authoritative monthly revenue per dealer for current + prev year --- pulled directly
   // from dealer_invoices (same source as the Sales Targets card).
   const { data: invoiceSales = [], isLoading: invLoading } = useQuery({
     queryKey: ["dashboard_invoice_sales", currentYear],
@@ -102,7 +102,7 @@ export default function DashboardPage() {
   const dealerRep = new Map<string, string | null>();
   dealers.forEach((d: any) => dealerRep.set(d.id, repForDealer(d)));
 
-  // Monthly rep performance — sales per rep, per month (top 5 reps shown)
+  // Monthly rep performance --- sales per rep, per month (top 5 reps shown)
   const REP_COLORS = ['hsl(220 35% 22%)', 'hsl(38 75% 50%)', 'hsl(152 60% 40%)', 'hsl(0 65% 55%)', 'hsl(265 50% 55%)'];
   const repMonthlyMap: Record<string, Record<string, number>> = {};
   currentYearSales.forEach(s => {
@@ -138,10 +138,10 @@ export default function DashboardPage() {
     .map(([dealerId, revenue]) => {
       const dealer = dealers.find(d => d.id === dealerId);
       const name = dealer?.name ?? 'Unknown';
-      return { name: name.length > 18 ? name.slice(0, 18) + '…' : name, revenue: Math.round(revenue / 1000) };
+      return { name: name.length > 18 ? name.slice(0, 18) + '--�' : name, revenue: Math.round(revenue / 1000) };
     });
 
-  // Sales Leaderboard — rep revenue via dealerRep map
+  // Sales Leaderboard --- rep revenue via dealerRep map
   const repRevenueMap: Record<string, number> = {};
   currentYearSales.forEach(s => {
     const rid = dealerRep.get(s.dealer_id);
@@ -154,7 +154,7 @@ export default function DashboardPage() {
       return {
         id: r.id,
         name: r.name,
-        territory: territoryNames.join(", ") || "—",
+        territory: territoryNames.join(", ") || "---",
         revenue: repRevenueMap[r.id] ?? 0,
       };
     })
@@ -227,8 +227,8 @@ export default function DashboardPage() {
         </h1>
         <p className="page-subtitle">
           {role === "rep"
-            ? `${dealers.length} dealers • ${territories.length} territories assigned to you`
-            : `${reps.length} reps • ${territories.length} territories • ${dealers.length} dealers`}
+            ? `${dealers.length} dealers --� ${territories.length} territories assigned to you`
+            : `${reps.length} reps --� ${territories.length} territories --� ${dealers.length} dealers`}
         </p>
       </div>
 
@@ -242,10 +242,10 @@ export default function DashboardPage() {
         <StatCard title="Orders" value={totalOrders.toLocaleString()} trend="neutral" subtitle={String(currentYear)} variant="success" />
       </div>
 
-      {/* Sales Targets — YTD/MTD progress */}
+      {/* Sales Targets --- YTD/MTD progress */}
       <TargetsProgressCard />
 
-      {/* Sales Leaderboard — full width */}
+      {/* Sales Leaderboard --- full width */}
       <div className="glass-card p-4 sm:p-6 mb-6">
         <h3 className="text-base font-semibold mb-4 sm:mb-5 flex items-center gap-2">
           <Trophy className="h-5 w-5 text-accent" /> Sales Leaderboard <span className="text-xs font-normal text-muted-foreground">YTD {currentYear}</span>
@@ -340,7 +340,7 @@ export default function DashboardPage() {
       {/* Row: Top Dealers by Revenue */}
       <div className="mb-6">
         <div className="glass-card p-4 sm:p-5">
-          <h3 className="text-sm font-semibold mb-4">Top Dealers by Revenue ($K) — {currentYear}</h3>
+          <h3 className="text-sm font-semibold mb-4">Top Dealers by Revenue ($K) --- {currentYear}</h3>
           <div className="h-[260px] sm:h-[280px]">
             {topDealers.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -362,7 +362,7 @@ export default function DashboardPage() {
       {/* Row: Monthly Rep Performance */}
       <div className="grid lg:grid-cols-1 gap-5">
         <div className="glass-card p-4 sm:p-5">
-          <h3 className="text-sm font-semibold mb-1">Monthly Rep Performance ($K) — {currentYear}</h3>
+          <h3 className="text-sm font-semibold mb-1">Monthly Rep Performance ($K) --- {currentYear}</h3>
           <p className="text-[11px] text-muted-foreground mb-3">Top 5 reps by sales per month</p>
           <div className="h-[240px]">
             {topRepNames.length > 0 ? (

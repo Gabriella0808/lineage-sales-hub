@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ClipboardList } from "lucide-react";
 
 interface NoteToTaskProps {
-  /** "rep" or "dealer" â€” controls reference text and title */
+  /** "rep" or "dealer" --- controls reference text and title */
   refType: "rep" | "dealer";
   /** Display name of the rep/dealer (used in task title + description). */
   refName: string;
@@ -63,7 +63,7 @@ export function NoteToTask({ refType, refName, refId }: NoteToTaskProps) {
   return (
     <div className="space-y-2">
       <Textarea
-        placeholder={`Write a note about this ${refType}â€¦  (it'll be saved as a task in My Tasks)`}
+        placeholder={`Write a note about this ${refType}--¦  (it'll be saved as a task in My Tasks)`}
         value={note}
         onChange={(e) => setNote(e.target.value)}
         maxLength={2000}
@@ -76,7 +76,7 @@ export function NoteToTask({ refType, refName, refId }: NoteToTaskProps) {
         </p>
         <Button size="sm" onClick={submit} disabled={submitting || !note.trim()}>
           <ClipboardList className="h-3.5 w-3.5 mr-1.5" />
-          {submitting ? "Savingâ€¦" : "Save as task"}
+          {submitting ? "Saving--¦" : "Save as task"}
         </Button>
       </div>
     </div>

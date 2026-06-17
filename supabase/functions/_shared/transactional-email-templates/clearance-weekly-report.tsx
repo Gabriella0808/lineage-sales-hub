@@ -44,12 +44,12 @@ const ClearanceWeeklyReportEmail = ({
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Summer Special weekly report{weekLabel ? ` · ${weekLabel}` : ''} — {totalUnits} units sold across{' '}
+      Summer Special weekly report{weekLabel ? ` · ${weekLabel}` : ''} --- {totalUnits} units sold across{' '}
       {skusMoved} SKUs
     </Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Summer Special – Weekly Report</Heading>
+        <Heading style={h1}>Summer Special --- Weekly Report</Heading>
         <Text style={text}>
           {recipientName ? `Hi ${recipientName},` : 'Hi,'} here is the Summer Special sales
           summary for {weekLabel || 'last week'}.
@@ -125,7 +125,7 @@ const ClearanceWeeklyReportEmail = ({
 
         <Hr style={hr} />
 
-        <Text style={footer}>— The {SITE_NAME} Team</Text>
+        <Text style={footer}>--- The {SITE_NAME} Team</Text>
       </Container>
     </Body>
   </Html>

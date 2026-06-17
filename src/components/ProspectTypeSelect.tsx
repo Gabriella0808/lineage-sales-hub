@@ -63,7 +63,7 @@ export function ProspectTypeSelect(props: Props) {
   };
 
   if (props.multi) {
-    const { values, onChangeMulti, showAllOption, allLabel = "All prospect types", compact, className, triggerClassName, placeholder = "—" } = props;
+    const { values, onChangeMulti, showAllOption, allLabel = "All prospect types", compact, className, triggerClassName, placeholder = "---" } = props;
     const toggle = (n: string) => {
       const set = new Set(values);
       if (set.has(n)) set.delete(n); else set.add(n);
@@ -112,7 +112,7 @@ export function ProspectTypeSelect(props: Props) {
               }}
               onSelect={(e) => e.preventDefault()}
             >
-              — (No type)
+              --- (No type)
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             {types.map((t) => (
@@ -130,7 +130,7 @@ export function ProspectTypeSelect(props: Props) {
               onSelect={(e) => { e.preventDefault(); setName(""); setOpen(true); }}
               className="text-accent"
             >
-              <Plus className="h-3.5 w-3.5 mr-1.5" />Add new type…
+              <Plus className="h-3.5 w-3.5 mr-1.5" />Add new type--�
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -150,7 +150,7 @@ export function ProspectTypeSelect(props: Props) {
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
               <Button onClick={() => submit((n) => onChangeMulti(Array.from(new Set([...values, n]))))} disabled={create.isPending || !name.trim()}>
-                {create.isPending ? "Adding…" : "Add type"}
+                {create.isPending ? "Adding--�" : "Add type"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -159,7 +159,7 @@ export function ProspectTypeSelect(props: Props) {
     );
   }
 
-  const { value, onChange, className, triggerClassName, compact, placeholder = "—" } = props as SingleProps;
+  const { value, onChange, className, triggerClassName, compact, placeholder = "---" } = props as SingleProps;
   const handleSelect = (v: string) => {
     if (v === NEW_VALUE) {
       setName("");
@@ -189,12 +189,12 @@ export function ProspectTypeSelect(props: Props) {
           )}
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={NONE_VALUE}>—</SelectItem>
+          <SelectItem value={NONE_VALUE}>---</SelectItem>
           {types.map((t) => (
             <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
           ))}
           <SelectItem value={NEW_VALUE} className="text-accent">
-            <span className="inline-flex items-center gap-1.5"><Plus className="h-3.5 w-3.5" />Add new type…</span>
+            <span className="inline-flex items-center gap-1.5"><Plus className="h-3.5 w-3.5" />Add new type--�</span>
           </SelectItem>
         </SelectContent>
       </Select>
@@ -214,7 +214,7 @@ export function ProspectTypeSelect(props: Props) {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={() => submit((n) => onChange(n))} disabled={create.isPending || !name.trim()}>
-              {create.isPending ? "Adding…" : "Add type"}
+              {create.isPending ? "Adding--�" : "Add type"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -768,8 +768,8 @@ export default function TasksPage() {
                       <p className="text-sm font-medium">Visibility</p>
                       <p className="text-xs text-muted-foreground">
                         {form.visibility === "public"
-                          ? "Public — anyone in the portal can view this task."
-                          : "Private — only you and assignees can view this task."}
+                          ? "Public --- anyone in the portal can view this task."
+                          : "Private --- only you and assignees can view this task."}
                       </p>
                     </div>
                     <div className="inline-flex rounded-md border bg-muted p-0.5">
@@ -1225,7 +1225,7 @@ export default function TasksPage() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-72 p-0" align="center">
                                   <Command>
-                                    <CommandInput placeholder="Search people…" />
+                                    <CommandInput placeholder="Search people--�" />
                                     <CommandList>
                                       <CommandEmpty>No people found.</CommandEmpty>
                                       <CommandGroup heading="People">
@@ -1287,7 +1287,7 @@ export default function TasksPage() {
                                         {format(parseDateOnly(t.due_date)!, "MMM d")}
                                       </>
                                     ) : (
-                                      <span className="italic">—</span>
+                                      <span className="italic">---</span>
                                     )}
                                   </button>
                                 </PopoverTrigger>
@@ -1448,7 +1448,7 @@ export default function TasksPage() {
                         <Calendar className="h-3 w-3" /> Due date
                       </p>
                       <p className="text-sm">
-                        {t.due_date ? format(parseDateOnly(t.due_date)!, "MMM d, yyyy") : <span className="italic text-muted-foreground">—</span>}
+                        {t.due_date ? format(parseDateOnly(t.due_date)!, "MMM d, yyyy") : <span className="italic text-muted-foreground">---</span>}
                       </p>
                     </div>
                     <div>
@@ -1456,7 +1456,7 @@ export default function TasksPage() {
                         <Clock className="h-3 w-3" /> Completed
                       </p>
                       <p className="text-sm">
-                        {t.completed_at ? format(new Date(t.completed_at), "MMM d, yyyy") : <span className="italic text-muted-foreground">—</span>}
+                        {t.completed_at ? format(new Date(t.completed_at), "MMM d, yyyy") : <span className="italic text-muted-foreground">---</span>}
                       </p>
                     </div>
                   </div>
@@ -1564,7 +1564,7 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange, tradeShow, onTr
       ),
     );
 
-  // Flat list — no role grouping
+  // Flat list --- no role grouping
 
   const toggle = (uid: string) => {
     if (selectedIds.includes(uid)) {

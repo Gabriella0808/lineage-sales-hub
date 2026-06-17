@@ -157,8 +157,8 @@ export default function SalesReport({ metric }: SalesReportProps) {
         dealer: d.name,
         rep: rep?.name ?? "Unassigned",
         repCode: rep?.acctivate_id ?? "",
-        manager: mgr?.name ?? "â€”",
-        territory: territory?.name ?? "â€”",
+        manager: mgr?.name ?? "---",
+        territory: territory?.name ?? "---",
         state: d.state ?? "",
         value: map.get(d.id) ?? 0,
       };
@@ -188,18 +188,18 @@ export default function SalesReport({ metric }: SalesReportProps) {
     () => sortedRows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
     [sortedRows, currentPage],
   );
-  const pageNumbers = useMemo<(number | "â€¦")[]>(() => {
-    const pages: (number | "â€¦")[] = [];
+  const pageNumbers = useMemo<(number | "--¦")[]>(() => {
+    const pages: (number | "--¦")[] = [];
     const add = (n: number) => pages.push(n);
     if (totalPages <= 7) {
       for (let i = 1; i <= totalPages; i++) add(i);
     } else {
       add(1);
-      if (currentPage > 4) pages.push("â€¦");
+      if (currentPage > 4) pages.push("--¦");
       const start = Math.max(2, currentPage - 1);
       const end = Math.min(totalPages - 1, currentPage + 1);
       for (let i = start; i <= end; i++) add(i);
-      if (currentPage < totalPages - 3) pages.push("â€¦");
+      if (currentPage < totalPages - 3) pages.push("--¦");
       add(totalPages);
     }
     return pages;
@@ -226,7 +226,7 @@ export default function SalesReport({ metric }: SalesReportProps) {
   // Top 10 dealers chart
   const topDealersChart = useMemo(() => {
     return [...sortedRows].sort((a, b) => b.value - a.value).slice(0, 10).map(r => ({
-      name: r.dealer.length > 20 ? r.dealer.slice(0, 18) + "â€¦" : r.dealer,
+      name: r.dealer.length > 20 ? r.dealer.slice(0, 18) + "--¦" : r.dealer,
       value: r.value,
     }));
   }, [sortedRows]);
@@ -314,7 +314,7 @@ export default function SalesReport({ metric }: SalesReportProps) {
         <div>
           <h1 className="text-2xl font-semibold">{title}</h1>
           <p className="text-sm text-muted-foreground">
-            {dealerCount} active dealers â€¢ {useDateRange && dateFrom && dateTo
+            {dealerCount} active dealers --¢ {useDateRange && dateFrom && dateTo
               ? `${format(dateFrom, "MMM d, yyyy")} - ${format(dateTo, "MMM d, yyyy")}`
               : `${year}`}
           </p>
@@ -446,7 +446,7 @@ export default function SalesReport({ metric }: SalesReportProps) {
         </CardContent></Card>
         <Card><CardContent className="pt-5 pb-4">
           <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Top Dealer</p>
-          <p className="text-sm font-semibold truncate">{topDealer?.dealer ?? "â€”"}</p>
+          <p className="text-sm font-semibold truncate">{topDealer?.dealer ?? "---"}</p>
           <p className="text-xs text-muted-foreground">{formatCurrency(topDealer?.value ?? 0)}</p>
         </CardContent></Card>
       </div>
@@ -561,8 +561,8 @@ export default function SalesReport({ metric }: SalesReportProps) {
               </p>
               <div className="flex items-center gap-1 flex-wrap justify-end">
                 <Button size="sm" variant="outline" className="h-8 px-2" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>Prev</Button>
-                {pageNumbers.map((p, i) => p === "â€¦" ? (
-                  <span key={`e${i}`} className="px-1 text-xs text-muted-foreground">â€¦</span>
+                {pageNumbers.map((p, i) => p === "--¦" ? (
+                  <span key={`e${i}`} className="px-1 text-xs text-muted-foreground">--¦</span>
                 ) : (
                   <Button
                     key={p}
@@ -627,7 +627,7 @@ function FilterSection({ label, count, items, selected, onToggle, onClear }: Fil
               Clear
             </span>
           )}
-          <span className="text-muted-foreground text-xs">{open ? "âˆ’" : "+"}</span>
+          <span className="text-muted-foreground text-xs">{open ? "-ˆ’" : "+"}</span>
         </span>
       </button>
       {open && (
@@ -635,7 +635,7 @@ function FilterSection({ label, count, items, selected, onToggle, onClear }: Fil
           {items.length > 6 && (
             <input
               type="text"
-              placeholder={`Search ${label.toLowerCase()}â€¦`}
+              placeholder={`Search ${label.toLowerCase()}--¦`}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               className="w-full h-8 px-2 text-xs border rounded bg-background"

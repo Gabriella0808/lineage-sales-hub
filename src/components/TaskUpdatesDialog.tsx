@@ -182,7 +182,7 @@ export function TaskUpdatesDialog({
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-base">
-            Updates {taskTitle && <span className="text-muted-foreground font-normal">— {taskTitle}</span>}
+            Updates {taskTitle && <span className="text-muted-foreground font-normal">--- {taskTitle}</span>}
           </DialogTitle>
         </DialogHeader>
 
@@ -241,7 +241,7 @@ export function TaskUpdatesDialog({
               </div>
               <Button size="sm" onClick={send} disabled={!body.trim() || sending}>
                 <Send className="h-3.5 w-3.5 mr-1" />
-                {sending ? "Posting…" : "Post update"}
+                {sending ? "Posting--�" : "Post update"}
               </Button>
             </div>
           </div>

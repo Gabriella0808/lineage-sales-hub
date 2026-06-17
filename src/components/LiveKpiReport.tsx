@@ -28,7 +28,7 @@ function loadOverrides(): ProjOverrides {
 }
 
 
-// Static seed data mirroring KPI_2026.01.15_Live.xlsx â†’ Summary tab
+// Static seed data mirroring KPI_2026.01.15_Live.xlsx -†’ Summary tab
 // Wire to live aggregates once monthly_projections + bookings_by_line tables exist.
 
 const MONTHLY = [
@@ -67,7 +67,7 @@ const REP_BOOK = [
   { name: "WI/IL",            book: 0,         pct: 0 },
 ];
 
-// Maps display rep names (REP_BOOK) â†’ keys in REP_MONTHLY (spreadsheet tabs).
+// Maps display rep names (REP_BOOK) -†’ keys in REP_MONTHLY (spreadsheet tabs).
 // When a rep has multiple tabs (e.g. Shindell 1 + 2), list them all and they'll be summed.
 const REP_NAME_TO_MONTHLY_KEYS: Record<string, string[]> = {
   "Internet":         ["Internet"],
@@ -89,7 +89,7 @@ const REP_NAME_TO_MONTHLY_KEYS: Record<string, string[]> = {
   "WI/IL":            ["WI/IL"],
 };
 
-// Maps Live KPI display rep names â†’ matching name(s) in the sales_reps table
+// Maps Live KPI display rep names -†’ matching name(s) in the sales_reps table
 // (used to pull `rep_targets` for the 26 Proj column). Names not listed fall
 // back to an exact match against the display name.
 const REP_NAME_TO_DB_NAMES: Record<string, string[]> = {
@@ -114,7 +114,7 @@ function sumRepMonthly(keys: string[]): RepMonthRow[] | null {
   });
 }
 
-// Maps REP_BOOK display names â†’ list of territory names they cover.
+// Maps REP_BOOK display names -†’ list of territory names they cover.
 // Used by the Territory filter on the Live KPI report.
 const REP_TO_TERRITORIES: Record<string, string[]> = {
   "Internet":         ["Internet"],
@@ -165,7 +165,7 @@ const TODAY = new Date();
 const END = new Date(TODAY.getFullYear(), 11, 31);
 const DAYS_REMAINING = Math.max(0, Math.ceil((END.getTime() - TODAY.getTime()) / 86400000));
 
-const fmtPct = (n: number) => n === 0 ? "â€”" : `${(n * 100).toFixed(1)}%`;
+const fmtPct = (n: number) => n === 0 ? "---" : `${(n * 100).toFixed(1)}%`;
 const growth = (p: number, a: number) => a === 0 ? 0 : (p - a) / a;
 
 const MONTHS = ["All","January","February","March","April","May","June","July","August","September","October","November","December"] as const;
@@ -282,7 +282,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     const currentYear = new Date().getFullYear();
     const prevYear = currentYear - 1;
     (async () => {
-      // Resolve scoped rep names â†’ dealer_ids (only when a scope is active).
+      // Resolve scoped rep names -†’ dealer_ids (only when a scope is active).
       let scopedDealerIds: string[] | null = null;
       if (scopedDbRepNames && scopedDbRepNames.length > 0) {
         const scopedRepIds = dbReps
@@ -359,7 +359,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       // 26 Act = sum of ALL open sales orders for that month (extended_value).
       ytdB: openBookings ?? (live ? live.ytdB : seed.ytdB),
       ytdI: live ? live.ytdI : seed.ytdI,
-      // Branch-split invoice totals (live only â€” no seed fallback).
+      // Branch-split invoice totals (live only --- no seed fallback).
       i25Container:  live?.i25Container  ?? 0,
       i25Warehouse:  live?.i25Warehouse  ?? 0,
       ytdIContainer: live?.ytdIContainer ?? 0,
@@ -404,7 +404,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
 
   const scaledMonthly = useMemo(() => {
     // Determine which rep names should be summed for the table/chart.
-    // Priority: explicit rep selection â†’ territory filter â†’ manager scope â†’ all.
+    // Priority: explicit rep selection -†’ territory filter -†’ manager scope -†’ all.
     let repNames: string[] | null = null;
     if (hasRepSelection) {
       repNames = repFilter;
@@ -777,14 +777,14 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
         </div>
       </div>
 
-      {/* Actual vs Goal chart â€” mirrors the Monthly Results table below */}
+      {/* Actual vs Goal chart --- mirrors the Monthly Results table below */}
       <div className="glass-card p-5">
         <div className="flex items-baseline justify-between mb-3">
           <div>
             <h3 className="text-base font-semibold">
-              {showB && showI ? "Bookings & Invoiced â€” Actual vs Goal"
-                : showI ? "Invoiced â€” Actual vs Goal"
-                : "Bookings â€” Actual vs Goal"}
+              {showB && showI ? "Bookings & Invoiced --- Actual vs Goal"
+                : showI ? "Invoiced --- Actual vs Goal"
+                : "Bookings --- Actual vs Goal"}
             </h3>
             <p className="text-xs text-muted-foreground">
               Monthly 2026 projection (goal) vs MTD actual
@@ -841,7 +841,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       <div className="glass-card p-5">
         <h3 className="text-base font-semibold mb-1">Monthly Results</h3>
         <p className="text-xs text-muted-foreground mb-4">
-          Bookings & Invoiced â€” 2025 actual vs 2026 projection vs YTD
+          Bookings & Invoiced --- 2025 actual vs 2026 projection vs YTD
           {hasRepSelection
             ? <span className="ml-1">Â· live data from <span className="font-medium text-foreground">{repFilter.length === 1 ? `${repFilter[0]} tab` : `${repFilter.length} reps`}</span></span>
             : <> Â· all reps</>}
@@ -895,8 +895,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                       <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdB / r.b26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.b25)}</td>
-                      <td className="p-2 text-right text-muted-foreground">â€”</td>
-                      <td className="p-2 text-right text-muted-foreground">â€”</td>
+                      <td className="p-2 text-right text-muted-foreground">---</td>
+                      <td className="p-2 text-right text-muted-foreground">---</td>
                     </>}
                     {showI && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
@@ -916,8 +916,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                   <td className="p-2 text-right">{formatCurrency(sumB26P)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdB / sumB26P)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumB25)}</td>
-                  <td className="p-2 text-right text-muted-foreground">â€”</td>
-                  <td className="p-2 text-right text-muted-foreground">â€”</td>
+                  <td className="p-2 text-right text-muted-foreground">---</td>
+                  <td className="p-2 text-right text-muted-foreground">---</td>
                 </>}
                 {showI && <>
                   <td className="p-2 text-right border-l">{formatCurrency(sumYtdI)}</td>

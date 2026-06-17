@@ -90,7 +90,7 @@ export function TargetsProgressCard() {
   const { data: targets = [], isLoading: tgtLoading } = useRepTargets(year);
   const { data: dealers = [] } = useDealers();
 
-  // Pull all dealer invoices for the year (paged) — same source as Sales Targets page.
+  // Pull all dealer invoices for the year (paged) --- same source as Sales Targets page.
   const { data: invoices = [], isLoading: invLoading } = useQuery({
     queryKey: ["targets_card_invoices", year],
     queryFn: async () => {
@@ -201,13 +201,13 @@ export function TargetsProgressCard() {
     <div className="glass-card p-4 sm:p-6 mb-6">
       <div className="flex items-center justify-between mb-4 gap-2">
         <h3 className="text-base font-semibold flex items-center gap-2">
-          <Target className="h-5 w-5 text-accent" /> Sales Targets — {year}
+          <Target className="h-5 w-5 text-accent" /> Sales Targets --- {year}
           <span className="text-xs font-normal text-muted-foreground">YTD & MTD attainment</span>
         </h3>
         {!isLoading && rows.length > PAGE_SIZE && (
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-muted-foreground tabular-nums">
-              {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, rows.length)} of {rows.length}
+              {safePage * PAGE_SIZE + 1}---{Math.min((safePage + 1) * PAGE_SIZE, rows.length)} of {rows.length}
             </span>
             <button
               type="button"
@@ -247,7 +247,7 @@ export function TargetsProgressCard() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold truncate">{r.name}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Annual goal {formatCurrency(r.annualTarget)} • {r.annualPct}% of full year
+                  Annual goal {formatCurrency(r.annualTarget)} --� {r.annualPct}% of full year
                 </p>
                 <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
                   <div

@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 function formatPrice(n: number | null | undefined) {
-  if (n == null) return "—";
+  if (n == null) return "---";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
 }
 
@@ -165,7 +165,7 @@ export default function CartPage() {
               Final pricing, freight, and lead times will be confirmed in your quote.
             </p>
             <Button size="lg" className="w-full" onClick={handleSubmitQuote} disabled={submitting}>
-              {submitting ? "Submitting…" : "Submit Quote Request"}
+              {submitting ? "Submitting--�" : "Submit Quote Request"}
             </Button>
             <button
               onClick={() => clear()}

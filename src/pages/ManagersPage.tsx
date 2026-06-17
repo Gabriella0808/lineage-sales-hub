@@ -82,7 +82,7 @@ export default function ManagersPage() {
     return map;
   }, [visibleManagers, managerIdMap, reps]);
 
-  // Helpers — match dealers to a rep by rep_id OR by salesperson name overlap (≥2 tokens),
+  // Helpers --- match dealers to a rep by rep_id OR by salesperson name overlap (-��2 tokens),
   // so reps whose dealers aren't linked via rep_id still roll up their YTD revenue.
   const tokenize = (s: string | null | undefined) =>
     (s ?? "").toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 2);
@@ -136,7 +136,7 @@ export default function ManagersPage() {
     );
   }
 
-  // ── Manager profile (people-only) ──
+  // ------ Manager profile (people-only) ------
   if (selectedManager) {
     const managerReps = managerRepsById.get(selectedManager.id) ?? [];
     const mgrTerritoryIds = [...new Set(
@@ -247,7 +247,7 @@ export default function ManagersPage() {
                 <div key={rep.id} className="p-3 flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{rep.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{rep.email || "—"}</p>
+                    <p className="text-xs text-muted-foreground truncate">{rep.email || "---"}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-semibold tabular-nums">{formatCurrency(revenueByRep.get(rep.id) ?? 0)}</p>
@@ -274,7 +274,7 @@ export default function ManagersPage() {
                   {managerReps.map((rep) => (
                     <tr key={rep.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                       <td className="p-3 font-medium">{rep.name}</td>
-                      <td className="p-3 text-muted-foreground text-xs hidden md:table-cell">{rep.email || "—"}</td>
+                      <td className="p-3 text-muted-foreground text-xs hidden md:table-cell">{rep.email || "---"}</td>
                       <td className="p-3 text-right tabular-nums">{formatCurrency(revenueByRep.get(rep.id) ?? 0)}</td>
                       <td className="p-3 text-right tabular-nums hidden md:table-cell">{formatCurrency(rep.quota ?? 0)}</td>
                       <td className="p-3"><Badge variant="secondary" className="capitalize">{rep.status}</Badge></td>
@@ -292,7 +292,7 @@ export default function ManagersPage() {
     );
   }
 
-  // ── Manager grid ──
+  // ------ Manager grid ------
   return (
     <div className="animate-fade-in">
       <div className="page-header">

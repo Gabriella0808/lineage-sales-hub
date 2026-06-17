@@ -5,7 +5,7 @@
 @tailwind utilities;
 
 /*
-  Lineage Collections — Internal Operating System
+  Lineage Collections --- Internal Operating System
   Editorial / premium furniture house aesthetic.
   Foundations: deep graphite navy, warm ivory canvas, muted taupe surfaces,
   bronze accent. Typography pairs Fraunces (display) with DM Sans (body).
@@ -51,7 +51,7 @@
 
     --radius: 0.5rem;
 
-    /* Sidebar — bespoke graphite shell */
+    /* Sidebar --- bespoke graphite shell */
     --sidebar-background: 220 28% 10%;
     --sidebar-foreground: 36 18% 78%;
     --sidebar-primary: 28 55% 52%;
@@ -120,7 +120,7 @@
     @apply text-sm text-muted-foreground mt-1.5 max-w-2xl;
   }
 
-  /* Section label — editorial */
+  /* Section label --- editorial */
   .section-label {
     @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground;
   }

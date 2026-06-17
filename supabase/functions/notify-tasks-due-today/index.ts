@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
       { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" },
     );
 
-    // Optional taskId filter — when called right after task creation
+    // Optional taskId filter --- when called right after task creation
     let taskId: string | null = null;
     try {
       if (req.method === "POST") {
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
           if (!nErr) notified++;
         }
 
-        // Email reminder — idempotency key ensures no duplicates per task/user/day
+        // Email reminder --- idempotency key ensures no duplicates per task/user/day
         try {
           const { data: userResp, error: uErr } = await supabase.auth.admin.getUserById(userId);
           if (uErr) console.error("getUserById error", { userId, error: uErr.message });

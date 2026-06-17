@@ -31,12 +31,12 @@ type Quote = {
 };
 
 function formatPrice(n: number | null | undefined) {
-  if (n == null) return "—";
+  if (n == null) return "---";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(Number(n));
 }
 
 function formatDate(s: string | null) {
-  if (!s) return "—";
+  if (!s) return "---";
   return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 

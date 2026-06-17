@@ -144,6 +144,8 @@ export default function TaskBoardsView() {
     group_id: string | null;
     assignee_ids: string[];
   }>({ title: "", description: "", status: "todo", due_date: "", group_id: null, assignee_ids: [] });
+  const [inlineEditingTaskId, setInlineEditingTaskId] = useState<string | null>(null);
+  const [inlineEditTaskTitle, setInlineEditTaskTitle] = useState("");
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [detailsTask, setDetailsTask] = useState<BoardTask | null>(null);

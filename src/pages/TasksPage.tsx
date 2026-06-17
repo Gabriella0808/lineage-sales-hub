@@ -1266,13 +1266,15 @@ export default function TasksPage() {
                           </li>
                         );
                       })}
-                    </ul>
+                        </ul>
+                      )}
+                    </div>
                   )}
                 </div>
               );
-            })}
-          </div>
-        </Card>
+            });
+          })()}
+        </div>
       )}
         </TabsContent>
       </Tabs>

@@ -319,39 +319,13 @@ export default function TaskBoardsView() {
       if (error || !data) return toast({ title: "Create failed", description: error?.message, variant: "destructive" });
       const newId = (data as any).id as string;
 
-      if (boardForm.templateId) {
-        // Seed from SOP template: one "SOP Checklist" group + tasks with is_sop=true
-        const { data: tplItems } = await supabase
-          .from("sop_template_items" as any)
-          .select("title,position")
-          .eq("template_id", boardForm.templateId)
-          .order("position");
-        const { data: groupRow } = await supabase
-          .from("task_board_groups" as any)
-          .insert({ board_id: newId, name: "SOP Checklist", color: "#0ea5e9", position: 0 })
-          .select("id")
-          .single();
-        const groupId = (groupRow as any)?.id as string | undefined;
-        if (groupId && tplItems && tplItems.length) {
-          const rows = (tplItems as any[]).map((it) => ({
-            title: it.title,
-            status: "todo" as const,
-            board_id: newId,
-            group_id: groupId,
-            user_id: user.id,
-            is_sop: true,
-          }));
-          await supabase.from("manager_tasks").insert(rows);
-        }
-      } else {
-        // seed default groups
-        await supabase.from("task_board_groups" as any).insert([
-          { board_id: newId, name: "To Do", color: "#6366f1", position: 0 },
-          { board_id: newId, name: "In Progress", color: "#f59e0b", position: 1 },
-          { board_id: newId, name: "Stuck", color: "#ef4444", position: 2 },
-          { board_id: newId, name: "Done", color: "#10b981", position: 3 },
-        ]);
-      }
+      // seed default groups
+      await supabase.from("task_board_groups" as any).insert([
+        { board_id: newId, name: "To Do", color: "#6366f1", position: 0 },
+        { board_id: newId, name: "In Progress", color: "#f59e0b", position: 1 },
+        { board_id: newId, name: "Stuck", color: "#ef4444", position: 2 },
+        { board_id: newId, name: "Done", color: "#10b981", position: 3 },
+      ]);
       setActiveBoardId(newId);
     }
     setBoardDlgOpen(false);

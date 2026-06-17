@@ -24,12 +24,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown, Filter } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { MetricCard } from "@/components/MetricCard";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, isWithinInterval, parseISO } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -194,6 +195,7 @@ export default function TasksPage() {
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>("all");
   const [assigneeUserId, setAssigneeUserId] = useState<string>("any");
   const [dueFilter, setDueFilter] = useState<DueFilter>("any");
+  const [statusFilter, setStatusFilter] = useState<Status[]>([]);
   const [contextQuery, setContextQuery] = useState("");
 
   // ---- Bulk select ----
@@ -216,12 +218,14 @@ export default function TasksPage() {
   const filtersActive =
     assigneeUserId !== "any" ||
     dueFilter !== "any" ||
+    statusFilter.length > 0 ||
     contextQuery.trim() !== "";
 
   const clearFilters = () => {
     setAssigneeFilter("all");
     setAssigneeUserId("any");
     setDueFilter("any");
+    setStatusFilter([]);
     setContextQuery("");
   };
 
@@ -287,7 +291,7 @@ export default function TasksPage() {
   };
 
   const filteredTasks = tasks.filter(
-    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t),
+    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)),
   );
 
   const load = async () => {

@@ -692,7 +692,7 @@ export default function CaptureLeadsPage() {
                   values={leadForm.prospect_types}
                   onChangeMulti={(vs) => setLeadForm({ ...leadForm, prospect_types: vs })}
                   placeholder="Select one or more prospect types…"
-                  triggerClassName="bg-slate-50"
+                  triggerClassName="bg-transparent border-transparent shadow-none"
                 />
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Picking any type will also add this lead to the Prospects list. Leave empty to keep it as a lead only.

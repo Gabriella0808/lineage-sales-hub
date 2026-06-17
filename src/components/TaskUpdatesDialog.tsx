@@ -134,6 +134,7 @@ export function TaskUpdatesDialog({
     }
     setBody("");
     load();
+    onActivityChange?.();
   };
 
   const remove = async (u: UpdateRow) => {
@@ -143,6 +144,7 @@ export function TaskUpdatesDialog({
       return;
     }
     setUpdates((arr) => arr.filter((x) => x.id !== u.id));
+    onActivityChange?.();
   };
 
   const renderBody = (text: string) => {

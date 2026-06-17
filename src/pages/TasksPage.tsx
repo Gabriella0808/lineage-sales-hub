@@ -1505,6 +1505,12 @@ export default function TasksPage() {
           })()}
         </SheetContent>
       </Sheet>
+
+      <TaskUpdatesDialog
+        taskId={updatesTaskId}
+        open={!!updatesTaskId}
+        onOpenChange={(o) => { if (!o) { setUpdatesTaskId(null); refreshUpdateCounts(); } }}
+      />
     </div>
   );
 }

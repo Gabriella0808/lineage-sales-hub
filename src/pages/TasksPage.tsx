@@ -200,6 +200,7 @@ export default function TasksPage() {
   const [dueFilter, setDueFilter] = useState<DueFilter>("any");
   const [statusFilter, setStatusFilter] = useState<Status[]>([]);
   const [contextQuery, setContextQuery] = useState("");
+  const [showCompleted, setShowCompleted] = useState(false);
 
   // ---- Bulk select ----
   const [selectMode, setSelectMode] = useState(false);
@@ -339,7 +340,7 @@ export default function TasksPage() {
   };
 
   const filteredTasks = tasks.filter(
-    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)),
+    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)) && (showCompleted || t.status !== "done"),
   );
 
   const load = async () => {
@@ -960,6 +961,16 @@ export default function TasksPage() {
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {filteredTasks.length} of {tasks.length}
               </span>
+              {tasks.some((t) => t.status === "done") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-xs"
+                  onClick={() => setShowCompleted((v) => !v)}
+                >
+                  {showCompleted ? "Hide completed" : `Show completed (${tasks.filter((t) => t.status === "done").length})`}
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant={selectMode ? "default" : "outline"}
@@ -1119,7 +1130,12 @@ export default function TasksPage() {
                                   aria-label="Select task"
                                 />
                               ) : (
-                                <GripVertical className="h-3.5 w-3.5" />
+                                <Checkbox
+                                  checked={t.status === "done"}
+                                  onCheckedChange={(v) => updateStatus(t.id, v ? "done" : "todo")}
+                                  aria-label="Mark complete"
+                                  className="h-4 w-4"
+                                />
                               )}
                             </div>
 

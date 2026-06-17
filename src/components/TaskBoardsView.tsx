@@ -782,14 +782,14 @@ export default function TaskBoardsView() {
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              {boardTasks.some((t) => t.is_sop) && (
+              {boardTasks.some((t) => t.status === "done") && (
                 <Button
                   size="sm"
                   variant="ghost"
                   className="text-xs"
                   onClick={() => setShowCompletedSop((v) => !v)}
                 >
-                  {showCompletedSop ? "Hide completed" : `Show completed (${boardTasks.filter((t) => t.is_sop && t.status === "done").length})`}
+                  {showCompletedSop ? "Hide completed" : `Show completed (${boardTasks.filter((t) => t.status === "done").length})`}
                 </Button>
               )}
               <Button size="sm" variant="outline" onClick={openSubscribeDialog}>
@@ -890,25 +890,19 @@ export default function TaskBoardsView() {
                   onClick={() => openEditTask(t)}
                   className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card"
                 >
-                  {t.is_sop ? (
-                    <div
-                      className="flex items-center justify-center border-r border-border"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Checkbox
-                        checked={t.status === "done"}
-                        onCheckedChange={(v) => updateTaskStatus(t.id, v ? "done" : "todo")}
-                        className="h-4 w-4"
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      className="flex items-center justify-center text-muted-foreground/40 border-r border-border cursor-grab active:cursor-grabbing"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <GripVertical className="h-3.5 w-3.5" />
-                    </div>
-                  )}
+                  <div
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
+                    className="flex items-center justify-center border-r border-border cursor-grab active:cursor-grabbing"
+                    onClick={(e) => e.stopPropagation()}
+                    title="Drag to move • check to complete"
+                  >
+                    <Checkbox
+                      checked={t.status === "done"}
+                      onCheckedChange={(v) => updateTaskStatus(t.id, v ? "done" : "todo")}
+                      className="h-4 w-4"
+                    />
+                  </div>
                   <div className="px-3 py-2 min-w-0 text-left border-r border-border" onClick={(e) => e.stopPropagation()}>
                     {inlineEditingTaskId === t.id ? (
                       <input
@@ -1218,7 +1212,7 @@ export default function TaskBoardsView() {
                   const items = boardTasks
                     .filter((t) => t.group_id && defaultGroupIds.has(t.group_id))
                     .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
-                    .filter((t) => !t.is_sop || showCompletedSop || t.status !== "done");
+                    .filter((t) => showCompletedSop || t.status !== "done");
                   const firstGroup = defaultGroups[0];
                   const isCollapsed = collapsed[firstGroup.id];
                   const color = firstGroup.color ?? "#6366f1";
@@ -1291,7 +1285,7 @@ export default function TaskBoardsView() {
                   const groupTasks = boardTasks
                     .filter((t) => t.group_id === g.id)
                     .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
-                    .filter((t) => !t.is_sop || showCompletedSop || t.status !== "done");
+                    .filter((t) => showCompletedSop || t.status !== "done");
                   const isCollapsed = collapsed[g.id];
                   const color = g.color ?? "#6366f1";
                   return (

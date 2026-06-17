@@ -117,6 +117,7 @@ export default function TaskBoardsView() {
   const [addingGroupId, setAddingGroupId] = useState<string | null>(null);
   const [newItemTitle, setNewItemTitle] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // dialogs
   const [boardDlgOpen, setBoardDlgOpen] = useState(false);

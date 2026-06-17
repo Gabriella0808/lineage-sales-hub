@@ -1050,7 +1050,9 @@ export default function TaskBoardsView() {
                 {/* Default workflow groups — merged into one Monday-style flat table */}
                 {defaultGroups.length > 0 && (() => {
                   const defaultGroupIds = new Set(defaultGroups.map((g) => g.id));
-                  const items = boardTasks.filter((t) => t.group_id && defaultGroupIds.has(t.group_id));
+                  const items = boardTasks
+                    .filter((t) => t.group_id && defaultGroupIds.has(t.group_id))
+                    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status));
                   const firstGroup = defaultGroups[0];
                   const isCollapsed = collapsed[firstGroup.id];
                   const color = firstGroup.color ?? "#6366f1";
@@ -1093,7 +1095,9 @@ export default function TaskBoardsView() {
 
                 {/* Custom groups — each its own section with internal status sub-rows */}
                 {customGroups.map((g) => {
-                  const groupTasks = boardTasks.filter((t) => t.group_id === g.id);
+                  const groupTasks = boardTasks
+                    .filter((t) => t.group_id === g.id)
+                    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status));
                   const isCollapsed = collapsed[g.id];
                   const color = g.color ?? "#6366f1";
                   return (

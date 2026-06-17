@@ -1,6 +1,6 @@
 import { useMemo, useState, useDeferredValue, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useCrmAccounts, useCrmReps, useCrmManagers, useUpdateAccount, useProspectTypes, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
+import { useCrmAccounts, useCrmReps, useCrmManagers, useUpdateAccount, useDeleteAccount, useProspectTypes, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, ArrowLeft, ChevronDown } from "lucide-react";
+import { Plus, Search, ArrowLeft, ChevronDown, Trash2 } from "lucide-react";
 import { ImportAccountsDialog } from "@/components/ImportAccountsDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +22,8 @@ export default function CrmAccountsPage() {
   const { data: managers = [] } = useCrmManagers();
   const { data: prospectTypes = [] } = useProspectTypes();
   const update = useUpdateAccount();
+  const del = useDeleteAccount();
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const repParam = searchParams.get("rep") ?? "all";
@@ -337,13 +339,14 @@ export default function CrmAccountsPage() {
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Date Added</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Last Contacted</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Account Type</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[13%]">Prospect Type</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Prospect Type</th>
+                <th className="text-right px-2 py-2.5 font-medium bg-muted w-[40px]"></th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={9} className="p-6 text-center text-muted-foreground">No prospects match your filters.</td></tr>}
+              {isLoading && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Loading…</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">No prospects match your filters.</td></tr>}
               {visibleRows.map((a) => {
                 const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
                 return (
@@ -494,7 +497,16 @@ export default function CrmAccountsPage() {
                         );
                       })()}
                     </td>
-
+                    <td className="px-2 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        title="Delete prospect"
+                        onClick={() => setDeleteTarget({ id: a.id, name: a.company_name })}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -514,6 +526,36 @@ export default function CrmAccountsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmConvert}>Convert to dealer</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the prospect from the list and removes its pin from the Field Check-ins map. Any check-ins logged for this account will also be deleted. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!deleteTarget) return;
+                const target = deleteTarget;
+                del.mutate(
+                  { id: target.id },
+                  {
+                    onSuccess: () => toast({ title: "Prospect deleted", description: `${target.name} was removed from prospects and the check-ins map.` }),
+                    onError: (e: any) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+                  },
+                );
+                setDeleteTarget(null);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

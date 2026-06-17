@@ -1013,9 +1013,12 @@ export default function TaskBoardsView() {
 
 
             const columnHeader = (
-              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
+              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="border-r border-border h-8" />
                 <div className="px-3 py-1.5 border-r border-border text-center">Item</div>
+                <div className="px-1 py-1.5 border-r border-border text-center" title="Updates & attachments">
+                  <MessageSquarePlus className="h-3.5 w-3.5 mx-auto opacity-70" />
+                </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">Responsible</div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
                   <Popover>

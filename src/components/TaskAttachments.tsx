@@ -106,6 +106,7 @@ export function TaskAttachments({ taskId, onChange }: { taskId: string; onChange
       return;
     }
     setItems((arr) => arr.filter((x) => x.id !== a.id));
+    onChange?.();
   };
 
   return (

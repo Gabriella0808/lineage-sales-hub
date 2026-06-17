@@ -541,6 +541,24 @@ export default function TaskBoardsView() {
     if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     load();
   };
+  const saveInlineTaskTitle = async (taskId: string, title: string) => {
+    if (!title.trim()) {
+      setInlineEditingTaskId(null);
+      setInlineEditTaskTitle("");
+      return;
+    }
+    const { error } = await supabase
+      .from("manager_tasks")
+      .update({ title: title.trim() })
+      .eq("id", taskId);
+    if (error) {
+      toast({ title: "Rename failed", description: error.message, variant: "destructive" });
+    } else {
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, title: title.trim() } : t)));
+    }
+    setInlineEditingTaskId(null);
+    setInlineEditTaskTitle("");
+  };
   const findGroupForStatus = (boardId: string | null, status: Status): string | null => {
     if (!boardId) return null;
     const candidates = groups.filter((g) => g.board_id === boardId);

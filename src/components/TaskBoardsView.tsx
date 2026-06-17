@@ -1209,7 +1209,7 @@ export default function TaskBoardsView() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setShareDlgOpen(false)}>Done</Button>
+            <Button onClick={() => setSubscribeDlgOpen(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

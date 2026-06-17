@@ -29,6 +29,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Plus,
   LayoutGrid,
@@ -40,6 +50,7 @@ import {
   GripVertical,
   UserPlus,
   X,
+  Check,
 } from "lucide-react";
 import { format } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";

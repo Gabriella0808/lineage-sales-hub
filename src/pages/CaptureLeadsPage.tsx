@@ -682,18 +682,21 @@ export default function CaptureLeadsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="rounded-lg border border-accent/40 bg-accent/5 p-3">
-              <Field label="Add as Prospect">
+            <div className="bg-slate-50 border-l-4 border-accent rounded-r-lg p-4">
+              <div className="flex flex-col gap-3">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Add as Prospect
+                </span>
                 <ProspectTypeSelect
                   multi
                   values={leadForm.prospect_types}
                   onChangeMulti={(vs) => setLeadForm({ ...leadForm, prospect_types: vs })}
                   placeholder="Select one or more prospect types…"
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   Picking any type will also add this lead to the Prospects list. Leave empty to keep it as a lead only.
                 </p>
-              </Field>
+              </div>
             </div>
             <Field label="Contact First and Last Name" required>
               <Input value={leadForm.contact_name} onChange={(e) => setLeadForm({ ...leadForm, contact_name: e.target.value })} placeholder="Enter contact name" />

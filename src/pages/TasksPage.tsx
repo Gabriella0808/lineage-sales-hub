@@ -933,37 +933,53 @@ export default function TasksPage() {
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (
-        <Card className="overflow-hidden p-0">
-          {/* Board column header (Monday-style) */}
-          <div className="hidden md:grid grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_180px_80px] items-center gap-0 border-b bg-muted/30 px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            <div />
-            <div className="px-3">Task</div>
-            <div className="px-3">Owner</div>
-            <div className="px-3">Status</div>
-            <div className="px-3">Due date</div>
-            <div className="px-3">Board</div>
-            <div className="px-3 text-right">Actions</div>
-          </div>
-
-          <div className="divide-y-2 divide-border">
-            {COLUMNS.map((col) => {
+        <div className="space-y-6">
+          {(() => {
+            const HEX_BY_STATUS: Record<Status, string> = {
+              todo: "#94a3b8",
+              in_progress: "#f59e0b",
+              blocked: "#ef4444",
+              done: "#10b981",
+            };
+            const columnHeader = (
+              <div className="hidden md:grid grid-cols-[minmax(0,1fr)_180px_160px_120px_180px_80px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
+                <div className="px-3 py-1.5 border-r border-border text-center">Item</div>
+                <div className="px-3 py-1.5 border-r border-border text-center">Owner</div>
+                <div className="px-3 py-1.5 border-r border-border text-center">Status</div>
+                <div className="px-3 py-1.5 border-r border-border text-center">Due date</div>
+                <div className="px-3 py-1.5 border-r border-border text-center">Board</div>
+                <div className="px-3 py-1.5 text-center">Actions</div>
+              </div>
+            );
+            return COLUMNS.map((col) => {
               const items = filteredTasks.filter((t) => t.status === col.key);
               const isCollapsed = !!collapsedGroups[col.key];
+              const color = HEX_BY_STATUS[col.key];
               return (
-                <div key={col.key} className="">
-                  {/* Group header — editorial style */}
-                  <div className={`flex items-center gap-3 px-4 py-2.5 ${col.headerBg} border-b-2 border-border`}>
+                <div key={col.key}>
+                  {/* Group title — Monday-style colored heading */}
+                  <div className="flex items-center gap-1.5 mb-1.5">
                     <button
                       type="button"
                       onClick={() => setCollapsedGroups((p) => ({ ...p, [col.key]: !p[col.key] }))}
                       aria-label={isCollapsed ? `Expand ${col.label}` : `Collapse ${col.label}`}
                       aria-expanded={!isCollapsed}
-                      className="p-0.5 rounded text-muted-foreground hover:text-foreground transition-colors"
+                      className="flex items-center gap-1.5"
                     >
-                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} />
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+                        style={{ color }}
+                      />
+                      <h2 className="text-base font-bold" style={{ color }}>
+                        {col.label}
+                      </h2>
+                      <span className="text-xs text-muted-foreground ml-1 tabular-nums">
+                        {items.length} {items.length === 1 ? "task" : "tasks"}
+                      </span>
                     </button>
                     {selectMode && items.length > 0 && (
                       <Checkbox
+                        className="ml-2"
                         checked={items.every((t) => selectedIds.has(t.id))}
                         onCheckedChange={(v) => {
                           setSelectedIds((prev) => {
@@ -976,19 +992,21 @@ export default function TasksPage() {
                         aria-label={`Select all ${col.label}`}
                       />
                     )}
-                    <span className={`inline-block h-1.5 w-1.5 rounded-full ${col.accent}`} />
-                    <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">{col.label}</h2>
-                    <span className="text-[11px] text-muted-foreground tabular-nums">{items.length}</span>
-                    <span className="flex-1 h-px bg-border/60" />
                   </div>
 
-                  {/* Group rows */}
-                  {isCollapsed ? null : items.length === 0 ? (
-                    <div className="px-4 py-4 text-xs italic text-muted-foreground/70">
-                      No items in this lane.
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-border">
+                  {!isCollapsed && (
+                    <div
+                      className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
+                      style={{ borderLeftColor: color }}
+                    >
+                      {columnHeader}
+                      {items.length === 0 ? (
+                        <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
+                          No items in this lane.
+                        </div>
+                      ) : (
+                        <ul>
+
                       {items.map((t) => {
                         const ownerIds = getAssigneeIds(t);
                         const owners = ownerIds.map((uid) => ({

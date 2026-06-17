@@ -26,7 +26,7 @@ function fmtSize(n: number | null) {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function TaskAttachments({ taskId }: { taskId: string }) {
+export function TaskAttachments({ taskId, onChange }: { taskId: string; onChange?: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<Attachment[]>([]);

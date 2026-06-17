@@ -24,18 +24,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown, Filter } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown, Filter, GripVertical, MessageSquarePlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { MetricCard } from "@/components/MetricCard";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, isWithinInterval, parseISO } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import TaskBoardsView from "@/components/TaskBoardsView";
 import { TaskAttachments, PendingAttachmentPicker, uploadPendingAttachments } from "@/components/TaskAttachments";
+import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
 
@@ -213,6 +216,39 @@ export default function TasksPage() {
     if (error) { toast({ title: "Failed to update title", variant: "destructive" }); return; }
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, title } : t)));
   };
+
+  // ---- Updates dialog + counts ----
+  const [updatesTaskId, setUpdatesTaskId] = useState<string | null>(null);
+  const [updateCounts, setUpdateCounts] = useState<Record<string, number>>({});
+  const refreshUpdateCounts = async () => {
+    const { data } = await supabase.from("manager_task_updates" as any).select("task_id");
+    const counts: Record<string, number> = {};
+    ((data ?? []) as unknown as { task_id: string }[]).forEach((r) => {
+      counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+    });
+    setUpdateCounts(counts);
+  };
+
+  // ---- Inline due date + assignees ----
+  const updateTaskDueDate = async (id: string, d: Date | null) => {
+    const due_date = d ? format(d, "yyyy-MM-dd") : null;
+    const prev = tasks;
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, due_date } : t)));
+    const { error } = await supabase.from("manager_tasks").update({ due_date }).eq("id", id);
+    if (error) { setTasks(prev); toast({ title: "Date update failed", variant: "destructive" }); }
+  };
+
+  const setTaskAssigneesInline = async (taskId: string, userIds: string[]) => {
+    const prev = taskAssignees;
+    setTaskAssignees((m) => ({ ...m, [taskId]: userIds }));
+    const { error: delErr } = await supabase.from("manager_task_assignees" as any).delete().eq("task_id", taskId);
+    if (delErr) { setTaskAssignees(prev); toast({ title: "Assignee update failed", variant: "destructive" }); return; }
+    if (userIds.length > 0) {
+      const rows = userIds.map((uid) => ({ task_id: taskId, user_id: uid }));
+      const { error: insErr } = await supabase.from("manager_task_assignees" as any).insert(rows as any);
+      if (insErr) { setTaskAssignees(prev); toast({ title: "Assignee update failed", variant: "destructive" }); }
+    }
+  };
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -352,6 +388,7 @@ export default function TasksPage() {
       });
       setTaskAssignees(map);
     }
+    await refreshUpdateCounts();
     setLoading(false);
   };
 
@@ -953,10 +990,14 @@ export default function TasksPage() {
               done: "#10b981",
             };
             const columnHeader = (
-              <div className="hidden md:grid grid-cols-[minmax(0,1fr)_180px_160px_120px_180px_80px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
-                <div className="px-3 py-1.5 border-r border-border text-center">Item</div>
-                <div className="px-3 py-1.5 border-r border-border text-center">Owner</div>
-                <div className="px-3 py-1.5 border-r border-border text-center">
+              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
+                <div className="px-2 py-1.5 border-r border-border" />
+                <div className="px-2 py-1.5 border-r border-border text-center">Item</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <MessageSquarePlus className="h-3.5 w-3.5 inline" />
+                </div>
+                <div className="px-2 py-1.5 border-r border-border text-center">Responsible</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
@@ -975,10 +1016,7 @@ export default function TasksPage() {
                         {COLUMNS.map((c) => {
                           const checked = statusFilter.includes(c.key);
                           return (
-                            <label
-                              key={c.key}
-                              className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50"
-                            >
+                            <label key={c.key} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
                               <Checkbox
                                 checked={checked}
                                 onCheckedChange={(val) => {
@@ -1005,9 +1043,8 @@ export default function TasksPage() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="px-3 py-1.5 border-r border-border text-center">Due date</div>
-                <div className="px-3 py-1.5 border-r border-border text-center">Board</div>
-                <div className="px-3 py-1.5 text-center">Actions</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">Due date</div>
+                <div className="px-2 py-1.5 text-center" />
               </div>
             );
             const items = filteredTasks;
@@ -1066,45 +1103,46 @@ export default function TasksPage() {
                         return (
                           <li
                             key={t.id}
-                            onClick={() => {
-                              if (selectMode) { toggleSelect(t.id); return; }
-                              setDetailTask(t); markRead(t.id);
-                            }}
-                            className={`group/row grid grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_180px_160px_120px_180px_80px] items-stretch hover:bg-muted/30 transition-colors cursor-pointer border-b border-border last:border-b-0 bg-card ${
+                            className={`group/row grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 transition-colors border-b border-border last:border-b-0 bg-card ${
                               selectMode && selectedIds.has(t.id) ? "bg-primary/10" : ""
                             }`}
                           >
-                            {/* Task title + description */}
-                            <div className="px-3 py-2 min-w-0 flex items-start gap-2 border-r border-border">
-
-                              {selectMode && (
+                            {/* Drag handle / select */}
+                            <div
+                              className="flex items-center justify-center text-muted-foreground/40 border-r border-border"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {selectMode ? (
                                 <Checkbox
-                                  className="mt-0.5"
                                   checked={selectedIds.has(t.id)}
                                   onCheckedChange={() => toggleSelect(t.id)}
-                                  onClick={(e) => e.stopPropagation()}
                                   aria-label="Select task"
                                 />
+                              ) : (
+                                <GripVertical className="h-3.5 w-3.5" />
                               )}
-                              <div className="min-w-0 flex-1">
+                            </div>
+
+                            {/* Title */}
+                            <div className="px-3 py-2 min-w-0 text-left border-r border-border" onClick={(e) => e.stopPropagation()}>
                               {inlineEditingTaskId === t.id ? (
                                 <input
                                   autoFocus
                                   value={inlineEditTaskTitle}
-                                  onClick={(e) => e.stopPropagation()}
                                   onChange={(e) => setInlineEditTaskTitle(e.target.value)}
                                   onBlur={() => saveInlineTaskTitle(t.id)}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") { e.preventDefault(); saveInlineTaskTitle(t.id); }
                                     else if (e.key === "Escape") { e.preventDefault(); setInlineEditingTaskId(null); }
                                   }}
-                                  className="text-sm font-medium leading-snug w-full bg-background border border-input rounded px-1.5 py-0.5 outline-none focus:ring-2 focus:ring-ring"
+                                  className="text-sm leading-snug break-words w-full bg-transparent border-b border-current outline-none px-0 py-0"
                                 />
                               ) : (
                                 <p
-                                  className="text-sm font-medium leading-snug break-words cursor-text hover:bg-muted/40 rounded px-1 -mx-1"
+                                  className="text-sm leading-snug break-words cursor-text"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    if (selectMode) { toggleSelect(t.id); return; }
                                     setInlineEditingTaskId(t.id);
                                     setInlineEditTaskTitle(t.title);
                                   }}
@@ -1113,103 +1151,102 @@ export default function TasksPage() {
                                 </p>
                               )}
                               {t.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                  {t.description}
-                                </p>
+                                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                               )}
                               {assignedToMe && (
-                                <p className="text-[11px] text-primary mt-1 font-medium">
-                                  Assigned to you
-                                </p>
-                              )}
-                              {/* Mobile-only inline meta */}
-                              <div className="md:hidden mt-2 flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                {primary && (
-                                  <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
-                                      {initialsOf(primary.name)}
-                                    </span>
-                                    {primary.name}
-                                    {owners.length > 1 && (
-                                      <span className="text-muted-foreground">
-                                        +{owners.length - 1}
-                                      </span>
-                                    )}
-                                  </span>
-                                )}
-                                <Select
-                                  value={t.status}
-                                  onValueChange={(v: Status) => updateStatus(t.id, v)}
-                                >
-                                  <SelectTrigger
-                                    className={`h-6 px-2 text-[11px] font-semibold border-0 ${col.pillBg} ${col.pillText} rounded-full w-auto gap-1`}
-                                  >
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {COLUMNS.map((c) => (
-                                      <SelectItem
-                                        key={c.key}
-                                        value={c.key}
-                                        className="text-xs"
-                                      >
-                                        {c.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {t.due_date && (
-                                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                                    <Calendar className="h-3 w-3" />
-                                    {format(parseDateOnly(t.due_date)!, "MMM d")}
-                                  </span>
-                                )}
-                              </div>
-                              </div>
-                            </div>
-
-                            {/* Owner column (md+) */}
-                            <div className="hidden md:flex items-center gap-2 px-3 py-2 min-w-0 border-r border-border">
-                              {owners.length === 0 ? (
-                                <span className="text-xs italic text-muted-foreground">
-                                  Unassigned
-                                </span>
-                              ) : (
-                                <div className="flex items-center min-w-0">
-                                  <div className="flex -space-x-1.5">
-                                    {owners.slice(0, 3).map((o) => (
-                                      <span
-                                        key={o.id}
-                                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary ring-2 ring-background"
-                                        title={o.name}
-                                      >
-                                        {initialsOf(o.name)}
-                                      </span>
-                                    ))}
-                                    {owners.length > 3 && (
-                                      <span
-                                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-background"
-                                        title={owners.slice(3).map((o) => o.name).join(", ")}
-                                      >
-                                        +{owners.length - 3}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="truncate text-sm ml-2">
-                                    {owners.length === 1
-                                      ? owners[0].name
-                                      : `${owners.length} people`}
-                                  </span>
-                                </div>
+                                <p className="text-[11px] text-primary mt-0.5 font-medium">Assigned to you</p>
                               )}
                             </div>
 
-                            {/* Status cell (md+) — full-bleed colored */}
-                            <div className="hidden md:flex items-stretch border-r border-border" onClick={(e) => e.stopPropagation()}>
-                              <Select
-                                value={t.status}
-                                onValueChange={(v: Status) => updateStatus(t.id, v)}
+                            {/* Comments / updates */}
+                            <div
+                              className="flex items-center justify-center border-r border-border"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={() => setUpdatesTaskId(t.id)}
+                                title="Updates & attachments"
+                                className="relative inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                               >
+                                <MessageSquarePlus className="h-4 w-4" />
+                                {updateCounts[t.id] > 0 && (
+                                  <span className="absolute -top-0.5 -right-0.5 inline-flex h-3.5 min-w-3.5 px-1 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                                    {updateCounts[t.id]}
+                                  </span>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Responsible (md+) */}
+                            <div
+                              className="hidden md:flex items-center justify-center px-2 border-r border-border"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button className="flex items-center justify-center w-full h-full py-1 hover:bg-muted/40 rounded">
+                                    {owners.length === 0 ? (
+                                      <span className="text-xs italic text-muted-foreground">Unassigned</span>
+                                    ) : (
+                                      <div className="flex -space-x-1.5">
+                                        {owners.slice(0, 3).map((o) => (
+                                          <span
+                                            key={o.id}
+                                            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary ring-2 ring-background"
+                                            title={o.name}
+                                          >
+                                            {initialsOf(o.name)}
+                                          </span>
+                                        ))}
+                                        {owners.length > 3 && (
+                                          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-background">
+                                            +{owners.length - 3}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-72 p-0" align="center">
+                                  <Command>
+                                    <CommandInput placeholder="Search people…" />
+                                    <CommandList>
+                                      <CommandEmpty>No people found.</CommandEmpty>
+                                      <CommandGroup heading="People">
+                                        {assignees.map((u) => {
+                                          const current = getAssigneeIds(t);
+                                          const selected = current.includes(u.user_id);
+                                          const name = u.full_name || u.email || u.user_id.slice(0, 8);
+                                          return (
+                                            <CommandItem
+                                              key={u.user_id}
+                                              value={`${u.full_name ?? ""} ${u.email ?? ""}`}
+                                              onSelect={() => {
+                                                const next = selected
+                                                  ? current.filter((x) => x !== u.user_id)
+                                                  : [...current, u.user_id];
+                                                setTaskAssigneesInline(t.id, next);
+                                              }}
+                                              className="flex items-center gap-2"
+                                            >
+                                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
+                                                {initialsOf(name)}
+                                              </span>
+                                              <span className="flex-1 text-sm">{name}</span>
+                                              {selected && <Check className="h-4 w-4 text-primary" />}
+                                            </CommandItem>
+                                          );
+                                        })}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+
+                            {/* Status (md+) full-bleed */}
+                            <div className="hidden md:flex items-stretch border-r border-border" onClick={(e) => e.stopPropagation()}>
+                              <Select value={t.status} onValueChange={(v: Status) => updateStatus(t.id, v)}>
                                 <SelectTrigger
                                   className={`h-auto w-full rounded-none border-0 ${col.pillBg} ${col.pillText} text-xs font-semibold justify-center gap-1 focus:ring-0 focus:ring-offset-0 [&>svg]:hidden hover:opacity-90`}
                                 >
@@ -1217,111 +1254,78 @@ export default function TasksPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   {COLUMNS.map((c) => (
-                                    <SelectItem
-                                      key={c.key}
-                                      value={c.key}
-                                      className="text-xs"
-                                    >
-                                      {c.label}
-                                    </SelectItem>
+                                    <SelectItem key={c.key} value={c.key} className="text-xs">{c.label}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </div>
 
                             {/* Due date (md+) */}
-                            <div className="hidden md:flex items-center justify-center px-3 py-2 text-xs text-muted-foreground border-r border-border">
-                              {t.due_date ? (
-                                <span className="inline-flex items-center gap-1">
-                                  <Calendar className="h-3.5 w-3.5" />
-                                  {format(parseDateOnly(t.due_date)!, "MMM d, yyyy")}
-                                </span>
-                              ) : (
-                                <span className="italic">—</span>
-                              )}
-                            </div>
-
-                            {/* Board (md+) */}
-                            <div className="hidden md:flex items-center px-3 py-2 border-r border-border" onClick={(e) => e.stopPropagation()}>
-
-                              {(isMine || assignedToMe) ? (
-                                <Select
-                                  value={t.board_id ?? "__none__"}
-                                  onValueChange={(v) => updateBoard(t.id, v === "__none__" ? null : v)}
-                                >
-                                  <SelectTrigger className="h-7 px-2 text-xs w-full min-w-0 overflow-hidden [&>span]:truncate [&>span]:block [&>span]:min-w-0 [&>span]:flex-1 [&>span]:text-left">
-                                    <SelectValue placeholder="No board" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="__none__" className="text-xs italic">No board</SelectItem>
-                                    {boards.map((b) => (
-                                      <SelectItem key={b.id} value={b.id} className="text-xs">
-                                        <span className="inline-flex items-center gap-2">
-                                          {b.color && (
-                                            <span className="h-2 w-2 rounded-full" style={{ background: b.color }} />
-                                          )}
-                                          {b.name}
-                                        </span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <span className="text-xs text-muted-foreground truncate">
-                                  {boards.find((b) => b.id === t.board_id)?.name ?? "—"}
-                                </span>
-                              )}
+                            <div className="hidden md:flex items-stretch border-r border-border" onClick={(e) => e.stopPropagation()}>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button className="flex w-full h-full items-center justify-center gap-1 px-2 text-xs text-muted-foreground hover:bg-muted/40">
+                                    {t.due_date ? (
+                                      <>
+                                        <Calendar className="h-3 w-3" />
+                                        {format(parseDateOnly(t.due_date)!, "MMM d")}
+                                      </>
+                                    ) : (
+                                      <span className="italic">—</span>
+                                    )}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="center">
+                                  <CalendarPicker
+                                    mode="single"
+                                    selected={t.due_date ? parseDateOnly(t.due_date)! : undefined}
+                                    onSelect={(d) => updateTaskDueDate(t.id, d ?? null)}
+                                    initialFocus
+                                  />
+                                  {t.due_date && (
+                                    <div className="p-2 border-t">
+                                      <Button size="sm" variant="ghost" className="w-full text-xs" onClick={() => updateTaskDueDate(t.id, null)}>
+                                        Clear date
+                                      </Button>
+                                    </div>
+                                  )}
+                                </PopoverContent>
+                              </Popover>
                             </div>
 
                             {/* Actions (md+) */}
-
-                            {/* Actions (md+) */}
-                            <div className="hidden md:flex items-center justify-end gap-1 px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="hidden md:flex items-center justify-center gap-0.5 px-1" onClick={(e) => e.stopPropagation()}>
                               {(isMine || assignedToMe) && (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7"
-                                  onClick={() => openEdit(t)}
-                                >
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(t)}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
                               )}
                               {isMine && (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7"
-                                  onClick={() => remove(t.id)}
-                                >
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(t.id)}>
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               )}
                             </div>
 
-                            {/* Mobile actions */}
-                            {(isMine || assignedToMe) && (
-                              <div className="md:hidden col-start-1 flex items-center gap-1 px-3 pb-2 -mt-1" onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7"
-                                  onClick={() => openEdit(t)}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                {isMine && (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => remove(t.id)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                )}
-                              </div>
-                            )}
+                            {/* Mobile meta */}
+                            <div className="md:hidden col-start-2 px-3 pb-2 -mt-1 flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                              <Badge className={`${col.pillBg} ${col.pillText} border-0 text-[10px]`}>{col.label}</Badge>
+                              {primary && (
+                                <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+                                    {initialsOf(primary.name)}
+                                  </span>
+                                  {primary.name}
+                                  {owners.length > 1 && <span>+{owners.length - 1}</span>}
+                                </span>
+                              )}
+                              {t.due_date && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                  <Calendar className="h-3 w-3" />
+                                  {format(parseDateOnly(t.due_date)!, "MMM d")}
+                                </span>
+                              )}
+                            </div>
                           </li>
                         );
                       })}
@@ -1501,6 +1505,14 @@ export default function TasksPage() {
           })()}
         </SheetContent>
       </Sheet>
+
+      <TaskUpdatesDialog
+        taskId={updatesTaskId}
+        open={!!updatesTaskId}
+        onOpenChange={(o) => { if (!o) { setUpdatesTaskId(null); refreshUpdateCounts(); } }}
+        users={assignees.map((a) => ({ user_id: a.user_id, full_name: a.full_name, email: a.email }))}
+        onActivityChange={refreshUpdateCounts}
+      />
     </div>
   );
 }

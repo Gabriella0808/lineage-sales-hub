@@ -782,6 +782,16 @@ export default function TaskBoardsView() {
               )}
             </div>
             <div className="flex items-center gap-1.5">
+              {boardTasks.some((t) => t.is_sop) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs"
+                  onClick={() => setShowCompletedSop((v) => !v)}
+                >
+                  {showCompletedSop ? "Hide completed" : `Show completed (${boardTasks.filter((t) => t.is_sop && t.status === "done").length})`}
+                </Button>
+              )}
               <Button size="sm" variant="outline" onClick={openSubscribeDialog}>
                 <UserPlus className="h-3.5 w-3.5" /> Subscribe
               </Button>

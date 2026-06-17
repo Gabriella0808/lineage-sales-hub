@@ -1119,7 +1119,12 @@ export default function TasksPage() {
                                   aria-label="Select task"
                                 />
                               ) : (
-                                <GripVertical className="h-3.5 w-3.5" />
+                                <Checkbox
+                                  checked={t.status === "done"}
+                                  onCheckedChange={(v) => updateStatus(t.id, v ? "done" : "todo")}
+                                  aria-label="Mark complete"
+                                  className="h-4 w-4"
+                                />
                               )}
                             </div>
 

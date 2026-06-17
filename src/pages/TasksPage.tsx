@@ -388,6 +388,7 @@ export default function TasksPage() {
       });
       setTaskAssignees(map);
     }
+    await refreshUpdateCounts();
     setLoading(false);
   };
 

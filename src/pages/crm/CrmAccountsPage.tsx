@@ -497,7 +497,16 @@ export default function CrmAccountsPage() {
                         );
                       })()}
                     </td>
-
+                    <td className="px-2 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        title="Delete prospect"
+                        onClick={() => setDeleteTarget({ id: a.id, name: a.company_name })}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}

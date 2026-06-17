@@ -678,7 +678,7 @@ export default function TaskBoardsView() {
     await updateTaskStatus(id, status);
   };
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading boards...</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
 
   return (
     <div className="space-y-4">
@@ -690,7 +690,7 @@ export default function TaskBoardsView() {
             onValueChange={(v) => setActiveBoardId(v)}
           >
             <SelectTrigger className="h-9 w-[280px] bg-card">
-              <SelectValue placeholder={boards.length ? "Select a board..." : "No boards yet"} />
+              <SelectValue placeholder={boards.length ? "Select a board" : "No boards yet"} />
             </SelectTrigger>
             <SelectContent>
               {boards.map((b) => (

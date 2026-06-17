@@ -971,6 +971,7 @@ export default function TasksPage() {
                   {showCompleted ? "Hide completed" : `Show completed (${tasks.filter((t) => t.status === "done").length})`}
                 </Button>
               )}
+              <Button
                 size="sm"
                 variant={selectMode ? "default" : "outline"}
                 className="h-8 text-xs"

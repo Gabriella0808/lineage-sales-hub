@@ -434,6 +434,20 @@ export default function TaskBoardsView() {
     if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     load();
   };
+  const saveInlineGroupName = async (groupId: string, name: string) => {
+    if (!name.trim()) return;
+    const { error } = await supabase
+      .from("task_board_groups" as any)
+      .update({ name: name.trim() })
+      .eq("id", groupId);
+    if (error) {
+      toast({ title: "Rename failed", description: error.message, variant: "destructive" });
+    } else {
+      setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, name: name.trim() } : g)));
+    }
+    setInlineEditingGroupId(null);
+    setInlineEditName("");
+  };
 
   // --- Task CRUD ---
   const openNewTask = (groupId: string | null, status: Status = "todo") => {

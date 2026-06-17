@@ -1244,13 +1244,11 @@ export default function TasksPage() {
                           </li>
                         );
                       })}
-                        </ul>
-                      )}
-                    </div>
+                    </ul>
                   )}
                 </div>
-              );
-            });
+              </div>
+            );
           })()}
         </div>
       )}

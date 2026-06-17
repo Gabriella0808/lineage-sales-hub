@@ -86,6 +86,7 @@ export function TaskAttachments({ taskId, onChange }: { taskId: string; onChange
     setUploading(false);
     if (inputRef.current) inputRef.current.value = "";
     load();
+    onChange?.();
   };
 
   const download = async (a: Attachment) => {

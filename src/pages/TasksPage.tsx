@@ -24,18 +24,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown, Filter } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown, Filter, GripVertical, MessageSquarePlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { MetricCard } from "@/components/MetricCard";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, isWithinInterval, parseISO } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import TaskBoardsView from "@/components/TaskBoardsView";
 import { TaskAttachments, PendingAttachmentPicker, uploadPendingAttachments } from "@/components/TaskAttachments";
+import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
 

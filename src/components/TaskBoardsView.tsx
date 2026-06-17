@@ -926,19 +926,55 @@ export default function TaskBoardsView() {
               );
             };
 
-            const renderAddRow = (groupId: string, status: Status = "todo") => (
-              <li
-                onClick={() => openNewTask(groupId, status)}
-                className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-t border-border bg-card text-xs text-muted-foreground"
-              >
-                <div className="border-r border-border h-full" />
-                <div className="px-3 py-2 italic">+ Add item</div>
-                <div className="hidden md:block border-r border-border h-full" />
-                <div className="hidden md:block border-r border-border h-full" />
-                <div className="hidden md:block border-r border-border h-full" />
-                <div className="hidden md:block" />
-              </li>
-            );
+            const renderAddRow = (groupId: string, status: Status = "todo") => {
+              const isActive = addingGroupId === groupId;
+              const submit = async () => {
+                if (newItemTitle.trim()) {
+                  await quickCreateTask(groupId, newItemTitle, status);
+                }
+                setNewItemTitle("");
+                setAddingGroupId(null);
+              };
+              return (
+                <li
+                  onClick={() => {
+                    if (!isActive) {
+                      setAddingGroupId(groupId);
+                      setNewItemTitle("");
+                    }
+                  }}
+                  className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-t border-border bg-card text-xs text-muted-foreground"
+                >
+                  <div className="border-r border-border h-full" />
+                  <div className="px-3 py-1.5" onClick={(e) => isActive && e.stopPropagation()}>
+                    {isActive ? (
+                      <Input
+                        autoFocus
+                        value={newItemTitle}
+                        onChange={(e) => setNewItemTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") submit();
+                          if (e.key === "Escape") {
+                            setNewItemTitle("");
+                            setAddingGroupId(null);
+                          }
+                        }}
+                        onBlur={submit}
+                        placeholder="Enter item name and press Enter"
+                        className="h-7 text-sm"
+                      />
+                    ) : (
+                      <span className="italic">+ Add item</span>
+                    )}
+                  </div>
+                  <div className="hidden md:block border-r border-border h-full" />
+                  <div className="hidden md:block border-r border-border h-full" />
+                  <div className="hidden md:block border-r border-border h-full" />
+                  <div className="hidden md:block" />
+                </li>
+              );
+            };
+
 
             const columnHeader = (
               <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">

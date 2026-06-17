@@ -718,25 +718,28 @@ export default function TaskBoardsView() {
                   key={t.id}
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
-                  className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-grab active:cursor-grabbing min-h-[40px] border-b border-border last:border-b-0 bg-card"
+                  onClick={() => openEditTask(t)}
+                  className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card"
                 >
-                  <div className="flex items-center justify-center text-muted-foreground/40 border-r border-border">
+                  <div
+                    className="flex items-center justify-center text-muted-foreground/40 border-r border-border cursor-grab active:cursor-grabbing"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <GripVertical className="h-3.5 w-3.5" />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setDetailsTask(t)}
-                    className="px-3 py-2 min-w-0 text-left hover:underline underline-offset-2 decoration-muted-foreground/40 border-r border-border"
-                  >
+                  <div className="px-3 py-2 min-w-0 text-left border-r border-border">
                     <p className="text-sm leading-snug break-words">{t.title}</p>
                     {t.description && (
                       <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                     )}
-                  </button>
+                  </div>
                   <div className="hidden md:flex items-center justify-center px-2 border-r border-border">
                     {renderAssignees(t)}
                   </div>
-                  <div className="hidden md:flex items-stretch border-r border-border">
+                  <div
+                    className="hidden md:flex items-stretch border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Select value={t.status} onValueChange={(v: Status) => updateTaskStatus(t.id, v)}>
                       <SelectTrigger
                         className={`h-auto w-full rounded-none border-0 ${meta.pillBg} ${meta.pillText} text-xs font-semibold justify-center gap-1 focus:ring-0 focus:ring-offset-0 [&>svg]:hidden hover:opacity-90`}
@@ -762,7 +765,10 @@ export default function TaskBoardsView() {
                       <span className="italic">—</span>
                     )}
                   </div>
-                  <div className="hidden md:flex items-center justify-center gap-0.5 px-1">
+                  <div
+                    className="hidden md:flex items-center justify-center gap-0.5 px-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditTask(t)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -786,6 +792,20 @@ export default function TaskBoardsView() {
                 </li>
               );
             };
+
+            const renderAddRow = (groupId: string, status: Status = "todo") => (
+              <li
+                onClick={() => openNewTask(groupId, status)}
+                className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-t border-border bg-card text-xs text-muted-foreground"
+              >
+                <div className="border-r border-border h-full" />
+                <div className="px-3 py-2 italic">+ Add item</div>
+                <div className="hidden md:block border-r border-border h-full" />
+                <div className="hidden md:block border-r border-border h-full" />
+                <div className="hidden md:block border-r border-border h-full" />
+                <div className="hidden md:block" />
+              </li>
+            );
 
             const columnHeader = (
               <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
@@ -840,13 +860,10 @@ export default function TaskBoardsView() {
                           style={{ borderLeftColor: color }}
                         >
                           {columnHeader}
-                          {items.length === 0 ? (
-                            <div className="px-4 py-3 text-xs italic text-muted-foreground/70 bg-card">
-                              Drag tasks here or click "+ Item".
-                            </div>
-                          ) : (
-                            <ul>{items.map(renderTaskRow)}</ul>
-                          )}
+                          <ul>
+                            {items.map(renderTaskRow)}
+                            {renderAddRow(firstGroup.id)}
+                          </ul>
                         </div>
                       )}
                     </div>
@@ -908,13 +925,10 @@ export default function TaskBoardsView() {
                           style={{ borderLeftColor: color }}
                         >
                           {columnHeader}
-                          {groupTasks.length === 0 ? (
-                            <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
-                              Drag tasks here or click "+ Item".
-                            </div>
-                          ) : (
-                            <ul>{groupTasks.map(renderTaskRow)}</ul>
-                          )}
+                          <ul>
+                            {groupTasks.map(renderTaskRow)}
+                            {renderAddRow(g.id)}
+                          </ul>
                         </div>
                       )}
                     </div>

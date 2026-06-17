@@ -267,7 +267,7 @@ export default function CaptureLeadsPage() {
 
       // Sync to Mailchimp on edit too — lets you trigger the automation by re-saving with a dealer email
       const editedDealerEmail = leadForm.email.trim();
-      const editIsMailchimpMarket = market?.name && /high point|furniture first/i.test(market.name);
+      const editIsMailchimpMarket = market?.name && /high point|furniture first|atlanta/i.test(market.name);
       if (editedDealerEmail && editIsMailchimpMarket) {
         supabase.functions.invoke("sync-mailchimp-lead", {
           body: {
@@ -383,7 +383,7 @@ export default function CaptureLeadsPage() {
 
     // Sync to Mailchimp ONLY if: (1) dealer email present and (2) market maps to a Mailchimp audience
     const dealerEmail = leadForm.email.trim();
-    const isMailchimpMarket = market?.name && /high point|furniture first/i.test(market.name);
+    const isMailchimpMarket = market?.name && /high point|furniture first|atlanta/i.test(market.name);
     if (dealerEmail && isMailchimpMarket) {
       supabase.functions.invoke("sync-mailchimp-lead", {
         body: {

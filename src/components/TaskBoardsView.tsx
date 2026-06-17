@@ -978,7 +978,7 @@ export default function TaskBoardsView() {
                       setNewItemTitle("");
                     }
                   }}
-                  className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-t border-border bg-card text-xs text-muted-foreground"
+                  className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-t border-border bg-card text-xs text-muted-foreground"
                 >
                   <div className="border-r border-border h-full" />
                   <div className="px-3 py-1.5" onClick={(e) => isActive && e.stopPropagation()}>
@@ -1002,6 +1002,7 @@ export default function TaskBoardsView() {
                       <span className="italic">+ Add item</span>
                     )}
                   </div>
+                  <div className="border-r border-border h-full" />
                   <div className="hidden md:block border-r border-border h-full" />
                   <div className="hidden md:block border-r border-border h-full" />
                   <div className="hidden md:block border-r border-border h-full" />

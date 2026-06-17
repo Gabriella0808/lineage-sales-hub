@@ -339,7 +339,8 @@ export default function CrmAccountsPage() {
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Date Added</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Last Contacted</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Account Type</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[13%]">Prospect Type</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Prospect Type</th>
+                <th className="text-right px-2 py-2.5 font-medium bg-muted w-[40px]"></th>
               </tr>
             </thead>
 

@@ -24,12 +24,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown, Filter } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { MetricCard } from "@/components/MetricCard";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, isWithinInterval, parseISO } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -194,6 +195,7 @@ export default function TasksPage() {
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>("all");
   const [assigneeUserId, setAssigneeUserId] = useState<string>("any");
   const [dueFilter, setDueFilter] = useState<DueFilter>("any");
+  const [statusFilter, setStatusFilter] = useState<Status[]>([]);
   const [contextQuery, setContextQuery] = useState("");
 
   // ---- Bulk select ----
@@ -216,12 +218,14 @@ export default function TasksPage() {
   const filtersActive =
     assigneeUserId !== "any" ||
     dueFilter !== "any" ||
+    statusFilter.length > 0 ||
     contextQuery.trim() !== "";
 
   const clearFilters = () => {
     setAssigneeFilter("all");
     setAssigneeUserId("any");
     setDueFilter("any");
+    setStatusFilter([]);
     setContextQuery("");
   };
 
@@ -287,7 +291,7 @@ export default function TasksPage() {
   };
 
   const filteredTasks = tasks.filter(
-    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t),
+    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)),
   );
 
   const load = async () => {
@@ -945,7 +949,55 @@ export default function TasksPage() {
               <div className="hidden md:grid grid-cols-[minmax(0,1fr)_180px_160px_120px_180px_80px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="px-3 py-1.5 border-r border-border text-center">Item</div>
                 <div className="px-3 py-1.5 border-r border-border text-center">Owner</div>
-                <div className="px-3 py-1.5 border-r border-border text-center">Status</div>
+                <div className="px-3 py-1.5 border-r border-border text-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Status
+                        {statusFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {statusFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by status</div>
+                      <div className="space-y-1">
+                        {COLUMNS.map((c) => {
+                          const checked = statusFilter.includes(c.key);
+                          return (
+                            <label
+                              key={c.key}
+                              className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  setStatusFilter((prev) =>
+                                    val ? [...prev, c.key] : prev.filter((x) => x !== c.key)
+                                  );
+                                }}
+                              />
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.pillBg} ${c.pillText}`}>
+                                {c.label}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {statusFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => setStatusFilter([])}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="px-3 py-1.5 border-r border-border text-center">Due date</div>
                 <div className="px-3 py-1.5 border-r border-border text-center">Board</div>
                 <div className="px-3 py-1.5 text-center">Actions</div>

@@ -170,7 +170,7 @@ export default function TaskBoardsView() {
       supabase.from("task_board_groups" as any).select("*").order("position", { ascending: true }),
       supabase
         .from("manager_tasks")
-        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id")
+        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id,is_sop")
         .not("board_id", "is", null),
       supabase.rpc("assignable_users"),
     ]);

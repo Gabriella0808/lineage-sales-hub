@@ -216,6 +216,39 @@ export default function TasksPage() {
     if (error) { toast({ title: "Failed to update title", variant: "destructive" }); return; }
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, title } : t)));
   };
+
+  // ---- Updates dialog + counts ----
+  const [updatesTaskId, setUpdatesTaskId] = useState<string | null>(null);
+  const [updateCounts, setUpdateCounts] = useState<Record<string, number>>({});
+  const refreshUpdateCounts = async () => {
+    const { data } = await supabase.from("manager_task_updates" as any).select("task_id");
+    const counts: Record<string, number> = {};
+    ((data ?? []) as { task_id: string }[]).forEach((r) => {
+      counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+    });
+    setUpdateCounts(counts);
+  };
+
+  // ---- Inline due date + assignees ----
+  const updateTaskDueDate = async (id: string, d: Date | null) => {
+    const due_date = d ? format(d, "yyyy-MM-dd") : null;
+    const prev = tasks;
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, due_date } : t)));
+    const { error } = await supabase.from("manager_tasks").update({ due_date }).eq("id", id);
+    if (error) { setTasks(prev); toast({ title: "Date update failed", variant: "destructive" }); }
+  };
+
+  const setTaskAssigneesInline = async (taskId: string, userIds: string[]) => {
+    const prev = taskAssignees;
+    setTaskAssignees((m) => ({ ...m, [taskId]: userIds }));
+    const { error: delErr } = await supabase.from("manager_task_assignees" as any).delete().eq("task_id", taskId);
+    if (delErr) { setTaskAssignees(prev); toast({ title: "Assignee update failed", variant: "destructive" }); return; }
+    if (userIds.length > 0) {
+      const rows = userIds.map((uid) => ({ task_id: taskId, user_id: uid }));
+      const { error: insErr } = await supabase.from("manager_task_assignees" as any).insert(rows as any);
+      if (insErr) { setTaskAssignees(prev); toast({ title: "Assignee update failed", variant: "destructive" }); }
+    }
+  };
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);

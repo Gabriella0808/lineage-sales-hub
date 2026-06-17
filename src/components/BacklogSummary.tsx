@@ -112,7 +112,7 @@ export function BacklogSummary() {
   // the existing UI expects so all filters/drill-downs keep working.
   const detailWithTerritory = useMemo(() => {
     // While the live fetch is in flight, render nothing rather than the
-    // pre-sync static snapshot --- we don't want stale figures flashing in.
+    // pre-sync static snapshot - we don't want stale figures flashing in.
     let source: (DetailRow & { __live?: boolean })[];
     if (liveLoading) {
       source = [];

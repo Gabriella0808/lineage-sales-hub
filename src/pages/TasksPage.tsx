@@ -768,8 +768,8 @@ export default function TasksPage() {
                       <p className="text-sm font-medium">Visibility</p>
                       <p className="text-xs text-muted-foreground">
                         {form.visibility === "public"
-                          ? "Public --- anyone in the portal can view this task."
-                          : "Private --- only you and assignees can view this task."}
+                          ? "Public - anyone in the portal can view this task."
+                          : "Private - only you and assignees can view this task."}
                       </p>
                     </div>
                     <div className="inline-flex rounded-md border bg-muted p-0.5">
@@ -1564,7 +1564,7 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange, tradeShow, onTr
       ),
     );
 
-  // Flat list --- no role grouping
+  // Flat list - no role grouping
 
   const toggle = (uid: string) => {
     if (selectedIds.includes(uid)) {

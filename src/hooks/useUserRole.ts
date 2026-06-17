@@ -45,7 +45,7 @@ export function useUserRole() {
       else if (roles.includes("manager") || managerId) role = "manager";
       else if (roles.includes("rep") || repId) role = "rep";
       else if (roles.includes("dealer") || dealerId) role = "dealer";
-      else role = "rep"; // safest default --- most restrictive
+      else role = "rep"; // safest default - most restrictive
 
       return {
         role,

@@ -32,7 +32,7 @@ const WeeklyCheckinReportEmail = ({
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Weekly check-in report{weekLabel ? ` · ${weekLabel}` : ''} --- {totalCheckIns} check-ins, {totalPlacements} new placements
+      Weekly check-in report{weekLabel ? ` · ${weekLabel}` : ''} - {totalCheckIns} check-ins, {totalPlacements} new placements
     </Preview>
     <Body style={main}>
       <Container style={container}>

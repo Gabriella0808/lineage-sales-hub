@@ -85,7 +85,7 @@ export default function DealersPage() {
   const PAGE_SIZE = 100;
 
   const visibleDealers = useMemo(() => dealers.filter(d => {
-    // Hide field-only imports --- they exist solely for Field Check-ins
+    // Hide field-only imports - they exist solely for Field Check-ins
     if ((d as any).source === 'field_only') return false;
     // Only show commercially-active Acctivate dealers (real salesperson or territory assignment).
     // Lead-style records without these stay in the DB for Field Check-ins but are hidden here.

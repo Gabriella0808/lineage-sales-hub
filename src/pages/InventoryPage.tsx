@@ -164,7 +164,7 @@ export default function InventoryPage() {
           <h1 className="page-title">Inventory</h1>
           {usingMock && (
             <p className="page-subtitle">
-              <span>Showing sample data --- Acctivate sync hasn't run yet.</span>
+              <span>Showing sample data - Acctivate sync hasn't run yet.</span>
             </p>
           )}
         </div>

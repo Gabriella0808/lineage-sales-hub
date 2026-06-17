@@ -31,7 +31,7 @@ export const STATE_TO_TERRITORY: Record<string, string> = {
   NY: "NY/NJ",
   NJ: "NY/NJ",
   OH: "OH/WPA",
-  PA: "OH/WPA", // Western PA --- colored as OH/WPA
+  PA: "OH/WPA", // Western PA - colored as OH/WPA
   TN: "TN/KY",
   KY: "TN/KY",
   TX: "TX/OK",
@@ -40,7 +40,7 @@ export const STATE_TO_TERRITORY: Record<string, string> = {
   WV: "VA/WV",
   // Florida split
   FL: "South Florida", // default; we override panhandle counties via FIPS below if needed
-  // North Florida vs South Florida --- without county-level data we color the
+  // North Florida vs South Florida - without county-level data we color the
   // whole state as one. Keep South Florida as the dominant region.
   // Mid Atlantic
   MD: "Mid Atlantic",

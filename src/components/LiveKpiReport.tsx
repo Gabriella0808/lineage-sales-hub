@@ -359,7 +359,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       // 26 Act = sum of ALL open sales orders for that month (extended_value).
       ytdB: openBookings ?? (live ? live.ytdB : seed.ytdB),
       ytdI: live ? live.ytdI : seed.ytdI,
-      // Branch-split invoice totals (live only --- no seed fallback).
+      // Branch-split invoice totals (live only - no seed fallback).
       i25Container:  live?.i25Container  ?? 0,
       i25Warehouse:  live?.i25Warehouse  ?? 0,
       ytdIContainer: live?.ytdIContainer ?? 0,
@@ -777,14 +777,14 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
         </div>
       </div>
 
-      {/* Actual vs Goal chart --- mirrors the Monthly Results table below */}
+      {/* Actual vs Goal chart - mirrors the Monthly Results table below */}
       <div className="glass-card p-5">
         <div className="flex items-baseline justify-between mb-3">
           <div>
             <h3 className="text-base font-semibold">
-              {showB && showI ? "Bookings & Invoiced --- Actual vs Goal"
-                : showI ? "Invoiced --- Actual vs Goal"
-                : "Bookings --- Actual vs Goal"}
+              {showB && showI ? "Bookings & Invoiced - Actual vs Goal"
+                : showI ? "Invoiced - Actual vs Goal"
+                : "Bookings - Actual vs Goal"}
             </h3>
             <p className="text-xs text-muted-foreground">
               Monthly 2026 projection (goal) vs MTD actual
@@ -841,7 +841,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       <div className="glass-card p-5">
         <h3 className="text-base font-semibold mb-1">Monthly Results</h3>
         <p className="text-xs text-muted-foreground mb-4">
-          Bookings & Invoiced --- 2025 actual vs 2026 projection vs YTD
+          Bookings & Invoiced - 2025 actual vs 2026 projection vs YTD
           {hasRepSelection
             ? <span className="ml-1">· live data from <span className="font-medium text-foreground">{repFilter.length === 1 ? `${repFilter[0]} tab` : `${repFilter.length} reps`}</span></span>
             : <> · all reps</>}

@@ -131,6 +131,8 @@ export default function TaskBoardsView() {
   const [groupDlgOpen, setGroupDlgOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [groupForm, setGroupForm] = useState({ name: "", color: GROUP_COLORS[0] });
+  const [inlineEditingGroupId, setInlineEditingGroupId] = useState<string | null>(null);
+  const [inlineEditName, setInlineEditName] = useState("");
 
   const [taskDlgOpen, setTaskDlgOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<BoardTask | null>(null);

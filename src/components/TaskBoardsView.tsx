@@ -188,12 +188,15 @@ export default function TaskBoardsView() {
         });
         setTaskAssignees(map);
 
-        const { data: uData } = await supabase
-          .from("manager_task_updates" as any)
-          .select("task_id")
-          .in("task_id", ids);
+        const [{ data: uData }, { data: atData }] = await Promise.all([
+          supabase.from("manager_task_updates" as any).select("task_id").in("task_id", ids),
+          supabase.from("manager_task_attachments" as any).select("task_id").in("task_id", ids),
+        ]);
         const counts: Record<string, number> = {};
         (uData ?? []).forEach((r: any) => {
+          counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+        });
+        (atData ?? []).forEach((r: any) => {
           counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
         });
         setUpdateCounts(counts);
@@ -1633,23 +1636,23 @@ export default function TaskBoardsView() {
         taskTitle={tasks.find((t) => t.id === updatesTaskId)?.title}
         open={!!updatesTaskId}
         onOpenChange={(v) => {
-          if (!v) {
-            setUpdatesTaskId(null);
-            // refresh counts after dialog closes
-            (async () => {
-              const ids = tasks.map((t) => t.id);
-              if (!ids.length) return;
-              const { data } = await supabase
-                .from("manager_task_updates" as any)
-                .select("task_id")
-                .in("task_id", ids);
-              const counts: Record<string, number> = {};
-              (data ?? []).forEach((r: any) => {
-                counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
-              });
-              setUpdateCounts(counts);
-            })();
-          }
+          if (!v) setUpdatesTaskId(null);
+        }}
+        onActivityChange={async () => {
+          const ids = tasks.map((t) => t.id);
+          if (!ids.length) return;
+          const [{ data: uData }, { data: atData }] = await Promise.all([
+            supabase.from("manager_task_updates" as any).select("task_id").in("task_id", ids),
+            supabase.from("manager_task_attachments" as any).select("task_id").in("task_id", ids),
+          ]);
+          const counts: Record<string, number> = {};
+          (uData ?? []).forEach((r: any) => {
+            counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+          });
+          (atData ?? []).forEach((r: any) => {
+            counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+          });
+          setUpdateCounts(counts);
         }}
         users={assignableUsers}
       />

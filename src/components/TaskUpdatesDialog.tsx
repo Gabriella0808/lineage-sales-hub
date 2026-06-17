@@ -35,12 +35,14 @@ export function TaskUpdatesDialog({
   open,
   onOpenChange,
   users,
+  onActivityChange,
 }: {
   taskId: string | null;
   taskTitle?: string;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   users: User[];
+  onActivityChange?: () => void;
 }) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -132,6 +134,7 @@ export function TaskUpdatesDialog({
     }
     setBody("");
     load();
+    onActivityChange?.();
   };
 
   const remove = async (u: UpdateRow) => {
@@ -141,6 +144,7 @@ export function TaskUpdatesDialog({
       return;
     }
     setUpdates((arr) => arr.filter((x) => x.id !== u.id));
+    onActivityChange?.();
   };
 
   const renderBody = (text: string) => {
@@ -241,7 +245,7 @@ export function TaskUpdatesDialog({
           {/* Attachments */}
           {taskId && (
             <div className="rounded-lg border bg-card p-3">
-              <TaskAttachments taskId={taskId} />
+              <TaskAttachments taskId={taskId} onChange={onActivityChange} />
             </div>
           )}
 

@@ -26,7 +26,7 @@ function fmtSize(n: number | null) {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function TaskAttachments({ taskId }: { taskId: string }) {
+export function TaskAttachments({ taskId, onChange }: { taskId: string; onChange?: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<Attachment[]>([]);
@@ -86,6 +86,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
     setUploading(false);
     if (inputRef.current) inputRef.current.value = "";
     load();
+    onChange?.();
   };
 
   const download = async (a: Attachment) => {
@@ -105,6 +106,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
       return;
     }
     setItems((arr) => arr.filter((x) => x.id !== a.id));
+    onChange?.();
   };
 
   return (

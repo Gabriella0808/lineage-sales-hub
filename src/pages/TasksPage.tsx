@@ -340,7 +340,7 @@ export default function TasksPage() {
   };
 
   const filteredTasks = tasks.filter(
-    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)),
+    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)) && (showCompleted || t.status !== "done"),
   );
 
   const load = async () => {

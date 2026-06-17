@@ -215,6 +215,65 @@ export default function CaptureLeadsPage() {
     setLeadDialog(l.market_id ?? markets.find((m) => m.name === l.trade_show)?.id ?? null);
   };
 
+  // Create / update / unlink the linked CRM Prospect account based on selected prospect_types.
+  const syncProspectAccount = async (leadId: string, existingCrmAccountId: string | null) => {
+    const types = (leadForm.prospect_types || []).filter(Boolean);
+    const companyName = (leadForm.dealer.trim() || leadForm.contact_name.trim());
+    const [firstName, ...rest] = leadForm.contact_name.trim().split(/\s+/);
+    const lastName = rest.join(" ") || null;
+
+    if (types.length === 0) {
+      // User cleared all prospect types — unlink (and remove the auto-created prospect if it's still a prospect).
+      if (existingCrmAccountId) {
+        await supabase.from("trade_show_leads").update({ crm_account_id: null }).eq("id", leadId);
+        const { data: acct } = await supabase
+          .from("crm_accounts")
+          .select("id, account_type")
+          .eq("id", existingCrmAccountId)
+          .maybeSingle();
+        if (acct && acct.account_type === "prospect") {
+          await supabase.from("crm_accounts").delete().eq("id", existingCrmAccountId);
+        }
+      }
+      return;
+    }
+
+    if (!companyName) return;
+
+    if (existingCrmAccountId) {
+      await supabase.from("crm_accounts").update({
+        company_name: companyName,
+        prospect_types: types,
+        prospect_type: types[0] ?? null,
+        contact_first_name: firstName || null,
+        contact_last_name: lastName,
+        main_phone: leadForm.phone.trim() || null,
+        email: leadForm.email.trim() || null,
+        notes: leadForm.notes.trim() || null,
+      }).eq("id", existingCrmAccountId);
+    } else {
+      const { data: created, error: cErr } = await supabase.from("crm_accounts").insert({
+        company_name: companyName,
+        account_type: "prospect",
+        lifecycle_stage: "lead",
+        status: "active",
+        prospect_types: types,
+        prospect_type: types[0] ?? null,
+        contact_first_name: firstName || null,
+        contact_last_name: lastName,
+        main_phone: leadForm.phone.trim() || null,
+        email: leadForm.email.trim() || null,
+        notes: leadForm.notes.trim() || null,
+        created_by: user?.id ?? null,
+      }).select("id").single();
+      if (cErr) {
+        toast.error(`Prospect sync: ${cErr.message}`);
+        return;
+      }
+      await supabase.from("trade_show_leads").update({ crm_account_id: created!.id }).eq("id", leadId);
+    }
+  };
+
   const submitLead = async () => {
     if (!leadDialog) return;
     if (!leadForm.contact_name.trim()) return toast.error("Contact name is required");

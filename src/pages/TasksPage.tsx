@@ -1241,7 +1241,7 @@ export default function TasksPage() {
 
                             {/* Mobile actions */}
                             {(isMine || assignedToMe) && (
-                              <div className="md:hidden col-start-2 flex items-center gap-1 px-3 pb-2 -mt-1" onClick={(e) => e.stopPropagation()}>
+                              <div className="md:hidden col-start-1 flex items-center gap-1 px-3 pb-2 -mt-1" onClick={(e) => e.stopPropagation()}>
                                 <Button
                                   size="icon"
                                   variant="ghost"

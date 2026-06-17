@@ -892,7 +892,7 @@ export default function CaptureLeadsPage() {
                   </div>
                 </DetailSection>
 
-                <DetailSection title="Data Captured">
+                <DetailSection title="Date Captured">
                   <DetailRow
                     icon={Clock}
                     label="Captured"

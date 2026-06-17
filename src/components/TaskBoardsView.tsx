@@ -718,25 +718,28 @@ export default function TaskBoardsView() {
                   key={t.id}
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
-                  className="grid grid-cols-[24px_minmax(0,1fr)] md:grid-cols-[24px_minmax(0,1fr)_140px_120px_140px_60px] items-center hover:bg-muted/40 cursor-grab active:cursor-grabbing"
+                  className="grid grid-cols-[28px_minmax(0,1fr)] md:grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-grab active:cursor-grabbing min-h-[40px] border-b border-border last:border-b-0 bg-card"
                 >
-                  <div className="flex items-center justify-center text-muted-foreground/40">
+                  <div className="flex items-center justify-center text-muted-foreground/40 border-r border-border">
                     <GripVertical className="h-3.5 w-3.5" />
                   </div>
                   <button
                     type="button"
                     onClick={() => setDetailsTask(t)}
-                    className="px-2 py-2 min-w-0 text-left hover:underline underline-offset-2 decoration-muted-foreground/40"
+                    className="px-3 py-2 min-w-0 text-left hover:underline underline-offset-2 decoration-muted-foreground/40 border-r border-border"
                   >
-                    <p className="text-sm font-medium leading-snug break-words">{t.title}</p>
+                    <p className="text-sm leading-snug break-words">{t.title}</p>
                     {t.description && (
                       <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                     )}
                   </button>
-                  <div className="hidden md:flex items-center px-2">
+                  <div className="hidden md:flex items-center justify-center px-2 border-r border-border">
+                    {renderAssignees(t)}
+                  </div>
+                  <div className="hidden md:flex items-stretch border-r border-border">
                     <Select value={t.status} onValueChange={(v: Status) => updateTaskStatus(t.id, v)}>
                       <SelectTrigger
-                        className={`h-7 px-3 text-xs font-semibold border-0 ${meta.pillBg} ${meta.pillText} rounded-md w-full justify-center gap-1 shadow-sm`}
+                        className={`h-auto w-full rounded-none border-0 ${meta.pillBg} ${meta.pillText} text-xs font-semibold justify-center gap-1 focus:ring-0 focus:ring-offset-0 [&>svg]:hidden hover:opacity-90`}
                       >
                         <SelectValue />
                       </SelectTrigger>
@@ -749,10 +752,7 @@ export default function TaskBoardsView() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="hidden md:flex items-center px-2">
-                    {renderAssignees(t)}
-                  </div>
-                  <div className="hidden md:flex items-center px-2 text-xs text-muted-foreground">
+                  <div className="hidden md:flex items-center justify-center px-2 text-xs text-muted-foreground border-r border-border">
                     {t.due_date ? (
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -762,7 +762,7 @@ export default function TaskBoardsView() {
                       <span className="italic">—</span>
                     )}
                   </div>
-                  <div className="hidden md:flex items-center justify-end gap-0.5 px-1">
+                  <div className="hidden md:flex items-center justify-center gap-0.5 px-1">
                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditTask(t)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -773,7 +773,7 @@ export default function TaskBoardsView() {
                     )}
                   </div>
                   {/* mobile meta */}
-                  <div className="md:hidden col-start-2 px-2 pb-2 -mt-1 flex flex-wrap items-center gap-2">
+                  <div className="md:hidden col-start-2 px-3 pb-2 -mt-1 flex flex-wrap items-center gap-2">
                     <Badge className={`${meta.pillBg} ${meta.pillText} border-0 text-[10px]`}>{meta.label}</Badge>
                     {renderAssignees(t)}
                     {t.due_date && (
@@ -788,12 +788,12 @@ export default function TaskBoardsView() {
             };
 
             const columnHeader = (
-              <div className="hidden md:grid grid-cols-[24px_minmax(0,1fr)_140px_120px_140px_60px] items-center gap-0 bg-muted/20 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <div />
-                <div className="px-2">Task</div>
-                <div className="px-2">Status</div>
-                <div className="px-2">Assignee</div>
-                <div className="px-2">Due date</div>
+              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
+                <div className="border-r border-border h-8" />
+                <div className="px-3 py-1.5 border-r border-border text-center">Item</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">Responsible</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">Status</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">Due date</div>
                 <div />
               </div>
             );

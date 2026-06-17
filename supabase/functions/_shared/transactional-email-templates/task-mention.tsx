@@ -85,12 +85,12 @@ const quote = {
   whiteSpace: 'pre-wrap' as const,
 }
 const button = {
-  backgroundColor: 'hsl(214, 80%, 36%)',
-  color: '#ffffff',
+  backgroundColor: '#C9A24B',
+  color: '#1a1a1a',
   padding: '12px 22px',
-  borderRadius: '6px',
+  borderRadius: '8px',
   fontSize: '14px',
-  fontWeight: 600,
+  fontWeight: 700,
   textDecoration: 'none',
   display: 'inline-block',
   margin: '8px 0 4px',

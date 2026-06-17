@@ -56,6 +56,7 @@ import {
   MessageSquarePlus,
 } from "lucide-react";
 import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
+import { SopTemplatesManager, type SopTemplate } from "@/components/SopTemplatesManager";
 import { format } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 
@@ -107,6 +108,7 @@ interface BoardTask {
   group_id: string | null;
   user_id: string;
   assigned_user_id: string | null;
+  is_sop?: boolean;
 }
 
 export default function TaskBoardsView() {
@@ -126,7 +128,10 @@ export default function TaskBoardsView() {
   // dialogs
   const [boardDlgOpen, setBoardDlgOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<Board | null>(null);
-  const [boardForm, setBoardForm] = useState({ name: "", description: "", color: GROUP_COLORS[0] });
+  const [boardForm, setBoardForm] = useState({ name: "", description: "", color: GROUP_COLORS[0], templateId: "" });
+  const [sopTemplates, setSopTemplates] = useState<SopTemplate[]>([]);
+  const [sopManagerOpen, setSopManagerOpen] = useState(false);
+  const [showCompletedSop, setShowCompletedSop] = useState(false);
 
   const [groupDlgOpen, setGroupDlgOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
@@ -165,7 +170,7 @@ export default function TaskBoardsView() {
       supabase.from("task_board_groups" as any).select("*").order("position", { ascending: true }),
       supabase
         .from("manager_tasks")
-        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id")
+        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id,is_sop")
         .not("board_id", "is", null),
       supabase.rpc("assignable_users"),
     ]);
@@ -276,14 +281,23 @@ export default function TaskBoardsView() {
   );
 
   // --- Board CRUD ---
-  const openNewBoard = () => {
+  const loadSopTemplates = async () => {
+    const { data, error } = await supabase
+      .from("sop_templates" as any)
+      .select("*")
+      .order("is_builtin", { ascending: false })
+      .order("name");
+    if (!error) setSopTemplates((data ?? []) as unknown as SopTemplate[]);
+  };
+  const openNewBoard = async () => {
     setEditingBoard(null);
-    setBoardForm({ name: "", description: "", color: GROUP_COLORS[0] });
+    setBoardForm({ name: "", description: "", color: GROUP_COLORS[0], templateId: "" });
+    await loadSopTemplates();
     setBoardDlgOpen(true);
   };
   const openEditBoard = (b: Board) => {
     setEditingBoard(b);
-    setBoardForm({ name: b.name, description: b.description ?? "", color: b.color ?? GROUP_COLORS[0] });
+    setBoardForm({ name: b.name, description: b.description ?? "", color: b.color ?? GROUP_COLORS[0], templateId: "" });
     setBoardDlgOpen(true);
   };
   const saveBoard = async () => {
@@ -313,14 +327,41 @@ export default function TaskBoardsView() {
         .select("id")
         .single();
       if (error || !data) return toast({ title: "Create failed", description: error?.message, variant: "destructive" });
-      // seed default groups
       const newId = (data as any).id as string;
-      await supabase.from("task_board_groups" as any).insert([
-        { board_id: newId, name: "To Do", color: "#6366f1", position: 0 },
-        { board_id: newId, name: "In Progress", color: "#f59e0b", position: 1 },
-        { board_id: newId, name: "Stuck", color: "#ef4444", position: 2 },
-        { board_id: newId, name: "Done", color: "#10b981", position: 3 },
-      ]);
+
+      if (boardForm.templateId) {
+        // Seed from SOP template: one "SOP Checklist" group + tasks with is_sop=true
+        const { data: tplItems } = await supabase
+          .from("sop_template_items" as any)
+          .select("title,position")
+          .eq("template_id", boardForm.templateId)
+          .order("position");
+        const { data: groupRow } = await supabase
+          .from("task_board_groups" as any)
+          .insert({ board_id: newId, name: "SOP Checklist", color: "#0ea5e9", position: 0 })
+          .select("id")
+          .single();
+        const groupId = (groupRow as any)?.id as string | undefined;
+        if (groupId && tplItems && tplItems.length) {
+          const rows = (tplItems as any[]).map((it) => ({
+            title: it.title,
+            status: "todo" as const,
+            board_id: newId,
+            group_id: groupId,
+            user_id: user.id,
+            is_sop: true,
+          }));
+          await supabase.from("manager_tasks").insert(rows);
+        }
+      } else {
+        // seed default groups
+        await supabase.from("task_board_groups" as any).insert([
+          { board_id: newId, name: "To Do", color: "#6366f1", position: 0 },
+          { board_id: newId, name: "In Progress", color: "#f59e0b", position: 1 },
+          { board_id: newId, name: "Stuck", color: "#ef4444", position: 2 },
+          { board_id: newId, name: "Done", color: "#10b981", position: 3 },
+        ]);
+      }
       setActiveBoardId(newId);
     }
     setBoardDlgOpen(false);
@@ -741,6 +782,16 @@ export default function TaskBoardsView() {
               )}
             </div>
             <div className="flex items-center gap-1.5">
+              {boardTasks.some((t) => t.is_sop) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs"
+                  onClick={() => setShowCompletedSop((v) => !v)}
+                >
+                  {showCompletedSop ? "Hide completed" : `Show completed (${boardTasks.filter((t) => t.is_sop && t.status === "done").length})`}
+                </Button>
+              )}
               <Button size="sm" variant="outline" onClick={openSubscribeDialog}>
                 <UserPlus className="h-3.5 w-3.5" /> Subscribe
               </Button>
@@ -839,12 +890,25 @@ export default function TaskBoardsView() {
                   onClick={() => openEditTask(t)}
                   className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card"
                 >
-                  <div
-                    className="flex items-center justify-center text-muted-foreground/40 border-r border-border cursor-grab active:cursor-grabbing"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <GripVertical className="h-3.5 w-3.5" />
-                  </div>
+                  {t.is_sop ? (
+                    <div
+                      className="flex items-center justify-center border-r border-border"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={t.status === "done"}
+                        onCheckedChange={(v) => updateTaskStatus(t.id, v ? "done" : "todo")}
+                        className="h-4 w-4"
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center justify-center text-muted-foreground/40 border-r border-border cursor-grab active:cursor-grabbing"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical className="h-3.5 w-3.5" />
+                    </div>
+                  )}
                   <div className="px-3 py-2 min-w-0 text-left border-r border-border" onClick={(e) => e.stopPropagation()}>
                     {inlineEditingTaskId === t.id ? (
                       <input
@@ -1153,7 +1217,8 @@ export default function TaskBoardsView() {
                   const defaultGroupIds = new Set(defaultGroups.map((g) => g.id));
                   const items = boardTasks
                     .filter((t) => t.group_id && defaultGroupIds.has(t.group_id))
-                    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status));
+                    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
+                    .filter((t) => !t.is_sop || showCompletedSop || t.status !== "done");
                   const firstGroup = defaultGroups[0];
                   const isCollapsed = collapsed[firstGroup.id];
                   const color = firstGroup.color ?? "#6366f1";
@@ -1225,7 +1290,8 @@ export default function TaskBoardsView() {
                 {customGroups.map((g) => {
                   const groupTasks = boardTasks
                     .filter((t) => t.group_id === g.id)
-                    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status));
+                    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
+                    .filter((t) => !t.is_sop || showCompletedSop || t.status !== "done");
                   const isCollapsed = collapsed[g.id];
                   const color = g.color ?? "#6366f1";
                   return (
@@ -1354,6 +1420,39 @@ export default function TaskBoardsView() {
                 ))}
               </div>
             </div>
+            {!editingBoard && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs text-muted-foreground">Start from template</p>
+                  <button
+                    type="button"
+                    onClick={() => setSopManagerOpen(true)}
+                    className="text-[11px] text-primary hover:underline"
+                  >
+                    Manage SOP templates
+                  </button>
+                </div>
+                <Select
+                  value={boardForm.templateId || "__blank__"}
+                  onValueChange={(v) =>
+                    setBoardForm({ ...boardForm, templateId: v === "__blank__" ? "" : v })
+                  }
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__blank__">Blank board (default columns)</SelectItem>
+                    {sopTemplates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                        {t.is_builtin ? " (built-in)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setBoardDlgOpen(false)}>Cancel</Button>
@@ -1361,6 +1460,13 @@ export default function TaskBoardsView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SopTemplatesManager
+        open={sopManagerOpen}
+        onOpenChange={setSopManagerOpen}
+        onChanged={loadSopTemplates}
+      />
+
 
       {/* Group dialog */}
       <Dialog open={groupDlgOpen} onOpenChange={setGroupDlgOpen}>

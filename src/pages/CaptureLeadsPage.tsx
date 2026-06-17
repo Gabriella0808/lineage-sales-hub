@@ -22,6 +22,7 @@ import {
 import { Loader2, Plus, MapPin, Calendar, Trash2, Pencil, Mail, Phone, User, Building2, Tag, DollarSign, FileText, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
+import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 
 type Market = {
   id: string;
@@ -49,6 +50,8 @@ type Lead = {
   market_id: string | null;
   notes: string | null;
   created_at: string;
+  prospect_types?: string[] | null;
+  crm_account_id?: string | null;
 };
 
 type SalesRep = {
@@ -63,6 +66,7 @@ const fmt = (n: number | null) =>
 const emptyLead = {
   contact_name: "", dealer: "", email: "", additional_email: "", phone: "",
   sales_rep: "", sales_rep_id: "", rep_email: "", product_interest: "", order_amount: "", status: "New", notes: "",
+  prospect_types: [] as string[],
   followup_enabled: false, followup_title: "", followup_description: "", followup_due_date: "",
 };
 

@@ -1032,15 +1032,13 @@ export default function TasksPage() {
                               if (selectMode) { toggleSelect(t.id); return; }
                               setDetailTask(t); markRead(t.id);
                             }}
-                            className={`group/row grid grid-cols-[4px_minmax(0,1fr)] md:grid-cols-[4px_minmax(0,1fr)_180px_160px_120px_180px_80px] items-center gap-0 hover:bg-muted/40 transition-colors cursor-pointer ${
+                            className={`group/row grid grid-cols-[minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_180px_160px_120px_180px_80px] items-stretch hover:bg-muted/30 transition-colors cursor-pointer border-b border-border last:border-b-0 bg-card ${
                               selectMode && selectedIds.has(t.id) ? "bg-primary/10" : ""
                             }`}
                           >
-                            {/* Subtle hover accent */}
-                            <div className={`self-stretch ${col.accent} opacity-0 group-hover/row:opacity-100 transition-opacity`} />
-
                             {/* Task title + description */}
-                            <div className="px-3 py-2 min-w-0 flex items-start gap-2">
+                            <div className="px-3 py-2 min-w-0 flex items-start gap-2 border-r border-border">
+
                               {selectMode && (
                                 <Checkbox
                                   className="mt-0.5"

@@ -1420,6 +1420,39 @@ export default function TaskBoardsView() {
                 ))}
               </div>
             </div>
+            {!editingBoard && (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs text-muted-foreground">Start from template</p>
+                  <button
+                    type="button"
+                    onClick={() => setSopManagerOpen(true)}
+                    className="text-[11px] text-primary hover:underline"
+                  >
+                    Manage SOP templates
+                  </button>
+                </div>
+                <Select
+                  value={boardForm.templateId || "__blank__"}
+                  onValueChange={(v) =>
+                    setBoardForm({ ...boardForm, templateId: v === "__blank__" ? "" : v })
+                  }
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__blank__">Blank board (default columns)</SelectItem>
+                    {sopTemplates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                        {t.is_builtin ? " (built-in)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setBoardDlgOpen(false)}>Cancel</Button>
@@ -1427,6 +1460,13 @@ export default function TaskBoardsView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SopTemplatesManager
+        open={sopManagerOpen}
+        onOpenChange={setSopManagerOpen}
+        onChanged={loadSopTemplates}
+      />
+
 
       {/* Group dialog */}
       <Dialog open={groupDlgOpen} onOpenChange={setGroupDlgOpen}>

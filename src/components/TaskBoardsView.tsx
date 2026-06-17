@@ -144,6 +144,8 @@ export default function TaskBoardsView() {
     group_id: string | null;
     assignee_ids: string[];
   }>({ title: "", description: "", status: "todo", due_date: "", group_id: null, assignee_ids: [] });
+  const [inlineEditingTaskId, setInlineEditingTaskId] = useState<string | null>(null);
+  const [inlineEditTaskTitle, setInlineEditTaskTitle] = useState("");
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [detailsTask, setDetailsTask] = useState<BoardTask | null>(null);
@@ -539,6 +541,24 @@ export default function TaskBoardsView() {
     if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     load();
   };
+  const saveInlineTaskTitle = async (taskId: string, title: string) => {
+    if (!title.trim()) {
+      setInlineEditingTaskId(null);
+      setInlineEditTaskTitle("");
+      return;
+    }
+    const { error } = await supabase
+      .from("manager_tasks")
+      .update({ title: title.trim() })
+      .eq("id", taskId);
+    if (error) {
+      toast({ title: "Rename failed", description: error.message, variant: "destructive" });
+    } else {
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, title: title.trim() } : t)));
+    }
+    setInlineEditingTaskId(null);
+    setInlineEditTaskTitle("");
+  };
   const findGroupForStatus = (boardId: string | null, status: Status): string | null => {
     if (!boardId) return null;
     const candidates = groups.filter((g) => g.board_id === boardId);
@@ -825,8 +845,34 @@ export default function TaskBoardsView() {
                   >
                     <GripVertical className="h-3.5 w-3.5" />
                   </div>
-                  <div className="px-3 py-2 min-w-0 text-left border-r border-border">
-                    <p className="text-sm leading-snug break-words">{t.title}</p>
+                  <div className="px-3 py-2 min-w-0 text-left border-r border-border" onClick={(e) => e.stopPropagation()}>
+                    {inlineEditingTaskId === t.id ? (
+                      <input
+                        autoFocus
+                        value={inlineEditTaskTitle}
+                        onChange={(e) => setInlineEditTaskTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveInlineTaskTitle(t.id, inlineEditTaskTitle);
+                          if (e.key === "Escape") {
+                            setInlineEditingTaskId(null);
+                            setInlineEditTaskTitle("");
+                          }
+                        }}
+                        onBlur={() => saveInlineTaskTitle(t.id, inlineEditTaskTitle)}
+                        className="text-sm leading-snug break-words w-full bg-transparent border-b border-current outline-none px-0 py-0"
+                      />
+                    ) : (
+                      <p
+                        className="text-sm leading-snug break-words cursor-text"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInlineEditingTaskId(t.id);
+                          setInlineEditTaskTitle(t.title);
+                        }}
+                      >
+                        {t.title}
+                      </p>
+                    )}
                     {t.description && (
                       <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                     )}

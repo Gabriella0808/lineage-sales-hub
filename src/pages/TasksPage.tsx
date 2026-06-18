@@ -1019,7 +1019,7 @@ export default function TasksPage() {
               done: "#10b981",
             };
             const columnHeader = (
-              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
+              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="px-2 py-1.5 border-r border-border" />
                 <div className="px-2 py-1.5 border-r border-border text-center">Item</div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
@@ -1073,6 +1073,7 @@ export default function TasksPage() {
                   </Popover>
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">Due date</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">Board</div>
                 <div className="px-2 py-1.5 text-center" />
               </div>
             );
@@ -1125,7 +1126,7 @@ export default function TasksPage() {
                                 setNewListItemTitle("");
                               }
                             }}
-                            className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-b border-border bg-card text-xs text-muted-foreground"
+                            className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-b border-border bg-card text-xs text-muted-foreground"
                           >
                             <div className="border-r border-border h-full" />
                             <div className="px-3 py-1.5" onClick={(e) => addingListItem && e.stopPropagation()}>
@@ -1150,6 +1151,7 @@ export default function TasksPage() {
                               )}
                             </div>
                             <div className="border-r border-border h-full" />
+                            <div className="hidden md:block border-r border-border h-full" />
                             <div className="hidden md:block border-r border-border h-full" />
                             <div className="hidden md:block border-r border-border h-full" />
                             <div className="hidden md:block border-r border-border h-full" />
@@ -1180,7 +1182,7 @@ export default function TasksPage() {
                         return (
                           <li
                             key={t.id}
-                            className={`group/row grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 transition-colors border-b border-border last:border-b-0 bg-card ${
+                            className={`group/row grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-stretch hover:bg-muted/30 transition-colors border-b border-border last:border-b-0 bg-card ${
                               selectMode && selectedIds.has(t.id) ? "bg-primary/10" : ""
                             }`}
                           >
@@ -1374,6 +1376,46 @@ export default function TasksPage() {
                                 </PopoverContent>
                               </Popover>
                             </div>
+
+                            {/* Board (md+) */}
+                            <div className="hidden md:flex items-stretch border-r border-border" onClick={(e) => e.stopPropagation()}>
+                              <Select
+                                value={t.board_id ?? "__none__"}
+                                onValueChange={(v) => updateBoard(t.id, v === "__none__" ? null : v)}
+                                disabled={!(isMine || assignedToMe)}
+                              >
+                                <SelectTrigger className="h-auto w-full rounded-none border-0 bg-transparent text-xs justify-center gap-1 focus:ring-0 focus:ring-offset-0 hover:bg-muted/40 [&>svg]:opacity-50">
+                                  <SelectValue placeholder="No board">
+                                    {t.board_id ? (
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <span
+                                          className="inline-block h-2 w-2 rounded-full"
+                                          style={{ background: boards.find((b) => b.id === t.board_id)?.color || "hsl(var(--muted-foreground))" }}
+                                        />
+                                        <span className="truncate">{boards.find((b) => b.id === t.board_id)?.name ?? "Board"}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="italic text-muted-foreground">No board</span>
+                                    )}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__" className="text-xs italic">No board</SelectItem>
+                                  {boards.map((b) => (
+                                    <SelectItem key={b.id} value={b.id} className="text-xs">
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <span
+                                          className="inline-block h-2 w-2 rounded-full"
+                                          style={{ background: b.color || "hsl(var(--muted-foreground))" }}
+                                        />
+                                        {b.name}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
 
                             {/* Actions (md+) */}
                             <div className="hidden md:flex items-center justify-center gap-0.5 px-1" onClick={(e) => e.stopPropagation()}>

@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, LayoutGrid, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
-  FileText, Send, FolderOpen, Tag, Database,
+  FileText, Send, FolderOpen, Tag, Database, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { isAllowedEmail, isCustomerService } from "@/components/EmailGuard";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
-  SidebarProvider, SidebarTrigger, useSidebar,
+  SidebarProvider, useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 

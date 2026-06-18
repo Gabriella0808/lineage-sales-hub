@@ -13,8 +13,8 @@ export default {
     extend: {
       fontFamily: {
         sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
-        display: ['"Fraunces"', 'Georgia', 'serif'],
-        serif: ['"Fraunces"', 'Georgia', 'serif'],
+        display: ['"DM Serif Display"', 'Georgia', 'serif'],
+        serif: ['"DM Serif Display"', 'Georgia', 'serif'],
       },
       letterSpacing: {
         editorial: "0.18em",

@@ -1,0 +1,1 @@
+CREATE POLICY "Managers read all user_managers" ON public.user_managers FOR SELECT USING (current_manager_id() IS NOT NULL);

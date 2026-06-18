@@ -701,7 +701,7 @@ export default function CheckInsPage() {
 
         let hoveredId: number | string | null = null;
         map.on("mousemove", "us-states-fill", (e) => {
-          const f = e.features?.[0];
+          const f = e.features?.[0] as any;
           if (!f || !f.properties?.territory) return;
           if (dealerHoverRef.current) {
             // Suppress territory hover while pointer is over a dealer pin

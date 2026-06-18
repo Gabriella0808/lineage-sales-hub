@@ -1019,7 +1019,7 @@ export default function TasksPage() {
               done: "#10b981",
             };
             const columnHeader = (
-              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
+              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="px-2 py-1.5 border-r border-border" />
                 <div className="px-2 py-1.5 border-r border-border text-center">Item</div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
@@ -1073,6 +1073,7 @@ export default function TasksPage() {
                   </Popover>
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">Due date</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">Board</div>
                 <div className="px-2 py-1.5 text-center" />
               </div>
             );

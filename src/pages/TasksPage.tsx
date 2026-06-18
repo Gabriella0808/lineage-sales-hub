@@ -937,7 +937,7 @@ export default function TasksPage() {
                   <SelectValue placeholder="Assigned to" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any" className="text-xs">Anyone</SelectItem>
+                  <SelectItem value="any" className="text-xs">My Tasks</SelectItem>
                   <SelectItem value="__trade_show__" className="text-xs">Trade Show Leads</SelectItem>
                   <SelectItem value="__kpi_review__" className="text-xs">KPI Review</SelectItem>
                   {visibleAssignees

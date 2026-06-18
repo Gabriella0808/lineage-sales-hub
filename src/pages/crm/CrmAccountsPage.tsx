@@ -25,7 +25,40 @@ export default function CrmAccountsPage() {
   const del = useDeleteAccount();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
+  const FILTER_KEYS = ["rep", "manager", "stage", "brand", "ptype", "atype", "state"] as const;
+  const STORAGE_KEY = "crm_accounts_filters_v1";
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Restore filters from localStorage on first mount if URL has none of our filter params.
+  useEffect(() => {
+    const hasAny = FILTER_KEYS.some((k) => searchParams.has(k));
+    if (hasAny) return;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Record<string, string>;
+      const next = new URLSearchParams(searchParams);
+      let touched = false;
+      for (const k of FILTER_KEYS) {
+        if (saved[k]) { next.set(k, saved[k]); touched = true; }
+      }
+      if (touched) setSearchParams(next, { replace: true });
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist filters to localStorage whenever they change.
+  useEffect(() => {
+    try {
+      const snap: Record<string, string> = {};
+      for (const k of FILTER_KEYS) {
+        const v = searchParams.get(k);
+        if (v) snap[k] = v;
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snap));
+    } catch {}
+  }, [searchParams]);
+
   const repParam = searchParams.get("rep") ?? "all";
   const managerParam = searchParams.get("manager") ?? "all";
   const stageParam = searchParams.get("stage") ?? "all";

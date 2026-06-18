@@ -144,12 +144,13 @@ function SidebarNavItemRow({
           end={item.url === "/"}
           onClick={closeOnMobile}
           className={cn(
-            "flex-1 flex items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-sidebar-foreground/90",
+            "relative flex-1 flex items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-sidebar-foreground/90",
             "hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground transition-colors",
+            "before:pointer-events-none before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:bg-sidebar-primary before:opacity-0 before:transition-opacity",
           )}
           activeClassName={cn(
             "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-            "shadow-[inset_2px_0_0_0_hsl(var(--sidebar-primary))]",
+            "before:opacity-100",
           )}
         >
           {collapsed && (

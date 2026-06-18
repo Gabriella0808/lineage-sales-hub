@@ -235,7 +235,8 @@ function SidebarNav() {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0 bg-sidebar relative">
+    <>
+    <Sidebar collapsible="icon" className="border-r-0 bg-sidebar">
       <SidebarHeader className="px-4 py-5 border-b border-sidebar-border/70">
         <div className="flex items-center gap-3">
           <img src={lineageLogo} alt="Lineage Collections" className="h-9 w-auto" />
@@ -288,23 +289,28 @@ function SidebarNav() {
           )}
         </div>
       </SidebarFooter>
+    </Sidebar>
 
-      {/* Floating collapse toggle at sidebar edge */}
+    {/* Floating collapse toggle at sidebar edge (desktop only) */}
+    {!isMobile && (
       <button
         type="button"
         onClick={toggleSidebar}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        style={{ left: `calc(var(--sidebar-${collapsed ? "width-icon" : "width"}) - 12px)` }}
         className={cn(
-          "hidden lg:flex absolute -right-3 top-[72px] z-50 h-6 w-6 items-center justify-center rounded-full",
+          "hidden lg:flex fixed top-[72px] z-50 h-6 w-6 items-center justify-center rounded-full",
           "bg-sidebar-primary text-sidebar-primary-foreground shadow-md",
-          "hover:bg-sidebar-primary/90 transition-colors"
+          "hover:bg-sidebar-primary/90 transition-[left,background-color] duration-200"
         )}
       >
         <ChevronLeft className={cn("h-3.5 w-3.5", collapsed && "rotate-180")} />
       </button>
-    </Sidebar>
+    )}
+    </>
   );
 }
+
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const defaultOpen = typeof window === "undefined" ? true : window.innerWidth >= 1024;

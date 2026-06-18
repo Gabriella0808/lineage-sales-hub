@@ -119,7 +119,7 @@ export default function AuthPage() {
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={submitting}>
+            <Button type="submit" className="w-full bg-[hsl(222_40%_11%)] hover:bg-[hsl(222_40%_16%)] text-white" disabled={submitting}>
               {submitting ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
             <p className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground pt-2">

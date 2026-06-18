@@ -218,6 +218,24 @@ export default function TasksPage() {
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, title } : t)));
   };
 
+  // ---- Inline add row ----
+  const [addingListItem, setAddingListItem] = useState(false);
+  const [newListItemTitle, setNewListItemTitle] = useState("");
+  const quickCreateListTask = async (title: string) => {
+    if (!user || !title.trim()) return;
+    const { error } = await supabase.from("manager_tasks").insert({
+      title: title.trim(),
+      status: "todo",
+      user_id: user.id,
+      visibility: "public",
+    });
+    if (error) {
+      toast({ title: "Create failed", description: error.message, variant: "destructive" });
+    } else {
+      load();
+    }
+  };
+
   // ---- Updates dialog + counts ----
   const [updatesTaskId, setUpdatesTaskId] = useState<string | null>(null);
   const [updateCounts, setUpdateCounts] = useState<Record<string, number>>({});

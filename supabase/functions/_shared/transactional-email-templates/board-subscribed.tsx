@@ -4,7 +4,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = 'Lineage Collections'
+const SITE_NAME = 'Lineage Portal'
 
 interface BoardSubscribedProps {
   recipientName?: string
@@ -24,23 +24,22 @@ const BoardSubscribedEmail = ({
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      {inviterName || 'A teammate'} added you to the board
-      {boardName ? ` "${boardName}"` : ''}
+      Your portal access was updated
+      {boardName ? ` for ${boardName}` : ''}
     </Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>You've been added to a board</Heading>
+        <Heading style={h1}>Board access updated</Heading>
         <Text style={text}>
           {recipientName ? `Hi ${recipientName},` : 'Hi,'}{' '}
-          <strong>{inviterName || 'A teammate'}</strong> has subscribed you to
-          the board <strong>{boardName || 'a shared board'}</strong> on the{' '}
-          {SITE_NAME} portal.
+          your {SITE_NAME} account now has access to{' '}
+          <strong>{boardName || 'a shared board'}</strong>.
         </Text>
         {boardDescription ? (
           <Text style={quote}>{boardDescription}</Text>
         ) : null}
         <Text style={text}>
-          You can now view this board, follow its tasks, and add new tasks to it.
+          This account notification was sent because your portal access changed.
         </Text>
         {link ? (
           <Button href={link} style={button}>
@@ -48,7 +47,7 @@ const BoardSubscribedEmail = ({
           </Button>
         ) : null}
         <Hr style={hr} />
-        <Text style={footer}>--- The {SITE_NAME} Team</Text>
+        <Text style={footer}>The {SITE_NAME} Team</Text>
       </Container>
     </Body>
   </Html>
@@ -57,9 +56,8 @@ const BoardSubscribedEmail = ({
 export const template = {
   component: BoardSubscribedEmail,
   subject: (data: Record<string, any>) => {
-    const inviter = data?.inviterName || 'A teammate'
-    const board = data?.boardName ? ` to "${data.boardName}"` : ' to a board'
-    return `${inviter} added you${board}`
+    const board = data?.boardName ? `: ${data.boardName}` : ''
+    return `Lineage Portal board access updated${board}`
   },
   displayName: 'Board subscription invite',
   previewData: {

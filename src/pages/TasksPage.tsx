@@ -199,6 +199,7 @@ export default function TasksPage() {
   const [assigneeUserId, setAssigneeUserId] = useState<string>("any");
   const [dueFilter, setDueFilter] = useState<DueFilter>("any");
   const [statusFilter, setStatusFilter] = useState<Status[]>([]);
+  const [boardFilter, setBoardFilter] = useState<string[]>([]);
   const [contextQuery, setContextQuery] = useState("");
   const [showCompleted, setShowCompleted] = useState(false);
 
@@ -286,6 +287,7 @@ export default function TasksPage() {
     assigneeUserId !== "any" ||
     dueFilter !== "any" ||
     statusFilter.length > 0 ||
+    boardFilter.length > 0 ||
     contextQuery.trim() !== "";
 
   const clearFilters = () => {
@@ -293,6 +295,7 @@ export default function TasksPage() {
     setAssigneeUserId("any");
     setDueFilter("any");
     setStatusFilter([]);
+    setBoardFilter([]);
     setContextQuery("");
   };
 
@@ -358,7 +361,7 @@ export default function TasksPage() {
   };
 
   const filteredTasks = tasks.filter(
-    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)) && (showCompleted || t.status !== "done"),
+    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)) && (boardFilter.length === 0 || boardFilter.includes(t.board_id ?? "")) && (showCompleted || t.status !== "done"),
   );
 
   const load = async () => {
@@ -1073,7 +1076,56 @@ export default function TasksPage() {
                   </Popover>
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">Due date</div>
-                <div className="px-2 py-1.5 border-r border-border text-center">Board</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Board
+                        {boardFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {boardFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by board</div>
+                      <div className="space-y-1">
+                        {boards.map((b) => {
+                          const checked = boardFilter.includes(b.id);
+                          return (
+                            <label key={b.id} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  setBoardFilter((prev) =>
+                                    val ? [...prev, b.id] : prev.filter((x) => x !== b.id)
+                                  );
+                                }}
+                              />
+                              <span className="flex items-center gap-1.5">
+                                <span
+                                  className="inline-block h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: b.color || "#94a3b8" }}
+                                />
+                                <span className="text-xs">{b.name}</span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {boardFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => setBoardFilter([])}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="px-2 py-1.5 text-center" />
               </div>
             );

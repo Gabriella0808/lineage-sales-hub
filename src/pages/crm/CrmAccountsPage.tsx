@@ -156,7 +156,8 @@ export default function CrmAccountsPage() {
     const out: typeof accounts = [];
     for (let i = 0; i < indexed.length; i++) {
       const { a, accBrands, accTypes, hay } = indexed[i];
-      if (repFilter !== "all" && a.assigned_rep_id !== repFilter) continue;
+      if (repFilter !== "all" && repFilter !== "unassigned" && a.assigned_rep_id !== repFilter) continue;
+      if (repFilter === "unassigned" && a.assigned_rep_id != null) continue;
       if (managerFilter !== "all" && a.assigned_manager_id !== managerFilter) continue;
       if (brandSet.size > 0) {
         let ok = false;
@@ -256,6 +257,7 @@ export default function CrmAccountsPage() {
           <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All reps</SelectItem>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
             {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
           </SelectContent>
         </Select>

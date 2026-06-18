@@ -1182,7 +1182,7 @@ export default function TasksPage() {
                         return (
                           <li
                             key={t.id}
-                            className={`group/row grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 transition-colors border-b border-border last:border-b-0 bg-card ${
+                            className={`group/row grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-stretch hover:bg-muted/30 transition-colors border-b border-border last:border-b-0 bg-card ${
                               selectMode && selectedIds.has(t.id) ? "bg-primary/10" : ""
                             }`}
                           >

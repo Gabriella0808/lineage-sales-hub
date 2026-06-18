@@ -1154,6 +1154,7 @@ export default function TasksPage() {
                             <div className="hidden md:block border-r border-border h-full" />
                             <div className="hidden md:block border-r border-border h-full" />
                             <div className="hidden md:block border-r border-border h-full" />
+                            <div className="hidden md:block border-r border-border h-full" />
                             <div className="hidden md:block" />
                           </li>
                         );

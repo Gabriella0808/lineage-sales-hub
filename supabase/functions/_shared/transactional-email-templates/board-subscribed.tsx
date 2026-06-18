@@ -4,7 +4,7 @@ import {
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
-const SITE_NAME = 'Lineage Portal'
+const SITE_NAME = 'Lineage Collections'
 
 interface BoardSubscribedProps {
   recipientName?: string
@@ -57,7 +57,7 @@ export const template = {
   component: BoardSubscribedEmail,
   subject: (data: Record<string, any>) => {
     const board = data?.boardName ? `: ${data.boardName}` : ''
-    return `Lineage Portal board access updated${board}`
+    return `Lineage Collections board access updated${board}`
   },
   displayName: 'Board subscription invite',
   previewData: {

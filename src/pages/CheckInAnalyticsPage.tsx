@@ -358,8 +358,8 @@ export default function CheckInAnalyticsPage() {
     });
 
     checkIns.forEach((c) => {
-      // Attribute by dealer ownership first (rep -> manager), then by who logged it.
-      const team = (c.dealer_id && dealerToTeam[c.dealer_id]) || userToTeam[c.user_id];
+      // Attribute to the user who logged the check-in; fall back to dealer ownership.
+      const team = userToTeam[c.user_id] || (c.dealer_id && dealerToTeam[c.dealer_id]);
       if (!team) return;
       periods.forEach((p) => {
         if (inRange(c.visit_date, p.start, p.end)) {
@@ -483,7 +483,7 @@ export default function CheckInAnalyticsPage() {
                 <div className="font-display text-xl tabular-nums">{checkIns.length}</div>
               </div>
               {TEAM.map((t) => {
-                const live = checkIns.filter((c) => ((c.dealer_id && dealerToTeam[c.dealer_id]) || userToTeam[c.user_id]) === t.id).length;
+                const live = checkIns.filter((c) => (userToTeam[c.user_id] || (c.dealer_id && dealerToTeam[c.dealer_id])) === t.id).length;
                 return (
                   <div key={t.id} className="rounded-md bg-background/60 p-2">
                     <div className="text-[10px] uppercase text-muted-foreground">

@@ -257,6 +257,7 @@ export default function CrmAccountsPage() {
           <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All reps</SelectItem>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
             {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
           </SelectContent>
         </Select>

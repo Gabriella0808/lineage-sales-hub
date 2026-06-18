@@ -16,7 +16,7 @@ import { isAllowedEmail, isCustomerService } from "@/components/EmailGuard";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
-  SidebarProvider, useSidebar,
+  SidebarProvider, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
@@ -191,7 +191,7 @@ function SidebarNavItemRow({
 }
 
 function SidebarNav() {
-  const { state, isMobile, setOpenMobile } = useSidebar();
+  const { state, isMobile, setOpenMobile, toggleSidebar } = useSidebar();
   const collapsed = !isMobile && state === "collapsed";
   const closeOnMobile = () => { if (isMobile) setOpenMobile(false); };
   const { data: roleInfo } = useUserRole();
@@ -235,7 +235,7 @@ function SidebarNav() {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
 
   return (
-    <Sidebar collapsible="icon" className="border-r-0 bg-sidebar">
+    <Sidebar collapsible="icon" className="border-r-0 bg-sidebar relative">
       <SidebarHeader className="px-4 py-5 border-b border-sidebar-border/70">
         <div className="flex items-center gap-3">
           <img src={lineageLogo} alt="Lineage Collections" className="h-9 w-auto" />
@@ -288,6 +288,20 @@ function SidebarNav() {
           )}
         </div>
       </SidebarFooter>
+
+      {/* Floating collapse toggle at sidebar edge */}
+      <button
+        type="button"
+        onClick={toggleSidebar}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        className={cn(
+          "hidden lg:flex absolute -right-3 top-[72px] z-50 h-6 w-6 items-center justify-center rounded-full",
+          "bg-sidebar-primary text-sidebar-primary-foreground shadow-md",
+          "hover:bg-sidebar-primary/90 transition-colors"
+        )}
+      >
+        <ChevronLeft className={cn("h-3.5 w-3.5", collapsed && "rotate-180")} />
+      </button>
     </Sidebar>
   );
 }
@@ -300,7 +314,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarNav />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center border-b border-border/70 px-3 sm:px-5 bg-card/80 backdrop-blur shrink-0 gap-2 sm:gap-3">
-            <SidebarTrigger className="mr-1 shrink-0" />
+            <SidebarTrigger className="mr-1 shrink-0 lg:hidden" />
             <div className="flex-1" />
             <span className="text-xs text-muted-foreground hidden lg:inline tabular-nums">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}

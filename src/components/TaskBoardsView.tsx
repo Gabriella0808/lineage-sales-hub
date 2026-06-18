@@ -1234,8 +1234,8 @@ export default function TaskBoardsView() {
                         >
                           {columnHeader}
                           <ul>
-                            {items.map(renderTaskRow)}
                             {renderAddRow(firstGroup.id)}
+                            {items.map(renderTaskRow)}
                           </ul>
                         </div>
                       )}

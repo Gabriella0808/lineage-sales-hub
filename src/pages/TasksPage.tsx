@@ -1126,7 +1126,7 @@ export default function TasksPage() {
                                 setNewListItemTitle("");
                               }
                             }}
-                            className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-b border-border bg-card text-xs text-muted-foreground"
+                            className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-b border-border bg-card text-xs text-muted-foreground"
                           >
                             <div className="border-r border-border h-full" />
                             <div className="px-3 py-1.5" onClick={(e) => addingListItem && e.stopPropagation()}>

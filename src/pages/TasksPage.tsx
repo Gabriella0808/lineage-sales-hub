@@ -218,6 +218,24 @@ export default function TasksPage() {
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, title } : t)));
   };
 
+  // ---- Inline add row ----
+  const [addingListItem, setAddingListItem] = useState(false);
+  const [newListItemTitle, setNewListItemTitle] = useState("");
+  const quickCreateListTask = async (title: string) => {
+    if (!user || !title.trim()) return;
+    const { error } = await supabase.from("manager_tasks").insert({
+      title: title.trim(),
+      status: "todo",
+      user_id: user.id,
+      visibility: "public",
+    });
+    if (error) {
+      toast({ title: "Create failed", description: error.message, variant: "destructive" });
+    } else {
+      load();
+    }
+  };
+
   // ---- Updates dialog + counts ----
   const [updatesTaskId, setUpdatesTaskId] = useState<string | null>(null);
   const [updateCounts, setUpdateCounts] = useState<Record<string, number>>({});
@@ -1091,6 +1109,54 @@ export default function TasksPage() {
                     </div>
                   ) : (
                     <ul>
+                      {(() => {
+                        const submit = async () => {
+                          if (newListItemTitle.trim()) {
+                            await quickCreateListTask(newListItemTitle);
+                          }
+                          setNewListItemTitle("");
+                          setAddingListItem(false);
+                        };
+                        return (
+                          <li
+                            onClick={() => {
+                              if (!addingListItem) {
+                                setAddingListItem(true);
+                                setNewListItemTitle("");
+                              }
+                            }}
+                            className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-b border-border bg-card text-xs text-muted-foreground"
+                          >
+                            <div className="border-r border-border h-full" />
+                            <div className="px-3 py-1.5" onClick={(e) => addingListItem && e.stopPropagation()}>
+                              {addingListItem ? (
+                                <Input
+                                  autoFocus
+                                  value={newListItemTitle}
+                                  onChange={(e) => setNewListItemTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") submit();
+                                    if (e.key === "Escape") {
+                                      setNewListItemTitle("");
+                                      setAddingListItem(false);
+                                    }
+                                  }}
+                                  onBlur={submit}
+                                  placeholder="Enter item name and press Enter"
+                                  className="h-7 text-sm"
+                                />
+                              ) : (
+                                <span className="italic">+ Add item</span>
+                              )}
+                            </div>
+                            <div className="border-r border-border h-full" />
+                            <div className="hidden md:block border-r border-border h-full" />
+                            <div className="hidden md:block border-r border-border h-full" />
+                            <div className="hidden md:block border-r border-border h-full" />
+                            <div className="hidden md:block" />
+                          </li>
+                        );
+                      })()}
                       {items.map((t) => {
                         const col = COLUMNS.find((c) => c.key === t.status) ?? COLUMNS[0];
                         const ownerIds = getAssigneeIds(t);

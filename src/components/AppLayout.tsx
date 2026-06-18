@@ -242,7 +242,7 @@ function SidebarNav() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="py-4 px-2 overflow-y-auto">
+      <SidebarContent className="py-4 px-2 overflow-y-auto no-scrollbar">
         <nav className="space-y-5">
           {sections.map((section, idx) => (
             <div key={section.id}>

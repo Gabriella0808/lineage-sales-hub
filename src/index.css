@@ -7,8 +7,8 @@
 /*
   Lineage Collections - Internal Operating System
   Premium enterprise portal. Restrained, editorial, executive.
-  Palette: pale lavender-tinted canvas, white cards, deep navy primary,
-  bright blue accent. Typography: DM Serif Display + DM Sans.
+  Palette: pale lavender-tinted canvas, white cards, emerald teal primary,
+  teal accent. Typography: DM Serif Display + DM Sans.
 */
 
 @layer base {
@@ -24,7 +24,7 @@
     --popover-foreground: 222 38% 12%;
 
     /* Brand */
-    --primary: 214 80% 36%;            /* deep executive blue */
+    --primary: 168 70% 40%;            /* rich emerald teal */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 220 22% 94%;          /* cool neutral */
@@ -63,8 +63,8 @@
     --sidebar-muted: 220 10% 50%;
     --sidebar-section: 220 10% 55%;
 
-    /* Charts - cohesive blue-led palette */
-    --chart-1: 214 80% 36%;
+    /* Charts - cohesive teal-led palette */
+    --chart-1: 168 70% 40%;
     --chart-2: 168 70% 48%;
     --chart-3: 188 64% 38%;
     --chart-4: 252 50% 52%;
@@ -73,7 +73,7 @@
     /* Premium effects - tight, restrained */
     --shadow-soft: 0 1px 0 hsl(220 18% 88% / 0.6), 0 1px 2px hsl(222 38% 12% / 0.04);
     --shadow-elev: 0 1px 0 hsl(220 18% 88% / 0.6), 0 2px 4px hsl(222 38% 12% / 0.05), 0 8px 24px -12px hsl(222 38% 12% / 0.12);
-    --gradient-bronze: linear-gradient(135deg, hsl(214 80% 36%), hsl(168 70% 40%));
+    --gradient-bronze: linear-gradient(135deg, hsl(168 70% 40%), hsl(168 70% 55%));
     --gradient-graphite: linear-gradient(180deg, hsl(222 40% 12%), hsl(222 40% 9%));
   }
 }

@@ -1377,6 +1377,46 @@ export default function TasksPage() {
                               </Popover>
                             </div>
 
+                            {/* Board (md+) */}
+                            <div className="hidden md:flex items-stretch border-r border-border" onClick={(e) => e.stopPropagation()}>
+                              <Select
+                                value={t.board_id ?? "__none__"}
+                                onValueChange={(v) => updateBoard(t.id, v === "__none__" ? null : v)}
+                                disabled={!(isMine || assignedToMe)}
+                              >
+                                <SelectTrigger className="h-auto w-full rounded-none border-0 bg-transparent text-xs justify-center gap-1 focus:ring-0 focus:ring-offset-0 hover:bg-muted/40 [&>svg]:opacity-50">
+                                  <SelectValue placeholder="No board">
+                                    {t.board_id ? (
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <span
+                                          className="inline-block h-2 w-2 rounded-full"
+                                          style={{ background: boards.find((b) => b.id === t.board_id)?.color || "hsl(var(--muted-foreground))" }}
+                                        />
+                                        <span className="truncate">{boards.find((b) => b.id === t.board_id)?.name ?? "Board"}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="italic text-muted-foreground">No board</span>
+                                    )}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__" className="text-xs italic">No board</SelectItem>
+                                  {boards.map((b) => (
+                                    <SelectItem key={b.id} value={b.id} className="text-xs">
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <span
+                                          className="inline-block h-2 w-2 rounded-full"
+                                          style={{ background: b.color || "hsl(var(--muted-foreground))" }}
+                                        />
+                                        {b.name}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+
                             {/* Actions (md+) */}
                             <div className="hidden md:flex items-center justify-center gap-0.5 px-1" onClick={(e) => e.stopPropagation()}>
                               {(isMine || assignedToMe) && (

@@ -149,9 +149,13 @@ Deno.serve(async (req) => {
       const emailMap = new Map<string, string>(); // lowerEmail -> name
       const addRecipient = (email?: string | null, name?: string | null) => {
         if (!email) return;
-        const e = email.trim().toLowerCase();
-        if (!e || !e.includes("@")) return;
-        if (!emailMap.has(e)) emailMap.set(e, name?.trim() || e.split("@")[0]);
+        // Split comma/semicolon-separated addresses into individual recipients
+        const parts = String(email).split(/[,;]/);
+        for (const part of parts) {
+          const e = part.trim().toLowerCase();
+          if (!e || !e.includes("@")) continue;
+          if (!emailMap.has(e)) emailMap.set(e, name?.trim() || e.split("@")[0]);
+        }
       };
 
       // Sales reps

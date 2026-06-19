@@ -405,18 +405,100 @@ export default function CrmAccountsPage() {
         </Select>
       </Card>
 
+      {selected.size > 0 && (
+        <Card className="p-3 flex flex-wrap items-center gap-2 border-accent/40 bg-accent/5">
+          <span className="text-xs font-medium text-foreground">
+            {selected.size} selected
+          </span>
+          <div className="h-4 w-px bg-border mx-1" />
+          <span className="text-[11px] text-muted-foreground">Set brand:</span>
+          <DropdownMenu onOpenChange={(o) => { if (o) setBulkBrands([]); }}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs font-normal">
+                {bulkBrands.length === 0 ? "Choose brands" : bulkBrands.length === BRANDS.length ? "All brands" : bulkBrands.length === 1 ? bulkBrands[0] : `${bulkBrands.length} brands`}
+                <ChevronDown className="h-3 w-3 ml-1 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuCheckboxItem
+                checked={bulkBrands.length === BRANDS.length}
+                onCheckedChange={() => setBulkBrands(bulkBrands.length === BRANDS.length ? [] : [...BRANDS])}
+                onSelect={(e) => e.preventDefault()}
+              >
+                All brands
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
+              {BRANDS.map((b) => (
+                <DropdownMenuCheckboxItem
+                  key={b}
+                  checked={bulkBrands.includes(b)}
+                  onCheckedChange={() => setBulkBrands(bulkBrands.includes(b) ? bulkBrands.filter((x) => x !== b) : [...bulkBrands, b])}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  {b}
+                </DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <div className="p-1">
+                <Button
+                  size="sm"
+                  className="w-full h-7 text-xs"
+                  disabled={bulkBrands.length === 0}
+                  onClick={() => bulkSetBrands(bulkBrands)}
+                >
+                  Apply to {selected.size}
+                </Button>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <span className="text-[11px] text-muted-foreground ml-2">Set prospect type:</span>
+          <ProspectTypeSelect
+            multi
+            compact
+            values={bulkPTypes}
+            onChangeMulti={setBulkPTypes}
+            placeholder="Choose types"
+            triggerClassName="h-8 text-xs"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            disabled={bulkPTypes.length === 0}
+            onClick={() => bulkSetProspectTypes(bulkPTypes)}
+          >
+            Apply types to {selected.size}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs ml-auto"
+            onClick={clearSelection}
+          >
+            <X className="h-3.5 w-3.5 mr-1" /> Clear selection
+          </Button>
+        </Card>
+      )}
+
       <Card className="overflow-hidden">
         <div ref={scrollRef} onScroll={onScroll} className="overflow-x-hidden overflow-y-auto max-h-[calc(100vh-240px)]">
           <table className="w-full text-xs table-fixed">
             <thead className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground sticky top-0 z-10">
               <tr>
-                <th className="text-left px-3 py-2.5 font-medium bg-muted w-[16%]">Company</th>
+                <th className="px-2 py-2.5 bg-muted w-[36px]">
+                  <Checkbox
+                    checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+                    onCheckedChange={toggleSelectAllVisible}
+                    aria-label="Select all visible"
+                  />
+                </th>
+                <th className="text-left px-3 py-2.5 font-medium bg-muted w-[14%]">Company</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Brand</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Contact</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Rep</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Manager</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Date Added</th>
-                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[11%]">Last Contacted</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[9%]">Date Added</th>
+                <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Last Contacted</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[10%]">Account Type</th>
                 <th className="text-left px-2 py-2.5 font-medium bg-muted w-[12%]">Prospect Type</th>
                 <th className="text-right px-2 py-2.5 font-medium bg-muted w-[40px]"></th>
@@ -424,8 +506,9 @@ export default function CrmAccountsPage() {
             </thead>
 
             <tbody className="divide-y divide-border/60">
-              {isLoading && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">Loading...</td></tr>}
-              {!isLoading && filtered.length === 0 && <tr><td colSpan={10} className="p-6 text-center text-muted-foreground">No prospects match your filters.</td></tr>}
+              {isLoading && <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">Loading...</td></tr>}
+              {!isLoading && filtered.length === 0 && <tr><td colSpan={11} className="p-6 text-center text-muted-foreground">No prospects match your filters.</td></tr>}
+
               {visibleRows.map((a) => {
                 const type = ACCOUNT_TYPES.find((s) => s.id === (a.account_type ?? "prospect"))!;
                 return (

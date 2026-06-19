@@ -269,6 +269,7 @@ export default function TaskBoardsView() {
 
   const activeBoard = boards.find((b) => b.id === activeBoardId) ?? null;
   const isBoardOwner = !!user && !!activeBoard && activeBoard.created_by === user.id;
+  const canManageBoardGroups = !!user && !!activeBoard;
   const boardGroups = useMemo(
     () => groups.filter((g) => g.board_id === activeBoardId).sort((a, b) => a.position - b.position),
     [groups, activeBoardId],
@@ -758,11 +759,13 @@ export default function TaskBoardsView() {
               <Button size="sm" variant="outline" onClick={openSubscribeDialog}>
                 <UserPlus className="h-3.5 w-3.5" /> Subscribe
               </Button>
+              {canManageBoardGroups && (
+                <Button size="sm" variant="outline" onClick={openNewGroup}>
+                  <Plus className="h-3.5 w-3.5" /> Add group
+                </Button>
+              )}
               {isBoardOwner && (
                 <>
-                  <Button size="sm" variant="outline" onClick={openNewGroup}>
-                    <Plus className="h-3.5 w-3.5" /> Add group
-                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => openEditBoard(activeBoard)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -1165,7 +1168,7 @@ export default function TaskBoardsView() {
               <div className="space-y-6 p-4">
                 {boardGroups.length === 0 && (
                   <div className="p-6 text-sm italic text-muted-foreground">
-                    No groups yet. {isBoardOwner && "Click \"Add group\" to create one."}
+                    No groups yet. {canManageBoardGroups && "Click \"Add group\" to create one."}
                   </div>
                 )}
 

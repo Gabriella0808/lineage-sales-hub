@@ -6,9 +6,10 @@ import { useSignInFeed } from "@/hooks/useSignInFeed";
 import { useUserRole } from "@/hooks/useUserRole";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format, parseISO } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -162,34 +163,6 @@ export default function DashboardPage() {
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
 
-  // Top reps by total sales (horizontal bar)
-  const topRepsBar = Object.entries(repRevenueMap)
-    .map(([repId, revenue]) => ({ repId, revenue }))
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 8)
-    .map(({ repId, revenue }) => {
-      const rep = reps.find(r => r.id === repId);
-      const first = (rep?.name ?? 'Unknown').split(' ')[0];
-      return { name: first, revenue: Math.round(revenue) };
-    });
-
-
-  // Accounts by Sales Manager (donut)
-  const MANAGER_COLORS = ['hsl(38 75% 50%)', 'hsl(152 60% 40%)', 'hsl(220 35% 22%)', 'hsl(265 50% 55%)', 'hsl(0 65% 55%)'];
-  const managerAccountsMap: Record<string, number> = {};
-  dealers.forEach(d => {
-    const rep = reps.find(r => r.id === d.rep_id);
-    const managerId = rep?.manager_id ?? 'unassigned';
-    managerAccountsMap[managerId] = (managerAccountsMap[managerId] ?? 0) + 1;
-  });
-  const managerDonut = Object.entries(managerAccountsMap)
-    .map(([managerId, count]) => {
-      const mgr = managers.find(m => m.id === managerId);
-      const initials = mgr ? mgr.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 3) : 'N/A';
-      return { name: initials, value: count, fullName: mgr?.name ?? 'Unassigned' };
-    })
-    .filter(m => m.value > 0)
-    .sort((a, b) => b.value - a.value);
 
   // Reps per Territory (vertical bar)
   const repsPerTerritory = territories
@@ -201,6 +174,38 @@ export default function DashboardPage() {
     .sort((a, b) => b.count - a.count);
 
   
+
+  const { user } = useAuth();
+  const { data: upNextTasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ["dashboard_up_next_tasks", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const [{ data: tasksData, error: tasksErr }, { data: assigneeData }] = await Promise.all([
+        supabase.from("manager_tasks").select("*").neq("status", "done"),
+        supabase.from("manager_task_assignees").select("task_id, user_id").eq("user_id", user!.id),
+      ]);
+      if (tasksErr) throw tasksErr;
+
+      const assigneeTaskIds = new Set((assigneeData ?? []).map((r: any) => r.task_id));
+      const userId = user!.id;
+
+      const myTasks = (tasksData ?? []).filter((t: any) => {
+        return t.assigned_user_id === userId ||
+               t.assigned_manager_id === userId ||
+               t.user_id === userId ||
+               assigneeTaskIds.has(t.id);
+      });
+
+      myTasks.sort((a: any, b: any) => {
+        if (a.due_date && b.due_date) return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        if (a.due_date) return -1;
+        if (b.due_date) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      return myTasks.slice(0, 7);
+    },
+  });
 
   if (isLoading) {
     return (

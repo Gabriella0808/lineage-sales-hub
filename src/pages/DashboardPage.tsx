@@ -244,7 +244,7 @@ export default function DashboardPage() {
         )}
         <StatCard title="Territories" value={territories.length} icon={MapIcon} trend="neutral" subtitle="active" />
         <StatCard title="Dealers" value={dealers.length} icon={Store} trend="neutral" subtitle="total" />
-        <StatCard title={`${currentYear} Revenue`} value={formatCurrency(totalRevenue)} trend="neutral" variant="accent" />
+        <StatCard title={`${currentYear} Gross Revenue`} value={formatCurrency(totalRevenue)} trend="neutral" variant="accent" />
         <StatCard title="Orders" value={totalOrders.toLocaleString()} trend="neutral" subtitle={String(currentYear)} variant="success" />
       </div>
 

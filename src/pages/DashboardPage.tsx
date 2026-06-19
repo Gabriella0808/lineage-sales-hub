@@ -1,4 +1,5 @@
 import { Users, Map as MapIcon, Store, LogIn, Trophy, ArrowUp, Calendar, ListChecks } from "lucide-react";
+import UpNextTasksWidget from "@/components/UpNextTasksWidget";
 import { TargetsProgressCard } from "@/components/TargetsProgressCard";
 import { StatCard } from "@/components/StatCard";
 import { useSalesReps, useTerritories, useDealers, useDealerSales, useRepTerritories, useManagers, formatCurrency, getInitials } from "@/hooks/usePortalData";

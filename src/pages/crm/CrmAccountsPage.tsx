@@ -517,6 +517,13 @@ export default function CrmAccountsPage() {
                     className="hover:bg-muted/30 transition-colors cursor-pointer"
                     onClick={() => nav(`/crm/accounts/${a.id}`)}
                   >
+                    <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selected.has(a.id)}
+                        onCheckedChange={() => toggleRowSelected(a.id)}
+                        aria-label={`Select ${a.company_name}`}
+                      />
+                    </td>
                     <td className="px-3 py-2.5">
                       <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent truncate block">{a.company_name}</Link>
                     </td>

@@ -487,9 +487,9 @@ export default function CrmAccountsPage() {
               <tr>
                 <th className="px-2 py-2.5 bg-muted w-[36px]">
                   <Checkbox
-                    checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
-                    onCheckedChange={toggleSelectAllVisible}
-                    aria-label="Select all visible"
+                    checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                    onCheckedChange={toggleSelectAllFiltered}
+                    aria-label="Select all filtered"
                   />
                 </th>
                 <th className="text-left px-3 py-2.5 font-medium bg-muted w-[14%]">Company</th>

@@ -265,7 +265,7 @@ export default function ManagersPage() {
                   <tr className="border-b bg-muted/30">
                     <th className="text-left p-3 font-medium text-muted-foreground">Rep</th>
                     <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Email</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Revenue</th>
+                    <th className="text-right p-3 font-medium text-muted-foreground">Gross Revenue</th>
                     <th className="text-right p-3 font-medium text-muted-foreground hidden md:table-cell">Quota</th>
                     <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
                   </tr>

@@ -293,7 +293,7 @@ export default function DashboardPage() {
       {/* Row: Top Dealers by Revenue */}
       <div className="mb-6">
         <div className="glass-card p-4 sm:p-5">
-          <h3 className="text-sm font-semibold mb-4">Top Dealers by Revenue ($K) - {currentYear}</h3>
+          <h3 className="text-sm font-semibold mb-4">Top Dealers by Gross Revenue ($K) - {currentYear}</h3>
           <div className="h-[260px] sm:h-[280px]">
             {topDealers.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">

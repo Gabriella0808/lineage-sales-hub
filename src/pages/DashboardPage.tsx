@@ -1,4 +1,4 @@
-import { Users, Map as MapIcon, Store, LogIn, Trophy, TrendingUp, ArrowUp } from "lucide-react";
+import { Users, Map as MapIcon, Store, LogIn, Trophy, ArrowUp, Calendar, ListChecks } from "lucide-react";
 import { TargetsProgressCard } from "@/components/TargetsProgressCard";
 import { StatCard } from "@/components/StatCard";
 import { useSalesReps, useTerritories, useDealers, useDealerSales, useRepTerritories, useManagers, formatCurrency, getInitials } from "@/hooks/usePortalData";
@@ -6,9 +6,10 @@ import { useSignInFeed } from "@/hooks/useSignInFeed";
 import { useUserRole } from "@/hooks/useUserRole";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format, parseISO } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -162,34 +163,6 @@ export default function DashboardPage() {
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
 
-  // Top reps by total sales (horizontal bar)
-  const topRepsBar = Object.entries(repRevenueMap)
-    .map(([repId, revenue]) => ({ repId, revenue }))
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 8)
-    .map(({ repId, revenue }) => {
-      const rep = reps.find(r => r.id === repId);
-      const first = (rep?.name ?? 'Unknown').split(' ')[0];
-      return { name: first, revenue: Math.round(revenue) };
-    });
-
-
-  // Accounts by Sales Manager (donut)
-  const MANAGER_COLORS = ['hsl(38 75% 50%)', 'hsl(152 60% 40%)', 'hsl(220 35% 22%)', 'hsl(265 50% 55%)', 'hsl(0 65% 55%)'];
-  const managerAccountsMap: Record<string, number> = {};
-  dealers.forEach(d => {
-    const rep = reps.find(r => r.id === d.rep_id);
-    const managerId = rep?.manager_id ?? 'unassigned';
-    managerAccountsMap[managerId] = (managerAccountsMap[managerId] ?? 0) + 1;
-  });
-  const managerDonut = Object.entries(managerAccountsMap)
-    .map(([managerId, count]) => {
-      const mgr = managers.find(m => m.id === managerId);
-      const initials = mgr ? mgr.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 3) : 'N/A';
-      return { name: initials, value: count, fullName: mgr?.name ?? 'Unassigned' };
-    })
-    .filter(m => m.value > 0)
-    .sort((a, b) => b.value - a.value);
 
   // Reps per Territory (vertical bar)
   const repsPerTerritory = territories
@@ -201,6 +174,38 @@ export default function DashboardPage() {
     .sort((a, b) => b.count - a.count);
 
   
+
+  const { user } = useAuth();
+  const { data: upNextTasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ["dashboard_up_next_tasks", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const [{ data: tasksData, error: tasksErr }, { data: assigneeData }] = await Promise.all([
+        supabase.from("manager_tasks").select("*").neq("status", "done"),
+        supabase.from("manager_task_assignees").select("task_id, user_id").eq("user_id", user!.id),
+      ]);
+      if (tasksErr) throw tasksErr;
+
+      const assigneeTaskIds = new Set((assigneeData ?? []).map((r: any) => r.task_id));
+      const userId = user!.id;
+
+      const myTasks = (tasksData ?? []).filter((t: any) => {
+        return t.assigned_user_id === userId ||
+               t.assigned_manager_id === userId ||
+               t.user_id === userId ||
+               assigneeTaskIds.has(t.id);
+      });
+
+      myTasks.sort((a: any, b: any) => {
+        if (a.due_date && b.due_date) return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        if (a.due_date) return -1;
+        if (b.due_date) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      return myTasks.slice(0, 7);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -281,62 +286,47 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Row: Top Reps by Total Sales + Accounts by Sales Manager */}
-      <div className="grid lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
-        <div className="glass-card p-4 sm:p-5 lg:col-span-2">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-accent" /> Top Reps by Total Sales
-          </h3>
-          <div className="h-[240px] sm:h-[280px]">
-            {topRepsBar.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topRepsBar} layout="vertical" barSize={18}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 90%)" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" width={60} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                  <Bar dataKey="revenue" fill="hsl(38 75% 50%)" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center pt-20">No rep sales data yet.</p>
-            )}
+      {/* Up Next Tasks */}
+      <div className="glass-card p-4 sm:p-6 mb-6">
+        <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+          <ListChecks className="h-5 w-5 text-accent" /> Up Next
+        </h3>
+        {tasksLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
           </div>
-        </div>
-
-        <div className="glass-card p-4 sm:p-5 flex flex-col">
-          <h3 className="text-sm font-semibold mb-4">Accounts by Sales Manager</h3>
-          <div className="flex-1 min-h-[240px]">
-            {managerDonut.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={managerDonut}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={2}
-                  >
-                    {managerDonut.map((_, i) => (
-                      <Cell key={i} fill={MANAGER_COLORS[i % MANAGER_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v: number, _n, p: any) => [`${v} accounts`, p?.payload?.fullName]} />
-                  <Legend
-                    verticalAlign="bottom"
-                    iconType="square"
-                    formatter={(value) => <span className="text-xs">{value}</span>}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center pt-20">No manager data yet.</p>
-            )}
-          </div>
-        </div>
+        ) : upNextTasks.length > 0 ? (
+          <ul className="space-y-1">
+            {upNextTasks.map((task: any) => {
+              const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().toDateString());
+              const statusMeta: Record<string, { label: string; bg: string; text: string }> = {
+                todo: { label: "To Do", bg: "bg-muted", text: "text-muted-foreground" },
+                in_progress: { label: "In Progress", bg: "bg-accent", text: "text-accent-foreground" },
+                blocked: { label: "Blocked", bg: "bg-destructive", text: "text-destructive-foreground" },
+              };
+              const meta = statusMeta[task.status] || statusMeta.todo;
+              return (
+                <li key={task.id} className="flex items-center gap-3 sm:gap-4 py-2.5 sm:py-3 border-b border-border/40 last:border-0">
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate">{task.title}</p>
+                    <p className={`text-[11px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                      {task.due_date ? `Due ${format(parseISO(task.due_date), 'MMM d, yyyy')}` : 'No due date'}
+                      {isOverdue ? " · Overdue" : ""}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.bg} ${meta.text}`}>
+                    {meta.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">No upcoming tasks.</p>
+        )}
       </div>
 
       {/* Row: Top Dealers by Revenue */}

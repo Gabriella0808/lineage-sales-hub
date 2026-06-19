@@ -639,7 +639,7 @@ export default function CrmAccountsPage() {
                         <SelectContent>
                           <SelectItem value="unassigned">Unassigned</SelectItem>
                           {managers
-                            .filter((m) => ["Will", "Mateo", "Kate"].includes(m.name))
+                            .filter((m) => ["Will", "Mateo", "Kate", "Chris De Lisa"].includes(m.name))
                             .map((m) => (
                               <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                             ))}

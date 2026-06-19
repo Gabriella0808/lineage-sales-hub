@@ -1300,7 +1300,7 @@ export default function TaskBoardsView() {
                             {groupTasks.length} {groupTasks.length === 1 ? "task" : "tasks"}
                           </span>
                         </button>
-                        {isBoardOwner && (
+                        {canManageBoardGroups && (
                           <div className="flex items-center gap-0.5 ml-1">
                             <Button
                               size="sm"

@@ -343,7 +343,7 @@ export default function ManagersPage() {
                   </div>
                 </div>
                 <div className="mt-3 pt-3 border-t border-border">
-                  <p className="text-xs text-muted-foreground">Revenue: <span className="font-medium text-foreground">{formatCurrency(mgrRevenue)}</span></p>
+                  <p className="text-xs text-muted-foreground">Gross Revenue: <span className="font-medium text-foreground">{formatCurrency(mgrRevenue)}</span></p>
                 </div>
               </CardContent>
             </Card>

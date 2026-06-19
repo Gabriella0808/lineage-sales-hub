@@ -228,6 +228,49 @@ export default function CrmAccountsPage() {
     }
   };
 
+  // Bulk selection
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  useEffect(() => { setSelected(new Set()); }, [needle, repFilter, managerFilter, brandFilters.join(","), prospectTypeFilters.join(","), stateFilter, accountTypeFilter]);
+  const toggleRowSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const allVisibleSelected = visibleRows.length > 0 && visibleRows.every((r) => selected.has(r.id));
+  const someVisibleSelected = visibleRows.some((r) => selected.has(r.id));
+  const toggleSelectAllVisible = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) { for (const r of visibleRows) next.delete(r.id); }
+      else { for (const r of visibleRows) next.add(r.id); }
+      return next;
+    });
+  };
+  const clearSelection = () => setSelected(new Set());
+  const selectedIds = useMemo(() => Array.from(selected), [selected]);
+  const accountById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
+
+  const bulkSetBrands = (brands: string[]) => {
+    for (const id of selectedIds) {
+      update.mutate({ id, patch: { brands, brand: brands[0] ?? null } as any });
+    }
+    toast({ title: "Brands updated", description: `${selectedIds.length} prospect${selectedIds.length === 1 ? "" : "s"} updated.` });
+  };
+  const bulkSetProspectTypes = (types: string[]) => {
+    for (const id of selectedIds) {
+      update.mutate({ id, patch: { prospect_types: types, prospect_type: types[0] ?? null } as any });
+    }
+    toast({ title: "Prospect types updated", description: `${selectedIds.length} prospect${selectedIds.length === 1 ? "" : "s"} updated.` });
+  };
+
+  // Working state for bulk dropdowns (start empty)
+  const [bulkBrands, setBulkBrands] = useState<string[]>([]);
+  const [bulkPTypes, setBulkPTypes] = useState<string[]>([]);
+
+
+
 
   const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();

@@ -237,7 +237,7 @@ export default function DealersPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">YTD Revenue</p><p className="text-lg font-semibold">{formatCurrency(getYtd(dealer.id))}</p></div>
+                  <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">YTD Gross Revenue</p><p className="text-lg font-semibold">{formatCurrency(getYtd(dealer.id))}</p></div>
                   <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">Last Contact</p><p className="text-lg font-semibold">{dealer.last_contact ? new Date(dealer.last_contact).toLocaleDateString() : '---'}</p></div>
                 </div>
 

@@ -228,6 +228,22 @@ export default function CrmAccountsPage() {
     }
   };
 
+  // Preserve table scroll position across inline edits so the viewport
+  // doesn't jump to the top when a dropdown value is changed.
+  const handleInlineUpdate = (id: string, patch: Partial<import("@/hooks/useCrm").CrmAccount>) => {
+    const savedScroll = scrollRef.current?.scrollTop ?? 0;
+    update.mutate(
+      { id, patch },
+      {
+        onSettled: () => {
+          requestAnimationFrame(() => {
+            if (scrollRef.current) scrollRef.current.scrollTop = savedScroll;
+          });
+        },
+      }
+    );
+  };
+
   // Bulk selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
   useEffect(() => { setSelected(new Set()); }, [needle, repFilter, managerFilter, brandFilters.join(","), prospectTypeFilters.join(","), stateFilter, accountTypeFilter]);

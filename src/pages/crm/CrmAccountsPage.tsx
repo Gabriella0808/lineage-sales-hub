@@ -238,13 +238,13 @@ export default function CrmAccountsPage() {
       return next;
     });
   };
-  const allVisibleSelected = visibleRows.length > 0 && visibleRows.every((r) => selected.has(r.id));
-  const someVisibleSelected = visibleRows.some((r) => selected.has(r.id));
-  const toggleSelectAllVisible = () => {
+  const allFilteredSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+  const someFilteredSelected = filtered.some((r) => selected.has(r.id));
+  const toggleSelectAllFiltered = () => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (allVisibleSelected) { for (const r of visibleRows) next.delete(r.id); }
-      else { for (const r of visibleRows) next.add(r.id); }
+      if (allFilteredSelected) { for (const r of filtered) next.delete(r.id); }
+      else { for (const r of filtered) next.add(r.id); }
       return next;
     });
   };

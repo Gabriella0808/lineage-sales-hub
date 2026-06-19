@@ -134,6 +134,7 @@ Deno.serve(async (req) => {
       will: { checkIns: 0, placements: 0 },
       mateo: { checkIns: 0, placements: 0 },
       chris: { checkIns: 0, placements: 0 },
+      kate: { checkIns: 0, placements: 0 },
     };
     cis.forEach((c) => {
       const team = (c.dealer_id && dealerToTeam[c.dealer_id]) || userToTeam[c.user_id];

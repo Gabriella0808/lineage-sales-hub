@@ -229,7 +229,7 @@ export default function ClearanceAnalyticsPage() {
                       Total Units
                     </th>
                     <th className="text-right px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-                      Revenue
+                      Gross Revenue
                     </th>
                     <th className="w-8" />
                   </tr>

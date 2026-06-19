@@ -413,7 +413,8 @@ export default function UpNextTasksWidget() {
         taskId={updatesTaskId}
         open={!!updatesTaskId}
         onOpenChange={(v) => !v && setUpdatesTaskId(null)}
-        onChanged={refreshUpdateCounts}
+        users={assignees}
+        onActivityChange={refreshUpdateCounts}
       />
     </div>
   );

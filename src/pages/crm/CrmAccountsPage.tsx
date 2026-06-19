@@ -228,6 +228,22 @@ export default function CrmAccountsPage() {
     }
   };
 
+  // Preserve table scroll position across inline edits so the viewport
+  // doesn't jump to the top when a dropdown value is changed.
+  const handleInlineUpdate = (id: string, patch: Partial<import("@/hooks/useCrm").CrmAccount>) => {
+    const savedScroll = scrollRef.current?.scrollTop ?? 0;
+    update.mutate(
+      { id, patch },
+      {
+        onSettled: () => {
+          requestAnimationFrame(() => {
+            if (scrollRef.current) scrollRef.current.scrollTop = savedScroll;
+          });
+        },
+      }
+    );
+  };
+
   // Bulk selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
   useEffect(() => { setSelected(new Set()); }, [needle, repFilter, managerFilter, brandFilters.join(","), prospectTypeFilters.join(","), stateFilter, accountTypeFilter]);
@@ -544,10 +560,10 @@ export default function CrmAccountsPage() {
                           const set = new Set(rowBrands);
                           if (set.has(b)) set.delete(b); else set.add(b);
                           const next = Array.from(set);
-                          update.mutate({ id: a.id, patch: { brands: next, brand: next[0] ?? a.brand } as any });
+                          handleInlineUpdate(a.id, { brands: next, brand: next[0] ?? a.brand } as any);
                         };
                         const selectAll = () => {
-                          update.mutate({ id: a.id, patch: { brands: [...BRANDS], brand: BRANDS[0] } as any });
+                          handleInlineUpdate(a.id, { brands: [...BRANDS], brand: BRANDS[0] } as any);
                         };
                         return (
                           <DropdownMenu>
@@ -590,7 +606,7 @@ export default function CrmAccountsPage() {
                           const repId = v === "unassigned" ? null : v;
                           const rep = repId ? reps.find((r) => r.id === repId) : null;
                           const managerId = rep?.manager_id ?? null;
-                          update.mutate({ id: a.id, patch: { assigned_rep_id: repId, assigned_manager_id: managerId } });
+                          handleInlineUpdate(a.id, { assigned_rep_id: repId, assigned_manager_id: managerId });
                         }}
                       >
                         <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0 focus:ring-0 focus-visible:ring-0 focus:ring-offset-0">
@@ -611,7 +627,7 @@ export default function CrmAccountsPage() {
                       <Select
                         value={a.assigned_manager_id ?? "unassigned"}
                         onValueChange={(v) => {
-                          update.mutate({ id: a.id, patch: { assigned_manager_id: v === "unassigned" ? null : v } });
+                          handleInlineUpdate(a.id, { assigned_manager_id: v === "unassigned" ? null : v });
                         }}
                       >
                         <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0 focus:ring-0 focus-visible:ring-0 focus:ring-offset-0">
@@ -637,7 +653,7 @@ export default function CrmAccountsPage() {
                         value={a.account_type ?? "prospect"}
                         onValueChange={(v) => {
                           if (v === "dealer") setConvertTarget({ id: a.id, name: a.company_name });
-                          else update.mutate({ id: a.id, patch: { account_type: v as AccountType } });
+                          else handleInlineUpdate(a.id, { account_type: v as AccountType });
                         }}
                       >
                         <SelectTrigger className="h-7 text-[11px] border-0 bg-muted/60 hover:bg-muted px-1.5 py-0 w-full min-w-0 focus:ring-0 focus-visible:ring-0 focus:ring-offset-0">
@@ -661,7 +677,7 @@ export default function CrmAccountsPage() {
                             multi
                             compact
                             values={rowTypes}
-                            onChangeMulti={(vs) => update.mutate({ id: a.id, patch: { prospect_types: vs, prospect_type: vs[0] ?? null } as any })}
+                            onChangeMulti={(vs) => handleInlineUpdate(a.id, { prospect_types: vs, prospect_type: vs[0] ?? null } as any)}
                           />
                         );
                       })()}

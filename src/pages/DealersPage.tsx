@@ -187,7 +187,7 @@ export default function DealersPage() {
               <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Rep</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Engagement</th>
-              <th className="text-right p-3 font-medium text-muted-foreground hidden lg:table-cell">YTD Revenue</th>
+              <th className="text-right p-3 font-medium text-muted-foreground hidden lg:table-cell">YTD Gross Revenue</th>
               <th className="text-center p-3 font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
@@ -237,7 +237,7 @@ export default function DealersPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">YTD Revenue</p><p className="text-lg font-semibold">{formatCurrency(getYtd(dealer.id))}</p></div>
+                  <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">YTD Gross Revenue</p><p className="text-lg font-semibold">{formatCurrency(getYtd(dealer.id))}</p></div>
                   <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">Last Contact</p><p className="text-lg font-semibold">{dealer.last_contact ? new Date(dealer.last_contact).toLocaleDateString() : '---'}</p></div>
                 </div>
 

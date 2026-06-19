@@ -265,7 +265,7 @@ export default function ManagersPage() {
                   <tr className="border-b bg-muted/30">
                     <th className="text-left p-3 font-medium text-muted-foreground">Rep</th>
                     <th className="text-left p-3 font-medium text-muted-foreground hidden md:table-cell">Email</th>
-                    <th className="text-right p-3 font-medium text-muted-foreground">Revenue</th>
+                    <th className="text-right p-3 font-medium text-muted-foreground">Gross Revenue</th>
                     <th className="text-right p-3 font-medium text-muted-foreground hidden md:table-cell">Quota</th>
                     <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
                   </tr>
@@ -343,7 +343,7 @@ export default function ManagersPage() {
                   </div>
                 </div>
                 <div className="mt-3 pt-3 border-t border-border">
-                  <p className="text-xs text-muted-foreground">Revenue: <span className="font-medium text-foreground">{formatCurrency(mgrRevenue)}</span></p>
+                  <p className="text-xs text-muted-foreground">Gross Revenue: <span className="font-medium text-foreground">{formatCurrency(mgrRevenue)}</span></p>
                 </div>
               </CardContent>
             </Card>

@@ -371,7 +371,7 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
                         <th className="text-left px-3 py-2 font-medium text-muted-foreground">SKU</th>
                         <th className="text-left px-3 py-2 font-medium text-muted-foreground">Product</th>
                         <th className="text-right px-3 py-2 font-medium text-muted-foreground">Qty Sold</th>
-                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Revenue</th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Gross Revenue</th>
                         <th className="text-left px-3 py-2 font-medium text-muted-foreground">Rep</th>
                       </tr>
                     </thead>

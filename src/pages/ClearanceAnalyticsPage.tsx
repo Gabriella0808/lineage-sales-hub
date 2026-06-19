@@ -181,7 +181,7 @@ export default function ClearanceAnalyticsPage() {
         </Card>
         <Card className="p-4 space-y-1">
           <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-            <DollarSign className="h-3 w-3" /> Revenue
+            <DollarSign className="h-3 w-3" /> Gross Revenue
           </div>
           <p className="text-2xl font-semibold tabular-nums">
             ${summary.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -229,7 +229,7 @@ export default function ClearanceAnalyticsPage() {
                       Total Units
                     </th>
                     <th className="text-right px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-                      Revenue
+                      Gross Revenue
                     </th>
                     <th className="w-8" />
                   </tr>

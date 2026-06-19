@@ -209,7 +209,7 @@ export default function UpNextTasksWidget() {
           <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px] items-center bg-muted/40 text-[11px] uppercase tracking-wide text-muted-foreground font-semibold border-b border-border">
             <div className="border-r border-border h-full" />
             <div className="px-3 py-1.5 border-r border-border">Task</div>
-            <div className="px-2 py-1.5 text-center border-r border-border">Updates</div>
+            <div className="px-1 py-1.5 text-center border-r border-border" />
             <div className="px-2 py-1.5 text-center border-r border-border">Responsible</div>
             <div className="px-2 py-1.5 text-center border-r border-border">Status</div>
             <div className="px-2 py-1.5 text-center">Due date</div>

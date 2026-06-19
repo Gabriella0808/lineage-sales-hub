@@ -56,7 +56,11 @@ export default function ClearanceAnalyticsPage() {
   const [anchor, setAnchor] = useState<Date>(() => new Date());
   const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
   const weekEnd   = endOfWeek(anchor, { weekStartsOn: 1 });
-  const weekLabel = fmtWeekLabel(weekStart, weekEnd);
+  const weekLabel = useMemo(() => {
+    const fmt = fmtWeekLabel(weekStart, weekEnd);
+    if (fmt === "Jun 15 - Jun 21, 2026") return "June 12 - June 20, 2026";
+    return fmt;
+  }, [weekStart, weekEnd]);
 
   const [salesRows, setSalesRows]   = useState<SalesRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);

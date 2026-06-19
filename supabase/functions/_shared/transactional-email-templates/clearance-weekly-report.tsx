@@ -66,7 +66,7 @@ const ClearanceWeeklyReportEmail = ({
                 </td>
                 <td style={summaryCellBorder}>
                   <div style={summaryNum}>{fmt(totalRevenue)}</div>
-                  <div style={summaryLabel}>Revenue</div>
+                  <div style={summaryLabel}>Gross Revenue</div>
                 </td>
                 <td style={summaryCellBorder}>
                   <div style={summaryNum}>{rows.length}</div>
@@ -98,7 +98,7 @@ const ClearanceWeeklyReportEmail = ({
                     <tr>
                       <th style={th}>Collection</th>
                       <th style={thNum}>Units</th>
-                      <th style={thNum}>Revenue</th>
+                      <th style={thNum}>Gross Revenue</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -286,48 +286,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Up Next Tasks */}
-      <div className="glass-card p-4 sm:p-6 mb-6">
-        <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
-          <ListChecks className="h-5 w-5 text-accent" /> Up Next
-        </h3>
-        {tasksLoading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
-          </div>
-        ) : upNextTasks.length > 0 ? (
-          <ul className="space-y-1">
-            {upNextTasks.map((task: any) => {
-              const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().toDateString());
-              const statusMeta: Record<string, { label: string; bg: string; text: string }> = {
-                todo: { label: "To Do", bg: "bg-muted", text: "text-muted-foreground" },
-                in_progress: { label: "In Progress", bg: "bg-accent", text: "text-accent-foreground" },
-                blocked: { label: "Blocked", bg: "bg-destructive", text: "text-destructive-foreground" },
-              };
-              const meta = statusMeta[task.status] || statusMeta.todo;
-              return (
-                <li key={task.id} className="flex items-center gap-3 sm:gap-4 py-2.5 sm:py-3 border-b border-border/40 last:border-0">
-                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold truncate">{task.title}</p>
-                    <p className={`text-[11px] ${isOverdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                      {task.due_date ? `Due ${format(parseISO(task.due_date), 'MMM d, yyyy')}` : 'No due date'}
-                      {isOverdue ? " · Overdue" : ""}
-                    </p>
-                  </div>
-                  <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.bg} ${meta.text}`}>
-                    {meta.label}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">No upcoming tasks.</p>
-        )}
-      </div>
+      {/* Up Next Tasks - same UI/functionality as My Tasks */}
+      <UpNextTasksWidget />
 
       {/* Row: Top Dealers by Revenue */}
       <div className="mb-6">

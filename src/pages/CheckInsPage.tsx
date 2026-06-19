@@ -80,7 +80,11 @@ const TEAM_MEMBERS: {
   {
     id: "will",
     name: "Will Grisack",
-    managerIds: ["fc3184b3-848c-4921-8770-46127a2821bf"],
+    // Both Will manager records (Will Grisack + legacy "Will") map to this owner
+    managerIds: [
+      "fc3184b3-848c-4921-8770-46127a2821bf",
+      "3b3de88e-5bfd-482b-9c26-af5003a79bba",
+    ],
     repOwners: ["will"],
     states: [],
     ownerOnly: true,
@@ -88,7 +92,10 @@ const TEAM_MEMBERS: {
   {
     id: "mateo",
     name: "Mateo De Lisa",
-    managerIds: ["b291385c-e5db-470c-93d3-9e034361b3d4"],
+    managerIds: [
+      "b291385c-e5db-470c-93d3-9e034361b3d4",
+      "20affa59-6b52-4fc9-8375-e068bc0e2a6d",
+    ],
     repOwners: ["mateo"],
     states: [],
     ownerOnly: true,
@@ -104,12 +111,16 @@ const TEAM_MEMBERS: {
   {
     id: "justin",
     name: "Kate Jones",
-    managerIds: ["970f22fb-f3bf-4c14-9b11-ce399b71b70f"],
+    managerIds: [
+      "970f22fb-f3bf-4c14-9b11-ce399b71b70f",
+      "9ee7a284-0982-4cd6-94d4-288d9f1e7f71",
+    ],
     repOwners: ["justin"],
     states: [],
     ownerOnly: true,
   },
 ];
+
 
 // Returns true when a dealer belongs to the given team member, matching by
 // manager_id (set during sync/import) OR legacy rep_owner string.

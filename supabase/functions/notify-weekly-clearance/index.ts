@@ -141,10 +141,47 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Recipient list - TESTING: only testEmail or Gabriella.
-    const recipients = testEmail
-      ? [{ name: testEmail.split("@")[0], email: testEmail }]
-      : [{ name: "Gabriella", email: "gabriella@lineage-collections.com" }];
+    // 4. Recipient list
+    let recipients: { name: string; email: string }[];
+    if (testEmail) {
+      recipients = [{ name: testEmail.split("@")[0], email: testEmail }];
+    } else {
+      const emailMap = new Map<string, string>(); // lowerEmail -> name
+      const addRecipient = (email?: string | null, name?: string | null) => {
+        if (!email) return;
+        const e = email.trim().toLowerCase();
+        if (!e || !e.includes("@")) return;
+        if (!emailMap.has(e)) emailMap.set(e, name?.trim() || e.split("@")[0]);
+      };
+
+      // Sales reps
+      const { data: reps } = await supabase
+        .from("sales_reps")
+        .select("name, email")
+        .not("email", "is", null);
+      (reps ?? []).forEach((r: any) => addRecipient(r.email, r.name));
+
+      // Managers
+      const { data: mgrs } = await supabase
+        .from("managers")
+        .select("name, email")
+        .not("email", "is", null);
+      (mgrs ?? []).forEach((m: any) => addRecipient(m.email, m.name));
+
+      // Admins (auth.users via admin API, joined with user_roles)
+      const { data: adminRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+      for (const ar of adminRoles ?? []) {
+        const { data: u } = await (supabase.auth.admin as any).getUserById((ar as any).user_id);
+        const email = u?.user?.email;
+        const fullName = u?.user?.user_metadata?.full_name;
+        if (email) addRecipient(email, fullName ?? email.split("@")[0]);
+      }
+
+      recipients = Array.from(emailMap.entries()).map(([email, name]) => ({ email, name }));
+    }
 
     const supaUrl = Deno.env.get("SUPABASE_URL")!;
     let emailed = 0;

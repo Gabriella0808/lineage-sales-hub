@@ -128,9 +128,9 @@ export default function CrmNewAccountPage() {
             </div>
             <div><L>Contact first name</L><Input value={f.contact_first_name} onChange={(e) => set("contact_first_name", e.target.value)} /></div>
             <div><L>Contact last name</L><Input value={f.contact_last_name} onChange={(e) => set("contact_last_name", e.target.value)} /></div>
-            <div><L>Main phone</L><Input value={f.main_phone} onChange={(e) => set("main_phone", e.target.value)} /></div>
+            <div><L>Main phone</L><Input type="tel" value={f.main_phone} onChange={(e) => set("main_phone", e.target.value)} maxLength={30} /></div>
             <div><L>Email</L><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></div>
-            <div className="sm:col-span-2"><L>Website</L><Input value={f.website} onChange={(e) => set("website", e.target.value)} placeholder="https://" /></div>
+            <div className="sm:col-span-2"><L>Website</L><Input type="url" value={f.website} onChange={(e) => set("website", e.target.value)} placeholder="https://" /></div>
             <div className="sm:col-span-2"><L>Street address</L><Input value={f.street_1} onChange={(e) => set("street_1", e.target.value)} /></div>
             <div><L>City</L><Input value={f.city} onChange={(e) => set("city", e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-2">

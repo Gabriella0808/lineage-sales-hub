@@ -1236,7 +1236,10 @@ export default function TasksPage() {
                               <Checkbox
                                 checked={checked}
                                 onCheckedChange={(val) => {
-                                  if (val) setDueFilter(opt.value as DueFilter);
+                                  if (val) {
+                                    setDueFilter(opt.value as DueFilter);
+                                    setOpenFilter(null);
+                                  }
                                 }}
                               />
                               <span className="text-xs">{opt.label}</span>

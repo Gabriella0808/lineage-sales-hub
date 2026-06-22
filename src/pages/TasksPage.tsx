@@ -1198,7 +1198,7 @@ export default function TasksPage() {
                       {statusFilter.length > 0 && (
                         <button
                           className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
-                          onClick={() => setStatusFilter([])}
+                          onClick={() => { setStatusFilter([]); setOpenFilter(null); }}
                         >
                           Clear filters
                         </button>

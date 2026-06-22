@@ -910,7 +910,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[55vh]">
             {display === "monthly" ? (
               <MonthlyTable
                 rows={aggregation.rows}

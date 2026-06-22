@@ -24,6 +24,8 @@ export default function CrmNewAccountPage() {
     brand: "Cabinet Beds" as Brand,
     assigned_rep_id: "none",
     assigned_manager_id: "none",
+    rep_owner: "none",
+    buying_group: "none",
     contact_first_name: "",
     contact_last_name: "",
     main_phone: "",
@@ -36,6 +38,13 @@ export default function CrmNewAccountPage() {
     notes: "",
   });
 
+  const OWNERS = [
+    { id: "will", name: "Will Grisack" },
+    { id: "mateo", name: "Mateo" },
+    { id: "chris", name: "Chris" },
+    { id: "justin", name: "Justin" },
+  ] as const;
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.company_name.trim()) {
@@ -46,6 +55,8 @@ export default function CrmNewAccountPage() {
       { ...f,
         assigned_rep_id: f.assigned_rep_id === "none" ? null : f.assigned_rep_id,
         assigned_manager_id: f.assigned_manager_id === "none" ? null : f.assigned_manager_id,
+        rep_owner: f.rep_owner === "none" ? null : f.rep_owner,
+        buying_group: f.buying_group === "none" ? null : f.buying_group,
       } as any,
       {
         onSuccess: (acct) => {
@@ -96,11 +107,30 @@ export default function CrmNewAccountPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div><L>Owner</L>
+              <Select value={f.rep_owner} onValueChange={(v) => set("rep_owner", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned</SelectItem>
+                  {OWNERS.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><L>Buying group</L>
+              <Select value={f.buying_group} onValueChange={(v) => set("buying_group", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nothing</SelectItem>
+                  <SelectItem value="fmg">FMG</SelectItem>
+                  <SelectItem value="furniture_first">Furniture First</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div><L>Contact first name</L><Input value={f.contact_first_name} onChange={(e) => set("contact_first_name", e.target.value)} /></div>
             <div><L>Contact last name</L><Input value={f.contact_last_name} onChange={(e) => set("contact_last_name", e.target.value)} /></div>
-            <div><L>Main phone</L><Input value={f.main_phone} onChange={(e) => set("main_phone", e.target.value)} /></div>
+            <div><L>Main phone</L><Input type="tel" value={f.main_phone} onChange={(e) => set("main_phone", e.target.value)} maxLength={30} /></div>
             <div><L>Email</L><Input type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></div>
-            <div className="sm:col-span-2"><L>Website</L><Input value={f.website} onChange={(e) => set("website", e.target.value)} placeholder="https://" /></div>
+            <div className="sm:col-span-2"><L>Website</L><Input type="url" value={f.website} onChange={(e) => set("website", e.target.value)} placeholder="https://" /></div>
             <div className="sm:col-span-2"><L>Street address</L><Input value={f.street_1} onChange={(e) => set("street_1", e.target.value)} /></div>
             <div><L>City</L><Input value={f.city} onChange={(e) => set("city", e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-2">

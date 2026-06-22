@@ -1007,8 +1007,8 @@ function TotalTable({
           <tr><td colSpan={showComparison ? 5 : 2} className="p-8 text-center text-muted-foreground text-sm">No data for the selected filters.</td></tr>
         )}
         {rows.length > 0 && (
-          <tr className="border-t-2 font-semibold bg-muted/20">
-            <td className="p-3 sticky left-0 bg-muted/20">Total</td>
+          <tr className="border-t-2 font-semibold bg-card sticky bottom-0 z-10">
+            <td className="p-3 sticky left-0 bg-card z-20">Total</td>
             <td className="p-3 text-right tabular-nums">{formatCurrency(totalP)}</td>
             {showComparison && <td className="p-3 text-right tabular-nums">{formatCurrency(totalC)}</td>}
             {showComparison && <td className="p-3 text-right tabular-nums">{formatCurrency(totalP - totalC)}</td>}

@@ -251,6 +251,7 @@ export default function CaptureLeadsPage() {
         contact_last_name: lastName,
         main_phone: leadForm.phone.trim() || null,
         email: leadForm.email.trim() || null,
+        street_1: leadForm.address.trim() || null,
         notes: leadForm.notes.trim() || null,
       }).eq("id", existingCrmAccountId);
     } else {
@@ -265,6 +266,7 @@ export default function CaptureLeadsPage() {
         contact_last_name: lastName,
         main_phone: leadForm.phone.trim() || null,
         email: leadForm.email.trim() || null,
+        street_1: leadForm.address.trim() || null,
         notes: leadForm.notes.trim() || null,
         created_by: user?.id ?? null,
       }).select("id").single();

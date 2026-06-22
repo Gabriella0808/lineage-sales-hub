@@ -124,6 +124,10 @@ export default function TaskBoardsView() {
   const [addingGroupId, setAddingGroupId] = useState<string | null>(null);
   const [newItemTitle, setNewItemTitle] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status[]>([]);
+  const [contextQuery, setContextQuery] = useState("");
+  const [responsibleFilter, setResponsibleFilter] = useState<string[]>([]);
+  const [dueFilter, setDueFilter] = useState<DueFilter>("any");
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatesTaskId, setUpdatesTaskId] = useState<string | null>(null);
   const [updateCounts, setUpdateCounts] = useState<Record<string, number>>({});

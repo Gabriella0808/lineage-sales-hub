@@ -63,10 +63,9 @@ export function InvoiceDetailSheet({
   const hasCompare = !!(cFromStr && cToStr);
 
   const compLabel = hasCompare
-    ? format(compareFrom!, "yyyy") === format(compareTo!, "yyyy")
-      ? format(compareFrom!, "yyyy")
-      : `${format(compareFrom!, "yyyy")}---${format(compareTo!, "yyyy")}`
+    ? `${format(compareFrom!, "MMM d, yyyy")} – ${format(compareTo!, "MMM d, yyyy")}`
     : null;
+  const currentLabel = `${format(from, "MMM d, yyyy")} – ${format(to, "MMM d, yyyy")}`;
 
 
   const fetchLines = async (fStr: string, tStr: string): Promise<InvoiceLine[]> => {

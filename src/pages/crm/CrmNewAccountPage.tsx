@@ -24,6 +24,8 @@ export default function CrmNewAccountPage() {
     brand: "Cabinet Beds" as Brand,
     assigned_rep_id: "none",
     assigned_manager_id: "none",
+    rep_owner: "none",
+    buying_group: "none",
     contact_first_name: "",
     contact_last_name: "",
     main_phone: "",
@@ -36,6 +38,13 @@ export default function CrmNewAccountPage() {
     notes: "",
   });
 
+  const OWNERS = [
+    { id: "will", name: "Will Grisack" },
+    { id: "mateo", name: "Mateo" },
+    { id: "chris", name: "Chris" },
+    { id: "justin", name: "Justin" },
+  ] as const;
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.company_name.trim()) {
@@ -46,6 +55,8 @@ export default function CrmNewAccountPage() {
       { ...f,
         assigned_rep_id: f.assigned_rep_id === "none" ? null : f.assigned_rep_id,
         assigned_manager_id: f.assigned_manager_id === "none" ? null : f.assigned_manager_id,
+        rep_owner: f.rep_owner === "none" ? null : f.rep_owner,
+        buying_group: f.buying_group === "none" ? null : f.buying_group,
       } as any,
       {
         onSuccess: (acct) => {

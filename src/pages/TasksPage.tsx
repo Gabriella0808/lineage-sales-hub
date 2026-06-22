@@ -1086,7 +1086,7 @@ export default function TasksPage() {
                       {contextQuery.trim() && (
                         <button
                           className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
-                          onClick={() => setContextQuery("")}
+                          onClick={() => { setContextQuery(""); setOpenFilter(null); }}
                         >
                           Clear filter
                         </button>

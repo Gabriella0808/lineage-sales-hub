@@ -109,6 +109,7 @@ interface BoardTask {
   user_id: string;
   assigned_user_id: string | null;
   is_sop?: boolean;
+  created_at?: string;
 }
 
 export default function TaskBoardsView() {

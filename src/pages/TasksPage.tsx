@@ -1063,7 +1063,7 @@ export default function TasksPage() {
               <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="px-2 py-1.5 border-r border-border" />
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover>
+                  <Popover open={openFilter === "item"} onOpenChange={(open) => setOpenFilter(open ? "item" : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Item

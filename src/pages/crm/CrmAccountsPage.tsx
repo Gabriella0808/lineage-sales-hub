@@ -437,7 +437,6 @@ export default function CrmAccountsPage() {
               <DropdownMenuCheckboxItem
                 checked={bulkBrands.length === BRANDS.length}
                 onCheckedChange={() => setBulkBrands(bulkBrands.length === BRANDS.length ? [] : [...BRANDS])}
-                onSelect={(e) => e.preventDefault()}
               >
                 All brands
               </DropdownMenuCheckboxItem>
@@ -447,7 +446,6 @@ export default function CrmAccountsPage() {
                   key={b}
                   checked={bulkBrands.includes(b)}
                   onCheckedChange={() => setBulkBrands(bulkBrands.includes(b) ? bulkBrands.filter((x) => x !== b) : [...bulkBrands, b])}
-                  onSelect={(e) => e.preventDefault()}
                 >
                   {b}
                 </DropdownMenuCheckboxItem>

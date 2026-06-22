@@ -203,6 +203,7 @@ export default function TasksPage() {
   const [responsibleFilter, setResponsibleFilter] = useState<string[]>([]);
   const [contextQuery, setContextQuery] = useState("");
   const [showCompleted, setShowCompleted] = useState(false);
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
 
   // ---- Bulk select ----
   const [selectMode, setSelectMode] = useState(false);
@@ -324,6 +325,7 @@ export default function TasksPage() {
     setBoardFilter([]);
     setResponsibleFilter([]);
     setContextQuery("");
+    setOpenFilter(null);
   };
 
   const matchesDue = (t: Task): boolean => {
@@ -1061,7 +1063,7 @@ export default function TasksPage() {
               <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="px-2 py-1.5 border-r border-border" />
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover>
+                  <Popover open={openFilter === "item"} onOpenChange={(open) => setOpenFilter(open ? "item" : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Item
@@ -1084,7 +1086,7 @@ export default function TasksPage() {
                       {contextQuery.trim() && (
                         <button
                           className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
-                          onClick={() => setContextQuery("")}
+                          onClick={() => { setContextQuery(""); setOpenFilter(null); }}
                         >
                           Clear filter
                         </button>
@@ -1096,7 +1098,7 @@ export default function TasksPage() {
                   <MessageSquarePlus className="h-3.5 w-3.5 inline" />
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover>
+                  <Popover open={openFilter === "responsible"} onOpenChange={(open) => setOpenFilter(open ? "responsible" : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Responsible
@@ -1118,6 +1120,7 @@ export default function TasksPage() {
                               setResponsibleFilter((prev) =>
                                 val ? [...prev, "__unassigned__"] : prev.filter((x) => x !== "__unassigned__")
                               );
+                              setOpenFilter(null);
                             }}
                           />
                           <span className="text-xs">Unassigned</span>
@@ -1137,6 +1140,7 @@ export default function TasksPage() {
                                     setResponsibleFilter((prev) =>
                                       val ? [...prev, a.user_id] : prev.filter((x) => x !== a.user_id)
                                     );
+                                    setOpenFilter(null);
                                   }}
                                 />
                                 <span className="text-xs">{a.full_name || a.email}</span>
@@ -1147,7 +1151,7 @@ export default function TasksPage() {
                       {responsibleFilter.length > 0 && (
                         <button
                           className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
-                          onClick={() => setResponsibleFilter([])}
+                          onClick={() => { setResponsibleFilter([]); setOpenFilter(null); }}
                         >
                           Clear filters
                         </button>
@@ -1156,7 +1160,7 @@ export default function TasksPage() {
                   </Popover>
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover>
+                  <Popover open={openFilter === "status"} onOpenChange={(open) => setOpenFilter(open ? "status" : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Status
@@ -1181,6 +1185,7 @@ export default function TasksPage() {
                                   setStatusFilter((prev) =>
                                     val ? [...prev, c.key] : prev.filter((x) => x !== c.key)
                                   );
+                                  setOpenFilter(null);
                                 }}
                               />
                               <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.pillBg} ${c.pillText}`}>
@@ -1193,7 +1198,7 @@ export default function TasksPage() {
                       {statusFilter.length > 0 && (
                         <button
                           className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
-                          onClick={() => setStatusFilter([])}
+                          onClick={() => { setStatusFilter([]); setOpenFilter(null); }}
                         >
                           Clear filters
                         </button>
@@ -1202,7 +1207,7 @@ export default function TasksPage() {
                   </Popover>
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover>
+                  <Popover open={openFilter === "due"} onOpenChange={(open) => setOpenFilter(open ? "due" : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Due date
@@ -1231,7 +1236,10 @@ export default function TasksPage() {
                               <Checkbox
                                 checked={checked}
                                 onCheckedChange={(val) => {
-                                  if (val) setDueFilter(opt.value as DueFilter);
+                                  if (val) {
+                                    setDueFilter(opt.value as DueFilter);
+                                    setOpenFilter(null);
+                                  }
                                 }}
                               />
                               <span className="text-xs">{opt.label}</span>
@@ -1242,7 +1250,7 @@ export default function TasksPage() {
                       {dueFilter !== "any" && (
                         <button
                           className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
-                          onClick={() => setDueFilter("any")}
+                          onClick={() => { setDueFilter("any"); setOpenFilter(null); }}
                         >
                           Clear filter
                         </button>
@@ -1251,7 +1259,7 @@ export default function TasksPage() {
                   </Popover>
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover>
+                  <Popover open={openFilter === "board"} onOpenChange={(open) => setOpenFilter(open ? "board" : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Board
@@ -1276,6 +1284,7 @@ export default function TasksPage() {
                                   setBoardFilter((prev) =>
                                     val ? [...prev, b.id] : prev.filter((x) => x !== b.id)
                                   );
+                                  setOpenFilter(null);
                                 }}
                               />
                               <span className="flex items-center gap-1.5">
@@ -1292,7 +1301,7 @@ export default function TasksPage() {
                       {boardFilter.length > 0 && (
                         <button
                           className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
-                          onClick={() => setBoardFilter([])}
+                          onClick={() => { setBoardFilter([]); setOpenFilter(null); }}
                         >
                           Clear filters
                         </button>

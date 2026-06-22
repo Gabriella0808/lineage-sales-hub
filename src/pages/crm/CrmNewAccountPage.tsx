@@ -107,6 +107,25 @@ export default function CrmNewAccountPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div><L>Owner</L>
+              <Select value={f.rep_owner} onValueChange={(v) => set("rep_owner", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned</SelectItem>
+                  {OWNERS.map((o) => <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><L>Buying group</L>
+              <Select value={f.buying_group} onValueChange={(v) => set("buying_group", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nothing</SelectItem>
+                  <SelectItem value="fmg">FMG</SelectItem>
+                  <SelectItem value="furniture_first">Furniture First</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div><L>Contact first name</L><Input value={f.contact_first_name} onChange={(e) => set("contact_first_name", e.target.value)} /></div>
             <div><L>Contact last name</L><Input value={f.contact_last_name} onChange={(e) => set("contact_last_name", e.target.value)} /></div>
             <div><L>Main phone</L><Input value={f.main_phone} onChange={(e) => set("main_phone", e.target.value)} /></div>

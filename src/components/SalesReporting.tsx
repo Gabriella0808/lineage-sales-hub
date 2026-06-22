@@ -965,8 +965,8 @@ function TotalTable({
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b bg-muted/30">
-          <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-muted/30">{leftHeader}</th>
+        <tr className="border-b bg-card sticky top-0 z-20">
+          <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-card z-20">{leftHeader}</th>
           <th className="text-right p-3 font-medium text-muted-foreground">Primary</th>
           {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Comparative</th>}
           {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">-</th>}

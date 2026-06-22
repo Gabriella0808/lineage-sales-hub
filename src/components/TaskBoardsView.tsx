@@ -109,6 +109,7 @@ interface BoardTask {
   user_id: string;
   assigned_user_id: string | null;
   is_sop?: boolean;
+  created_at?: string;
 }
 
 export default function TaskBoardsView() {
@@ -168,8 +169,9 @@ export default function TaskBoardsView() {
       supabase.from("task_board_groups" as any).select("*").order("position", { ascending: true }),
       supabase
         .from("manager_tasks")
-        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id,is_sop")
-        .not("board_id", "is", null),
+        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id,is_sop,created_at")
+        .not("board_id", "is", null)
+        .order("created_at", { ascending: false }),
       supabase.rpc("assignable_users"),
     ]);
     if (!bRes.error) {
@@ -237,13 +239,13 @@ export default function TaskBoardsView() {
           if (payload.eventType === "INSERT") {
             if (!newRow?.board_id) return;
             setTasks((prev) =>
-              prev.some((t) => t.id === newRow.id) ? prev : [...prev, newRow as BoardTask]
+              prev.some((t) => t.id === newRow.id) ? prev : [newRow as BoardTask, ...prev]
             );
           } else if (payload.eventType === "UPDATE") {
             setTasks((prev) => {
               const exists = prev.some((t) => t.id === newRow.id);
               if (!exists) {
-                return newRow?.board_id ? [...prev, newRow as BoardTask] : prev;
+                return newRow?.board_id ? [newRow as BoardTask, ...prev] : prev;
               }
               if (!newRow?.board_id) return prev.filter((t) => t.id !== newRow.id);
               return prev.map((t) => (t.id === newRow.id ? { ...t, ...newRow } : t));

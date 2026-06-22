@@ -62,9 +62,7 @@ export function InvoiceDetailSheet({
   const cToStr = compareTo ? format(compareTo, "yyyy-MM-dd") : null;
   const hasCompare = !!(cFromStr && cToStr);
 
-  const compLabel = hasCompare
-    ? `${format(compareFrom!, "MMM d, yyyy")} – ${format(compareTo!, "MMM d, yyyy")}`
-    : null;
+  const compLabel = hasCompare ? "vs" : null;
   const currentLabel = `${format(from, "MMM d, yyyy")} – ${format(to, "MMM d, yyyy")}`;
 
 
@@ -425,7 +423,7 @@ function StatCard({ label, value, compValue, compLabel, delta }: { label: string
       <p className="text-lg font-semibold tabular-nums">{value}</p>
       {compValue !== undefined && (
         <p className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
-          {compLabel ? `${compLabel}: ` : "vs "}{compValue}
+          {compLabel ?? "vs"} {compValue}
           {delta !== null && delta !== undefined && (
             <span className={`ml-1 ${delta >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
               {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
@@ -462,7 +460,7 @@ function BreakdownList({ rows, showComp, compLabel }: { rows: { label: string; t
           <th className="py-1 text-right font-normal">Amount</th>
           {showComp && (
             <>
-              <th className="py-1 text-right font-normal">{compLabel ?? "Comp"}</th>
+              <th className="py-1 text-right font-normal">vs</th>
               <th className="py-1 text-right font-normal">-</th>
             </>
           )}

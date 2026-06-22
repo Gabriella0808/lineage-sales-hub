@@ -245,6 +245,7 @@ export default function TasksPage() {
     const { data, error } = await supabase
       .from("manager_tasks")
       .insert({
+        id: tempId,
         title: title.trim(),
         status: "todo",
         user_id: user.id,
@@ -1186,12 +1187,13 @@ export default function TasksPage() {
                   ) : (
                     <ul>
                       {(() => {
-                        const submit = async () => {
-                          if (newListItemTitle.trim()) {
-                            await quickCreateListTask(newListItemTitle);
+                        const submit = (close: boolean) => {
+                          const title = newListItemTitle.trim();
+                          if (title) {
+                            void quickCreateListTask(title);
                           }
                           setNewListItemTitle("");
-                          setAddingListItem(false);
+                          if (close) setAddingListItem(false);
                         };
                         return (
                           <li
@@ -1211,13 +1213,16 @@ export default function TasksPage() {
                                   value={newListItemTitle}
                                   onChange={(e) => setNewListItemTitle(e.target.value)}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") submit();
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      submit(false);
+                                    }
                                     if (e.key === "Escape") {
                                       setNewListItemTitle("");
                                       setAddingListItem(false);
                                     }
                                   }}
-                                  onBlur={submit}
+                                  onBlur={() => submit(true)}
                                   placeholder="Enter item name and press Enter"
                                   className="h-7 text-sm"
                                 />

@@ -628,15 +628,40 @@ export default function TaskBoardsView() {
     const group = groups.find((g) => g.id === groupId);
     const inferred = inferStatusFromGroupName(group?.name);
     const finalStatus = inferred ?? status;
-    const { error } = await supabase.from("manager_tasks").insert({
+    const tempId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const optimistic: BoardTask = {
+      id: tempId,
       title: title.trim(),
+      description: null,
       status: finalStatus,
+      due_date: null,
       board_id: activeBoardId,
       group_id: groupId,
       user_id: user.id,
-    });
-    if (error) {
-      toast({ title: "Create failed", description: error.message, variant: "destructive" });
+      assigned_user_id: null,
+      is_sop: false,
+      created_at: now,
+    };
+    setTasks((prev) => [optimistic, ...prev]);
+    const { data, error } = await supabase
+      .from("manager_tasks")
+      .insert({
+        id: tempId,
+        title: title.trim(),
+        status: finalStatus,
+        board_id: activeBoardId,
+        group_id: groupId,
+        user_id: user.id,
+        visibility: "public",
+      })
+      .select("*")
+      .single();
+    if (error || !data) {
+      setTasks((prev) => prev.filter((t) => t.id !== tempId));
+      toast({ title: "Create failed", description: error?.message ?? "Unknown error", variant: "destructive" });
+    } else {
+      setTasks((prev) => prev.map((t) => (t.id === tempId ? (data as BoardTask) : t)));
     }
   };
   const inferStatusFromGroupName = (name: string | undefined): Status | null => {
@@ -1021,12 +1046,13 @@ export default function TaskBoardsView() {
 
             const renderAddRow = (groupId: string, status: Status = "todo") => {
               const isActive = addingGroupId === groupId;
-              const submit = async () => {
-                if (newItemTitle.trim()) {
-                  await quickCreateTask(groupId, newItemTitle, status);
+              const submit = (close: boolean) => {
+                const title = newItemTitle.trim();
+                if (title) {
+                  void quickCreateTask(groupId, title, status);
                 }
                 setNewItemTitle("");
-                setAddingGroupId(null);
+                if (close) setAddingGroupId(null);
               };
               return (
                 <li
@@ -1046,13 +1072,16 @@ export default function TaskBoardsView() {
                         value={newItemTitle}
                         onChange={(e) => setNewItemTitle(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") submit();
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            submit(false);
+                          }
                           if (e.key === "Escape") {
                             setNewItemTitle("");
                             setAddingGroupId(null);
                           }
                         }}
-                        onBlur={submit}
+                        onBlur={() => submit(true)}
                         placeholder="Enter item name and press Enter"
                         className="h-7 text-sm"
                       />

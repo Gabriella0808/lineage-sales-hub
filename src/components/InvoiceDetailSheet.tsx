@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -62,7 +62,7 @@ export function InvoiceDetailSheet({
   const cToStr = compareTo ? format(compareTo, "yyyy-MM-dd") : null;
   const hasCompare = !!(cFromStr && cToStr);
 
-  const compLabel: React.ReactNode = hasCompare ? (
+  const compLabel: ReactNode = hasCompare ? (
     <>
       vs <span className="text-warning">{format(compareFrom!, "MMM d, yyyy")} – {format(compareTo!, "MMM d, yyyy")}</span>
     </>

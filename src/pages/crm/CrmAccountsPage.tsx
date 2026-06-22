@@ -380,7 +380,6 @@ export default function CrmAccountsPage() {
             <DropdownMenuCheckboxItem
               checked={brandFilters.length === 0}
               onCheckedChange={() => clearBrands()}
-              onSelect={(e) => e.preventDefault()}
             >
               All brands
             </DropdownMenuCheckboxItem>
@@ -390,7 +389,6 @@ export default function CrmAccountsPage() {
                 key={b}
                 checked={brandFilters.includes(b)}
                 onCheckedChange={() => toggleBrand(b)}
-                onSelect={(e) => e.preventDefault()}
               >
                 {b}
               </DropdownMenuCheckboxItem>

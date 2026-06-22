@@ -49,6 +49,7 @@ type Lead = {
   status: string | null;
   market_id: string | null;
   notes: string | null;
+  address: string | null;
   created_at: string;
   prospect_types?: string[] | null;
   crm_account_id?: string | null;
@@ -64,7 +65,7 @@ const fmt = (n: number | null) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);
 
 const emptyLead = {
-  contact_name: "", dealer: "", email: "", additional_email: "", phone: "",
+  contact_name: "", dealer: "", email: "", additional_email: "", phone: "", address: "",
   sales_rep: "", sales_rep_id: "", rep_email: "", product_interest: "", order_amount: "", status: "New", notes: "",
   prospect_types: [] as string[],
   followup_enabled: false, followup_title: "", followup_description: "", followup_due_date: "",
@@ -200,6 +201,7 @@ export default function CaptureLeadsPage() {
       dealer: l.dealer ?? "",
       email: l.email ?? "",
       phone: l.phone ?? "",
+      address: l.address ?? "",
       sales_rep: l.sales_rep ?? "",
       sales_rep_id: matchedRep?.id ?? "",
       rep_email: l.rep_email ?? "",
@@ -249,6 +251,7 @@ export default function CaptureLeadsPage() {
         contact_last_name: lastName,
         main_phone: leadForm.phone.trim() || null,
         email: leadForm.email.trim() || null,
+        street_1: leadForm.address.trim() || null,
         notes: leadForm.notes.trim() || null,
       }).eq("id", existingCrmAccountId);
     } else {
@@ -263,6 +266,7 @@ export default function CaptureLeadsPage() {
         contact_last_name: lastName,
         main_phone: leadForm.phone.trim() || null,
         email: leadForm.email.trim() || null,
+        street_1: leadForm.address.trim() || null,
         notes: leadForm.notes.trim() || null,
         created_by: user?.id ?? null,
       }).select("id").single();
@@ -286,6 +290,7 @@ export default function CaptureLeadsPage() {
         dealer: leadForm.dealer.trim() || null,
         email: leadForm.email.trim() || null,
         phone: leadForm.phone.trim() || null,
+        address: leadForm.address.trim() || null,
         sales_rep: leadForm.sales_rep.trim() || null,
         rep_email: leadForm.rep_email.trim() || null,
         product_interest: leadForm.product_interest.trim() || null,
@@ -295,7 +300,7 @@ export default function CaptureLeadsPage() {
         market_id: leadDialog,
         trade_show: market?.name ?? null,
         prospect_types: leadForm.prospect_types ?? [],
-      }).eq("id", editingLeadIdSnapshot);
+      } as any).eq("id", editingLeadIdSnapshot);
       if (error) return toast.error(error.message);
       toast.success("Lead updated");
 
@@ -372,6 +377,7 @@ export default function CaptureLeadsPage() {
       dealer: leadForm.dealer.trim() || null,
       email: leadForm.email.trim() || null,
       phone: leadForm.phone.trim() || null,
+      address: leadForm.address.trim() || null,
       sales_rep: leadForm.sales_rep.trim() || null,
       rep_email: leadForm.rep_email.trim() || null,
       product_interest: leadForm.product_interest.trim() || null,
@@ -383,7 +389,7 @@ export default function CaptureLeadsPage() {
       lead_date: new Date().toISOString().slice(0, 10),
       created_by: user?.id ?? null,
       prospect_types: leadForm.prospect_types ?? [],
-    });
+    } as any);
     if (error) return toast.error(error.message);
     toast.success("Lead captured");
 
@@ -694,6 +700,16 @@ export default function CaptureLeadsPage() {
                   placeholder="Select one or more prospect types..."
                   triggerClassName="bg-transparent border border-input shadow-none"
                 />
+                {(leadForm.prospect_types || []).filter(Boolean).length > 0 && (
+                  <Field label="Address">
+                    <Textarea
+                      value={leadForm.address}
+                      onChange={(e) => setLeadForm({ ...leadForm, address: e.target.value })}
+                      rows={2}
+                      placeholder="Enter the prospect's address"
+                    />
+                  </Field>
+                )}
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Picking any type will also add this lead to the Prospects list. Leave empty to keep it as a lead only.
                 </p>
@@ -857,6 +873,7 @@ export default function CaptureLeadsPage() {
                   <DetailRow icon={Building2} label="Dealer" value={viewingLead.dealer} />
                   <DetailRow icon={Mail} label="Email" value={viewingLead.email} href={viewingLead.email ? `mailto:${viewingLead.email}` : undefined} />
                   <DetailRow icon={Phone} label="Phone" value={viewingLead.phone} href={viewingLead.phone ? `tel:${viewingLead.phone}` : undefined} />
+                  <DetailRow icon={MapPin} label="Address" value={viewingLead.address} />
                 </DetailSection>
 
                 <DetailSection title="Sales Rep">

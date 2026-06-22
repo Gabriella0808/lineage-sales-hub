@@ -201,6 +201,7 @@ export default function CaptureLeadsPage() {
       dealer: l.dealer ?? "",
       email: l.email ?? "",
       phone: l.phone ?? "",
+      address: l.address ?? "",
       sales_rep: l.sales_rep ?? "",
       sales_rep_id: matchedRep?.id ?? "",
       rep_email: l.rep_email ?? "",

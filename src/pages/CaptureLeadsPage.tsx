@@ -377,6 +377,7 @@ export default function CaptureLeadsPage() {
       dealer: leadForm.dealer.trim() || null,
       email: leadForm.email.trim() || null,
       phone: leadForm.phone.trim() || null,
+      address: leadForm.address.trim() || null,
       sales_rep: leadForm.sales_rep.trim() || null,
       rep_email: leadForm.rep_email.trim() || null,
       product_interest: leadForm.product_interest.trim() || null,
@@ -388,7 +389,7 @@ export default function CaptureLeadsPage() {
       lead_date: new Date().toISOString().slice(0, 10),
       created_by: user?.id ?? null,
       prospect_types: leadForm.prospect_types ?? [],
-    });
+    } as any);
     if (error) return toast.error(error.message);
     toast.success("Lead captured");
 

@@ -1060,7 +1060,38 @@ export default function TasksPage() {
             const columnHeader = (
               <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="px-2 py-1.5 border-r border-border" />
-                <div className="px-2 py-1.5 border-r border-border text-center">Item</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Item
+                        {contextQuery.trim() && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            1
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by item</div>
+                      <Input
+                        value={contextQuery}
+                        onChange={(e) => setContextQuery(e.target.value)}
+                        placeholder="Search title or description"
+                        className="h-8 text-xs"
+                      />
+                      {contextQuery.trim() && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => setContextQuery("")}
+                        >
+                          Clear filter
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
                   <MessageSquarePlus className="h-3.5 w-3.5 inline" />
                 </div>

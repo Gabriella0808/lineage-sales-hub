@@ -49,6 +49,7 @@ type Lead = {
   status: string | null;
   market_id: string | null;
   notes: string | null;
+  address: string | null;
   created_at: string;
   prospect_types?: string[] | null;
   crm_account_id?: string | null;

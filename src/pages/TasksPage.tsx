@@ -224,16 +224,39 @@ export default function TasksPage() {
   const [newListItemTitle, setNewListItemTitle] = useState("");
   const quickCreateListTask = async (title: string) => {
     if (!user || !title.trim()) return;
-    const { error } = await supabase.from("manager_tasks").insert({
+    const tempId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const optimistic: Task = {
+      id: tempId,
       title: title.trim(),
+      description: null,
       status: "todo",
+      due_date: null,
+      completed_at: null,
+      created_at: now,
+      assigned_manager_id: null,
+      assigned_user_id: null,
       user_id: user.id,
+      board_id: null,
+      group_id: null,
       visibility: "public",
-    });
-    if (error) {
-      toast({ title: "Create failed", description: error.message, variant: "destructive" });
+    };
+    setTasks((prev) => [optimistic, ...prev]);
+    const { data, error } = await supabase
+      .from("manager_tasks")
+      .insert({
+        title: title.trim(),
+        status: "todo",
+        user_id: user.id,
+        visibility: "public",
+      })
+      .select("*")
+      .single();
+    if (error || !data) {
+      setTasks((prev) => prev.filter((t) => t.id !== tempId));
+      toast({ title: "Create failed", description: error?.message ?? "Unknown error", variant: "destructive" });
     } else {
-      load();
+      setTasks((prev) => prev.map((t) => (t.id === tempId ? (data as Task) : t)));
     }
   };
 

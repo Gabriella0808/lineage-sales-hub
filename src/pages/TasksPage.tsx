@@ -1098,7 +1098,7 @@ export default function TasksPage() {
                   <MessageSquarePlus className="h-3.5 w-3.5 inline" />
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover>
+                  <Popover open={openFilter === "responsible"} onOpenChange={(open) => setOpenFilter(open ? "responsible" : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Responsible

@@ -62,7 +62,7 @@ const parseDateOnly = (s: string | null | undefined): Date => {
   if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0);
   return new Date(s);
 };
-import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Plus, Users, Navigation } from "lucide-react";
+import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Users, Navigation } from "lucide-react";
 import { STATE_TO_TERRITORY, STATE_NAME_TO_CODE, colorForTerritory } from "@/lib/territoryMap";
 
 // Team member -  match config. We match dealers by rep_owner (authoritative

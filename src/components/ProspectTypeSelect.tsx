@@ -96,7 +96,6 @@ export function ProspectTypeSelect(props: Props) {
                 <DropdownMenuCheckboxItem
                   checked={values.length === 0}
                   onCheckedChange={() => onChangeMulti([])}
-                  onSelect={(e) => e.preventDefault()}
                 >
                   {allLabel}
                 </DropdownMenuCheckboxItem>
@@ -110,7 +109,6 @@ export function ProspectTypeSelect(props: Props) {
                 if (set.has(NONE_VALUE)) set.delete(NONE_VALUE); else set.add(NONE_VALUE);
                 onChangeMulti(Array.from(set));
               }}
-              onSelect={(e) => e.preventDefault()}
             >
               - (No type)
             </DropdownMenuCheckboxItem>
@@ -120,7 +118,6 @@ export function ProspectTypeSelect(props: Props) {
                 key={t.id}
                 checked={values.includes(t.name)}
                 onCheckedChange={() => toggle(t.name)}
-                onSelect={(e) => e.preventDefault()}
               >
                 {t.name}
               </DropdownMenuCheckboxItem>

@@ -380,7 +380,7 @@ export function InvoiceDetailSheet({
               </Section>
             )}
 
-            <div className="grid sm:grid-cols-2 gap-6">
+            <div className="flex flex-col gap-6">
               <Section title="By Brand" count={summary.byBrand.length}>
                 <BreakdownList rows={summary.byBrand.map((b) => ({ label: b.name, total: b.total, qty: b.qty, comp: compMaps.brand.get(b.name) }))} showComp={hasCompare} compLabel={compLabel ?? undefined} />
               </Section>

@@ -203,6 +203,7 @@ export default function TasksPage() {
   const [responsibleFilter, setResponsibleFilter] = useState<string[]>([]);
   const [contextQuery, setContextQuery] = useState("");
   const [showCompleted, setShowCompleted] = useState(false);
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
 
   // ---- Bulk select ----
   const [selectMode, setSelectMode] = useState(false);

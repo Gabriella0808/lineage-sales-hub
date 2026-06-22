@@ -1250,7 +1250,7 @@ export default function TasksPage() {
                       {dueFilter !== "any" && (
                         <button
                           className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
-                          onClick={() => setDueFilter("any")}
+                          onClick={() => { setDueFilter("any"); setOpenFilter(null); }}
                         >
                           Clear filter
                         </button>

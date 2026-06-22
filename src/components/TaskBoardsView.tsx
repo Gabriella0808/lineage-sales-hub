@@ -57,7 +57,9 @@ import {
 } from "lucide-react";
 import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
 
-import { format } from "date-fns";
+import { format, addDays, endOfDay, endOfWeek, isWithinInterval, parseISO, startOfDay, startOfWeek } from "date-fns";
+
+type DueFilter = "any" | "overdue" | "today" | "this_week" | "next_7" | "none";
 import { parseDateOnly } from "@/lib/utils";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";

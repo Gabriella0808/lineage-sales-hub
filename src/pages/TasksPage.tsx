@@ -313,6 +313,7 @@ export default function TasksPage() {
     dueFilter !== "any" ||
     statusFilter.length > 0 ||
     boardFilter.length > 0 ||
+    responsibleFilter.length > 0 ||
     contextQuery.trim() !== "";
 
   const clearFilters = () => {
@@ -321,6 +322,7 @@ export default function TasksPage() {
     setDueFilter("any");
     setStatusFilter([]);
     setBoardFilter([]);
+    setResponsibleFilter([]);
     setContextQuery("");
   };
 

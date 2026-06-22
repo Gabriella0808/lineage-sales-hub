@@ -397,7 +397,7 @@ export default function TasksPage() {
   };
 
   const filteredTasks = tasks.filter(
-    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)) && (boardFilter.length === 0 || boardFilter.includes(t.board_id ?? "")) && (showCompleted || t.status !== "done"),
+    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && matchesResponsible(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)) && (boardFilter.length === 0 || boardFilter.includes(t.board_id ?? "")) && (showCompleted || t.status !== "done"),
   );
 
   const load = async () => {

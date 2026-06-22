@@ -1047,8 +1047,8 @@ function MonthlyTable({
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b bg-muted/30">
-          <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-muted/30 z-10">{leftHeader}</th>
+        <tr className="border-b bg-card sticky top-0 z-20">
+          <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-card z-20">{leftHeader}</th>
           {interleaved.map((m) => (
             <th key={m.key} className="text-right p-3 font-medium text-muted-foreground whitespace-nowrap">{m.label}</th>
           ))}

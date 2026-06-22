@@ -62,9 +62,11 @@ export function InvoiceDetailSheet({
   const cToStr = compareTo ? format(compareTo, "yyyy-MM-dd") : null;
   const hasCompare = !!(cFromStr && cToStr);
 
-  const compLabel = hasCompare
-    ? `vs ${format(compareFrom!, "MMM d, yyyy")} – ${format(compareTo!, "MMM d, yyyy")}`
-    : null;
+  const compLabel: React.ReactNode = hasCompare ? (
+    <>
+      vs <span className="text-warning">{format(compareFrom!, "MMM d, yyyy")} – {format(compareTo!, "MMM d, yyyy")}</span>
+    </>
+  ) : null;
   const currentLabel = `${format(from, "MMM d, yyyy")} – ${format(to, "MMM d, yyyy")}`;
 
 

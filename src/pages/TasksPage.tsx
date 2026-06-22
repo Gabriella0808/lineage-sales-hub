@@ -1284,6 +1284,7 @@ export default function TasksPage() {
                                   setBoardFilter((prev) =>
                                     val ? [...prev, b.id] : prev.filter((x) => x !== b.id)
                                   );
+                                  setOpenFilter(null);
                                 }}
                               />
                               <span className="flex items-center gap-1.5">

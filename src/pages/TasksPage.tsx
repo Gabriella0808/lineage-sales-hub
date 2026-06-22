@@ -1095,7 +1095,66 @@ export default function TasksPage() {
                 <div className="px-2 py-1.5 border-r border-border text-center">
                   <MessageSquarePlus className="h-3.5 w-3.5 inline" />
                 </div>
-                <div className="px-2 py-1.5 border-r border-border text-center">Responsible</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Responsible
+                        {responsibleFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {responsibleFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by responsible</div>
+                      <div className="space-y-1">
+                        <label className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                          <Checkbox
+                            checked={responsibleFilter.includes("__unassigned__")}
+                            onCheckedChange={(val) => {
+                              setResponsibleFilter((prev) =>
+                                val ? [...prev, "__unassigned__"] : prev.filter((x) => x !== "__unassigned__")
+                              );
+                            }}
+                          />
+                          <span className="text-xs">Unassigned</span>
+                        </label>
+                        {visibleAssignees
+                          .slice()
+                          .sort((a, b) =>
+                            (a.full_name || a.email || "").localeCompare(b.full_name || b.email || "")
+                          )
+                          .map((a) => {
+                            const checked = responsibleFilter.includes(a.user_id);
+                            return (
+                              <label key={a.user_id} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(val) => {
+                                    setResponsibleFilter((prev) =>
+                                      val ? [...prev, a.user_id] : prev.filter((x) => x !== a.user_id)
+                                    );
+                                  }}
+                                />
+                                <span className="text-xs">{a.full_name || a.email}</span>
+                              </label>
+                            );
+                          })}
+                      </div>
+                      {responsibleFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => setResponsibleFilter([])}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
                   <Popover>
                     <PopoverTrigger asChild>

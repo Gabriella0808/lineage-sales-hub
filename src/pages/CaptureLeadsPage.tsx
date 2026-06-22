@@ -290,6 +290,7 @@ export default function CaptureLeadsPage() {
         dealer: leadForm.dealer.trim() || null,
         email: leadForm.email.trim() || null,
         phone: leadForm.phone.trim() || null,
+        address: leadForm.address.trim() || null,
         sales_rep: leadForm.sales_rep.trim() || null,
         rep_email: leadForm.rep_email.trim() || null,
         product_interest: leadForm.product_interest.trim() || null,
@@ -299,7 +300,7 @@ export default function CaptureLeadsPage() {
         market_id: leadDialog,
         trade_show: market?.name ?? null,
         prospect_types: leadForm.prospect_types ?? [],
-      }).eq("id", editingLeadIdSnapshot);
+      } as any).eq("id", editingLeadIdSnapshot);
       if (error) return toast.error(error.message);
       toast.success("Lead updated");
 

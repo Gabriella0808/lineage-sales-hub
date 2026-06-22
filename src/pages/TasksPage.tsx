@@ -245,6 +245,7 @@ export default function TasksPage() {
     const { data, error } = await supabase
       .from("manager_tasks")
       .insert({
+        id: tempId,
         title: title.trim(),
         status: "todo",
         user_id: user.id,

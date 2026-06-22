@@ -118,7 +118,6 @@ export function ProspectTypeSelect(props: Props) {
                 key={t.id}
                 checked={values.includes(t.name)}
                 onCheckedChange={() => toggle(t.name)}
-                onSelect={(e) => e.preventDefault()}
               >
                 {t.name}
               </DropdownMenuCheckboxItem>

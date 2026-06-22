@@ -1301,7 +1301,7 @@ export default function TasksPage() {
                       {boardFilter.length > 0 && (
                         <button
                           className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
-                          onClick={() => setBoardFilter([])}
+                          onClick={() => { setBoardFilter([]); setOpenFilter(null); }}
                         >
                           Clear filters
                         </button>

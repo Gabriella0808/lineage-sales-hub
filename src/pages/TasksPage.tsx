@@ -366,6 +366,15 @@ export default function TasksPage() {
     return hay.includes(q);
   };
 
+  const matchesResponsible = (t: Task): boolean => {
+    if (responsibleFilter.length === 0) return true;
+    const ids = getAssigneeIds(t);
+    return responsibleFilter.some((id) => {
+      if (id === "__unassigned__") return ids.length === 0;
+      return ids.includes(id);
+    });
+  };
+
   const isTradeShowTask = (t: Task): boolean => {
     const desc = t.description ?? "";
     return /lead from/i.test(desc) || /\bTrade Show\b/i.test(desc) || /\bTrade Show\b/i.test(t.title);

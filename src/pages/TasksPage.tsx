@@ -1140,6 +1140,7 @@ export default function TasksPage() {
                                     setResponsibleFilter((prev) =>
                                       val ? [...prev, a.user_id] : prev.filter((x) => x !== a.user_id)
                                     );
+                                    setOpenFilter(null);
                                   }}
                                 />
                                 <span className="text-xs">{a.full_name || a.email}</span>

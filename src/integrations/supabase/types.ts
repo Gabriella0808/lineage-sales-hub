@@ -7448,6 +7448,7 @@ export type Database = {
       trade_show_leads: {
         Row: {
           additional_email: string | null
+          address: string | null
           contact_name: string | null
           created_at: string
           created_by: string | null
@@ -7472,6 +7473,7 @@ export type Database = {
         }
         Insert: {
           additional_email?: string | null
+          address?: string | null
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
@@ -7496,6 +7498,7 @@ export type Database = {
         }
         Update: {
           additional_email?: string | null
+          address?: string | null
           contact_name?: string | null
           created_at?: string
           created_by?: string | null

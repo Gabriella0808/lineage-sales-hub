@@ -1077,6 +1077,27 @@ function MonthlyTable({
             {showComparison && <td className="p-3 text-right tabular-nums text-muted-foreground">{formatCurrency(r.comparative)}</td>}
           </tr>
         ))}
+        {rows.length > 0 && (
+          <tr className="border-t-2 font-semibold bg-card sticky bottom-0 z-10">
+            <td className="p-3 sticky left-0 bg-card z-20">Total</td>
+            {interleaved.map((m) => {
+              const monthTotal = rows.reduce((s, r) => s + (r.byMonth.get(m.key) ?? 0), 0);
+              return (
+                <td key={m.key} className="p-3 text-right tabular-nums whitespace-nowrap">
+                  {formatCurrency(monthTotal)}
+                </td>
+              );
+            })}
+            <td className="p-3 text-right tabular-nums border-l">
+              {formatCurrency(rows.reduce((s, r) => s + r.primary, 0))}
+            </td>
+            {showComparison && (
+              <td className="p-3 text-right tabular-nums">
+                {formatCurrency(rows.reduce((s, r) => s + r.comparative, 0))}
+              </td>
+            )}
+          </tr>
+        )}
         {rows.length === 0 && (
           <tr><td colSpan={totalCols} className="p-8 text-center text-muted-foreground text-sm">No data for the selected filters.</td></tr>
         )}

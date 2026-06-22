@@ -1120,6 +1120,7 @@ export default function TasksPage() {
                               setResponsibleFilter((prev) =>
                                 val ? [...prev, "__unassigned__"] : prev.filter((x) => x !== "__unassigned__")
                               );
+                              setOpenFilter(null);
                             }}
                           />
                           <span className="text-xs">Unassigned</span>

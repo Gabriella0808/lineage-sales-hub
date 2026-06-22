@@ -238,13 +238,13 @@ export default function TaskBoardsView() {
           if (payload.eventType === "INSERT") {
             if (!newRow?.board_id) return;
             setTasks((prev) =>
-              prev.some((t) => t.id === newRow.id) ? prev : [...prev, newRow as BoardTask]
+              prev.some((t) => t.id === newRow.id) ? prev : [newRow as BoardTask, ...prev]
             );
           } else if (payload.eventType === "UPDATE") {
             setTasks((prev) => {
               const exists = prev.some((t) => t.id === newRow.id);
               if (!exists) {
-                return newRow?.board_id ? [...prev, newRow as BoardTask] : prev;
+                return newRow?.board_id ? [newRow as BoardTask, ...prev] : prev;
               }
               if (!newRow?.board_id) return prev.filter((t) => t.id !== newRow.id);
               return prev.map((t) => (t.id === newRow.id ? { ...t, ...newRow } : t));

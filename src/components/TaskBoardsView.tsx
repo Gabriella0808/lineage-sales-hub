@@ -168,8 +168,9 @@ export default function TaskBoardsView() {
       supabase.from("task_board_groups" as any).select("*").order("position", { ascending: true }),
       supabase
         .from("manager_tasks")
-        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id,is_sop")
-        .not("board_id", "is", null),
+        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id,is_sop,created_at")
+        .not("board_id", "is", null)
+        .order("created_at", { ascending: false }),
       supabase.rpc("assignable_users"),
     ]);
     if (!bRes.error) {

@@ -420,7 +420,7 @@ function pctDelta(cur: number, prev: number): number | null {
   return ((cur - prev) / prev) * 100;
 }
 
-function StatCard({ label, value, compValue, compLabel, delta }: { label: string; value: string; compValue?: string; compLabel?: string; delta?: number | null }) {
+function StatCard({ label, value, compValue, compLabel, delta }: { label: string; value: string; compValue?: string; compLabel?: ReactNode; delta?: number | null }) {
   return (
     <Card><CardContent className="p-3">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
@@ -451,7 +451,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
   );
 }
 
-function BreakdownList({ rows, showComp, compLabel }: { rows: { label: string; total: number; qty?: number; comp?: number }[]; showComp?: boolean; compLabel?: string }) {
+function BreakdownList({ rows, showComp, compLabel }: { rows: { label: string; total: number; qty?: number; comp?: number }[]; showComp?: boolean; compLabel?: ReactNode }) {
   if (rows.length === 0) return <p className="text-xs text-muted-foreground">-</p>;
   return (
     <table className="w-full text-xs">

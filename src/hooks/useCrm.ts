@@ -92,6 +92,8 @@ export interface CrmAccount {
   state: string | null;
   zip: string | null;
   notes: string | null;
+  rep_owner: string | null;
+  buying_group: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -325,6 +325,7 @@ export default function TasksPage() {
     setBoardFilter([]);
     setResponsibleFilter([]);
     setContextQuery("");
+    setOpenFilter(null);
   };
 
   const matchesDue = (t: Task): boolean => {

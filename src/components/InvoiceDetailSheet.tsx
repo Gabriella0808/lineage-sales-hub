@@ -462,7 +462,7 @@ function BreakdownList({ rows, showComp, compLabel }: { rows: { label: string; t
           <th className="py-1 text-right font-normal">Amount</th>
           {showComp && (
             <>
-              <th className="py-1 text-right font-normal">vs</th>
+              <th className="py-1 text-right font-normal">{compLabel ?? "vs"}</th>
               <th className="py-1 text-right font-normal">-</th>
             </>
           )}

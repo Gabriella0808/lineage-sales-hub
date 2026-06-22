@@ -1105,16 +1105,146 @@ export default function TaskBoardsView() {
             };
 
 
+            const getTaskAssigneeIds = (t: BoardTask): string[] => {
+              const ids = new Set<string>(taskAssignees[t.id] ?? []);
+              if (t.assigned_user_id) ids.add(t.assigned_user_id);
+              return [...ids];
+            };
+            const matchesContext = (t: BoardTask): boolean => {
+              const q = contextQuery.trim().toLowerCase();
+              if (!q) return true;
+              return `${t.title} ${t.description ?? ""}`.toLowerCase().includes(q);
+            };
+            const matchesResponsible = (t: BoardTask): boolean => {
+              if (responsibleFilter.length === 0) return true;
+              const ids = getTaskAssigneeIds(t);
+              return responsibleFilter.some((id) =>
+                id === "__unassigned__" ? ids.length === 0 : ids.includes(id)
+              );
+            };
+            const matchesDue = (t: BoardTask): boolean => {
+              if (dueFilter === "any") return true;
+              if (dueFilter === "none") return !t.due_date;
+              if (!t.due_date) return false;
+              const d = parseISO(t.due_date);
+              const now = new Date();
+              if (dueFilter === "overdue") return d < startOfDay(now) && t.status !== "done";
+              if (dueFilter === "today")
+                return isWithinInterval(d, { start: startOfDay(now), end: endOfDay(now) });
+              if (dueFilter === "this_week")
+                return isWithinInterval(d, {
+                  start: startOfWeek(now, { weekStartsOn: 1 }),
+                  end: endOfWeek(now, { weekStartsOn: 1 }),
+                });
+              if (dueFilter === "next_7")
+                return isWithinInterval(d, { start: startOfDay(now), end: endOfDay(addDays(now, 7)) });
+              return true;
+            };
+            const passesFilters = (t: BoardTask): boolean =>
+              matchesContext(t) && matchesResponsible(t) && matchesDue(t);
+
+            const boardAssignees = assignableUsers.filter(
+              (u) => members.some((m) => m.user_id === u.user_id) || u.user_id === activeBoard.created_by
+            );
+
             const columnHeader = (
               <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="border-r border-border h-8" />
-                <div className="px-3 py-1.5 border-r border-border text-center">Item</div>
+                <div className="px-3 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === "item"} onOpenChange={(o) => setOpenFilter(o ? "item" : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Item
+                        {contextQuery.trim() && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">1</span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by item</div>
+                      <Input
+                        value={contextQuery}
+                        onChange={(e) => setContextQuery(e.target.value)}
+                        placeholder="Search title or description"
+                        className="h-8 text-xs"
+                      />
+                      {contextQuery.trim() && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setContextQuery(""); setOpenFilter(null); }}
+                        >
+                          Clear filter
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="px-1 py-1.5 border-r border-border text-center" title="Updates & attachments">
                   <MessageSquarePlus className="h-3.5 w-3.5 mx-auto opacity-70" />
                 </div>
-                <div className="px-2 py-1.5 border-r border-border text-center">Responsible</div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover>
+                  <Popover open={openFilter === "responsible"} onOpenChange={(o) => setOpenFilter(o ? "responsible" : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Responsible
+                        {responsibleFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {responsibleFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by responsible</div>
+                      <div className="space-y-1 max-h-64 overflow-auto">
+                        <label className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                          <Checkbox
+                            checked={responsibleFilter.includes("__unassigned__")}
+                            onCheckedChange={(val) => {
+                              setResponsibleFilter((prev) =>
+                                val ? [...prev, "__unassigned__"] : prev.filter((x) => x !== "__unassigned__")
+                              );
+                              setOpenFilter(null);
+                            }}
+                          />
+                          <span className="text-xs">Unassigned</span>
+                        </label>
+                        {boardAssignees
+                          .slice()
+                          .sort((a, b) => (a.full_name || a.email || "").localeCompare(b.full_name || b.email || ""))
+                          .map((a) => {
+                            const checked = responsibleFilter.includes(a.user_id);
+                            return (
+                              <label key={a.user_id} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(val) => {
+                                    setResponsibleFilter((prev) =>
+                                      val ? [...prev, a.user_id] : prev.filter((x) => x !== a.user_id)
+                                    );
+                                    setOpenFilter(null);
+                                  }}
+                                />
+                                <span className="text-xs">{a.full_name || a.email}</span>
+                              </label>
+                            );
+                          })}
+                      </div>
+                      {responsibleFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setResponsibleFilter([]); setOpenFilter(null); }}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === "status"} onOpenChange={(o) => setOpenFilter(o ? "status" : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Status
@@ -1143,6 +1273,7 @@ export default function TaskBoardsView() {
                                   setStatusFilter((prev) =>
                                     val ? [...prev, s] : prev.filter((x) => x !== s)
                                   );
+                                  setOpenFilter(null);
                                 }}
                               />
                               <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.pillBg} ${meta.pillText}`}>
@@ -1155,7 +1286,7 @@ export default function TaskBoardsView() {
                       {statusFilter.length > 0 && (
                         <button
                           className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
-                          onClick={() => setStatusFilter([])}
+                          onClick={() => { setStatusFilter([]); setOpenFilter(null); }}
                         >
                           Clear filters
                         </button>
@@ -1163,7 +1294,56 @@ export default function TaskBoardsView() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="px-2 py-1.5 border-r border-border text-center">Due date</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === "due"} onOpenChange={(o) => setOpenFilter(o ? "due" : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Due date
+                        {dueFilter !== "any" && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">1</span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by due date</div>
+                      <div className="space-y-1">
+                        {[
+                          { value: "any", label: "Any due date" },
+                          { value: "overdue", label: "Overdue" },
+                          { value: "today", label: "Due today" },
+                          { value: "this_week", label: "This week" },
+                          { value: "next_7", label: "Next 7 days" },
+                          { value: "none", label: "No due date" },
+                        ].map((opt) => {
+                          const checked = dueFilter === opt.value;
+                          return (
+                            <label key={opt.value} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  if (val) {
+                                    setDueFilter(opt.value as DueFilter);
+                                    setOpenFilter(null);
+                                  }
+                                }}
+                              />
+                              <span className="text-xs">{opt.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {dueFilter !== "any" && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setDueFilter("any"); setOpenFilter(null); }}
+                        >
+                          Clear filter
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div />
               </div>
             );

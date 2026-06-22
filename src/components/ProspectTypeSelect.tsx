@@ -109,7 +109,6 @@ export function ProspectTypeSelect(props: Props) {
                 if (set.has(NONE_VALUE)) set.delete(NONE_VALUE); else set.add(NONE_VALUE);
                 onChangeMulti(Array.from(set));
               }}
-              onSelect={(e) => e.preventDefault()}
             >
               - (No type)
             </DropdownMenuCheckboxItem>

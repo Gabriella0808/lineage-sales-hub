@@ -378,6 +378,7 @@ export type Database = {
           assigned_rep_id: string | null
           brand: string
           brands: string[]
+          buying_group: string | null
           city: string | null
           company_name: string
           contact_first_name: string | null
@@ -391,6 +392,7 @@ export type Database = {
           notes: string | null
           prospect_type: string | null
           prospect_types: string[]
+          rep_owner: string | null
           state: string | null
           status: string
           street_1: string | null
@@ -404,6 +406,7 @@ export type Database = {
           assigned_rep_id?: string | null
           brand?: string
           brands?: string[]
+          buying_group?: string | null
           city?: string | null
           company_name: string
           contact_first_name?: string | null
@@ -417,6 +420,7 @@ export type Database = {
           notes?: string | null
           prospect_type?: string | null
           prospect_types?: string[]
+          rep_owner?: string | null
           state?: string | null
           status?: string
           street_1?: string | null
@@ -430,6 +434,7 @@ export type Database = {
           assigned_rep_id?: string | null
           brand?: string
           brands?: string[]
+          buying_group?: string | null
           city?: string | null
           company_name?: string
           contact_first_name?: string | null
@@ -443,6 +448,7 @@ export type Database = {
           notes?: string | null
           prospect_type?: string | null
           prospect_types?: string[]
+          rep_owner?: string | null
           state?: string | null
           status?: string
           street_1?: string | null

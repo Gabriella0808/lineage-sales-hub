@@ -700,6 +700,16 @@ export default function CaptureLeadsPage() {
                   placeholder="Select one or more prospect types..."
                   triggerClassName="bg-transparent border border-input shadow-none"
                 />
+                {(leadForm.prospect_types || []).filter(Boolean).length > 0 && (
+                  <Field label="Address">
+                    <Textarea
+                      value={leadForm.address}
+                      onChange={(e) => setLeadForm({ ...leadForm, address: e.target.value })}
+                      rows={2}
+                      placeholder="Enter the prospect's address"
+                    />
+                  </Field>
+                )}
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Picking any type will also add this lead to the Prospects list. Leave empty to keep it as a lead only.
                 </p>

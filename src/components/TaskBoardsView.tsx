@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { DueDatePopover } from "@/components/DueDatePopover";
 import {
   Command,
   CommandEmpty,
@@ -987,40 +987,7 @@ export default function TaskBoardsView() {
                     className="hidden md:flex items-stretch border-r border-border"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="flex w-full h-full items-center justify-center gap-1 px-2 text-xs text-muted-foreground hover:bg-muted/40">
-                          {t.due_date ? (
-                            <>
-                              <Calendar className="h-3 w-3" />
-                              {format(parseDateOnly(t.due_date)!, "MMM d")}
-                            </>
-                          ) : (
-                            <span className="italic">-</span>
-                          )}
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="center">
-                        <CalendarPicker
-                          mode="single"
-                          selected={t.due_date ? parseDateOnly(t.due_date)! : undefined}
-                          onSelect={(d) => updateTaskDueDate(t.id, d ?? null)}
-                          initialFocus
-                        />
-                        {t.due_date && (
-                          <div className="p-2 border-t">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="w-full text-xs"
-                              onClick={() => updateTaskDueDate(t.id, null)}
-                            >
-                              Clear date
-                            </Button>
-                          </div>
-                        )}
-                      </PopoverContent>
-                    </Popover>
+                    <DueDatePopover dueDate={t.due_date} onChange={(d) => updateTaskDueDate(t.id, d)} />
                   </div>
                   <div
                     className="hidden md:flex items-center justify-center gap-0.5 px-1"

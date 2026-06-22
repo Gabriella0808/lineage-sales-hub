@@ -96,7 +96,6 @@ export function ProspectTypeSelect(props: Props) {
                 <DropdownMenuCheckboxItem
                   checked={values.length === 0}
                   onCheckedChange={() => onChangeMulti([])}
-                  onSelect={(e) => e.preventDefault()}
                 >
                   {allLabel}
                 </DropdownMenuCheckboxItem>

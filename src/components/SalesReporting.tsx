@@ -983,7 +983,7 @@ function TotalTable({
               className={cn("border-b last:border-0 hover:bg-muted/20", onRowClick && "cursor-pointer")}
               onClick={onRowClick ? () => onRowClick(r.key, r.label) : undefined}
             >
-              <td className="p-3 font-medium sticky left-0 bg-background">
+              <td className="p-3 font-medium sticky left-0 bg-card z-10">
                 {onRowClick ? (
                   <button type="button" className="text-left text-primary hover:underline">{r.label}</button>
                 ) : r.label}

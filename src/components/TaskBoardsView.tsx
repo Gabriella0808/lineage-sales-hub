@@ -1046,12 +1046,13 @@ export default function TaskBoardsView() {
 
             const renderAddRow = (groupId: string, status: Status = "todo") => {
               const isActive = addingGroupId === groupId;
-              const submit = async () => {
-                if (newItemTitle.trim()) {
-                  await quickCreateTask(groupId, newItemTitle, status);
+              const submit = (close: boolean) => {
+                const title = newItemTitle.trim();
+                if (title) {
+                  void quickCreateTask(groupId, title, status);
                 }
                 setNewItemTitle("");
-                setAddingGroupId(null);
+                if (close) setAddingGroupId(null);
               };
               return (
                 <li
@@ -1071,13 +1072,16 @@ export default function TaskBoardsView() {
                         value={newItemTitle}
                         onChange={(e) => setNewItemTitle(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") submit();
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            submit(false);
+                          }
                           if (e.key === "Escape") {
                             setNewItemTitle("");
                             setAddingGroupId(null);
                           }
                         }}
-                        onBlur={submit}
+                        onBlur={() => submit(true)}
                         placeholder="Enter item name and press Enter"
                         className="h-7 text-sm"
                       />

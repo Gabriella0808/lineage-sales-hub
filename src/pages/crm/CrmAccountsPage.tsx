@@ -574,7 +574,6 @@ export default function CrmAccountsPage() {
                               <DropdownMenuCheckboxItem
                                 checked={rowBrands.length === BRANDS.length}
                                 onCheckedChange={selectAll}
-                                onSelect={(e) => e.preventDefault()}
                               >
                                 All brands
                               </DropdownMenuCheckboxItem>
@@ -584,7 +583,6 @@ export default function CrmAccountsPage() {
                                   key={b}
                                   checked={rowBrands.includes(b)}
                                   onCheckedChange={() => toggle(b)}
-                                  onSelect={(e) => e.preventDefault()}
                                 >
                                   {b}
                                 </DropdownMenuCheckboxItem>

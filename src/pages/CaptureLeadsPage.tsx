@@ -65,7 +65,7 @@ const fmt = (n: number | null) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);
 
 const emptyLead = {
-  contact_name: "", dealer: "", email: "", additional_email: "", phone: "",
+  contact_name: "", dealer: "", email: "", additional_email: "", phone: "", address: "",
   sales_rep: "", sales_rep_id: "", rep_email: "", product_interest: "", order_amount: "", status: "New", notes: "",
   prospect_types: [] as string[],
   followup_enabled: false, followup_title: "", followup_description: "", followup_due_date: "",

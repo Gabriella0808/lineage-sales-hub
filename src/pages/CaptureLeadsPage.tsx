@@ -873,6 +873,7 @@ export default function CaptureLeadsPage() {
                   <DetailRow icon={Building2} label="Dealer" value={viewingLead.dealer} />
                   <DetailRow icon={Mail} label="Email" value={viewingLead.email} href={viewingLead.email ? `mailto:${viewingLead.email}` : undefined} />
                   <DetailRow icon={Phone} label="Phone" value={viewingLead.phone} href={viewingLead.phone ? `tel:${viewingLead.phone}` : undefined} />
+                  <DetailRow icon={MapPin} label="Address" value={viewingLead.address} />
                 </DetailSection>
 
                 <DetailSection title="Sales Rep">

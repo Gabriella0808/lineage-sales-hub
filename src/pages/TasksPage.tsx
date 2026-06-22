@@ -1201,7 +1201,55 @@ export default function TasksPage() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="px-2 py-1.5 border-r border-border text-center">Due date</div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Due date
+                        {dueFilter !== "any" && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            1
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by due date</div>
+                      <div className="space-y-1">
+                        {[
+                          { value: "any", label: "Any due date" },
+                          { value: "overdue", label: "Overdue" },
+                          { value: "today", label: "Due today" },
+                          { value: "this_week", label: "This week" },
+                          { value: "next_7", label: "Next 7 days" },
+                          { value: "none", label: "No due date" },
+                        ].map((opt) => {
+                          const checked = dueFilter === opt.value;
+                          return (
+                            <label key={opt.value} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  if (val) setDueFilter(opt.value as DueFilter);
+                                }}
+                              />
+                              <span className="text-xs">{opt.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {dueFilter !== "any" && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => setDueFilter("any")}
+                        >
+                          Clear filter
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
                   <Popover>
                     <PopoverTrigger asChild>

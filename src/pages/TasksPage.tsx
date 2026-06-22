@@ -1160,7 +1160,7 @@ export default function TasksPage() {
                   </Popover>
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover>
+                  <Popover open={openFilter === "status"} onOpenChange={(open) => setOpenFilter(open ? "status" : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Status

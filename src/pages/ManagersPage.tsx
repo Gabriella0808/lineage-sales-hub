@@ -21,6 +21,12 @@ export default function ManagersPage() {
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: dealers = [] } = useDealers();
   const { data: repTerritories = [] } = useRepTerritories();
+  const currentYear = new Date().getFullYear();
+  const { data: repTargets = [] } = useRepTargets(currentYear);
+  const targetByRep = useMemo(
+    () => new Map(repTargets.map((t) => [t.rep_id, Number(t.annual_target) || 0])),
+    [repTargets],
+  );
 
   const [selectedManagerId, setSelectedManagerId] = useState<string | null>(null);
   const isLoading = mgrLoading || repsLoading;

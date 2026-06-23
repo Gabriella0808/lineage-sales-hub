@@ -310,25 +310,36 @@ export function WeeklyReviewPanel({
                   <Label className="text-xs text-center text-muted-foreground">Actual</Label>
                   <Label className="text-xs text-center text-muted-foreground">Goal</Label>
                 </div>
-                {section.metrics.map((m) => (
-                  <div key={m.key} className="grid grid-cols-[1fr_120px_120px] gap-3 items-center">
-                    <Label className="text-sm">{m.label}</Label>
-                    <Input
-                      type="text"
-                      value={responses[`${m.key}_actual`] ?? ""}
-                      onChange={(e) => setField(`${m.key}_actual`, e.target.value)}
-                      placeholder="—"
-                      className="text-center"
-                    />
-                    <Input
-                      type="text"
-                      value={responses[`${m.key}_goal`] ?? ""}
-                      onChange={(e) => setField(`${m.key}_goal`, e.target.value)}
-                      placeholder="—"
-                      className="text-center"
-                    />
-                  </div>
-                ))}
+                {section.metrics.map((m) => {
+                  const isAuto = m.key === "daily_checkins" || m.key === "placements";
+                  return (
+                    <div key={m.key} className="grid grid-cols-[1fr_120px_120px] gap-3 items-center">
+                      <Label className="text-sm">
+                        {m.label}
+                        {isAuto && (
+                          <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                            auto from check-ins
+                          </span>
+                        )}
+                      </Label>
+                      <Input
+                        type="text"
+                        value={responses[`${m.key}_actual`] ?? ""}
+                        onChange={(e) => setField(`${m.key}_actual`, e.target.value)}
+                        placeholder="—"
+                        className="text-center"
+                        readOnly={isAuto}
+                      />
+                      <Input
+                        type="text"
+                        value={responses[`${m.key}_goal`] ?? ""}
+                        onChange={(e) => setField(`${m.key}_goal`, e.target.value)}
+                        placeholder="—"
+                        className="text-center"
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
 

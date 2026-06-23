@@ -530,7 +530,7 @@ export default function TasksPage() {
       status: form.status,
       due_date: form.due_date || null,
       assigned_user_id: primary,
-      visibility: form.visibility,
+      visibility: canSetPrivate ? form.visibility : "public",
     } as any;
     if (editing) {
       const { error } = await supabase

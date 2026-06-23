@@ -7839,6 +7839,15 @@ export type Database = {
           },
         ]
       }
+      inventory_live_onhand: {
+        Row: {
+          last_synced_at: string | null
+          on_hand: number | null
+          on_hand_value: number | null
+          sku: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _post_task_assigned_email: {

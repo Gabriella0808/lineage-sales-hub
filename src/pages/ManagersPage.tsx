@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { WeeklyReviewPanel } from "@/components/managers/WeeklyReviewPanel";
 
 export default function ManagersPage() {
   const { data: managers = [], isLoading: mgrLoading } = useManagers();

@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { WeeklyReviewPanel } from "@/components/managers/WeeklyReviewPanel";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRepTargets } from "@/hooks/useRepTargets";
 
 export default function ManagersPage() {
   const { user } = useAuth();

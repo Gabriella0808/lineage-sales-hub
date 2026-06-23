@@ -14,6 +14,8 @@ import { WeeklyReviewPanel } from "@/components/managers/WeeklyReviewPanel";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function ManagersPage() {
+  const { user } = useAuth();
+  const canSeeWeeklyReview = user?.email?.toLowerCase() === "gabriella@lineage-collections.com";
   const { data: managers = [], isLoading: mgrLoading } = useManagers();
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: dealers = [] } = useDealers();

@@ -31,7 +31,7 @@ const fmtMoney = (n: number) =>
   `$${n.toFixed(0)}`;
 const fmtNum = (n: number) => n.toLocaleString();
 
-const isOutOfStockSku = (it: InventoryItem) => (it.available ?? 0) <= 0;
+const isOutOfStockSku = (it: InventoryItem) => (it.onHand ?? 0) <= 0;
 
 const isInventoryExcludedSku = (it: InventoryItem) => {
   const category = (it as InventoryItem & { category?: string }).category ?? "";

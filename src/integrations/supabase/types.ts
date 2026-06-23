@@ -1006,6 +1006,36 @@ export type Database = {
         }
         Relationships: []
       }
+      dbo_InventoryOnHandByLocationSummary: {
+        Row: {
+          _skyvia_sync: string | null
+          Count: number | null
+          GUIDProduct: string | null
+          GUIDWarehouse: string | null
+          GUIDWHLocation: string | null
+          OnHandValue: unknown
+          QtyOnHand: number | null
+        }
+        Insert: {
+          _skyvia_sync?: string | null
+          Count?: number | null
+          GUIDProduct?: string | null
+          GUIDWarehouse?: string | null
+          GUIDWHLocation?: string | null
+          OnHandValue?: unknown
+          QtyOnHand?: number | null
+        }
+        Update: {
+          _skyvia_sync?: string | null
+          Count?: number | null
+          GUIDProduct?: string | null
+          GUIDWarehouse?: string | null
+          GUIDWHLocation?: string | null
+          OnHandValue?: unknown
+          QtyOnHand?: number | null
+        }
+        Relationships: []
+      }
       dbo_Invoice: {
         Row: {
           _skyvia_sync: string | null
@@ -7808,6 +7838,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      inventory_live_onhand: {
+        Row: {
+          last_synced_at: string | null
+          on_hand: number | null
+          on_hand_value: number | null
+          sku: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {

@@ -77,18 +77,34 @@ export function useInventory() {
   const load = useCallback(async (mode: "initial" | "refresh") => {
     if (mode === "refresh") setRefreshing(true);
 
-    const [{ data, error }, { data: prodRows }] = await Promise.all([
+    const [{ data, error }, { data: prodRows }, { data: liveRows }] = await Promise.all([
       supabase
         .from("inventory")
         .select("id, sku, product, collection, supplier, on_hand, available, avg_monthly_sales, months_supply, status, link, last_synced_at, unit_cost, on_hand_value, list_price, is_closeout, is_discontinued, factory, moq, lead_time_days, forecast_monthly, units_l12m, units_l6m, units_l3m, on_po, on_sales_order, in_transit, on_hand_nc, on_hand_vn, reorder_basis, reorder_override_per_week, lead_time_months, cubes, reorder_min, reorder_max, is_clearance")
         .order("status", { ascending: true })
         .limit(1000),
       supabase.from("products").select("sku, brand").limit(1000),
+      // Fresh per-SKU on-hand & value from the Acctivate Skyvia sync
+      // (dbo_InventoryOnHandByLocationSummary aggregated by ProductID).
+      (supabase.from("inventory_live_onhand" as never) as unknown as {
+        select: (cols: string) => { limit: (n: number) => Promise<{ data: { sku: string; on_hand: number | string; on_hand_value: number | string; last_synced_at: string | null }[] | null }> };
+      }).select("sku, on_hand, on_hand_value, last_synced_at").limit(2000),
     ]);
 
     const brandBySku = new Map<string, string>();
     for (const p of prodRows ?? []) {
       if (p.sku && p.brand) brandBySku.set(p.sku, p.brand);
+    }
+
+    // SKU -> live (on_hand, on_hand_value) from the freshest Acctivate sync.
+    const liveBySku = new Map<string, { onHand: number; onHandValue: number; syncedAt: string | null }>();
+    for (const r of liveRows ?? []) {
+      if (!r.sku) continue;
+      liveBySku.set(r.sku, {
+        onHand: Number(r.on_hand ?? 0),
+        onHandValue: Number(r.on_hand_value ?? 0),
+        syncedAt: r.last_synced_at,
+      });
     }
 
     if (error || !data || data.length === 0) {
@@ -97,7 +113,8 @@ export function useInventory() {
       setLastSyncedAt(null);
     } else {
       const rows = (data as DbInventoryRow[]).map((r) => {
-        const onHand = Number(r.on_hand ?? 0);
+        const live = liveBySku.get(r.sku);
+        const onHand = live ? live.onHand : Number(r.on_hand ?? 0);
         const available = Number(r.available ?? 0);
         const avg = Number(r.avg_monthly_sales ?? 0);
         const mos = r.months_supply == null ? null : Number(r.months_supply);
@@ -105,6 +122,7 @@ export function useInventory() {
         const onPo = r.on_po == null ? 0 : Number(r.on_po);
         const salesPerWeek = avg / 4.333;
         const weeks = salesPerWeek > 0 ? (available + onPo) / salesPerWeek : null;
+        const onHandValue = live ? live.onHandValue : (r.on_hand_value == null ? undefined : Number(r.on_hand_value));
         return {
           sku: r.sku,
           product: r.product,
@@ -118,7 +136,7 @@ export function useInventory() {
           status: normalizeStatus(r.status, available, weeks),
           link: r.link ?? undefined,
           unitCost: r.unit_cost == null ? undefined : Number(r.unit_cost),
-          onHandValue: r.on_hand_value == null ? undefined : Number(r.on_hand_value),
+          onHandValue,
           listPrice: r.list_price == null ? undefined : Number(r.list_price),
           isCloseout: /^C:/i.test(r.sku ?? ""),
           isDiscontinued: r.is_discontinued ?? false,
@@ -144,12 +162,15 @@ export function useInventory() {
         } satisfies InventoryItem;
       });
 
-      const newest = data.reduce<string | null>((acc, r) => {
+      let newest = data.reduce<string | null>((acc, r) => {
         const t = (r as DbInventoryRow).last_synced_at;
         if (!t) return acc;
         if (!acc || t > acc) return t;
         return acc;
       }, null);
+      for (const v of liveBySku.values()) {
+        if (v.syncedAt && (!newest || v.syncedAt > newest)) newest = v.syncedAt;
+      }
 
       setItems(rows);
       setLastSyncedAt(newest);

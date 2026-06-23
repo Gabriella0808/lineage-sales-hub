@@ -287,7 +287,7 @@ export default function ManagersPage() {
                       <td className="p-3 font-medium">{rep.name}</td>
                       <td className="p-3 text-muted-foreground text-xs hidden md:table-cell">{rep.email || "-"}</td>
                       <td className="p-3 text-right tabular-nums">{formatCurrency(revenueByRep.get(rep.id) ?? 0)}</td>
-                      <td className="p-3 text-right tabular-nums hidden md:table-cell">{formatCurrency(rep.quota ?? 0)}</td>
+                      <td className="p-3 text-right tabular-nums hidden md:table-cell">{formatCurrency(targetByRep.get(rep.id) ?? rep.quota ?? 0)}</td>
                       <td className="p-3"><Badge variant="secondary" className="capitalize">{rep.status}</Badge></td>
                     </tr>
                   ))}

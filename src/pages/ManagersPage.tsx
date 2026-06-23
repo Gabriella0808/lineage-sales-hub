@@ -293,9 +293,11 @@ export default function ManagersPage() {
           </CardContent>
         </Card>
 
-        <div className="mt-6">
-          <WeeklyReviewPanel managerId={selectedManager.id} managerName={selectedManager.name} />
-        </div>
+        {canSeeWeeklyReview && (
+          <div className="mt-6">
+            <WeeklyReviewPanel managerId={selectedManager.id} managerName={selectedManager.name} />
+          </div>
+        )}
       </div>
     );
   }

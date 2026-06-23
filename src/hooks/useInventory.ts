@@ -115,7 +115,14 @@ export function useInventory() {
       const rows = (data as DbInventoryRow[]).map((r) => {
         const live = liveBySku.get(r.sku);
         const onHand = live ? live.onHand : Number(r.on_hand ?? 0);
-        const available = Number(r.available ?? 0);
+        // When live Acctivate on-hand is present, treat it as the source of truth
+        // for availability so the Out-of-Stock / Lost Sales section reflects the
+        // same data powering Total Inventory Value. We subtract reserved units
+        // (on sales orders) implied by the curated table to approximate available.
+        const curatedOnHand = Number(r.on_hand ?? 0);
+        const curatedAvailable = Number(r.available ?? 0);
+        const reserved = Math.max(0, curatedOnHand - curatedAvailable);
+        const available = live ? Math.max(0, live.onHand - reserved) : curatedAvailable;
         const avg = Number(r.avg_monthly_sales ?? 0);
         const mos = r.months_supply == null ? null : Number(r.months_supply);
         // Derive weeks of supply from (Available + On PO) ÷ Sales/Week (Acctivate model)

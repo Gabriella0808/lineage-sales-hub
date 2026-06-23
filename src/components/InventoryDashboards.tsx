@@ -749,7 +749,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         lostSales += it.avgMonthlySales * price;
         outOfStockValue += it.avgMonthlySales * price;
       }
-      if (it.isCloseout || it.isClearance) closeoutValue += lineValue;
+      if (isCloseoutSku(it) || it.isClearance) closeoutValue += lineValue;
     }
     const backlogValue = hub.openOrders.reduce((s, o) => s + Number(o.extended_value ?? 0), 0);
     const backlogUnits = hub.openOrders.reduce((s, o) => s + Number(o.qty_open ?? 0), 0);

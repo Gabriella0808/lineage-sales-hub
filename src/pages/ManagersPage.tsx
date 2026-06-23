@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { WeeklyReviewPanel } from "@/components/managers/WeeklyReviewPanel";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRepTargets } from "@/hooks/useRepTargets";
 
 export default function ManagersPage() {
   const { user } = useAuth();
@@ -20,6 +21,12 @@ export default function ManagersPage() {
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: dealers = [] } = useDealers();
   const { data: repTerritories = [] } = useRepTerritories();
+  const currentYear = new Date().getFullYear();
+  const { data: repTargets = [] } = useRepTargets(currentYear);
+  const targetByRep = useMemo(
+    () => new Map(repTargets.map((t) => [t.rep_id, Number(t.annual_target) || 0])),
+    [repTargets],
+  );
 
   const [selectedManagerId, setSelectedManagerId] = useState<string | null>(null);
   const isLoading = mgrLoading || repsLoading;
@@ -280,7 +287,7 @@ export default function ManagersPage() {
                       <td className="p-3 font-medium">{rep.name}</td>
                       <td className="p-3 text-muted-foreground text-xs hidden md:table-cell">{rep.email || "-"}</td>
                       <td className="p-3 text-right tabular-nums">{formatCurrency(revenueByRep.get(rep.id) ?? 0)}</td>
-                      <td className="p-3 text-right tabular-nums hidden md:table-cell">{formatCurrency(rep.quota ?? 0)}</td>
+                      <td className="p-3 text-right tabular-nums hidden md:table-cell">{formatCurrency(targetByRep.get(rep.id) ?? rep.quota ?? 0)}</td>
                       <td className="p-3"><Badge variant="secondary" className="capitalize">{rep.status}</Badge></td>
                     </tr>
                   ))}

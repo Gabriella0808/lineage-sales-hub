@@ -827,7 +827,7 @@ export default function TasksPage() {
                   kpiReview={form.kpi_review}
                   onKpiReviewChange={(v) => setForm({ ...form, kpi_review: v })}
                 />
-                {!(activeTab === "boards" && !editing) && (
+                {canSetPrivate && !(activeTab === "boards" && !editing) && (
                   <div className="flex items-center justify-between rounded-md border p-3">
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium">Visibility</p>

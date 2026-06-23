@@ -1212,7 +1212,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // ============ SECTION 4: CLOSEOUT ============
   const closeoutRows = useMemo(() =>
-    items.filter((it) => it.isCloseout).map((it) => {
+    items.filter((it) => isCloseoutSku(it)).map((it) => {
       const initial = (it as any).closeout_initial_qty as number | undefined;
       const sold = (it as any).closeout_units_sold as number | undefined;
       const pctSold = initial && initial > 0 ? ((sold ?? 0) / initial) * 100 : null;
@@ -1378,7 +1378,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         | "Liquidate"
         | "Do Not Order";
       if (it.isDiscontinued) decision = "Liquidate";
-      else if (it.isCloseout || it.isClearance) decision = "Do Not Order";
+      else if (isCloseoutSku(it) || it.isClearance) decision = "Do Not Order";
       else if ((it.monthsSupply ?? 0) >= 12 && it.salesPerWeek < 0.25)
         decision = "Discontinue Candidate";
       else if (coveredByPo) decision = "Covered by PO";
@@ -1500,7 +1500,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const closeoutByCollection = useMemo(() => {
     const m = new Map<string, number>();
     for (const it of items) {
-      if (!(it.isCloseout || it.isClearance)) continue;
+      if (!(isCloseoutSku(it) || it.isClearance)) continue;
       const k = (it as any).brand || "-";
       m.set(k, (m.get(k) ?? 0) + (it.onHandValue ?? (it.unitCost ?? 0) * it.onHand));
     }
@@ -1515,7 +1515,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const closeoutSkuOptions = useMemo(() => {
     const s = new Set<string>();
     for (const it of items) {
-      if ((it.isCloseout || it.isClearance) && Math.round(closeoutSkuValue(it)) > 0) s.add(it.sku);
+      if ((isCloseoutSku(it) || it.isClearance) && Math.round(closeoutSkuValue(it)) > 0) s.add(it.sku);
     }
     return Array.from(s).sort();
   }, [items, closeoutSkuValue]);
@@ -1524,7 +1524,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const closeoutBySku = useMemo(() => {
     const arr = items
       .filter((it) => {
-        if (!(it.isCloseout || it.isClearance)) return false;
+        if (!(isCloseoutSku(it) || it.isClearance)) return false;
         const value = closeoutSkuValue(it);
         return Math.round(value) > 0 && (closeoutSkuFilter === "all" || it.sku === closeoutSkuFilter);
       })
@@ -1674,7 +1674,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         </div>
         <Card className="p-5">
           <h3 className="text-base font-semibold mb-3">Closeout Inventory</h3>
-          {closeoutRows.length === 0 ? <EmptyState message="No closeout SKUs flagged. Set is_closeout = true on inventory rows." /> : (
+          {closeoutRows.length === 0 ? <EmptyState message="No closeout SKUs found. Closeout items are identified by SKUs starting with C:." /> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
@@ -2769,7 +2769,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {drawerItem.isClearance && <Badge variant="secondary">Clearance</Badge>}
-                  {drawerItem.isCloseout && <Badge variant="secondary">Closeout</Badge>}
+                  {isCloseoutSku(drawerItem) && <Badge variant="secondary">Closeout</Badge>}
                   {drawerItem.isDiscontinued && <Badge variant="secondary">Discontinued</Badge>}
                 </div>
               </div>

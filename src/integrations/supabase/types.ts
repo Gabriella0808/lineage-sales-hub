@@ -6127,6 +6127,47 @@ export type Database = {
           },
         ]
       }
+      manager_weekly_reviews: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          manager_id: string
+          responses: Json
+          updated_at: string
+          updated_by: string | null
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          manager_id: string
+          responses?: Json
+          updated_at?: string
+          updated_by?: string | null
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          manager_id?: string
+          responses?: Json
+          updated_at?: string
+          updated_by?: string | null
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_weekly_reviews_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       managers: {
         Row: {
           acctivate_id: string | null

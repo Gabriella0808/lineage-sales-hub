@@ -1698,15 +1698,17 @@ export default function TasksPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select onValueChange={(v: "public" | "private") => bulkUpdateVisibility(v)}>
-            <SelectTrigger className="h-8 w-[140px] text-xs">
-              <SelectValue placeholder="Visibility" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="public" className="text-xs">Public</SelectItem>
-              <SelectItem value="private" className="text-xs">Private</SelectItem>
-            </SelectContent>
-          </Select>
+          {canSetPrivate && (
+            <Select onValueChange={(v: "public" | "private") => bulkUpdateVisibility(v)}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="Visibility" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public" className="text-xs">Public</SelectItem>
+                <SelectItem value="private" className="text-xs">Private</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Button
             size="sm"
             variant="ghost"

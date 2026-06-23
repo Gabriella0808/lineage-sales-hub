@@ -137,7 +137,7 @@ export function WeeklyReviewPanel({
   managerName: string;
 }) {
   const qc = useQueryClient();
-  const [weekStart, setWeekStart] = useState<string>(currentFriday());
+  const [weekStart, setWeekStart] = useState<string>(currentMonday());
   const [responses, setResponses] = useState<Responses>({});
 
   // Saved reviews list (for picker)
@@ -174,7 +174,7 @@ export function WeeklyReviewPanel({
   }, [existing, weekStart]);
 
   const weekOptions = useMemo(() => {
-    const merged = new Set<string>([...lastNFridays(12), ...savedWeeks.map((w) => w.week_start)]);
+    const merged = new Set<string>([...lastNMondays(12), ...savedWeeks.map((w) => w.week_start)]);
     return [...merged].sort((a, b) => (a < b ? 1 : -1));
   }, [savedWeeks]);
 

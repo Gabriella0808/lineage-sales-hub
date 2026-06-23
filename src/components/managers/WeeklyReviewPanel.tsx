@@ -173,6 +173,50 @@ export function WeeklyReviewPanel({
     setResponses((existing?.responses as Responses) ?? {});
   }, [existing, weekStart]);
 
+  // Pull check-ins + placements from Check-In Analytics source (dealer_check_ins)
+  // for this manager's linked users, within the selected week (Mon..Sun).
+  const { data: visitStats } = useQuery({
+    queryKey: ["manager-weekly-visit-stats", managerId, weekStart],
+    queryFn: async () => {
+      // Collect user ids that map to this manager
+      const userIds = new Set<string>();
+      const [{ data: ums }, { data: mgrUserId }] = await Promise.all([
+        supabase.from("user_managers").select("user_id").eq("manager_id", managerId),
+        supabase.rpc("user_id_for_manager", { _manager_id: managerId }),
+      ]);
+      (ums ?? []).forEach((r: any) => r.user_id && userIds.add(r.user_id));
+      if (typeof mgrUserId === "string" && mgrUserId) userIds.add(mgrUserId);
+
+      if (userIds.size === 0) return { checkIns: 0, placements: 0 };
+
+      const start = weekStart;
+      const end = format(addDays(parseISO(weekStart), 6), "yyyy-MM-dd");
+      const { data, error } = await supabase
+        .from("dealer_check_ins")
+        .select("id,new_placement,visit_date,user_id")
+        .in("user_id", Array.from(userIds))
+        .gte("visit_date", start)
+        .lte("visit_date", end);
+      if (error) throw error;
+      const rows = data ?? [];
+      return {
+        checkIns: rows.length,
+        placements: rows.filter((r: any) => (r.new_placement ?? "").toLowerCase() === "yes").length,
+      };
+    },
+  });
+
+  // Auto-fill actuals from visit analytics (overrides any manual edit so it
+  // always reflects the source of truth — same numbers shown in Check-In Analytics).
+  useEffect(() => {
+    if (!visitStats) return;
+    setResponses((p) => ({
+      ...p,
+      daily_checkins_actual: String(visitStats.checkIns),
+      placements_actual: String(visitStats.placements),
+    }));
+  }, [visitStats]);
+
   const weekOptions = useMemo(() => {
     const merged = new Set<string>([...lastNMondays(12), ...savedWeeks.map((w) => w.week_start)]);
     return [...merged].sort((a, b) => (a < b ? 1 : -1));
@@ -266,25 +310,36 @@ export function WeeklyReviewPanel({
                   <Label className="text-xs text-center text-muted-foreground">Actual</Label>
                   <Label className="text-xs text-center text-muted-foreground">Goal</Label>
                 </div>
-                {section.metrics.map((m) => (
-                  <div key={m.key} className="grid grid-cols-[1fr_120px_120px] gap-3 items-center">
-                    <Label className="text-sm">{m.label}</Label>
-                    <Input
-                      type="text"
-                      value={responses[`${m.key}_actual`] ?? ""}
-                      onChange={(e) => setField(`${m.key}_actual`, e.target.value)}
-                      placeholder="—"
-                      className="text-center"
-                    />
-                    <Input
-                      type="text"
-                      value={responses[`${m.key}_goal`] ?? ""}
-                      onChange={(e) => setField(`${m.key}_goal`, e.target.value)}
-                      placeholder="—"
-                      className="text-center"
-                    />
-                  </div>
-                ))}
+                {section.metrics.map((m) => {
+                  const isAuto = m.key === "daily_checkins" || m.key === "placements";
+                  return (
+                    <div key={m.key} className="grid grid-cols-[1fr_120px_120px] gap-3 items-center">
+                      <Label className="text-sm">
+                        {m.label}
+                        {isAuto && (
+                          <span className="ml-2 text-[10px] uppercase tracking-wide text-muted-foreground">
+                            auto from check-ins
+                          </span>
+                        )}
+                      </Label>
+                      <Input
+                        type="text"
+                        value={responses[`${m.key}_actual`] ?? ""}
+                        onChange={(e) => setField(`${m.key}_actual`, e.target.value)}
+                        placeholder="—"
+                        className="text-center"
+                        readOnly={isAuto}
+                      />
+                      <Input
+                        type="text"
+                        value={responses[`${m.key}_goal`] ?? ""}
+                        onChange={(e) => setField(`${m.key}_goal`, e.target.value)}
+                        placeholder="—"
+                        className="text-center"
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
 

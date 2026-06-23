@@ -33,6 +33,8 @@ const fmtNum = (n: number) => n.toLocaleString();
 
 const isOutOfStockSku = (it: InventoryItem) => (it.onHand ?? 0) <= 0;
 
+const isCloseoutSku = (it: InventoryItem) => it.isCloseout || /^C:/i.test(it.sku ?? "");
+
 const isInventoryExcludedSku = (it: InventoryItem) => {
   const category = (it as InventoryItem & { category?: string }).category ?? "";
   const hay = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${category} ${it.supplier ?? ""}`.toLowerCase();

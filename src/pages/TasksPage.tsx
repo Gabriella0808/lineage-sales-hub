@@ -135,6 +135,12 @@ export default function TasksPage() {
   const { user } = useAuth();
   const { data: roleInfo } = useUserRole();
   const { toast } = useToast();
+  const PRIVATE_TASK_EMAILS = [
+    "justin@lineage-collections.com",
+    "scott@lineage-collections.com",
+    "gabriella@lineage-collections.com",
+  ];
+  const canSetPrivate = !!user?.email && PRIVATE_TASK_EMAILS.includes(user.email.toLowerCase());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [assignees, setAssignees] = useState<AssignableUser[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);

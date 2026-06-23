@@ -135,6 +135,12 @@ export default function TasksPage() {
   const { user } = useAuth();
   const { data: roleInfo } = useUserRole();
   const { toast } = useToast();
+  const PRIVATE_TASK_EMAILS = [
+    "justin@lineage-collections.com",
+    "scott@lineage-collections.com",
+    "gabriella@lineage-collections.com",
+  ];
+  const canSetPrivate = !!user?.email && PRIVATE_TASK_EMAILS.includes(user.email.toLowerCase());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [assignees, setAssignees] = useState<AssignableUser[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -524,7 +530,7 @@ export default function TasksPage() {
       status: form.status,
       due_date: form.due_date || null,
       assigned_user_id: primary,
-      visibility: form.visibility,
+      visibility: canSetPrivate ? form.visibility : "public",
     } as any;
     if (editing) {
       const { error } = await supabase
@@ -821,7 +827,7 @@ export default function TasksPage() {
                   kpiReview={form.kpi_review}
                   onKpiReviewChange={(v) => setForm({ ...form, kpi_review: v })}
                 />
-                {!(activeTab === "boards" && !editing) && (
+                {canSetPrivate && !(activeTab === "boards" && !editing) && (
                   <div className="flex items-center justify-between rounded-md border p-3">
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium">Visibility</p>
@@ -1692,15 +1698,17 @@ export default function TasksPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select onValueChange={(v: "public" | "private") => bulkUpdateVisibility(v)}>
-            <SelectTrigger className="h-8 w-[140px] text-xs">
-              <SelectValue placeholder="Visibility" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="public" className="text-xs">Public</SelectItem>
-              <SelectItem value="private" className="text-xs">Private</SelectItem>
-            </SelectContent>
-          </Select>
+          {canSetPrivate && (
+            <Select onValueChange={(v: "public" | "private") => bulkUpdateVisibility(v)}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="Visibility" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public" className="text-xs">Public</SelectItem>
+                <SelectItem value="private" className="text-xs">Private</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Button
             size="sm"
             variant="ghost"

@@ -173,6 +173,50 @@ export function WeeklyReviewPanel({
     setResponses((existing?.responses as Responses) ?? {});
   }, [existing, weekStart]);
 
+  // Pull check-ins + placements from Check-In Analytics source (dealer_check_ins)
+  // for this manager's linked users, within the selected week (Mon..Sun).
+  const { data: visitStats } = useQuery({
+    queryKey: ["manager-weekly-visit-stats", managerId, weekStart],
+    queryFn: async () => {
+      // Collect user ids that map to this manager
+      const userIds = new Set<string>();
+      const [{ data: ums }, { data: mgrUserId }] = await Promise.all([
+        supabase.from("user_managers").select("user_id").eq("manager_id", managerId),
+        supabase.rpc("user_id_for_manager", { _manager_id: managerId }),
+      ]);
+      (ums ?? []).forEach((r: any) => r.user_id && userIds.add(r.user_id));
+      if (typeof mgrUserId === "string" && mgrUserId) userIds.add(mgrUserId);
+
+      if (userIds.size === 0) return { checkIns: 0, placements: 0 };
+
+      const start = weekStart;
+      const end = format(addDays(parseISO(weekStart), 6), "yyyy-MM-dd");
+      const { data, error } = await supabase
+        .from("dealer_check_ins")
+        .select("id,new_placement,visit_date,user_id")
+        .in("user_id", Array.from(userIds))
+        .gte("visit_date", start)
+        .lte("visit_date", end);
+      if (error) throw error;
+      const rows = data ?? [];
+      return {
+        checkIns: rows.length,
+        placements: rows.filter((r: any) => (r.new_placement ?? "").toLowerCase() === "yes").length,
+      };
+    },
+  });
+
+  // Auto-fill actuals from visit analytics (overrides any manual edit so it
+  // always reflects the source of truth — same numbers shown in Check-In Analytics).
+  useEffect(() => {
+    if (!visitStats) return;
+    setResponses((p) => ({
+      ...p,
+      daily_checkins_actual: String(visitStats.checkIns),
+      placements_actual: String(visitStats.placements),
+    }));
+  }, [visitStats]);
+
   const weekOptions = useMemo(() => {
     const merged = new Set<string>([...lastNMondays(12), ...savedWeeks.map((w) => w.week_start)]);
     return [...merged].sort((a, b) => (a < b ? 1 : -1));

@@ -289,6 +289,10 @@ export default function ManagersPage() {
             </div>
           </CardContent>
         </Card>
+
+        <div className="mt-6">
+          <WeeklyReviewPanel managerId={selectedManager.id} managerName={selectedManager.name} />
+        </div>
       </div>
     );
   }

@@ -113,7 +113,8 @@ export function useInventory() {
       setLastSyncedAt(null);
     } else {
       const rows = (data as DbInventoryRow[]).map((r) => {
-        const onHand = Number(r.on_hand ?? 0);
+        const live = liveBySku.get(r.sku);
+        const onHand = live ? live.onHand : Number(r.on_hand ?? 0);
         const available = Number(r.available ?? 0);
         const avg = Number(r.avg_monthly_sales ?? 0);
         const mos = r.months_supply == null ? null : Number(r.months_supply);
@@ -121,6 +122,7 @@ export function useInventory() {
         const onPo = r.on_po == null ? 0 : Number(r.on_po);
         const salesPerWeek = avg / 4.333;
         const weeks = salesPerWeek > 0 ? (available + onPo) / salesPerWeek : null;
+        const onHandValue = live ? live.onHandValue : (r.on_hand_value == null ? undefined : Number(r.on_hand_value));
         return {
           sku: r.sku,
           product: r.product,
@@ -134,7 +136,7 @@ export function useInventory() {
           status: normalizeStatus(r.status, available, weeks),
           link: r.link ?? undefined,
           unitCost: r.unit_cost == null ? undefined : Number(r.unit_cost),
-          onHandValue: r.on_hand_value == null ? undefined : Number(r.on_hand_value),
+          onHandValue,
           listPrice: r.list_price == null ? undefined : Number(r.list_price),
           isCloseout: /^C:/i.test(r.sku ?? ""),
           isDiscontinued: r.is_discontinued ?? false,

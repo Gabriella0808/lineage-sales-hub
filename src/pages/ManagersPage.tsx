@@ -11,8 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { WeeklyReviewPanel } from "@/components/managers/WeeklyReviewPanel";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ManagersPage() {
+  const { user } = useAuth();
+  const canSeeWeeklyReview = user?.email?.toLowerCase() === "gabriella@lineage-collections.com";
   const { data: managers = [], isLoading: mgrLoading } = useManagers();
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: dealers = [] } = useDealers();
@@ -290,9 +293,11 @@ export default function ManagersPage() {
           </CardContent>
         </Card>
 
-        <div className="mt-6">
-          <WeeklyReviewPanel managerId={selectedManager.id} managerName={selectedManager.name} />
-        </div>
+        {canSeeWeeklyReview && (
+          <div className="mt-6">
+            <WeeklyReviewPanel managerId={selectedManager.id} managerName={selectedManager.name} />
+          </div>
+        )}
       </div>
     );
   }

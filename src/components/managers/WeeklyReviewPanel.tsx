@@ -113,22 +113,18 @@ const SECTIONS: Section[] = [
   },
 ];
 
-// Friday of current week (or most recent Friday if today is Sat/Sun)
-function currentFriday(d = new Date()): string {
-  // startOfWeek with weekStartsOn 1 (Mon); Friday = +4 days
+// Monday of current week (week the Friday email is sent for)
+function currentMonday(d = new Date()): string {
   const monday = startOfWeek(d, { weekStartsOn: 1 });
-  const friday = addDays(monday, 4);
-  // If we're earlier in the week than Friday, use last Friday
-  const target = d < friday ? addDays(friday, -7) : friday;
-  return format(target, "yyyy-MM-dd");
+  return format(monday, "yyyy-MM-dd");
 }
 
-function lastNFridays(n = 12): string[] {
+function lastNMondays(n = 12): string[] {
   const out: string[] = [];
-  let f = parseISO(currentFriday());
+  let m = parseISO(currentMonday());
   for (let i = 0; i < n; i++) {
-    out.push(format(f, "yyyy-MM-dd"));
-    f = subWeeks(f, 1);
+    out.push(format(m, "yyyy-MM-dd"));
+    m = subWeeks(m, 1);
   }
   return out;
 }

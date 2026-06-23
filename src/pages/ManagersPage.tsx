@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { WeeklyReviewPanel } from "@/components/managers/WeeklyReviewPanel";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ManagersPage() {
   const { data: managers = [], isLoading: mgrLoading } = useManagers();

@@ -162,12 +162,15 @@ export function useInventory() {
         } satisfies InventoryItem;
       });
 
-      const newest = data.reduce<string | null>((acc, r) => {
+      let newest = data.reduce<string | null>((acc, r) => {
         const t = (r as DbInventoryRow).last_synced_at;
         if (!t) return acc;
         if (!acc || t > acc) return t;
         return acc;
       }, null);
+      for (const v of liveBySku.values()) {
+        if (v.syncedAt && (!newest || v.syncedAt > newest)) newest = v.syncedAt;
+      }
 
       setItems(rows);
       setLastSyncedAt(newest);

@@ -63,7 +63,6 @@ export const template = {
   to: 'gabriella@lineage-collections.com',
   displayName: 'Sales manager weekly review (missing)',
   previewData: {
-    managerName: 'Mateo De Lisa',
     weekLabel: 'Week of Jun 22, 2026',
     portalUrl: 'https://www.lineage-managerhub.com/managers',
   },

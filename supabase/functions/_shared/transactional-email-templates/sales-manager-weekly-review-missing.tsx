@@ -7,7 +7,6 @@ import type { TemplateEntry } from './registry.ts'
 const SITE_NAME = 'Lineage Collections'
 
 interface Props {
-  managerName?: string
   weekLabel?: string
   portalUrl?: string
 }

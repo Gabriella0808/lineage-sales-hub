@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import {
-  Body, Container, Head, Heading, Hr, Html, Preview, Section, Text,
+  Body, Container, Head, Hr, Html, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
@@ -74,12 +74,6 @@ export const template = {
 
 const main = { backgroundColor: '#ffffff', fontFamily: '"DM Sans", Arial, sans-serif' }
 const container = { padding: '32px 28px', maxWidth: '560px', margin: '0 auto' }
-const h1 = {
-  fontFamily: '"DM Serif Display", Georgia, serif',
-  fontSize: '26px',
-  color: 'hsl(220, 35%, 22%)',
-  margin: '0 0 20px',
-}
 const text = { fontSize: '14px', color: '#333', lineHeight: '1.6', margin: '0 0 12px' }
 const detailsBox = {
   backgroundColor: 'hsl(40, 15%, 96%)',

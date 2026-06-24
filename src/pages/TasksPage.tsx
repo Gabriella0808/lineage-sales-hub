@@ -1468,10 +1468,16 @@ export default function TasksPage() {
                                 />
                               ) : (
                                 <p
-                                  className="text-sm leading-snug break-words cursor-text"
+                                  className="text-sm leading-snug break-words cursor-pointer hover:underline"
+                                  title="Click to view details, double-click to rename"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     if (selectMode) { toggleSelect(t.id); return; }
+                                    setDetailTask(t);
+                                  }}
+                                  onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    if (selectMode) return;
                                     setInlineEditingTaskId(t.id);
                                     setInlineEditTaskTitle(t.title);
                                   }}

@@ -60,7 +60,7 @@ const SECTIONS: Section[] = [
     title: "Prospecting",
     fields: [
       { key: "prospect_progress", label: "What progress did you make this week? (review list in Portal)", type: "textarea" },
-      { key: "prospects_added", label: "What prospects have you added this week? (to be listed in the portal)", type: "textarea" },
+      
       { key: "trade_show_followups", label: "Trade show lead follow-ups", type: "textarea" },
       { key: "entertainment_opps", label: "Entertainment opportunities", type: "textarea" },
       { key: "contact_us_opps", label: "Contact-us opps — were they followed through on?", type: "textarea" },

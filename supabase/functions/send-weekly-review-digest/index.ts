@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
       if (responses && Object.keys(responses).length > 0) {
         if (await sendReview(m.name, responses, tagBase)) sentReview++;
       } else {
-        if (await sendMissing(m.name, tagBase)) sentMissing++;
+        if (await sendMissing(tagBase)) sentMissing++;
       }
     }
 

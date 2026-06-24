@@ -13,22 +13,21 @@ interface Props {
 }
 
 const SalesManagerWeeklyReviewMissingEmail = ({
-  managerName,
   weekLabel,
   portalUrl,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      {managerName ? `${managerName}'s ` : ''}Sales Manager Weekly Review form has not been completed{weekLabel ? ` for ${weekLabel}` : ''}
+      Sales Manager Weekly Review form has not been completed{weekLabel ? ` for ${weekLabel}` : ''}
     </Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={detailsBox}>
-          <Text style={text}>
-            {managerName ? `${managerName}'s ` : ''}Sales Manager Weekly Review form has not been completed for {weekLabel || 'the current week'}.
+          <Text style={centeredText}>
+            Sales Manager Weekly Review form has not been completed for {weekLabel || 'the current week'}.
           </Text>
-          <Text style={text}>
+          <Text style={centeredText}>
             No responses were saved before the Friday 6pm ET cutoff.
           </Text>
         </Section>
@@ -75,6 +74,7 @@ export const template = {
 const main = { backgroundColor: '#ffffff', fontFamily: '"DM Sans", Arial, sans-serif' }
 const container = { padding: '32px 28px', maxWidth: '560px', margin: '0 auto' }
 const text = { fontSize: '14px', color: '#333', lineHeight: '1.6', margin: '0 0 12px' }
+const centeredText = { ...text, textAlign: 'center' as const }
 const detailsBox = {
   backgroundColor: 'hsl(40, 15%, 96%)',
   border: '1px solid hsl(220, 13%, 90%)',

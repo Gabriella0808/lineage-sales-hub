@@ -10,6 +10,7 @@ interface Field {
   key: string
   label: string
   hint?: string
+  value?: string
 }
 
 interface MetricSection {
@@ -31,6 +32,7 @@ interface SalesManagerWeeklyReviewProps {
   sections?: ReviewSection[]
   portalUrl?: string
 }
+
 
 const SalesManagerWeeklyReviewEmail = ({
   managerName,

@@ -31,4 +31,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'clearance-weekly-report': clearanceWeeklyReport,
   'task-mention': taskMention,
   'sales-manager-weekly-review': salesManagerWeeklyReview,
+  'sales-manager-weekly-review-missing': salesManagerWeeklyReviewMissing,
 }

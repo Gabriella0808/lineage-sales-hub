@@ -44,13 +44,13 @@ const SECTIONS: Section[] = [
       { key: "travel_efficient", label: "Was travel efficient?", type: "textarea" },
       {
         key: "travel_next_4_6_weeks",
-        label: "What is lined up for the next 4–6 weeks?",
+        label: "What is lined up for the next 4-6 weeks?",
         hint: "Is the travel log up to date?",
         type: "textarea",
       },
       {
         key: "travel_planning_notes",
-        label: "Next couple of weeks — careful planning notes",
+        label: "Next couple of weeks - careful planning notes",
         hint: "Who should be seen in portal, prospects, Night & Day targets, top 100s, etc.",
         type: "textarea",
       },
@@ -63,7 +63,7 @@ const SECTIONS: Section[] = [
       
       { key: "trade_show_followups", label: "Trade show lead follow-ups", type: "textarea" },
       { key: "entertainment_opps", label: "Entertainment opportunities", type: "textarea" },
-      { key: "contact_us_opps", label: "Contact-us opps — were they followed through on?", type: "textarea" },
+      { key: "contact_us_opps", label: "Contact-us opps - were they followed through on?", type: "textarea" },
     ],
   },
   {
@@ -207,7 +207,7 @@ export function WeeklyReviewPanel({
   });
 
   // Auto-fill actuals from visit analytics (overrides any manual edit so it
-  // always reflects the source of truth — same numbers shown in Check-In Analytics).
+  // always reflects the source of truth - same numbers shown in Check-In Analytics).
   useEffect(() => {
     if (!visitStats) return;
     setResponses((p) => ({
@@ -326,7 +326,7 @@ export function WeeklyReviewPanel({
                         type="text"
                         value={responses[`${m.key}_actual`] ?? ""}
                         onChange={(e) => setField(`${m.key}_actual`, e.target.value)}
-                        placeholder="—"
+                        placeholder="-"
                         className="text-center"
                         readOnly={isAuto}
                       />
@@ -334,7 +334,7 @@ export function WeeklyReviewPanel({
                         type="text"
                         value={responses[`${m.key}_goal`] ?? ""}
                         onChange={(e) => setField(`${m.key}_goal`, e.target.value)}
-                        placeholder="—"
+                        placeholder="-"
                         className="text-center"
                       />
                     </div>

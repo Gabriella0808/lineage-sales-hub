@@ -74,6 +74,7 @@ export const template = {
 const main = { backgroundColor: '#ffffff', fontFamily: '"DM Sans", Arial, sans-serif' }
 const container = { padding: '32px 28px', maxWidth: '560px', margin: '0 auto' }
 const text = { fontSize: '14px', color: '#333', lineHeight: '1.6', margin: '0 0 12px' }
+const centeredText = { ...text, textAlign: 'center' as const }
 const detailsBox = {
   backgroundColor: 'hsl(40, 15%, 96%)',
   border: '1px solid hsl(220, 13%, 90%)',

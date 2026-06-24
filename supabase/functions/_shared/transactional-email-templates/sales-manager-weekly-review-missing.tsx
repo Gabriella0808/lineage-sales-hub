@@ -7,24 +7,26 @@ import type { TemplateEntry } from './registry.ts'
 const SITE_NAME = 'Lineage Collections'
 
 interface Props {
+  managerName?: string
   weekLabel?: string
   portalUrl?: string
 }
 
 const SalesManagerWeeklyReviewMissingEmail = ({
+  managerName,
   weekLabel,
   portalUrl,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Sales Manager Weekly Review form has not been completed{weekLabel ? ` for ${weekLabel}` : ''}
+      {managerName ? `${managerName}'s ` : ''}Sales Manager Weekly Review form has not been completed{weekLabel ? ` for ${weekLabel}` : ''}
     </Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={detailsBox}>
           <Text style={text}>
-            Sales Manager Weekly Review form has not been completed for {weekLabel || 'the current week'}.
+            {managerName ? `${managerName}'s ` : ''}Sales Manager Weekly Review form has not been completed for {weekLabel || 'the current week'}.
           </Text>
           <Text style={text}>
             No responses were saved before the Friday 6pm ET cutoff.
@@ -57,13 +59,15 @@ const SalesManagerWeeklyReviewMissingEmail = ({
 export const template = {
   component: SalesManagerWeeklyReviewMissingEmail,
   subject: (data: Record<string, any>) => {
-    const week = data?.weekLabel ? ` for ${data.weekLabel}` : ''
-    return `Sales Manager Weekly Review form has not been completed${week}. No responses were saved before the Friday 6pm ET cutoff.`
+    const manager = data?.managerName || 'Sales Manager'
+    const week = data?.weekLabel ? ` · ${data.weekLabel}` : ''
+    return `Weekly review NOT completed · ${manager}${week}`
   },
   to: 'gabriella@lineage-collections.com',
   displayName: 'Sales manager weekly review (missing)',
   previewData: {
-    weekLabel: 'Week of Jun 22, 2026',
+    managerName: 'Sample Sales Manager',
+    weekLabel: '[TEST] Week of Jun 22, 2026',
     portalUrl: 'https://www.lineage-managerhub.com/managers',
   },
 } satisfies TemplateEntry

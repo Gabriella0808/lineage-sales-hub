@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
 
     // testMissing: send a single missing-template test email to Gabriella now.
     if (testMissing) {
-      const ok = await sendMissing(`test-${Date.now()}`);
+      const ok = await sendMissing("Sample Sales Manager", `test-${Date.now()}`);
       return new Response(
         JSON.stringify({ ok: true, sent: ok ? 1 : 0, mode: "testMissing", weekStart }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
       if (responses && Object.keys(responses).length > 0) {
         if (await sendReview(m.name, responses, tagBase)) sentReview++;
       } else {
-        if (await sendMissing(tagBase)) sentMissing++;
+        if (await sendMissing(m.name, tagBase)) sentMissing++;
       }
     }
 

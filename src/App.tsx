@@ -69,7 +69,7 @@ const App = () => (
                   <AppLayout>
                     <Routes>
                       <Route path="/" element={<DashboardPage />} />
-                      <Route path="/managers" element={<ProtectedRoute allow={["admin"]}><ManagersPage /></ProtectedRoute>} />
+                      <Route path="/managers" element={<ProtectedRoute allow={["admin", "manager"]}><ManagersPage /></ProtectedRoute>} />
                       <Route path="/reps" element={<ProtectedRoute allow={["admin", "manager"]}><SalesRepsPage /></ProtectedRoute>} />
                       <Route path="/reps-acctivate" element={<ProtectedRoute allow={["admin"]}><SalesRepsAcctivatePage /></ProtectedRoute>} />
                       <Route path="/dealers" element={<DealersPage />} />

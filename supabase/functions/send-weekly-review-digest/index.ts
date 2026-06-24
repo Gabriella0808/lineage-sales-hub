@@ -34,23 +34,51 @@ const SECTIONS: Array<{
   {
     title: "Prospecting",
     fields: [
-      { key: "prospecting_summary", label: "Prospecting summary" },
-      { key: "prospecting_next_steps", label: "Next steps" },
+      { key: "prospect_progress", label: "What progress did you make this week? (review list in Portal)" },
+      { key: "trade_show_followups", label: "Trade show lead follow-ups" },
+      { key: "entertainment_opps", label: "Entertainment opportunities" },
+      { key: "contact_us_opps", label: "Contact-us opps - were they followed through on?" },
     ],
   },
   {
-    title: "Portal / Pipeline",
+    title: "Rep Reviews",
     fields: [
-      { key: "portal_status", label: "Portal status" },
-      { key: "pipeline_notes", label: "Pipeline notes" },
+      { key: "rep_bookings", label: "Bookings by reps" },
+      { key: "rep_contacts", label: "Contacts by reps" },
+      { key: "rep_clearance_promo", label: "Clearance and promotion performance" },
+      { key: "rep_last_login", label: "Last log-in to system" },
+      { key: "rep_no_connect", label: "Anyone you didn't connect with all week?" },
+      { key: "rep_one_idea", label: "One idea to help each one this week" },
+      { key: "rep_dealer_focus", label: "Dealer focus per territory", hint: "Review dealers in each territory and pick a couple to focus on selling deeper into." },
     ],
   },
   {
-    title: "Team / Other",
+    title: "Open Rep Areas",
     fields: [
-      { key: "team_notes", label: "Team notes" },
-      { key: "other_notes", label: "Other" },
+      { key: "open_target_areas", label: "What are target areas to fill?" },
+      { key: "open_who_talked", label: "Who did you talk to?" },
+      { key: "open_recruiting", label: "What avenues are you using to recruit?" },
     ],
+  },
+  {
+    title: "My Tasks",
+    fields: [
+      { key: "tasks_status", label: "Are tasks up to date? Review statuses." },
+    ],
+  },
+  {
+    title: "Road Shows",
+    fields: [
+      { key: "road_shows", label: "Road shows", hint: "Be sure that overall you have two set up per rep per year." },
+    ],
+  },
+  {
+    title: "Trade Shows",
+    fields: [{ key: "trade_shows", label: "Trade shows" }],
+  },
+  {
+    title: "Future Planning Events",
+    fields: [{ key: "future_events", label: "Future planning events" }],
   },
 ];
 

@@ -59,9 +59,8 @@ const SalesManagerWeeklyReviewMissingEmail = ({
 export const template = {
   component: SalesManagerWeeklyReviewMissingEmail,
   subject: (data: Record<string, any>) => {
-    const manager = data?.managerName ? ` · ${data.managerName}` : ''
-    const week = data?.weekLabel ? ` · ${data.weekLabel}` : ''
-    return `Weekly review NOT completed${manager}${week}`
+    const week = data?.weekLabel ? ` for ${data.weekLabel}` : ''
+    return `Sales Manager Weekly Review form has not been completed${week}. No responses were saved before the Friday 6pm ET cutoff.`
   },
   to: 'gabriella@lineage-collections.com',
   displayName: 'Sales manager weekly review (missing)',

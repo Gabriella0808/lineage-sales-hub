@@ -13,7 +13,6 @@ interface Props {
 }
 
 const SalesManagerWeeklyReviewMissingEmail = ({
-  managerName,
   weekLabel,
   portalUrl,
 }: Props) => (

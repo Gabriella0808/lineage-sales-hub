@@ -20,7 +20,7 @@ const SalesManagerWeeklyReviewMissingEmail = ({
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Weekly review not completed{managerName ? ` · ${managerName}` : ''}{weekLabel ? ` · ${weekLabel}` : ''}
+      Sales Manager Weekly Review form has not been completed{weekLabel ? ` for ${weekLabel}` : ''}
     </Preview>
     <Body style={main}>
       <Container style={container}>

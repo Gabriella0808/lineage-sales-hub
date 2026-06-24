@@ -7,24 +7,26 @@ import type { TemplateEntry } from './registry.ts'
 const SITE_NAME = 'Lineage Collections'
 
 interface Props {
+  managerName?: string
   weekLabel?: string
   portalUrl?: string
 }
 
 const SalesManagerWeeklyReviewMissingEmail = ({
+  managerName,
   weekLabel,
   portalUrl,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Sales Manager Weekly Review form has not been completed{weekLabel ? ` for ${weekLabel}` : ''}
+      {managerName ? `${managerName}'s ` : ''}Sales Manager Weekly Review form has not been completed{weekLabel ? ` for ${weekLabel}` : ''}
     </Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={detailsBox}>
           <Text style={text}>
-            Sales Manager Weekly Review form has not been completed for {weekLabel || 'the current week'}.
+            {managerName ? `${managerName}'s ` : ''}Sales Manager Weekly Review form has not been completed for {weekLabel || 'the current week'}.
           </Text>
           <Text style={text}>
             No responses were saved before the Friday 6pm ET cutoff.

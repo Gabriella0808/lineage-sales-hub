@@ -57,14 +57,12 @@ const SalesManagerWeeklyReviewMissingEmail = ({
 export const template = {
   component: SalesManagerWeeklyReviewMissingEmail,
   subject: (data: Record<string, any>) => {
-    const manager = data?.managerName || 'Sales Manager'
     const week = data?.weekLabel ? ` · ${data.weekLabel}` : ''
-    return `Weekly review NOT completed · ${manager}${week}`
+    return `Weekly review NOT completed${week}`
   },
   to: 'gabriella@lineage-collections.com',
   displayName: 'Sales manager weekly review (missing)',
   previewData: {
-    managerName: 'Sample Sales Manager',
     weekLabel: '[TEST] Week of Jun 22, 2026',
     portalUrl: 'https://www.lineage-managerhub.com/managers',
   },

@@ -12,11 +12,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { WeeklyReviewPanel } from "@/components/managers/WeeklyReviewPanel";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useRepTargets } from "@/hooks/useRepTargets";
 
 export default function ManagersPage() {
   const { user } = useAuth();
-  const canSeeWeeklyReview = user?.email?.toLowerCase() === "gabriella@lineage-collections.com";
+  const { data: roleInfo } = useUserRole();
+  const canSeeWeeklyReview =
+    user?.email?.toLowerCase() === "gabriella@lineage-collections.com" ||
+    roleInfo?.isAdmin ||
+    roleInfo?.isManager;
+
   const { data: managers = [], isLoading: mgrLoading } = useManagers();
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: dealers = [] } = useDealers();

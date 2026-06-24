@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
     const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
     const supaUrl = Deno.env.get("SUPABASE_URL")!;
 
-    async function sendMissing(tag: string) {
+    async function sendMissing(managerName: string, tag: string) {
       const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}`, apikey: anonKey },
@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
           recipientEmail: RECIPIENT,
           idempotencyKey: `manager-weekly-review-missing-${tag}`,
           templateData: {
+            managerName,
             weekLabel: `${(isTest || testMissing) ? "[TEST] " : ""}${weekLabel}`,
             portalUrl: "https://www.lineage-managerhub.com/managers",
           },

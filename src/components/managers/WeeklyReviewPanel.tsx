@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Save, Loader2 } from "lucide-react";
+import { Calendar, Save, Loader2, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 
@@ -246,6 +246,43 @@ export function WeeklyReviewPanel({
     onError: (e: any) => toast.error(e.message ?? "Failed to save"),
   });
 
+  const sendEmailMut = useMutation({
+    mutationFn: async () => {
+      const sections = SECTIONS.map((section) => ({
+        title: section.title,
+        metrics: section.metrics?.map((m) => ({
+          key: m.key,
+          label: m.label,
+          actual: responses[`${m.key}_actual`] ?? undefined,
+          goal: responses[`${m.key}_goal`] ?? undefined,
+        })),
+        fields: section.fields?.map((f) => ({
+          key: f.key,
+          label: f.label,
+          hint: f.hint,
+          value: responses[f.key] ?? undefined,
+        })),
+      }));
+
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "sales-manager-weekly-review",
+          idempotencyKey: `manager-weekly-review-${managerId}-${weekStart}`,
+          templateData: {
+            managerName,
+            weekLabel: `Week of ${format(parseISO(weekStart), "MMM d, yyyy")}`,
+            portalUrl: `${window.location.origin}/sales-managers`,
+            sections,
+          },
+        },
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => toast.success("Weekly review emailed to Gabriella"),
+    onError: (e: any) => toast.error(e.message ?? "Failed to send email"),
+  });
+
   const setField = (key: string, val: string) =>
     setResponses((p) => ({ ...p, [key]: val }));
 
@@ -292,6 +329,20 @@ export function WeeklyReviewPanel({
                 <Save className="h-3.5 w-3.5 mr-1.5" />
               )}
               Save
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => sendEmailMut.mutate()}
+              disabled={sendEmailMut.isPending || isFetching}
+              title="Email this review to Gabriella"
+            >
+              {sendEmailMut.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Mail className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              Send to Gabriella
             </Button>
           </div>
         </div>

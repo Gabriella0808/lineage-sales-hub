@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
           recipientEmail: RECIPIENT,
           idempotencyKey: `manager-weekly-review-missing-${tag}`,
           templateData: {
-            weekLabel: `${(isTest || testMissing) ? "[TEST] " : ""}${weekLabel}`,
+            weekLabel,
             portalUrl: "https://www.lineage-managerhub.com/managers",
           },
         }),

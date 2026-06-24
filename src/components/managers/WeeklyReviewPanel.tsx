@@ -246,42 +246,6 @@ export function WeeklyReviewPanel({
     onError: (e: any) => toast.error(e.message ?? "Failed to save"),
   });
 
-  const sendEmailMut = useMutation({
-    mutationFn: async () => {
-      const sections = SECTIONS.map((section) => ({
-        title: section.title,
-        metrics: section.metrics?.map((m) => ({
-          key: m.key,
-          label: m.label,
-          actual: responses[`${m.key}_actual`] ?? undefined,
-          goal: responses[`${m.key}_goal`] ?? undefined,
-        })),
-        fields: section.fields?.map((f) => ({
-          key: f.key,
-          label: f.label,
-          hint: f.hint,
-          value: responses[f.key] ?? undefined,
-        })),
-      }));
-
-      const { error } = await supabase.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "sales-manager-weekly-review",
-          idempotencyKey: `manager-weekly-review-${managerId}-${weekStart}`,
-          templateData: {
-            managerName,
-            weekLabel: `Week of ${format(parseISO(weekStart), "MMM d, yyyy")}`,
-            portalUrl: `${window.location.origin}/sales-managers`,
-            sections,
-          },
-        },
-      });
-
-      if (error) throw error;
-    },
-    onSuccess: () => toast.success("Weekly review emailed to Gabriella"),
-    onError: (e: any) => toast.error(e.message ?? "Failed to send email"),
-  });
 
   const setField = (key: string, val: string) =>
     setResponses((p) => ({ ...p, [key]: val }));

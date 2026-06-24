@@ -7,20 +7,18 @@ import type { TemplateEntry } from './registry.ts'
 const SITE_NAME = 'Lineage Collections'
 
 interface Props {
-  managerName?: string
   weekLabel?: string
   portalUrl?: string
 }
 
 const SalesManagerWeeklyReviewMissingEmail = ({
-  managerName,
   weekLabel,
   portalUrl,
 }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Weekly review not completed{managerName ? ` · ${managerName}` : ''}{weekLabel ? ` · ${weekLabel}` : ''}
+      Sales Manager Weekly Review form has not been completed{weekLabel ? ` for ${weekLabel}` : ''}
     </Preview>
     <Body style={main}>
       <Container style={container}>
@@ -59,14 +57,12 @@ const SalesManagerWeeklyReviewMissingEmail = ({
 export const template = {
   component: SalesManagerWeeklyReviewMissingEmail,
   subject: (data: Record<string, any>) => {
-    const manager = data?.managerName ? ` · ${data.managerName}` : ''
-    const week = data?.weekLabel ? ` · ${data.weekLabel}` : ''
-    return `Weekly review NOT completed${manager}${week}`
+    const week = data?.weekLabel ? ` for ${data.weekLabel}` : ''
+    return `Sales Manager Weekly Review form has not been completed${week}. No responses were saved before the Friday 6pm ET cutoff.`
   },
   to: 'gabriella@lineage-collections.com',
   displayName: 'Sales manager weekly review (missing)',
   previewData: {
-    managerName: 'Mateo De Lisa',
     weekLabel: 'Week of Jun 22, 2026',
     portalUrl: 'https://www.lineage-managerhub.com/managers',
   },

@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
     const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
     const supaUrl = Deno.env.get("SUPABASE_URL")!;
 
-    async function sendMissing(managerName: string, tag: string) {
+    async function sendMissing(tag: string) {
       const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}`, apikey: anonKey },
@@ -139,13 +139,12 @@ Deno.serve(async (req) => {
           recipientEmail: RECIPIENT,
           idempotencyKey: `manager-weekly-review-missing-${tag}`,
           templateData: {
-            managerName,
             weekLabel: `${(isTest || testMissing) ? "[TEST] " : ""}${weekLabel}`,
             portalUrl: "https://www.lineage-managerhub.com/managers",
           },
         }),
       });
-      if (!resp.ok) console.error("missing send failed", managerName, resp.status, await resp.text());
+      if (!resp.ok) console.error("missing send failed", resp.status, await resp.text());
       return resp.ok;
     }
 
@@ -186,7 +185,7 @@ Deno.serve(async (req) => {
 
     // testMissing: send a single missing-template test email to Gabriella now.
     if (testMissing) {
-      const ok = await sendMissing("Sample Sales Manager", `test-${Date.now()}`);
+      const ok = await sendMissing(`test-${Date.now()}`);
       return new Response(
         JSON.stringify({ ok: true, sent: ok ? 1 : 0, mode: "testMissing", weekStart }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -225,7 +224,7 @@ Deno.serve(async (req) => {
       if (responses && Object.keys(responses).length > 0) {
         if (await sendReview(m.name, responses, tagBase)) sentReview++;
       } else {
-        if (await sendMissing(m.name, tagBase)) sentMissing++;
+        if (await sendMissing(tagBase)) sentMissing++;
       }
     }
 

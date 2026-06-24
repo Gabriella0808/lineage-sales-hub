@@ -105,53 +105,51 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const isTest: boolean = !!body?.test;
+    const testMissing: boolean = !!body?.testMissing;
 
     const weekStart = currentWeekStart(new Date());
+    const weekLabel = fmtWeekLabel(weekStart);
+
+    // Sales managers we expect a weekly review from.
+    const EXPECTED_MANAGER_EMAILS = [
+      "will@lineage-collections.com",
+      "mateo@lineage-collections.com",
+      "chris@lineage-collections.com",
+      "kate@lineage-collections.com",
+    ];
 
     const { data: managers, error: mErr } = await supabase
       .from("managers")
-      .select("id, name");
+      .select("id, name, email");
     if (mErr) throw mErr;
 
-    let reviews: Array<{ manager_id: string; week_start: string; responses: Record<string, string> }> = [];
-
-    if (isTest) {
-      // Most recent review per manager (any week)
-      const { data, error } = await supabase
-        .from("manager_weekly_reviews")
-        .select("manager_id, week_start, responses")
-        .order("week_start", { ascending: false });
-      if (error) throw error;
-      const seen = new Set<string>();
-      for (const r of data ?? []) {
-        if (seen.has(r.manager_id)) continue;
-        seen.add(r.manager_id);
-        reviews.push(r as any);
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("manager_weekly_reviews")
-        .select("manager_id, week_start, responses")
-        .eq("week_start", weekStart);
-      if (error) throw error;
-      reviews = (data ?? []) as any;
-    }
-
-    if (reviews.length === 0) {
-      return new Response(
-        JSON.stringify({ ok: true, sent: 0, message: "No reviews found", weekStart, test: isTest }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const mgrName = (id: string) => managers?.find((m) => m.id === id)?.name ?? "Sales Manager";
+    const expectedManagers = (managers ?? []).filter(
+      (m: any) => m.email && EXPECTED_MANAGER_EMAILS.includes(m.email.toLowerCase()),
+    );
 
     const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
     const supaUrl = Deno.env.get("SUPABASE_URL")!;
 
-    let sent = 0;
-    for (const r of reviews) {
-      const responses = r.responses ?? {};
+    async function sendMissing(managerName: string, tag: string) {
+      const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}`, apikey: anonKey },
+        body: JSON.stringify({
+          templateName: "sales-manager-weekly-review-missing",
+          recipientEmail: RECIPIENT,
+          idempotencyKey: `manager-weekly-review-missing-${tag}`,
+          templateData: {
+            managerName,
+            weekLabel: `${(isTest || testMissing) ? "[TEST] " : ""}${weekLabel}`,
+            portalUrl: "https://www.lineage-managerhub.com/managers",
+          },
+        }),
+      });
+      if (!resp.ok) console.error("missing send failed", managerName, resp.status, await resp.text());
+      return resp.ok;
+    }
+
+    async function sendReview(managerName: string, responses: Record<string, string>, tag: string) {
       const sections = SECTIONS.map((s) => ({
         title: s.title,
         metrics: s.metrics?.map((m) => ({
@@ -167,37 +165,79 @@ Deno.serve(async (req) => {
           value: responses[f.key] ?? undefined,
         })),
       }));
-
-      const idempotencyKey = isTest
-        ? `manager-weekly-review-test-${r.manager_id}-${Date.now()}`
-        : `manager-weekly-review-${r.manager_id}-${r.week_start}`;
-
       const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${anonKey}`,
-          apikey: anonKey,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${anonKey}`, apikey: anonKey },
         body: JSON.stringify({
           templateName: "sales-manager-weekly-review",
           recipientEmail: RECIPIENT,
-          idempotencyKey,
+          idempotencyKey: `manager-weekly-review-${tag}`,
           templateData: {
-            managerName: mgrName(r.manager_id),
-            weekLabel: `${isTest ? "[TEST] " : ""}${fmtWeekLabel(r.week_start)}`,
+            managerName,
+            weekLabel: `${isTest ? "[TEST] " : ""}${weekLabel}`,
             portalUrl: "https://www.lineage-managerhub.com/managers",
             sections,
           },
         }),
       });
+      if (!resp.ok) console.error("review send failed", managerName, resp.status, await resp.text());
+      return resp.ok;
+    }
 
-      if (resp.ok) sent++;
-      else console.error("send failed", r.manager_id, resp.status, await resp.text());
+    // testMissing: send a single missing-template test email to Gabriella now.
+    if (testMissing) {
+      const ok = await sendMissing("Sample Sales Manager", `test-${Date.now()}`);
+      return new Response(
+        JSON.stringify({ ok: true, sent: ok ? 1 : 0, mode: "testMissing", weekStart }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Pull existing reviews for the current week (or, in test mode, most recent per manager)
+    const reviewByManager = new Map<string, Record<string, string>>();
+    if (isTest) {
+      const { data, error } = await supabase
+        .from("manager_weekly_reviews")
+        .select("manager_id, week_start, responses")
+        .order("week_start", { ascending: false });
+      if (error) throw error;
+      for (const r of data ?? []) {
+        if (!reviewByManager.has(r.manager_id)) {
+          reviewByManager.set(r.manager_id, (r.responses ?? {}) as any);
+        }
+      }
+    } else {
+      const { data, error } = await supabase
+        .from("manager_weekly_reviews")
+        .select("manager_id, responses")
+        .eq("week_start", weekStart);
+      if (error) throw error;
+      for (const r of data ?? []) {
+        reviewByManager.set(r.manager_id, (r.responses ?? {}) as any);
+      }
+    }
+
+    let sentReview = 0;
+    let sentMissing = 0;
+    for (const m of expectedManagers) {
+      const tagBase = isTest ? `${m.id}-test-${Date.now()}` : `${m.id}-${weekStart}`;
+      const responses = reviewByManager.get(m.id);
+      if (responses && Object.keys(responses).length > 0) {
+        if (await sendReview(m.name, responses, tagBase)) sentReview++;
+      } else {
+        if (await sendMissing(m.name, tagBase)) sentMissing++;
+      }
     }
 
     return new Response(
-      JSON.stringify({ ok: true, sent, total: reviews.length, weekStart, test: isTest }),
+      JSON.stringify({
+        ok: true,
+        weekStart,
+        managers: expectedManagers.length,
+        sentReview,
+        sentMissing,
+        test: isTest,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

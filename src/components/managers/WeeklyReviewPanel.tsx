@@ -330,6 +330,20 @@ export function WeeklyReviewPanel({
               )}
               Save
             </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => sendEmailMut.mutate()}
+              disabled={sendEmailMut.isPending || isFetching}
+              title="Email this review to Gabriella"
+            >
+              {sendEmailMut.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Mail className="h-3.5 w-3.5 mr-1.5" />
+              )}
+              Send to Gabriella
+            </Button>
           </div>
         </div>
       </CardHeader>

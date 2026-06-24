@@ -20,15 +20,15 @@ const SalesManagerWeeklyReviewMissingEmail = ({
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      {managerName ? `${managerName}'s ` : ''}Sales Manager Weekly Review form has not been completed{weekLabel ? ` for ${weekLabel}` : ''}
+      Sales Manager Weekly Review form has not been completed{weekLabel ? ` for ${weekLabel}` : ''}
     </Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={detailsBox}>
-          <Text style={text}>
-            {managerName ? `${managerName}'s ` : ''}Sales Manager Weekly Review form has not been completed for {weekLabel || 'the current week'}.
+          <Text style={centeredText}>
+            Sales Manager Weekly Review form has not been completed for {weekLabel || 'the current week'}.
           </Text>
-          <Text style={text}>
+          <Text style={centeredText}>
             No responses were saved before the Friday 6pm ET cutoff.
           </Text>
         </Section>

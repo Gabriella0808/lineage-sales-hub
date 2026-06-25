@@ -1559,21 +1559,47 @@ export default function CheckInsPage() {
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1.5 block">Log Type</Label>
-                      <Select
-                        value={form.log_type}
-                        onValueChange={(v) => setForm({ ...form, log_type: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a log type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LOG_TYPES.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                          >
+                            <span className={form.log_types.length ? "" : "text-muted-foreground"}>
+                              {form.log_types.length
+                                ? LOG_TYPES.filter((o) => form.log_types.includes(o.value))
+                                    .map((o) => o.label)
+                                    .join(", ")
+                                : "Select log type(s)"}
+                            </span>
+                            <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-1" align="start">
+                          {LOG_TYPES.map((o) => {
+                            const checked = form.log_types.includes(o.value);
+                            return (
+                              <label
+                                key={o.value}
+                                className="flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-accent"
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(v) => {
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      log_types: v
+                                        ? [...prev.log_types, o.value]
+                                        : prev.log_types.filter((b) => b !== o.value),
+                                    }));
+                                  }}
+                                />
+                                <span className="text-sm">{o.label}</span>
+                              </label>
+                            );
+                          })}
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1.5 block">New Placement</Label>

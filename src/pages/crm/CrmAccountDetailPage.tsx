@@ -23,7 +23,7 @@ export default function CrmAccountDetailPage() {
   const { user } = useAuth();
   const { data: account, isLoading } = useCrmAccount(id);
   const { data: reps = [] } = useCrmReps();
-  const { data: history = [] } = useStageHistory(id);
+  const { data: lastVisited } = useAccountLastVisited(id);
   const { data: notes = [] } = useAccountNotes(id);
   const update = useUpdateAccount();
   const addNote = useAddNote();

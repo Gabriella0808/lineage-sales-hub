@@ -279,6 +279,31 @@ export function useStageHistory(accountId: string | undefined) {
   });
 }
 
+export function useAccountLastVisited(accountId: string | undefined) {
+  return useQuery({
+    queryKey: ["crm_last_visited", accountId],
+    enabled: !!accountId,
+    queryFn: async () => {
+      const { data: linkedDealers, error: dealerError } = await supabase
+        .from("dealers")
+        .select("id")
+        .eq("crm_account_id", accountId!);
+      if (dealerError) throw dealerError;
+      if (!linkedDealers?.length) return null;
+      const dealerIds = linkedDealers.map((d) => d.id);
+      const { data: checkIns, error: checkInError } = await supabase
+        .from("dealer_check_ins")
+        .select("visit_date")
+        .in("dealer_id", dealerIds)
+        .order("visit_date", { ascending: false })
+        .limit(1);
+      if (checkInError) throw checkInError;
+      return (checkIns?.[0]?.visit_date as string | null) ?? null;
+    },
+    staleTime: CRM_STALE_TIME,
+  });
+}
+
 export function useAccountNotes(accountId: string | undefined) {
   return useQuery({
     queryKey: ["crm_notes", accountId],

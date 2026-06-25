@@ -581,7 +581,14 @@ export default function TaskBoardsView() {
   const updateTaskStatus = async (id: string, status: Status) => {
     const prev = tasks;
     const task = tasks.find((t) => t.id === id);
-    const targetGroupId = task ? findGroupForStatus(task.board_id, status) : null;
+    // Only auto-route into a default workflow group when the task is currently
+    // ungrouped or already in a default group. Tasks inside custom user-created
+    // groups must stay put regardless of status changes.
+    const currentGroup = task?.group_id ? groups.find((g) => g.id === task.group_id) : null;
+    const isInCustomGroup =
+      !!currentGroup && !(DEFAULT_GROUP_NAMES as readonly string[]).includes(currentGroup.name);
+    const targetGroupId =
+      task && !isInCustomGroup ? findGroupForStatus(task.board_id, status) : null;
     const shouldMove = targetGroupId && task && task.group_id !== targetGroupId;
 
     setTasks((ts) =>

@@ -895,11 +895,12 @@ export default function CheckInsPage() {
 
   const saveCheckIn = async () => {
     if (!user || !selected) return;
-    if (!form.log_type) {
-      toast({ title: "Log Type required", description: "Pick a log type.", variant: "destructive" });
+    if (!form.log_types.length) {
+      toast({ title: "Log Type required", description: "Pick at least one log type.", variant: "destructive" });
       return;
     }
-    if (form.log_type === "follow_up" && !form.follow_up_date) {
+    const hasFollowUp = form.log_types.includes("follow_up");
+    if (hasFollowUp && !form.follow_up_date) {
       toast({ title: "Follow-up date required", description: "Pick a date for the follow-up task.", variant: "destructive" });
       return;
     }

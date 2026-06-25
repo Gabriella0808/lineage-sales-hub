@@ -341,7 +341,7 @@ export default function CrmAccountsPage() {
         }
       />
 
-      <Card className="p-3 space-y-3">
+      <Card className="p-2 space-y-2">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />

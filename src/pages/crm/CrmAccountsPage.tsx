@@ -341,82 +341,87 @@ export default function CrmAccountsPage() {
         }
       />
 
-      <Card className="p-3 flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, contact, city..." className="pl-9" />
-        </div>
-        <Select value={repFilter} onValueChange={setRepFilter}>
-          <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All reps</SelectItem>
-            <SelectItem value="unassigned">Unassigned</SelectItem>
-            {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={managerFilter} onValueChange={setManagerFilter}>
-          <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All managers</SelectItem>
-            {managers
-              .filter((m) => ["Will", "Mateo", "Kate", "Chris De Lisa", "Kate Jones"].includes(m.name))
-              .map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-44 justify-between font-normal">
-              <span className="truncate">
-                {brandFilters.length === 0
-                  ? "All brands"
-                  : brandFilters.length === 1
-                    ? brandFilters[0]
-                    : `${brandFilters.length} brands`}
-              </span>
-              <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuCheckboxItem
-              checked={brandFilters.length === 0}
-              onCheckedChange={() => clearBrands()}
-            >
-              All brands
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-            {BRANDS.map((b) => (
+      <Card className="p-3 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, contact, city..." className="pl-9" />
+          </div>
+          <Select value={repFilter} onValueChange={setRepFilter}>
+            <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All reps</SelectItem>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
+              {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={managerFilter} onValueChange={setManagerFilter}>
+            <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All managers</SelectItem>
+              {managers
+                .filter((m) => ["Will", "Mateo", "Kate", "Chris De Lisa", "Kate Jones"].includes(m.name))
+                .map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-44 justify-between font-normal">
+                <span className="truncate">
+                  {brandFilters.length === 0
+                    ? "All brands"
+                    : brandFilters.length === 1
+                      ? brandFilters[0]
+                      : `${brandFilters.length} brands`}
+                </span>
+                <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
               <DropdownMenuCheckboxItem
-                key={b}
-                checked={brandFilters.includes(b)}
-                onCheckedChange={() => toggleBrand(b)}
+                checked={brandFilters.length === 0}
+                onCheckedChange={() => clearBrands()}
               >
-                {b}
+                All brands
               </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <ProspectTypeSelect
-          multi
-          values={prospectTypeFilters}
-          onChangeMulti={setProspectTypeFilters}
-          showAllOption
-          allLabel="All prospect types"
-          triggerClassName="w-full sm:w-52"
-        />
-        <Select value={accountTypeFilter} onValueChange={setAccountTypeFilter}>
-          <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All account types</SelectItem>
-            {ACCOUNT_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={stateFilter} onValueChange={setStateFilter}>
-          <SelectTrigger className="w-full sm:w-32"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All states</SelectItem>
-            {states.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
+              <DropdownMenuSeparator />
+              {BRANDS.map((b) => (
+                <DropdownMenuCheckboxItem
+                  key={b}
+                  checked={brandFilters.includes(b)}
+                  onCheckedChange={() => toggleBrand(b)}
+                >
+                  {b}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <div className="h-px bg-border" />
+        <div className="flex flex-col sm:flex-row gap-2">
+          <ProspectTypeSelect
+            multi
+            values={prospectTypeFilters}
+            onChangeMulti={setProspectTypeFilters}
+            showAllOption
+            allLabel="All prospect types"
+            triggerClassName="w-full sm:w-52"
+          />
+          <Select value={accountTypeFilter} onValueChange={setAccountTypeFilter}>
+            <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All account types</SelectItem>
+              {ACCOUNT_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={stateFilter} onValueChange={setStateFilter}>
+            <SelectTrigger className="w-full sm:w-32"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All states</SelectItem>
+              {states.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </Card>
 
       {selected.size > 0 && (

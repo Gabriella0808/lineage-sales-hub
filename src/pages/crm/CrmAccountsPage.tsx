@@ -341,14 +341,14 @@ export default function CrmAccountsPage() {
         }
       />
 
-      <Card className="p-2 space-y-2">
-        <div className="flex flex-col sm:flex-row gap-2">
+      <Card className="p-2 space-y-1.5">
+        <div className="flex flex-col sm:flex-row gap-1.5">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, contact, city..." className="pl-9" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, contact, city..." className="pl-9 h-8" />
           </div>
           <Select value={repFilter} onValueChange={setRepFilter}>
-            <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-44 h-8"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All reps</SelectItem>
               <SelectItem value="unassigned">Unassigned</SelectItem>
@@ -356,7 +356,7 @@ export default function CrmAccountsPage() {
             </SelectContent>
           </Select>
           <Select value={managerFilter} onValueChange={setManagerFilter}>
-            <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-44 h-8"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All managers</SelectItem>
               {managers
@@ -366,7 +366,7 @@ export default function CrmAccountsPage() {
           </Select>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-44 justify-between font-normal">
+              <Button variant="outline" className="w-full sm:w-44 justify-between font-normal h-8">
                 <span className="truncate">
                   {brandFilters.length === 0
                     ? "All brands"
@@ -398,24 +398,24 @@ export default function CrmAccountsPage() {
           </DropdownMenu>
         </div>
         <div className="h-px bg-border" />
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row gap-1.5">
           <ProspectTypeSelect
             multi
             values={prospectTypeFilters}
             onChangeMulti={setProspectTypeFilters}
             showAllOption
             allLabel="All prospect types"
-            triggerClassName="w-full sm:w-52"
+            triggerClassName="w-full sm:w-52 h-8"
           />
           <Select value={accountTypeFilter} onValueChange={setAccountTypeFilter}>
-            <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-40 h-8"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All account types</SelectItem>
               {ACCOUNT_TYPES.map((t) => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={stateFilter} onValueChange={setStateFilter}>
-            <SelectTrigger className="w-full sm:w-32"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-32 h-8"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All states</SelectItem>
               {states.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}

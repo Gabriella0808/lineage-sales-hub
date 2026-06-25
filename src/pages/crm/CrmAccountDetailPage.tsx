@@ -32,6 +32,9 @@ export default function CrmAccountDetailPage() {
   const [form, setForm] = useState<Partial<CrmAccount> | null>(null);
   const [newNote, setNewNote] = useState("");
   const [convertOpen, setConvertOpen] = useState(false);
+  const [followUpTitle, setFollowUpTitle] = useState("");
+  const [followUpDue, setFollowUpDue] = useState("");
+  const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
 
   useEffect(() => { if (account) setForm(account); }, [account]);
 

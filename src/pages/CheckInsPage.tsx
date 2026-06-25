@@ -269,11 +269,12 @@ export default function CheckInsPage() {
   const [detailCheckIn, setDetailCheckIn] = useState<CheckIn | null>(null);
   const [form, setForm] = useState({
     visit_date: todayEST(),
-    log_type: "",
+    log_types: [] as string[],
     new_placement: "",
     brands: [] as string[],
     notes: "",
     follow_up_date: "",
+    follow_up_title: "",
   });
   const [recentRange, setRecentRange] = useState<{ from: string; to: string }>({
     from: "",

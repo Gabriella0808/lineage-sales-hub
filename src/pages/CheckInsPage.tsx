@@ -269,11 +269,12 @@ export default function CheckInsPage() {
   const [detailCheckIn, setDetailCheckIn] = useState<CheckIn | null>(null);
   const [form, setForm] = useState({
     visit_date: todayEST(),
-    log_type: "",
+    log_types: [] as string[],
     new_placement: "",
     brands: [] as string[],
     notes: "",
     follow_up_date: "",
+    follow_up_title: "",
   });
   const [recentRange, setRecentRange] = useState<{ from: string; to: string }>({
     from: "",
@@ -894,11 +895,12 @@ export default function CheckInsPage() {
 
   const saveCheckIn = async () => {
     if (!user || !selected) return;
-    if (!form.log_type) {
-      toast({ title: "Log Type required", description: "Pick a log type.", variant: "destructive" });
+    if (!form.log_types.length) {
+      toast({ title: "Log Type required", description: "Pick at least one log type.", variant: "destructive" });
       return;
     }
-    if (form.log_type === "follow_up" && !form.follow_up_date) {
+    const hasFollowUp = form.log_types.includes("follow_up");
+    if (hasFollowUp && !form.follow_up_date) {
       toast({ title: "Follow-up date required", description: "Pick a date for the follow-up task.", variant: "destructive" });
       return;
     }
@@ -941,8 +943,8 @@ export default function CheckInsPage() {
         dealer_id: selected.id,
         user_id: user.id,
         visit_date: form.visit_date,
-        outcome: form.log_type,
-        log_type: form.log_type,
+        outcome: form.log_types.join(","),
+        log_type: form.log_types.join(","),
         new_placement: form.new_placement || null,
         brand: form.brands.length ? form.brands.join(", ") : null,
         notes: form.notes.trim() || null,
@@ -969,8 +971,8 @@ export default function CheckInsPage() {
     }
 
     // If follow-up, create a task + notification
-    if (form.log_type === "follow_up" && form.follow_up_date) {
-      const taskTitle = `Follow up with ${selected.name}`;
+    if (hasFollowUp && form.follow_up_date) {
+      const taskTitle = form.follow_up_title.trim() || `Follow up with ${selected.name}`;
       const taskDesc = form.notes.trim()
         ? `From check-in on ${form.visit_date}: ${form.notes.trim()}`
         : `From check-in on ${form.visit_date}`;
@@ -1006,11 +1008,12 @@ export default function CheckInsPage() {
     setSaving(false);
     setForm({
       visit_date: todayEST(),
-      log_type: "",
+      log_types: [],
       new_placement: "",
       brands: [],
       notes: "",
       follow_up_date: "",
+      follow_up_title: "",
     });
   };
 
@@ -1556,21 +1559,47 @@ export default function CheckInsPage() {
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1.5 block">Log Type</Label>
-                      <Select
-                        value={form.log_type}
-                        onValueChange={(v) => setForm({ ...form, log_type: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a log type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LOG_TYPES.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                          >
+                            <span className={form.log_types.length ? "" : "text-muted-foreground"}>
+                              {form.log_types.length
+                                ? LOG_TYPES.filter((o) => form.log_types.includes(o.value))
+                                    .map((o) => o.label)
+                                    .join(", ")
+                                : "Select log type(s)"}
+                            </span>
+                            <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-1" align="start">
+                          {LOG_TYPES.map((o) => {
+                            const checked = form.log_types.includes(o.value);
+                            return (
+                              <label
+                                key={o.value}
+                                className="flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-accent"
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(v) => {
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      log_types: v
+                                        ? [...prev.log_types, o.value]
+                                        : prev.log_types.filter((b) => b !== o.value),
+                                    }));
+                                  }}
+                                />
+                                <span className="text-sm">{o.label}</span>
+                              </label>
+                            );
+                          })}
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1.5 block">New Placement</Label>
@@ -1634,10 +1663,19 @@ export default function CheckInsPage() {
                         </PopoverContent>
                       </Popover>
                     </div>
-                    {form.log_type === "follow_up" && (
-                      <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-1.5">
+                    {form.log_types.includes("follow_up") && (
+                      <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
+                        <Label htmlFor="follow-up-title" className="text-xs font-medium">
+                          Follow-up task
+                        </Label>
+                        <Input
+                          id="follow-up-title"
+                          placeholder={selected ? `Follow up with ${selected.name}` : "Task title"}
+                          value={form.follow_up_title}
+                          onChange={(e) => setForm({ ...form, follow_up_title: e.target.value })}
+                        />
                         <Label htmlFor="follow-up-date" className="text-xs font-medium">
-                          Follow-up date
+                          Due date
                         </Label>
                         <Input
                           id="follow-up-date"

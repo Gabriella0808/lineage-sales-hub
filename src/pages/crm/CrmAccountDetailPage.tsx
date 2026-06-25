@@ -78,6 +78,35 @@ export default function CrmAccountDetailPage() {
 
   const set = <K extends keyof CrmAccount>(k: K, v: CrmAccount[K]) => setForm((f) => ({ ...(f ?? {}), [k]: v }));
 
+  const submitFollowUp = async () => {
+    if (!user) {
+      toast({ title: "Sign in required", variant: "destructive" });
+      return;
+    }
+    const title = followUpTitle.trim();
+    if (!title) {
+      toast({ title: "Add a task title", variant: "destructive" });
+      return;
+    }
+    setFollowUpSubmitting(true);
+    const { error } = await supabase.from("manager_tasks").insert({
+      user_id: user.id,
+      assigned_user_id: user.id,
+      title,
+      description: `Follow-up for ${account.company_name}\n/crm/accounts/${account.id}`,
+      due_date: followUpDue || null,
+      status: "todo",
+    });
+    setFollowUpSubmitting(false);
+    if (error) {
+      toast({ title: "Couldn't create task", description: error.message, variant: "destructive" });
+      return;
+    }
+    setFollowUpTitle("");
+    setFollowUpDue("");
+    toast({ title: "Follow-up task created", description: "Added to your My Tasks." });
+  };
+
   return (
     <div className="space-y-6 max-w-6xl">
       <div className="flex items-center gap-2">

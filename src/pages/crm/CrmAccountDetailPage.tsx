@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History, Trash2 } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History, Trash2, CalendarClock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -32,6 +32,9 @@ export default function CrmAccountDetailPage() {
   const [form, setForm] = useState<Partial<CrmAccount> | null>(null);
   const [newNote, setNewNote] = useState("");
   const [convertOpen, setConvertOpen] = useState(false);
+  const [followUpTitle, setFollowUpTitle] = useState("");
+  const [followUpDue, setFollowUpDue] = useState("");
+  const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
 
   useEffect(() => { if (account) setForm(account); }, [account]);
 
@@ -74,6 +77,35 @@ export default function CrmAccountDetailPage() {
   };
 
   const set = <K extends keyof CrmAccount>(k: K, v: CrmAccount[K]) => setForm((f) => ({ ...(f ?? {}), [k]: v }));
+
+  const submitFollowUp = async () => {
+    if (!user) {
+      toast({ title: "Sign in required", variant: "destructive" });
+      return;
+    }
+    const title = followUpTitle.trim();
+    if (!title) {
+      toast({ title: "Add a task title", variant: "destructive" });
+      return;
+    }
+    setFollowUpSubmitting(true);
+    const { error } = await supabase.from("manager_tasks").insert({
+      user_id: user.id,
+      assigned_user_id: user.id,
+      title,
+      description: `Follow-up for ${account.company_name}\n/crm/accounts/${account.id}`,
+      due_date: followUpDue || null,
+      status: "todo",
+    });
+    setFollowUpSubmitting(false);
+    if (error) {
+      toast({ title: "Couldn't create task", description: error.message, variant: "destructive" });
+      return;
+    }
+    setFollowUpTitle("");
+    setFollowUpDue("");
+    toast({ title: "Follow-up task created", description: "Added to your My Tasks." });
+  };
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -201,6 +233,37 @@ export default function CrmAccountDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><CalendarClock className="h-4 w-4" />Follow-up Task</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <Input
+                placeholder="Task title (e.g. Call back next week)"
+                value={followUpTitle}
+                onChange={(e) => setFollowUpTitle(e.target.value)}
+              />
+              <div className="space-y-1">
+                <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Due date</Label>
+                <Input
+                  type="date"
+                  value={followUpDue}
+                  onChange={(e) => setFollowUpDue(e.target.value)}
+                />
+              </div>
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={followUpSubmitting || !followUpTitle.trim()}
+                onClick={submitFollowUp}
+              >
+                {followUpSubmitting ? "Creating..." : "Create follow-up task"}
+              </Button>
+              <p className="text-[11px] text-muted-foreground">
+                Saved to your My Tasks with a reference to {account.company_name}.
+              </p>
+            </CardContent>
+          </Card>
+
 
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4" />Stage History</CardTitle></CardHeader>

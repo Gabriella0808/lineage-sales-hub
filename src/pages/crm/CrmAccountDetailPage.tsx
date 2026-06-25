@@ -235,6 +235,37 @@ export default function CrmAccountDetailPage() {
           </Card>
 
           <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><CalendarClock className="h-4 w-4" />Follow-up Task</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <Input
+                placeholder="Task title (e.g. Call back next week)"
+                value={followUpTitle}
+                onChange={(e) => setFollowUpTitle(e.target.value)}
+              />
+              <div className="space-y-1">
+                <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Due date</Label>
+                <Input
+                  type="date"
+                  value={followUpDue}
+                  onChange={(e) => setFollowUpDue(e.target.value)}
+                />
+              </div>
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={followUpSubmitting || !followUpTitle.trim()}
+                onClick={submitFollowUp}
+              >
+                {followUpSubmitting ? "Creating..." : "Create follow-up task"}
+              </Button>
+              <p className="text-[11px] text-muted-foreground">
+                Saved to your My Tasks with a reference to {account.company_name}.
+              </p>
+            </CardContent>
+          </Card>
+
+
+          <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4" />Stage History</CardTitle></CardHeader>
             <CardContent className="space-y-1.5">
               {history.map((h: any) => (

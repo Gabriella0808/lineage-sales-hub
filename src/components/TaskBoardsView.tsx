@@ -824,7 +824,218 @@ export default function TaskBoardsView() {
             </div>
           </div>
 
+          {/* Top filter bar - always visible */}
+          {(() => {
+            const boardAssignees = assignableUsers.filter(
+              (u) => members.some((m) => m.user_id === u.user_id) || u.user_id === activeBoard.created_by
+            );
+            const dueOptions: { value: DueFilter; label: string }[] = [
+              { value: "any", label: "Any due date" },
+              { value: "overdue", label: "Overdue" },
+              { value: "today", label: "Due today" },
+              { value: "this_week", label: "This week" },
+              { value: "next_7", label: "Next 7 days" },
+              { value: "none", label: "No due date" },
+            ];
+            return (
+              <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-4 py-2">
+                <span className="text-xs font-semibold text-muted-foreground mr-1">Filters:</span>
+
+                <Popover open={openFilter === "top-item"} onOpenChange={(o) => setOpenFilter(o ? "top-item" : null)}>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <Filter className="h-3 w-3" /> Item
+                      {contextQuery.trim() && (
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">1</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2" align="start">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by item</div>
+                    <Input
+                      value={contextQuery}
+                      onChange={(e) => setContextQuery(e.target.value)}
+                      placeholder="Search title or description"
+                      className="h-8 text-xs"
+                    />
+                    {contextQuery.trim() && (
+                      <button
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                        onClick={() => { setContextQuery(""); setOpenFilter(null); }}
+                      >
+                        Clear filter
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+
+                <Popover open={openFilter === "top-responsible"} onOpenChange={(o) => setOpenFilter(o ? "top-responsible" : null)}>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <Filter className="h-3 w-3" /> Responsible
+                      {responsibleFilter.length > 0 && (
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                          {responsibleFilter.length}
+                        </span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2" align="start">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by responsible</div>
+                    <div className="space-y-1 max-h-64 overflow-auto">
+                      <label className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                        <Checkbox
+                          checked={responsibleFilter.includes("__unassigned__")}
+                          onCheckedChange={(val) => {
+                            setResponsibleFilter((prev) =>
+                              val ? [...prev, "__unassigned__"] : prev.filter((x) => x !== "__unassigned__")
+                            );
+                            setOpenFilter(null);
+                          }}
+                        />
+                        <span className="text-xs">Unassigned</span>
+                      </label>
+                      {boardAssignees
+                        .slice()
+                        .sort((a, b) => (a.full_name || a.email || "").localeCompare(b.full_name || b.email || ""))
+                        .map((a) => {
+                          const checked = responsibleFilter.includes(a.user_id);
+                          return (
+                            <label key={a.user_id} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  setResponsibleFilter((prev) =>
+                                    val ? [...prev, a.user_id] : prev.filter((x) => x !== a.user_id)
+                                  );
+                                  setOpenFilter(null);
+                                }}
+                              />
+                              <span className="text-xs">{a.full_name || a.email}</span>
+                            </label>
+                          );
+                        })}
+                    </div>
+                    {responsibleFilter.length > 0 && (
+                      <button
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                        onClick={() => { setResponsibleFilter([]); setOpenFilter(null); }}
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+
+                <Popover open={openFilter === "top-status"} onOpenChange={(o) => setOpenFilter(o ? "top-status" : null)}>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <Filter className="h-3 w-3" /> Status
+                      {statusFilter.length > 0 && (
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                          {statusFilter.length}
+                        </span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2" align="start">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by status</div>
+                    <div className="space-y-1">
+                      {(Object.keys(STATUS_META) as Status[]).map((s) => {
+                        const meta = STATUS_META[s];
+                        const checked = statusFilter.includes(s);
+                        return (
+                          <label key={s} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(val) => {
+                                setStatusFilter((prev) =>
+                                  val ? [...prev, s] : prev.filter((x) => x !== s)
+                                );
+                                setOpenFilter(null);
+                              }}
+                            />
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.pillBg} ${meta.pillText}`}>
+                              {meta.label}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {statusFilter.length > 0 && (
+                      <button
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                        onClick={() => { setStatusFilter([]); setOpenFilter(null); }}
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+
+                <Popover open={openFilter === "top-due"} onOpenChange={(o) => setOpenFilter(o ? "top-due" : null)}>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <Filter className="h-3 w-3" /> Due date
+                      {dueFilter !== "any" && (
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">1</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2" align="start">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by due date</div>
+                    <div className="space-y-1">
+                      {dueOptions.map((opt) => {
+                        const checked = dueFilter === opt.value;
+                        return (
+                          <label key={opt.value} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(val) => {
+                                if (val) {
+                                  setDueFilter(opt.value);
+                                  setOpenFilter(null);
+                                }
+                              }}
+                            />
+                            <span className="text-xs">{opt.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {dueFilter !== "any" && (
+                      <button
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                        onClick={() => { setDueFilter("any"); setOpenFilter(null); }}
+                      >
+                        Clear filter
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+
+                {(contextQuery.trim() || responsibleFilter.length > 0 || statusFilter.length > 0 || dueFilter !== "any") && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs text-muted-foreground ml-auto"
+                    onClick={() => {
+                      setContextQuery("");
+                      setResponsibleFilter([]);
+                      setStatusFilter([]);
+                      setDueFilter("any");
+                      setOpenFilter(null);
+                    }}
+                  >
+                    Clear all
+                  </Button>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Groups */}
+
           {(() => {
             const defaultGroups = boardGroups
               .filter((g) => (DEFAULT_GROUP_NAMES as readonly string[]).includes(g.name))

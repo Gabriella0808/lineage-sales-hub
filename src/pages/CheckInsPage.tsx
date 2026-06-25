@@ -1008,11 +1008,12 @@ export default function CheckInsPage() {
     setSaving(false);
     setForm({
       visit_date: todayEST(),
-      log_type: "",
+      log_types: [],
       new_placement: "",
       brands: [],
       notes: "",
       follow_up_date: "",
+      follow_up_title: "",
     });
   };
 

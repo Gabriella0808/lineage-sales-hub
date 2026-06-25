@@ -234,15 +234,13 @@ export default function CrmAccountDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4" />Stage History</CardTitle></CardHeader>
-            <CardContent className="space-y-1.5">
-              {history.map((h: any) => (
-                <div key={h.id} className="text-[11px] flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">{h.from_stage ? `${h.from_stage} -  ${h.to_stage}` : `Set to ${h.to_stage}`}</span>
-                  <span className="text-muted-foreground/70 tabular-nums">{formatDistanceToNow(new Date(h.changed_at), { addSuffix: true })}</span>
-                </div>
-              ))}
-              {history.length === 0 && <div className="text-[11px] text-muted-foreground italic">No history.</div>}
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4" />Last visited</CardTitle></CardHeader>
+            <CardContent>
+              {lastVisited ? (
+                <div className="text-sm text-foreground">{format(new Date(lastVisited), "MMM d, yyyy")}</div>
+              ) : (
+                <div className="text-sm text-muted-foreground italic">Never visited</div>
+              )}
             </CardContent>
           </Card>
         </div>

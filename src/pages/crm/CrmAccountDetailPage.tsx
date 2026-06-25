@@ -204,37 +204,6 @@ export default function CrmAccountDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ClipboardList className="h-4 w-4" />Notes</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Add a follow-up note..." rows={2} />
-                <Button size="sm" disabled={!newNote.trim() || addNote.isPending} onClick={() => addNote.mutate({ accountId: account.id, body: newNote }, { onSuccess: () => setNewNote("") })}>Add note</Button>
-              </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {notes.map((n: any) => (
-                  <div key={n.id} className="text-xs border-l-2 border-accent/40 pl-2 py-1 group">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="text-foreground">{n.body}</div>
-                      {n.created_by === user?.id && (
-                        <button
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
-                          onClick={() => deleteNote.mutate({ id: n.id, accountId: account.id })}
-                          disabled={deleteNote.isPending}
-                          title="Delete note"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}</div>
-                  </div>
-                ))}
-                {notes.length === 0 && <div className="text-[11px] text-muted-foreground italic">No notes yet.</div>}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><CalendarClock className="h-4 w-4" />Follow-up Task</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               <Input
@@ -264,7 +233,6 @@ export default function CrmAccountDetailPage() {
             </CardContent>
           </Card>
 
-
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4" />Stage History</CardTitle></CardHeader>
             <CardContent className="space-y-1.5">
@@ -278,6 +246,37 @@ export default function CrmAccountDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="lg:col-span-3">
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ClipboardList className="h-4 w-4" />Notes</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Add a follow-up note..." rows={4} className="min-h-[120px]" />
+              <Button size="sm" disabled={!newNote.trim() || addNote.isPending} onClick={() => addNote.mutate({ accountId: account.id, body: newNote }, { onSuccess: () => setNewNote("") })}>Add note</Button>
+            </div>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {notes.map((n: any) => (
+                <div key={n.id} className="text-sm border-l-2 border-accent/40 pl-3 py-1 group">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-foreground">{n.body}</div>
+                    {n.created_by === user?.id && (
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
+                        onClick={() => deleteNote.mutate({ id: n.id, accountId: account.id })}
+                        disabled={deleteNote.isPending}
+                        title="Delete note"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}</div>
+                </div>
+              ))}
+              {notes.length === 0 && <div className="text-sm text-muted-foreground italic">No notes yet.</div>}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <AlertDialog open={convertOpen} onOpenChange={setConvertOpen}>

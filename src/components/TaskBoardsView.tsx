@@ -1367,11 +1367,17 @@ export default function TaskBoardsView() {
               (u) => members.some((m) => m.user_id === u.user_id) || u.user_id === activeBoard.created_by
             );
 
-            const columnHeader = (
+            const renderColumnHeader = (filterScope: string) => {
+              const itemFilterKey = `${filterScope}-item`;
+              const responsibleFilterKey = `${filterScope}-responsible`;
+              const statusFilterKey = `${filterScope}-status`;
+              const dueFilterKey = `${filterScope}-due`;
+
+              return (
               <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
                 <div className="border-r border-border h-8" />
                 <div className="px-3 py-1.5 border-r border-border text-center">
-                  <Popover open={openFilter === "item"} onOpenChange={(o) => setOpenFilter(o ? "item" : null)}>
+                  <Popover open={openFilter === itemFilterKey} onOpenChange={(o) => setOpenFilter(o ? itemFilterKey : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Item
@@ -1404,7 +1410,7 @@ export default function TaskBoardsView() {
                   <MessageSquarePlus className="h-3.5 w-3.5 mx-auto opacity-70" />
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover open={openFilter === "responsible"} onOpenChange={(o) => setOpenFilter(o ? "responsible" : null)}>
+                  <Popover open={openFilter === responsibleFilterKey} onOpenChange={(o) => setOpenFilter(o ? responsibleFilterKey : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Responsible
@@ -1464,7 +1470,7 @@ export default function TaskBoardsView() {
                   </Popover>
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover open={openFilter === "status"} onOpenChange={(o) => setOpenFilter(o ? "status" : null)}>
+                  <Popover open={openFilter === statusFilterKey} onOpenChange={(o) => setOpenFilter(o ? statusFilterKey : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Status
@@ -1515,7 +1521,7 @@ export default function TaskBoardsView() {
                   </Popover>
                 </div>
                 <div className="px-2 py-1.5 border-r border-border text-center">
-                  <Popover open={openFilter === "due"} onOpenChange={(o) => setOpenFilter(o ? "due" : null)}>
+                  <Popover open={openFilter === dueFilterKey} onOpenChange={(o) => setOpenFilter(o ? dueFilterKey : null)}>
                     <PopoverTrigger asChild>
                       <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
                         Due date
@@ -1566,7 +1572,8 @@ export default function TaskBoardsView() {
                 </div>
                 <div />
               </div>
-            );
+              );
+            };
 
             return (
               <div className="space-y-6 p-4">
@@ -1640,7 +1647,7 @@ export default function TaskBoardsView() {
                           className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
                           style={{ borderLeftColor: color }}
                         >
-                          {columnHeader}
+                          {renderColumnHeader(`default-${firstGroup.id}`)}
                           <ul>
                             {renderAddRow(firstGroup.id)}
                             {items.map(renderTaskRow)}
@@ -1736,7 +1743,7 @@ export default function TaskBoardsView() {
                           className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
                           style={{ borderLeftColor: color }}
                         >
-                          {columnHeader}
+                          {renderColumnHeader(`group-${g.id}`)}
                           <ul>
                             {renderAddRow(g.id)}
                             {groupTasks.map(renderTaskRow)}

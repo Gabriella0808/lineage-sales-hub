@@ -197,7 +197,11 @@ export default function CrmAccountDetailPage() {
             <CardHeader><CardTitle className="text-sm">Quick Actions</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {form.main_phone && <Button asChild variant="outline" className="w-full justify-start"><a href={`tel:${form.main_phone}`}><Phone className="h-4 w-4 mr-2" />{form.main_phone}</a></Button>}
-              {form.email && <Button asChild variant="outline" className="w-full justify-start"><a href={`mailto:${form.email}`}><Mail className="h-4 w-4 mr-2" />{form.email}</a></Button>}
+              {form.email && form.email.split(/,\s*/).filter(Boolean).map((email) => (
+                <Button key={email} asChild variant="outline" className="w-full justify-start">
+                  <a href={`mailto:${email.trim()}`}><Mail className="h-4 w-4 mr-2" />{email.trim()}</a>
+                </Button>
+              ))}
               {form.website && <Button asChild variant="outline" className="w-full justify-start"><a href={form.website} target="_blank" rel="noreferrer"><Globe className="h-4 w-4 mr-2" />Visit website</a></Button>}
               {(form.street_1 || form.city) && <Button asChild variant="outline" className="w-full justify-start"><a href={`https://maps.google.com/?q=${encodeURIComponent([form.street_1, form.city, form.state, form.zip].filter(Boolean).join(", "))}`} target="_blank" rel="noreferrer"><MapPin className="h-4 w-4 mr-2" />Open in Maps</a></Button>}
             </CardContent>

@@ -971,8 +971,8 @@ export default function CheckInsPage() {
     }
 
     // If follow-up, create a task + notification
-    if (form.log_type === "follow_up" && form.follow_up_date) {
-      const taskTitle = `Follow up with ${selected.name}`;
+    if (hasFollowUp && form.follow_up_date) {
+      const taskTitle = form.follow_up_title.trim() || `Follow up with ${selected.name}`;
       const taskDesc = form.notes.trim()
         ? `From check-in on ${form.visit_date}: ${form.notes.trim()}`
         : `From check-in on ${form.visit_date}`;

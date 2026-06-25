@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, ACCOUNT_TYPES, BRANDS, type AccountType, type Brand, type CrmAccount } from "@/hooks/useCrm";
+import { useParams, useNavigate } from "react-router-dom";
+import { useCrmAccount, useCrmReps, useUpdateAccount, useAccountLastVisited, useAccountNotes, useAddNote, useDeleteNote, ACCOUNT_TYPES, BRANDS, type AccountType, type Brand, type CrmAccount } from "@/hooks/useCrm";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History, Trash2, CalendarClock } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";

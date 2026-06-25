@@ -1663,10 +1663,19 @@ export default function CheckInsPage() {
                         </PopoverContent>
                       </Popover>
                     </div>
-                    {form.log_type === "follow_up" && (
-                      <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-1.5">
+                    {form.log_types.includes("follow_up") && (
+                      <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
+                        <Label htmlFor="follow-up-title" className="text-xs font-medium">
+                          Follow-up task
+                        </Label>
+                        <Input
+                          id="follow-up-title"
+                          placeholder={selected ? `Follow up with ${selected.name}` : "Task title"}
+                          value={form.follow_up_title}
+                          onChange={(e) => setForm({ ...form, follow_up_title: e.target.value })}
+                        />
                         <Label htmlFor="follow-up-date" className="text-xs font-medium">
-                          Follow-up date
+                          Due date
                         </Label>
                         <Input
                           id="follow-up-date"

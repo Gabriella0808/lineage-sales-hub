@@ -490,15 +490,17 @@ export default function TaskBoardsView() {
       toast({ title: "Title is required", variant: "destructive" });
       return;
     }
-    // Auto-route group_id from status: if the chosen status maps to one of this
-    // board's groups (by name) and the user didn't pick a different matching
-    // group, move the task into the status-matching group automatically.
+    // Auto-route group_id from status only for default workflow groups.
+    // If the task is in (or being placed in) a custom user-created group,
+    // respect that choice and never auto-move it based on status.
     let effectiveGroupId = taskForm.group_id;
     const currentGroup = effectiveGroupId
       ? groups.find((g) => g.id === effectiveGroupId)
       : null;
+    const isCustomGroup =
+      !!currentGroup && !(DEFAULT_GROUP_NAMES as readonly string[]).includes(currentGroup.name);
     const currentGroupStatus = inferStatusFromGroupName(currentGroup?.name);
-    if (!currentGroup || (currentGroupStatus && currentGroupStatus !== taskForm.status)) {
+    if (!isCustomGroup && (!currentGroup || (currentGroupStatus && currentGroupStatus !== taskForm.status))) {
       const matchedGroupId = findGroupForStatus(activeBoardId, taskForm.status);
       if (matchedGroupId) effectiveGroupId = matchedGroupId;
     }

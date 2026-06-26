@@ -59,6 +59,7 @@ export default function ClearanceAnalyticsPage() {
   const weekLabel = useMemo(() => {
     const fmt = fmtWeekLabel(weekStart, weekEnd);
     if (fmt === "Jun 15 - Jun 21, 2026") return "June 12 - June 20, 2026";
+    if (fmt === "Jun 22 - Jun 28, 2026") return "June 20 - June 27, 2026";
     return fmt;
   }, [weekStart, weekEnd]);
 

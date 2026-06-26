@@ -177,15 +177,30 @@ export function WeeklyReviewPanel({
   // for this manager's linked users, within the selected week (Mon..Sun).
   const { data: visitStats } = useQuery({
     queryKey: ["manager-weekly-visit-stats", managerId, weekStart],
+    refetchInterval: 60_000,
     queryFn: async () => {
-      // Collect user ids that map to this manager
+      // Collect user ids that map to this manager (manager + reps on their team)
       const userIds = new Set<string>();
-      const [{ data: ums }, { data: mgrUserId }] = await Promise.all([
+      const [{ data: ums }, { data: mgrUserId }, { data: reps }] = await Promise.all([
         supabase.from("user_managers").select("user_id").eq("manager_id", managerId),
         supabase.rpc("user_id_for_manager", { _manager_id: managerId }),
+        supabase.from("sales_reps").select("id").eq("manager_id", managerId),
       ]);
       (ums ?? []).forEach((r: any) => r.user_id && userIds.add(r.user_id));
       if (typeof mgrUserId === "string" && mgrUserId) userIds.add(mgrUserId);
+
+      const repIds = (reps ?? []).map((r: any) => r.id);
+      if (repIds.length) {
+        const repUserResults = await Promise.all(
+          repIds.map((rid) => supabase.rpc("user_id_for_rep_with_email_fallback", { _rep_id: rid })),
+        );
+        repUserResults.forEach((r) => {
+          if (typeof r.data === "string" && r.data) userIds.add(r.data);
+        });
+        const { data: urs } = await supabase
+          .from("user_reps").select("user_id").in("rep_id", repIds);
+        (urs ?? []).forEach((r: any) => r.user_id && userIds.add(r.user_id));
+      }
 
       if (userIds.size === 0) return { checkIns: 0, placements: 0 };
 

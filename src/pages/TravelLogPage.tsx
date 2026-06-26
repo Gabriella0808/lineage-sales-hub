@@ -238,8 +238,17 @@ export default function TravelLogPage() {
 
   const [detailTrip, setDetailTrip] = useState<TravelEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    salesperson_name: "",
+    purpose: "",
+    travel_date: "",
+    travel_end_date: "",
+    notes: "",
+  });
 
-  const canDeleteTrip = (t: TravelEntry | null) => {
+  const canEditTrip = (t: TravelEntry | null) => {
     if (!t || !roleInfo) return false;
     if (roleInfo.isAdmin) return true;
     return !!roleInfo.managerId && t.manager_id === roleInfo.managerId;

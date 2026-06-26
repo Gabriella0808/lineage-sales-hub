@@ -268,6 +268,52 @@ export default function TravelLogPage() {
     toast({ title: "Trip deleted" });
   };
 
+  const beginEdit = (t: TravelEntry) => {
+    setEditForm({
+      salesperson_name: t.salesperson_name ?? "",
+      purpose: t.purpose ?? "",
+      travel_date: t.travel_date,
+      travel_end_date: t.travel_end_date ?? "",
+      notes: t.notes ?? "",
+    });
+    setEditMode(true);
+  };
+
+  const saveEdit = async (t: TravelEntry) => {
+    if (!editForm.salesperson_name.trim()) {
+      toast({ title: "Salesperson required", variant: "destructive" });
+      return;
+    }
+    if (!editForm.travel_date) {
+      toast({ title: "Start date required", variant: "destructive" });
+      return;
+    }
+    setEditSaving(true);
+    const updates = {
+      salesperson_name: editForm.salesperson_name.trim(),
+      purpose: editForm.purpose.trim() || null,
+      travel_date: editForm.travel_date,
+      travel_end_date: editForm.travel_end_date || null,
+      notes: editForm.notes.trim() || null,
+    };
+    const { data, error } = await supabase
+      .from("travel_log")
+      .update(updates)
+      .eq("id", t.id)
+      .select()
+      .single();
+    setEditSaving(false);
+    if (error) {
+      toast({ title: "Failed to save trip", description: error.message, variant: "destructive" });
+      return;
+    }
+    const updated = data as TravelEntry;
+    setTravel((p) => p.map((x) => (x.id === t.id ? updated : x)));
+    setDetailTrip(updated);
+    setEditMode(false);
+    toast({ title: "Trip updated" });
+  };
+
   const daysAgo = (iso: string) => {
     const ms = Date.now() - parseISO(iso).getTime();
     const d = Math.floor(ms / (1000 * 60 * 60 * 24));

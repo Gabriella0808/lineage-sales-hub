@@ -340,12 +340,17 @@ export function WeeklyReviewPanel({
                       </Label>
                       <Input
                         type="text"
-                        value={responses[`${m.key}_actual`] ?? ""}
+                        value={
+                          isAuto && visitStats
+                            ? String(m.key === "daily_checkins" ? visitStats.checkIns : visitStats.placements)
+                            : (responses[`${m.key}_actual`] ?? "")
+                        }
                         onChange={(e) => setField(`${m.key}_actual`, e.target.value)}
                         placeholder="-"
                         className="text-center"
                         readOnly={isAuto}
                       />
+
                       <Input
                         type="text"
                         value={responses[`${m.key}_goal`] ?? ""}

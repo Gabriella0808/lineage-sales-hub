@@ -49,6 +49,7 @@ import {
   User,
   FileText,
   Trash2,
+  Pencil,
 } from "lucide-react";
 
 interface TravelEntry {
@@ -237,8 +238,17 @@ export default function TravelLogPage() {
 
   const [detailTrip, setDetailTrip] = useState<TravelEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    salesperson_name: "",
+    purpose: "",
+    travel_date: "",
+    travel_end_date: "",
+    notes: "",
+  });
 
-  const canDeleteTrip = (t: TravelEntry | null) => {
+  const canEditTrip = (t: TravelEntry | null) => {
     if (!t || !roleInfo) return false;
     if (roleInfo.isAdmin) return true;
     return !!roleInfo.managerId && t.manager_id === roleInfo.managerId;
@@ -256,6 +266,52 @@ export default function TravelLogPage() {
     setTravel((p) => p.filter((x) => x.id !== t.id));
     setDetailTrip(null);
     toast({ title: "Trip deleted" });
+  };
+
+  const beginEdit = (t: TravelEntry) => {
+    setEditForm({
+      salesperson_name: t.salesperson_name ?? "",
+      purpose: t.purpose ?? "",
+      travel_date: t.travel_date,
+      travel_end_date: t.travel_end_date ?? "",
+      notes: t.notes ?? "",
+    });
+    setEditMode(true);
+  };
+
+  const saveEdit = async (t: TravelEntry) => {
+    if (!editForm.salesperson_name.trim()) {
+      toast({ title: "Salesperson required", variant: "destructive" });
+      return;
+    }
+    if (!editForm.travel_date) {
+      toast({ title: "Start date required", variant: "destructive" });
+      return;
+    }
+    setEditSaving(true);
+    const updates = {
+      salesperson_name: editForm.salesperson_name.trim(),
+      purpose: editForm.purpose.trim() || null,
+      travel_date: editForm.travel_date,
+      travel_end_date: editForm.travel_end_date || null,
+      notes: editForm.notes.trim() || null,
+    };
+    const { data, error } = await supabase
+      .from("travel_log")
+      .update(updates)
+      .eq("id", t.id)
+      .select()
+      .single();
+    setEditSaving(false);
+    if (error) {
+      toast({ title: "Failed to save trip", description: error.message, variant: "destructive" });
+      return;
+    }
+    const updated = data as TravelEntry;
+    setTravel((p) => p.map((x) => (x.id === t.id ? updated : x)));
+    setDetailTrip(updated);
+    setEditMode(false);
+    toast({ title: "Trip updated" });
   };
 
   const daysAgo = (iso: string) => {
@@ -700,12 +756,91 @@ export default function TravelLogPage() {
         )}
       </Card>
       {/* Trip detail dialog (from Last traveled) */}
-      <Dialog open={!!detailTrip} onOpenChange={(o) => !o && setDetailTrip(null)}>
-        <DialogContent className="sm:max-w-lg">
+      <Dialog
+        open={!!detailTrip}
+        onOpenChange={(o) => {
+          if (!o) {
+            setDetailTrip(null);
+            setEditMode(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           {detailTrip && (() => {
             const start = parseISO(detailTrip.travel_date);
             const end = detailTrip.travel_end_date ? parseISO(detailTrip.travel_end_date) : start;
             const isMulti = !isSameDay(start, end);
+            const canEdit = canEditTrip(detailTrip);
+            if (editMode && canEdit) {
+              return (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Edit trip</DialogTitle>
+                    <DialogDescription>Update trip details and dates.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="e-name">Salesperson *</Label>
+                      <Input
+                        id="e-name"
+                        value={editForm.salesperson_name}
+                        onChange={(e) => setEditForm({ ...editForm, salesperson_name: e.target.value })}
+                        maxLength={120}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="e-purpose">Purpose</Label>
+                      <Input
+                        id="e-purpose"
+                        value={editForm.purpose}
+                        onChange={(e) => setEditForm({ ...editForm, purpose: e.target.value })}
+                        placeholder="e.g., State - Trade show"
+                        maxLength={400}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="e-start">Start date *</Label>
+                        <Input
+                          id="e-start"
+                          type="date"
+                          value={editForm.travel_date}
+                          onChange={(e) => setEditForm({ ...editForm, travel_date: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="e-end">End date</Label>
+                        <Input
+                          id="e-end"
+                          type="date"
+                          value={editForm.travel_end_date}
+                          min={editForm.travel_date}
+                          onChange={(e) => setEditForm({ ...editForm, travel_end_date: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="e-notes">Notes</Label>
+                      <Textarea
+                        id="e-notes"
+                        value={editForm.notes}
+                        onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                        rows={3}
+                        maxLength={2000}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter className="gap-2 sm:gap-2">
+                    <Button variant="outline" onClick={() => setEditMode(false)} disabled={editSaving}>
+                      Cancel
+                    </Button>
+                    <Button onClick={() => saveEdit(detailTrip)} disabled={editSaving}>
+                      {editSaving ? "Saving..." : "Save changes"}
+                    </Button>
+                  </DialogFooter>
+                </>
+              );
+            }
             return (
               <>
                 <DialogHeader>
@@ -752,16 +887,20 @@ export default function TravelLogPage() {
                   )}
                 </div>
                 <DialogFooter className="gap-2 sm:gap-2">
-                  {canDeleteTrip(detailTrip) && (
-                    <Button
-                      variant="destructive"
-                      onClick={() => deleteTrip(detailTrip)}
-                      disabled={deleting}
-                      className="sm:mr-auto"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      {deleting ? "Deleting..." : "Delete trip"}
-                    </Button>
+                  {canEdit && (
+                    <div className="flex gap-2 sm:mr-auto">
+                      <Button variant="outline" onClick={() => beginEdit(detailTrip)}>
+                        <Pencil className="h-4 w-4" /> Edit
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => deleteTrip(detailTrip)}
+                        disabled={deleting}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        {deleting ? "Deleting..." : "Delete"}
+                      </Button>
+                    </div>
                   )}
                   <Button variant="outline" onClick={() => setDetailTrip(null)}>Close</Button>
                   <Button
@@ -779,6 +918,7 @@ export default function TravelLogPage() {
           })()}
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

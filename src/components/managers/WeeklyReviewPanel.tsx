@@ -241,10 +241,19 @@ export function WeeklyReviewPanel({
     mutationFn: async () => {
       const { data: u } = await supabase.auth.getUser();
       const userId = u.user?.id;
+      const mergedResponses = {
+        ...responses,
+        ...(visitStats
+          ? {
+              daily_checkins_actual: String(visitStats.checkIns),
+              placements_actual: String(visitStats.placements),
+            }
+          : {}),
+      };
       const payload = {
         manager_id: managerId,
         week_start: weekStart,
-        responses,
+        responses: mergedResponses,
         updated_by: userId,
         ...(existing ? {} : { created_by: userId }),
       };

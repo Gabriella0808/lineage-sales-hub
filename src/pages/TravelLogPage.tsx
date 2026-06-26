@@ -49,6 +49,7 @@ import {
   User,
   FileText,
   Trash2,
+  Pencil,
 } from "lucide-react";
 
 interface TravelEntry {

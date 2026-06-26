@@ -173,26 +173,48 @@ export function WeeklyReviewPanel({
     setResponses((existing?.responses as Responses) ?? {});
   }, [existing, weekStart]);
 
-  // Pull check-ins + placements from Check-In Analytics source (dealer_check_ins)
-  // for this manager's linked users, within the selected week (Mon..Sun).
+  // Pull check-ins + placements from the same source as Check-In Analytics
+  // (dealer_check_ins). Attribute a check-in to this manager when either:
+  //   1. user_id is mapped to the manager (user_managers, rep mapping, or manager's own user)
+  //   2. dealer_id is owned by a rep on this manager's team (rep_owner first-name match,
+  //      or dealer.rep_id -> sales_reps.manager_id)
   const { data: visitStats } = useQuery({
     queryKey: ["manager-weekly-visit-stats", managerId, weekStart],
     refetchInterval: 60_000,
     queryFn: async () => {
-      // Collect user ids that map to this manager (manager + reps on their team)
-      const userIds = new Set<string>();
-      const [{ data: ums }, { data: mgrUserId }, { data: reps }] = await Promise.all([
+      const start = weekStart;
+      const end = format(addDays(parseISO(weekStart), 6), "yyyy-MM-dd");
+
+      const [
+        { data: mgr },
+        { data: ums },
+        { data: mgrUserId },
+        { data: reps },
+        { data: dealers },
+        { data: checkIns },
+      ] = await Promise.all([
+        supabase.from("managers").select("name,email").eq("id", managerId).maybeSingle(),
         supabase.from("user_managers").select("user_id").eq("manager_id", managerId),
         supabase.rpc("user_id_for_manager", { _manager_id: managerId }),
         supabase.from("sales_reps").select("id").eq("manager_id", managerId),
+        supabase.from("dealers").select("id,rep_id,rep_owner"),
+        supabase
+          .from("dealer_check_ins")
+          .select("id,new_placement,visit_date,user_id,dealer_id")
+          .gte("visit_date", start)
+          .lte("visit_date", end),
       ]);
+
+      // Users belonging to this manager
+      const userIds = new Set<string>();
       (ums ?? []).forEach((r: any) => r.user_id && userIds.add(r.user_id));
       if (typeof mgrUserId === "string" && mgrUserId) userIds.add(mgrUserId);
-
       const repIds = (reps ?? []).map((r: any) => r.id);
       if (repIds.length) {
         const repUserResults = await Promise.all(
-          repIds.map((rid) => supabase.rpc("user_id_for_rep_with_email_fallback", { _rep_id: rid })),
+          repIds.map((rid) =>
+            supabase.rpc("user_id_for_rep_with_email_fallback", { _rep_id: rid }),
+          ),
         );
         repUserResults.forEach((r) => {
           if (typeof r.data === "string" && r.data) userIds.add(r.data);
@@ -202,21 +224,30 @@ export function WeeklyReviewPanel({
         (urs ?? []).forEach((r: any) => r.user_id && userIds.add(r.user_id));
       }
 
-      if (userIds.size === 0) return { checkIns: 0, placements: 0 };
+      // Dealers owned by this manager's team
+      const repIdSet = new Set(repIds);
+      const mgrFirstName = (mgr?.name ?? "").trim().toLowerCase().split(/\s+/)[0] ?? "";
+      const dealerIds = new Set<string>();
+      (dealers ?? []).forEach((d: any) => {
+        const owner = (d.rep_owner ?? "").trim().toLowerCase();
+        if (mgrFirstName && owner === mgrFirstName) {
+          dealerIds.add(d.id);
+        } else if (d.rep_id && repIdSet.has(d.rep_id)) {
+          dealerIds.add(d.id);
+        }
+      });
 
-      const start = weekStart;
-      const end = format(addDays(parseISO(weekStart), 6), "yyyy-MM-dd");
-      const { data, error } = await supabase
-        .from("dealer_check_ins")
-        .select("id,new_placement,visit_date,user_id")
-        .in("user_id", Array.from(userIds))
-        .gte("visit_date", start)
-        .lte("visit_date", end);
-      if (error) throw error;
-      const rows = data ?? [];
+      const rows = (checkIns ?? []).filter(
+        (c: any) =>
+          (c.user_id && userIds.has(c.user_id)) ||
+          (c.dealer_id && dealerIds.has(c.dealer_id)),
+      );
+
       return {
         checkIns: rows.length,
-        placements: rows.filter((r: any) => (r.new_placement ?? "").toLowerCase() === "yes").length,
+        placements: rows.filter(
+          (r: any) => (r.new_placement ?? "").toLowerCase() === "yes",
+        ).length,
       };
     },
   });

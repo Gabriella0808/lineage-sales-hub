@@ -124,7 +124,6 @@ export const template = {
     const week = data?.weekLabel ? ` · ${data.weekLabel}` : ''
     return `Sales manager weekly review${manager}${week}`
   },
-  to: 'gabriella@lineage-collections.com',
   displayName: 'Sales manager weekly review',
   previewData: {
     managerName: 'Mateo De Lisa',

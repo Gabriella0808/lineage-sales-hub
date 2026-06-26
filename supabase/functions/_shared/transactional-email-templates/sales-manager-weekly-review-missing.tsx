@@ -61,7 +61,6 @@ export const template = {
     const week = data?.weekLabel ? ` · ${data.weekLabel}` : ''
     return `Weekly review NOT completed${week}`
   },
-  to: 'gabriella@lineage-collections.com',
   displayName: 'Sales manager weekly review (missing)',
   previewData: {
     weekLabel: '[TEST] Week of Jun 22, 2026',

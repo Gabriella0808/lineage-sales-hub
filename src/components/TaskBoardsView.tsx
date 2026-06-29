@@ -466,28 +466,60 @@ export default function TaskBoardsView() {
     setInlineEditName("");
   };
 
-  const reorderGroup = async (draggedId: string, targetId: string) => {
-    if (!activeBoardId || draggedId === targetId) return;
+  // Reorder a "block" within the active board. A block is either the merged
+  // default workflow block (key "default") or a single custom group
+  // (key "custom:<id>"). The default block's groups always stay grouped.
+  const reorderBlock = async (draggedKey: string, targetKey: string) => {
+    if (!activeBoardId || draggedKey === targetKey) return;
     const current = groups
       .filter((g) => g.board_id === activeBoardId)
       .sort((a, b) => a.position - b.position);
-    const fromIdx = current.findIndex((g) => g.id === draggedId);
-    const toIdx = current.findIndex((g) => g.id === targetId);
+    const defaults = current
+      .filter((g) => (DEFAULT_GROUP_NAMES as readonly string[]).includes(g.name))
+      .sort(
+        (a, b) =>
+          (DEFAULT_GROUP_NAMES as readonly string[]).indexOf(a.name) -
+          (DEFAULT_GROUP_NAMES as readonly string[]).indexOf(b.name),
+      );
+    const customs = current.filter(
+      (g) => !(DEFAULT_GROUP_NAMES as readonly string[]).includes(g.name),
+    );
+    type Block = { key: string; groups: Group[]; minPos: number };
+    const blocks: Block[] = [];
+    if (defaults.length > 0) {
+      blocks.push({
+        key: "default",
+        groups: defaults,
+        minPos: Math.min(...defaults.map((g) => g.position)),
+      });
+    }
+    customs.forEach((g) => blocks.push({ key: `custom:${g.id}`, groups: [g], minPos: g.position }));
+    blocks.sort((a, b) => a.minPos - b.minPos);
+    const fromIdx = blocks.findIndex((b) => b.key === draggedKey);
+    const toIdx = blocks.findIndex((b) => b.key === targetKey);
     if (fromIdx === -1 || toIdx === -1) return;
-    const next = [...current];
+    const next = [...blocks];
     const [moved] = next.splice(fromIdx, 1);
     next.splice(toIdx, 0, moved);
-    const updates = next.map((g, i) => ({ ...g, position: i }));
-    setGroups((prev) => {
-      const byId = new Map(updates.map((g) => [g.id, g.position] as const));
-      return prev.map((g) => (byId.has(g.id) ? { ...g, position: byId.get(g.id)! } : g));
+    let counter = 0;
+    const updates: { id: string; position: number }[] = [];
+    next.forEach((b) => {
+      b.groups.forEach((g) => {
+        updates.push({ id: g.id, position: counter });
+        counter += 1;
+      });
     });
+    const byId = new Map(updates.map((u) => [u.id, u.position] as const));
+    setGroups((prev) =>
+      prev.map((g) => (byId.has(g.id) ? { ...g, position: byId.get(g.id)! } : g)),
+    );
     await Promise.all(
-      updates.map((g) =>
-        supabase.from("task_board_groups" as any).update({ position: g.position }).eq("id", g.id),
+      updates.map((u) =>
+        supabase.from("task_board_groups" as any).update({ position: u.position }).eq("id", u.id),
       ),
     );
   };
+
 
 
   // - Task CRUD ---

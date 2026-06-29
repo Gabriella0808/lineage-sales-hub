@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       .select("user_id")
       .in("role", ["admin", "manager"]);
 
-    const lines = items.map((i: any) => `• ${i.qty} × ${i.sku} — ${i.name} @ $${Number(i.unit_price).toFixed(2)}`).join("\n");
+    const lines = items.map((i: any) => `... ${i.qty} × ${i.sku} - ${i.name} @ $${Number(i.unit_price).toFixed(2)}`).join("\n");
     const body = `New quote from ${user.email}\n\n${lines}\n\nTotal: $${total.toFixed(2)}${quote.notes ? `\n\nNotes: ${quote.notes}` : ""}`;
 
     if (admins?.length) {

@@ -271,10 +271,10 @@ export default function CustomerQuoteBuilderPage() {
         {!readonly && (
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input className="pl-9" placeholder="Search products by SKU or name…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input className="pl-9" placeholder="Search products by SKU or name..." value={search} onChange={(e) => setSearch(e.target.value)} />
             {(searching || results.length > 0) && (
               <Card className="absolute z-10 left-0 right-0 mt-1 max-h-64 overflow-y-auto">
-                {searching && <div className="p-3 text-sm text-muted-foreground">Searching…</div>}
+                {searching && <div className="p-3 text-sm text-muted-foreground">Searching...</div>}
                 {results.map((p) => (
                   <button key={p.id} type="button" onClick={() => addProduct(p)} className="w-full text-left p-3 hover:bg-muted flex items-center gap-3 border-b last:border-0">
                     <div className="flex-1 min-w-0">
@@ -324,7 +324,7 @@ export default function CustomerQuoteBuilderPage() {
         <h2 className="font-medium">Message</h2>
         <div>
           <Label>Intro</Label>
-          <Textarea rows={2} value={intro} onChange={(e) => setIntro(e.target.value)} disabled={readonly} placeholder="Thanks for stopping by — here is the quote we discussed." />
+          <Textarea rows={2} value={intro} onChange={(e) => setIntro(e.target.value)} disabled={readonly} placeholder="Thanks for stopping by - here is the quote we discussed." />
         </div>
         <div>
           <Label>Footer / terms</Label>

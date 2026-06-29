@@ -1,4 +1,5 @@
-import { Users, Map, Store, LogIn, Trophy, TrendingUp, ArrowUp } from "lucide-react";
+import { Users, Map as MapIcon, Store, LogIn, Trophy, ArrowUp, Calendar, ListChecks } from "lucide-react";
+import UpNextTasksWidget from "@/components/UpNextTasksWidget";
 import { TargetsProgressCard } from "@/components/TargetsProgressCard";
 import { StatCard } from "@/components/StatCard";
 import { useSalesReps, useTerritories, useDealers, useDealerSales, useRepTerritories, useManagers, formatCurrency, getInitials } from "@/hooks/usePortalData";
@@ -6,7 +7,10 @@ import { useSignInFeed } from "@/hooks/useSignInFeed";
 import { useUserRole } from "@/hooks/useUserRole";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format, parseISO } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -21,27 +25,93 @@ export default function DashboardPage() {
   const { data: repTerritories = [] } = useRepTerritories();
   const { data: managers = [] } = useManagers();
 
-  const isLoading = repsLoading || terLoading || dlrLoading || salesLoading;
+  const currentYear = new Date().getFullYear();
+
+  // Authoritative monthly revenue per dealer for current + prev year - pulled directly
+  // from dealer_invoices (same source as the Sales Targets card).
+  const { data: invoiceSales = [], isLoading: invLoading } = useQuery({
+    queryKey: ["dashboard_invoice_sales", currentYear],
+    queryFn: async () => {
+      const from = `${currentYear - 1}-01-01`;
+      const to = `${currentYear}-12-31`;
+      const pageSize = 1000;
+      const rows: { dealer_id: string | null; invoice_date: string | null; subtotal: number | null; total: number | null }[] = [];
+      let start = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("dealer_id, invoice_date, subtotal, total")
+          .gte("invoice_date", from)
+          .lte("invoice_date", to)
+          .not("dealer_id", "is", null)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = data ?? [];
+        rows.push(...(batch as any));
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      const agg = new Map<string, { dealer_id: string; year: number; month: string; revenue: number; order_count: number }>();
+      rows.forEach(r => {
+        if (!r.dealer_id || !r.invoice_date) return;
+        const d = new Date(r.invoice_date);
+        const y = d.getUTCFullYear();
+        const monthLabel = MONTH_ORDER[d.getUTCMonth()];
+        const amount = Number(r.subtotal ?? r.total ?? 0);
+        if (!amount) return;
+        const key = `${r.dealer_id}|${y}|${monthLabel}`;
+        let cur = agg.get(key);
+        if (!cur) { cur = { dealer_id: r.dealer_id, year: y, month: monthLabel, revenue: 0, order_count: 0 }; agg.set(key, cur); }
+        cur.revenue += amount;
+        cur.order_count += 1;
+      });
+      return Array.from(agg.values());
+    },
+    staleTime: 60_000,
+  });
+
+  // Prefer invoice-sourced data; fall back to dealerSales if empty.
+  const effectiveSales: any[] = invoiceSales.length > 0 ? invoiceSales : (dealerSales as any[]);
+
+  const isLoading = repsLoading || terLoading || dlrLoading || (salesLoading && invLoading);
 
   const totalOverdue = reps.reduce((s, r) => s + (r.tasks_overdue ?? 0), 0);
   const totalPending = reps.reduce((s, r) => s + (r.tasks_pending ?? 0), 0);
 
-  // Revenue from dealer_sales
-  const currentYear = new Date().getFullYear();
-  const currentYearSales = dealerSales.filter(s => s.year === currentYear);
-  const lastYearSales = dealerSales.filter(s => s.year === currentYear - 1);
-  const totalRevenue = currentYearSales.reduce((s, r) => s + (r.revenue ?? 0), 0);
-  const lastYearRevenue = lastYearSales.reduce((s, r) => s + (r.revenue ?? 0), 0);
-  const totalOrders = currentYearSales.reduce((s, r) => s + (r.order_count ?? 0), 0);
+  const currentYearSales = effectiveSales.filter((s: any) => s.year === currentYear);
+  const lastYearSales = effectiveSales.filter((s: any) => s.year === currentYear - 1);
+  const totalRevenue = currentYearSales.reduce((s: number, r: any) => s + (r.revenue ?? 0), 0);
+  const lastYearRevenue = lastYearSales.reduce((s: number, r: any) => s + (r.revenue ?? 0), 0);
+  const totalOrders = currentYearSales.reduce((s: number, r: any) => s + (r.order_count ?? 0), 0);
 
-  // Monthly rep performance — sales per rep, per month (top 5 reps shown)
+
+  // Resolve each dealer to a rep: prefer rep_id; else fall back to dealer.salesperson
+  // loosely matching a rep name. Same logic as the Sales Targets card.
+  const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+  const repByName = new Map<string, string>();
+  reps.forEach(r => { if (r.name) repByName.set(norm(r.name), r.id); });
+  const repForDealer = (d: any): string | null => {
+    if (d?.rep_id) return d.rep_id;
+    const sp = norm(d?.salesperson);
+    if (!sp) return null;
+    if (repByName.has(sp)) return repByName.get(sp)!;
+    for (const [name, id] of repByName) {
+      if (name && (name.includes(sp) || sp.includes(name))) return id;
+    }
+    return null;
+  };
+  const dealerRep = new Map<string, string | null>();
+  dealers.forEach((d: any) => dealerRep.set(d.id, repForDealer(d)));
+
+  // Monthly rep performance - sales per rep, per month (top 5 reps shown)
   const REP_COLORS = ['hsl(220 35% 22%)', 'hsl(38 75% 50%)', 'hsl(152 60% 40%)', 'hsl(0 65% 55%)', 'hsl(265 50% 55%)'];
   const repMonthlyMap: Record<string, Record<string, number>> = {};
   currentYearSales.forEach(s => {
-    const dealer = dealers.find(d => d.id === s.dealer_id);
-    if (!dealer?.rep_id) return;
-    if (!repMonthlyMap[dealer.rep_id]) repMonthlyMap[dealer.rep_id] = {};
-    repMonthlyMap[dealer.rep_id][s.month] = (repMonthlyMap[dealer.rep_id][s.month] ?? 0) + (s.revenue ?? 0);
+    const rid = dealerRep.get(s.dealer_id);
+    if (!rid) return;
+    if (!repMonthlyMap[rid]) repMonthlyMap[rid] = {};
+    repMonthlyMap[rid][s.month] = (repMonthlyMap[rid][s.month] ?? 0) + (s.revenue ?? 0);
   });
   const repTotals = Object.entries(repMonthlyMap)
     .map(([repId, months]) => ({ repId, total: Object.values(months).reduce((a, b) => a + b, 0) }))
@@ -70,16 +140,14 @@ export default function DashboardPage() {
     .map(([dealerId, revenue]) => {
       const dealer = dealers.find(d => d.id === dealerId);
       const name = dealer?.name ?? 'Unknown';
-      return { name: name.length > 18 ? name.slice(0, 18) + '…' : name, revenue: Math.round(revenue / 1000) };
+      return { name: name.length > 18 ? name.slice(0, 18) + '...' : name, revenue: Math.round(revenue / 1000) };
     });
 
-  // Sales Leaderboard — rep revenue from dealer_sales via dealer.rep_id
+  // Sales Leaderboard - rep revenue via dealerRep map
   const repRevenueMap: Record<string, number> = {};
   currentYearSales.forEach(s => {
-    const dealer = dealers.find(d => d.id === s.dealer_id);
-    if (dealer?.rep_id) {
-      repRevenueMap[dealer.rep_id] = (repRevenueMap[dealer.rep_id] ?? 0) + (s.revenue ?? 0);
-    }
+    const rid = dealerRep.get(s.dealer_id);
+    if (rid) repRevenueMap[rid] = (repRevenueMap[rid] ?? 0) + (s.revenue ?? 0);
   });
   const leaderboard = reps
     .map(r => {
@@ -88,7 +156,7 @@ export default function DashboardPage() {
       return {
         id: r.id,
         name: r.name,
-        territory: territoryNames.join(", ") || "—",
+        territory: territoryNames.join(", ") || "-",
         revenue: repRevenueMap[r.id] ?? 0,
       };
     })
@@ -96,33 +164,6 @@ export default function DashboardPage() {
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
 
-  // Top reps by total sales (horizontal bar)
-  const topRepsBar = Object.entries(repRevenueMap)
-    .map(([repId, revenue]) => ({ repId, revenue }))
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 8)
-    .map(({ repId, revenue }) => {
-      const rep = reps.find(r => r.id === repId);
-      const first = (rep?.name ?? 'Unknown').split(' ')[0];
-      return { name: first, revenue: Math.round(revenue) };
-    });
-
-  // Accounts by Sales Manager (donut)
-  const MANAGER_COLORS = ['hsl(38 75% 50%)', 'hsl(152 60% 40%)', 'hsl(220 35% 22%)', 'hsl(265 50% 55%)', 'hsl(0 65% 55%)'];
-  const managerAccountsMap: Record<string, number> = {};
-  dealers.forEach(d => {
-    const rep = reps.find(r => r.id === d.rep_id);
-    const managerId = rep?.manager_id ?? 'unassigned';
-    managerAccountsMap[managerId] = (managerAccountsMap[managerId] ?? 0) + 1;
-  });
-  const managerDonut = Object.entries(managerAccountsMap)
-    .map(([managerId, count]) => {
-      const mgr = managers.find(m => m.id === managerId);
-      const initials = mgr ? mgr.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 3) : 'N/A';
-      return { name: initials, value: count, fullName: mgr?.name ?? 'Unassigned' };
-    })
-    .filter(m => m.value > 0)
-    .sort((a, b) => b.value - a.value);
 
   // Reps per Territory (vertical bar)
   const repsPerTerritory = territories
@@ -134,6 +175,38 @@ export default function DashboardPage() {
     .sort((a, b) => b.count - a.count);
 
   
+
+  const { user } = useAuth();
+  const { data: upNextTasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ["dashboard_up_next_tasks", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const [{ data: tasksData, error: tasksErr }, { data: assigneeData }] = await Promise.all([
+        supabase.from("manager_tasks").select("*").neq("status", "done"),
+        supabase.from("manager_task_assignees").select("task_id, user_id").eq("user_id", user!.id),
+      ]);
+      if (tasksErr) throw tasksErr;
+
+      const assigneeTaskIds = new Set((assigneeData ?? []).map((r: any) => r.task_id));
+      const userId = user!.id;
+
+      const myTasks = (tasksData ?? []).filter((t: any) => {
+        return t.assigned_user_id === userId ||
+               t.assigned_manager_id === userId ||
+               t.user_id === userId ||
+               assigneeTaskIds.has(t.id);
+      });
+
+      myTasks.sort((a: any, b: any) => {
+        if (a.due_date && b.due_date) return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        if (a.due_date) return -1;
+        if (b.due_date) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      return myTasks.slice(0, 7);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -160,8 +233,8 @@ export default function DashboardPage() {
         </h1>
         <p className="page-subtitle">
           {role === "rep"
-            ? `${dealers.length} dealers • ${territories.length} territories assigned to you`
-            : `${reps.length} reps • ${territories.length} territories • ${dealers.length} dealers`}
+            ? `${dealers.length} dealers ... ${territories.length} territories assigned to you`
+            : `${reps.length} reps ... ${territories.length} territories ... ${dealers.length} dealers`}
         </p>
       </div>
 
@@ -169,111 +242,58 @@ export default function DashboardPage() {
         {role !== "rep" && (
           <StatCard title={role === "manager" ? "My Reps" : "Sales Reps"} value={reps.length} icon={Users} trend="neutral" subtitle="assigned" />
         )}
-        <StatCard title="Territories" value={territories.length} icon={Map} trend="neutral" subtitle="active" />
+        <StatCard title="Territories" value={territories.length} icon={MapIcon} trend="neutral" subtitle="active" />
         <StatCard title="Dealers" value={dealers.length} icon={Store} trend="neutral" subtitle="total" />
-        <StatCard title={`${currentYear} Revenue`} value={formatCurrency(totalRevenue)} trend="neutral" variant="accent" />
+        <StatCard title={`${currentYear} Gross Revenue`} value={formatCurrency(totalRevenue)} trend="neutral" variant="accent" />
         <StatCard title="Orders" value={totalOrders.toLocaleString()} trend="neutral" subtitle={String(currentYear)} variant="success" />
       </div>
 
-      {/* Sales Targets — YTD/MTD progress */}
-      <TargetsProgressCard />
+      {/* Sales Targets + Sales Leaderboard side by side */}
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-5 mb-6">
+        <TargetsProgressCard />
 
-      {/* Sales Leaderboard — full width */}
-      <div className="glass-card p-4 sm:p-6 mb-6">
-        <h3 className="text-base font-semibold mb-4 sm:mb-5 flex items-center gap-2">
-          <Trophy className="h-5 w-5 text-accent" /> Sales Leaderboard <span className="text-xs font-normal text-muted-foreground">YTD {currentYear}</span>
-        </h3>
-        {leaderboard.length > 0 ? (
-          <ol className="space-y-1">
-            {leaderboard.map((rep, idx) => {
-              const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
-              return (
-                <li key={rep.id} className="flex items-center gap-2 sm:gap-4 py-2.5 sm:py-3 border-b border-border/40 last:border-0">
-                  <span className={`w-7 sm:w-10 text-center shrink-0 ${idx <= 2 ? 'text-xl sm:text-2xl' : 'text-xs sm:text-sm font-semibold text-muted-foreground'}`}>{medal}</span>
-                  <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-muted flex items-center justify-center shrink-0">
-                    <span className="text-xs sm:text-sm font-bold text-primary">{getInitials(rep.name)}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm sm:text-base font-bold truncate">{rep.name}</p>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{rep.territory}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm sm:text-lg font-bold tabular-nums">{formatCurrency(rep.revenue)}</p>
-                    <p className="text-[10px] sm:text-[11px] font-medium text-success flex items-center justify-end gap-0.5">
-                      <ArrowUp className="h-3 w-3" /> Tracking
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        ) : (
-          <p className="text-sm text-muted-foreground">No rep revenue data yet.</p>
-        )}
-      </div>
-
-      {/* Row: Top Reps by Total Sales + Accounts by Sales Manager */}
-      <div className="grid lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
-        <div className="glass-card p-4 sm:p-5 lg:col-span-2">
-          <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-accent" /> Top Reps by Total Sales
+        {/* Sales Leaderboard */}
+        <div className="glass-card p-4 sm:p-6">
+          <h3 className="text-base font-semibold mb-4 sm:mb-5 flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-accent" /> Sales Leaderboard <span className="text-xs font-normal text-muted-foreground">YTD {currentYear}</span>
           </h3>
-          <div className="h-[240px] sm:h-[280px]">
-            {topRepsBar.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topRepsBar} layout="vertical" barSize={18}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 13% 90%)" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" width={60} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
-                  <Bar dataKey="revenue" fill="hsl(38 75% 50%)" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center pt-20">No rep sales data yet.</p>
-            )}
-          </div>
-        </div>
-
-        <div className="glass-card p-4 sm:p-5 flex flex-col">
-          <h3 className="text-sm font-semibold mb-4">Accounts by Sales Manager</h3>
-          <div className="flex-1 min-h-[240px]">
-            {managerDonut.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={managerDonut}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={2}
-                  >
-                    {managerDonut.map((_, i) => (
-                      <Cell key={i} fill={MANAGER_COLORS[i % MANAGER_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v: number, _n, p: any) => [`${v} accounts`, p?.payload?.fullName]} />
-                  <Legend
-                    verticalAlign="bottom"
-                    iconType="square"
-                    formatter={(value) => <span className="text-xs">{value}</span>}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center pt-20">No manager data yet.</p>
-            )}
-          </div>
+          {leaderboard.length > 0 ? (
+            <ol className="space-y-1">
+              {leaderboard.map((rep, idx) => {
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+                return (
+                  <li key={rep.id} className="flex items-center gap-2 sm:gap-4 py-2.5 sm:py-3 border-b border-border/40 last:border-0">
+                    <span className={`w-7 sm:w-10 text-center shrink-0 ${idx <= 2 ? 'text-xl sm:text-2xl' : 'text-xs sm:text-sm font-semibold text-muted-foreground'}`}>{medal}</span>
+                    <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <span className="text-xs sm:text-sm font-bold text-primary">{getInitials(rep.name)}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm sm:text-base font-bold truncate">{rep.name}</p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground truncate">{rep.territory}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm sm:text-lg font-bold tabular-nums">{formatCurrency(rep.revenue)}</p>
+                      <p className="text-[10px] sm:text-[11px] font-medium text-success flex items-center justify-end gap-0.5">
+                        <ArrowUp className="h-3 w-3" /> Tracking
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          ) : (
+            <p className="text-sm text-muted-foreground">No rep revenue data yet.</p>
+          )}
         </div>
       </div>
+
+      {/* Up Next Tasks - same UI/functionality as My Tasks */}
+      <UpNextTasksWidget />
 
       {/* Row: Top Dealers by Revenue */}
       <div className="mb-6">
         <div className="glass-card p-4 sm:p-5">
-          <h3 className="text-sm font-semibold mb-4">Top Dealers by Revenue ($K) — {currentYear}</h3>
+          <h3 className="text-sm font-semibold mb-4">Top Dealers by Gross Revenue ($K) - {currentYear}</h3>
           <div className="h-[260px] sm:h-[280px]">
             {topDealers.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -295,7 +315,7 @@ export default function DashboardPage() {
       {/* Row: Monthly Rep Performance */}
       <div className="grid lg:grid-cols-1 gap-5">
         <div className="glass-card p-4 sm:p-5">
-          <h3 className="text-sm font-semibold mb-1">Monthly Rep Performance ($K) — {currentYear}</h3>
+          <h3 className="text-sm font-semibold mb-1">Monthly Rep Performance ($K) - {currentYear}</h3>
           <p className="text-[11px] text-muted-foreground mb-3">Top 5 reps by sales per month</p>
           <div className="h-[240px]">
             {topRepNames.length > 0 ? (

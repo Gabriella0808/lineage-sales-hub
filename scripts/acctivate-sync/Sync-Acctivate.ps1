@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
   Pushes data from the local Acctivate SQL Server database to the
-  Lovable Cloud `sync-acctivate` edge function.
+  Lineage backend `sync-acctivate` edge function.
 
 .DESCRIPTION
   Runs a set of SQL queries against Acctivate, shapes each result set
@@ -13,8 +13,8 @@
   Path to sync.config.json. Defaults to ./sync.config.json next to this script.
 
 .PARAMETER Tables
-  Optional list of table keys to sync (managers, sales_reps, territories,
-  dealers, products, inventory). Defaults to all enabled in config.
+  Optional list of table keys to sync (dealers, products, inventory,
+  dealer_invoices, dealer_invoice_lines, open_sales_orders). Defaults to all enabled in config.
 
 .PARAMETER Prune
   After syncing dealers, remove stale dealer rows that are no longer in
@@ -390,35 +390,6 @@ function Send-Batch {
 # and MUST include an `acctivate_id` text column used for upsert conflict resolution.
 
 $queries = @{
-  managers = @"
--- Intentionally no CTE/WITH here; some Acctivate SQL Server versions reject
--- CTE batches unless the previous statement is explicitly terminated.
-SELECT
-  CAST(EmployeeId AS NVARCHAR(64))                                AS acctivate_id,
-  LTRIM(RTRIM(ISNULL(FirstName,'') + ' ' + ISNULL(LastName,'')))  AS name,
-  EMail                                                            AS email
-FROM dbo.Employee
-WHERE Active = 1
-  AND JobTitle LIKE '%manager%'
-"@
-
-  sales_reps = @"
-SELECT
-  CAST(SalespersonID AS NVARCHAR(64)) AS acctivate_id,
-  Name                                AS name,
-  CAST(NULL AS NVARCHAR(255))         AS email,
-  CAST(NULL AS NVARCHAR(64))          AS phone
-FROM dbo.SalespersonInfo
-WHERE Name IS NOT NULL
-"@
-
-  territories = @"
-SELECT DISTINCT
-  CAST(TerritoryCode AS NVARCHAR(64)) AS acctivate_id,
-  TerritoryName                       AS name
-FROM dbo.Territory
-"@
-
   dealers = @"
 SELECT
   CAST(cv.CustId AS NVARCHAR(64)) AS acctivate_id,
@@ -465,9 +436,109 @@ GROUP BY i.ProductID, p.ProductID
 "@
 }
 
-$queries['dealer_invoices']      = New-DealerInvoicesQuery
-$queries['dealer_invoice_lines'] = New-DealerInvoiceLinesQuery
-$queries['open_sales_orders']    = New-OpenSalesOrdersQuery
+$queryBuilders = @{
+  dealer_invoices      = { New-DealerInvoicesQuery }
+  dealer_invoice_lines = { New-DealerInvoiceLinesQuery }
+  open_sales_orders    = { New-OpenSalesOrdersQuery }
+}
+
+# ---------- Acctivate-section sales reps / managers / territories ----------
+# These populate the SEPARATE acctivate_* tables only. The original
+# public.sales_reps / public.managers / public.territories tables are NEVER
+# touched (the edge function rejects them with 403).
+
+function Test-SqlObjectExists {
+  param([string]$Schema = 'dbo', [string]$Name)
+  $rows = Invoke-Sql -Query "SELECT 1 AS x FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='$Schema' AND TABLE_NAME='$Name' UNION ALL SELECT 1 FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA='$Schema' AND TABLE_NAME='$Name'"
+  return ($rows.Count -gt 0)
+}
+
+function New-AcctivateSalesRepsQuery {
+  if (-not (Test-SqlObjectExists -Name 'Salesperson')) {
+    throw "dbo.Salesperson not found in Acctivate — cannot sync acctivate_sales_reps."
+  }
+  $cols = Get-SqlColumns -Table 'Salesperson'
+  $idCol      = Get-FirstColumn -Columns $cols -Candidates @('SalespersonID','SalespersonId','ID','Code')
+  $nameCol    = Get-FirstColumn -Columns $cols -Candidates @('Name','SalespersonName','FullName')
+  $emailCol   = Get-FirstColumn -Columns $cols -Candidates @('Email','EmailAddress')
+  $phoneCol   = Get-FirstColumn -Columns $cols -Candidates @('Phone','PhoneNumber','Telephone')
+  $inactiveCol= Get-FirstColumn -Columns $cols -Candidates @('Inactive','IsInactive','Discontinued')
+  $activeCol  = Get-FirstColumn -Columns $cols -Candidates @('Active','IsActive')
+
+  if (-not $idCol) { throw "Could not find a SalespersonID column on dbo.Salesperson. Found: $($cols -join ', ')" }
+
+  $nameExpr   = if ($nameCol)  { "CAST(s.$(Quote-SqlIdentifier $nameCol) AS NVARCHAR(255))" } else { "CAST(s.$(Quote-SqlIdentifier $idCol) AS NVARCHAR(255))" }
+  $emailExpr  = if ($emailCol) { "CAST(s.$(Quote-SqlIdentifier $emailCol) AS NVARCHAR(255))" } else { "NULL" }
+  $phoneExpr  = if ($phoneCol) { "CAST(s.$(Quote-SqlIdentifier $phoneCol) AS NVARCHAR(64))" } else { "NULL" }
+  $activeExpr = if ($inactiveCol) {
+    "CASE WHEN ISNULL(s.$(Quote-SqlIdentifier $inactiveCol),0) = 1 THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END"
+  } elseif ($activeCol) {
+    "CASE WHEN ISNULL(s.$(Quote-SqlIdentifier $activeCol),1) = 1 THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END"
+  } else { "CAST(1 AS bit)" }
+
+  return @"
+SELECT
+  CAST(s.$(Quote-SqlIdentifier $idCol) AS NVARCHAR(64)) AS acctivate_id,
+  CAST(s.$(Quote-SqlIdentifier $idCol) AS NVARCHAR(64)) AS rep_code,
+  $nameExpr  AS name,
+  $emailExpr AS email,
+  $phoneExpr AS phone,
+  $activeExpr AS active
+FROM dbo.Salesperson s
+WHERE s.$(Quote-SqlIdentifier $idCol) IS NOT NULL
+"@
+}
+
+function New-AcctivateSalesManagersQuery {
+  # Derive managers from dbo.tbCustomer._SalesManager (the values used on dealers).
+  return @"
+SELECT
+  LTRIM(RTRIM(tc._SalesManager)) AS acctivate_id,
+  LTRIM(RTRIM(tc._SalesManager)) AS manager_code,
+  LTRIM(RTRIM(tc._SalesManager)) AS name,
+  NULL AS email,
+  NULL AS phone,
+  NULL AS job_title,
+  CAST(1 AS bit) AS active
+FROM dbo.tbCustomer tc
+WHERE tc._SalesManager IS NOT NULL
+  AND LEN(LTRIM(RTRIM(tc._SalesManager))) > 0
+GROUP BY LTRIM(RTRIM(tc._SalesManager))
+"@
+}
+
+function New-AcctivateTerritoriesQuery {
+  # Derive territories from dbo.tbCustomer._Territory (+ most-common manager per territory).
+  return @"
+;WITH t AS (
+  SELECT LTRIM(RTRIM(tc._Territory))    AS territory_name,
+         LTRIM(RTRIM(tc._SalesManager)) AS manager_name
+  FROM dbo.tbCustomer tc
+  WHERE tc._Territory IS NOT NULL AND LEN(LTRIM(RTRIM(tc._Territory))) > 0
+),
+ranked AS (
+  SELECT territory_name, manager_name, COUNT(*) AS n,
+         ROW_NUMBER() OVER (PARTITION BY territory_name ORDER BY COUNT(*) DESC) AS rk
+  FROM t
+  GROUP BY territory_name, manager_name
+)
+SELECT
+  territory_name AS acctivate_id,
+  territory_name AS territory_code,
+  territory_name AS name,
+  NULL           AS description,
+  CASE WHEN manager_name IS NULL OR LEN(manager_name)=0 THEN NULL ELSE manager_name END AS manager_acctivate_id,
+  CASE WHEN manager_name IS NULL OR LEN(manager_name)=0 THEN NULL ELSE manager_name END AS manager_name,
+  CAST(1 AS bit) AS active
+FROM ranked
+WHERE rk = 1
+"@
+}
+
+$queryBuilders['acctivate_sales_reps']     = { New-AcctivateSalesRepsQuery }
+$queryBuilders['acctivate_sales_managers'] = { New-AcctivateSalesManagersQuery }
+$queryBuilders['acctivate_territories']    = { New-AcctivateTerritoriesQuery }
+
 
 $tableAliases = @{
   dealer_invoice_line  = 'dealer_invoice_lines'
@@ -481,6 +552,13 @@ $tableAliases = @{
   open_sales           = 'open_sales_orders'
   sales_orders         = 'open_sales_orders'
   backlog              = 'open_sales_orders'
+  reps                 = 'acctivate_sales_reps'
+  sales_reps           = 'acctivate_sales_reps'
+  acctivate_reps       = 'acctivate_sales_reps'
+  managers             = 'acctivate_sales_managers'
+  sales_managers       = 'acctivate_sales_managers'
+  acctivate_managers   = 'acctivate_sales_managers'
+  territories          = 'acctivate_territories'
 }
 
 function Normalize-TableKey {
@@ -507,12 +585,14 @@ if ($Prune) {
 }
 
 foreach ($table in $enabled) {
-  if (-not $queries.ContainsKey($table)) {
-    Write-Warning "No query defined for '$table' — skipping. Available: $($queries.Keys -join ', ')"
+  if (-not $queries.ContainsKey($table) -and -not $queryBuilders.ContainsKey($table)) {
+    $available = @($queries.Keys) + @($queryBuilders.Keys) | Sort-Object -Unique
+    Write-Warning "No query defined for '$table' — skipping. Available: $($available -join ', ')"
     continue
   }
   Write-Host "==> $table at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Yellow
-  $rows = Invoke-Sql -Query $queries[$table]
+  $query = if ($queries.ContainsKey($table)) { $queries[$table] } else { & $queryBuilders[$table] }
+  $rows = Invoke-Sql -Query $query
   Write-Host "  pulled $($rows.Count) rows from SQL"
   Send-Batch -Table $table -Rows $rows -OnConflict 'acctivate_id'
 

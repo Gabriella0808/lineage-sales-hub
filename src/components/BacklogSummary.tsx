@@ -58,7 +58,7 @@ const STOCK_CLASS_TONE: Record<string, string> = {
   Contract: "bg-muted text-foreground border border-border",
 };
 
-// Rep → territory mapping (from DB). Falls back to rep name if unknown.
+// Rep -  territory mapping (from DB). Falls back to rep name if unknown.
 const REP_TO_TERRITORY: Record<string, string> = {
   "Skip Camillo": "Skip Camillo / New England",
   "Skip": "Skip Camillo / New England",
@@ -112,13 +112,13 @@ export function BacklogSummary() {
   // the existing UI expects so all filters/drill-downs keep working.
   const detailWithTerritory = useMemo(() => {
     // While the live fetch is in flight, render nothing rather than the
-    // pre-sync static snapshot — we don't want stale figures flashing in.
+    // pre-sync static snapshot - we don't want stale figures flashing in.
     let source: (DetailRow & { __live?: boolean })[];
     if (liveLoading) {
       source = [];
     } else if (liveOrders.length > 0) {
       source = liveOrders.map((r) => ({
-        customer: r.dealer_name ?? "—",
+        customer: r.dealer_name ?? "-",
         type: "Sales Order",
         date: r.order_date,
         shipDate: r.promised_date,
@@ -384,7 +384,7 @@ export function BacklogSummary() {
           {liveOrders.length > 0 ? (
             <>Live Acctivate · <span className="font-medium text-foreground">{new Set(liveOrders.map((o) => o.order_number).filter(Boolean)).size.toLocaleString()} open orders</span></>
           ) : liveLoading ? (
-            <>Loading open orders…</>
+            <>Loading open orders...</>
           ) : (
             <>Snapshot as of{" "}
               <span className="font-medium text-foreground">
@@ -485,7 +485,7 @@ function BacklogOrderTable({
     const map = new Map<string, { key: string; orderNum: string; lines: OrderRow[] }>();
     for (const r of rows) {
       const key = String(r.num ?? `__no-num-${r.customer}-${r.item}`);
-      const entry = map.get(key) ?? { key, orderNum: r.num != null ? String(r.num) : "—", lines: [] };
+      const entry = map.get(key) ?? { key, orderNum: r.num != null ? String(r.num) : "-", lines: [] };
       entry.lines.push(r);
       map.set(key, entry);
     }
@@ -541,10 +541,10 @@ function BacklogOrderTable({
                   {showCustomer && (
                     <td className="px-3 py-2 max-w-[180px] truncate">{first.customer}</td>
                   )}
-                  <td className="px-3 py-2 text-xs">{first.rep ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs">{first.rep ?? "-"}</td>
                   <td className="px-3 py-2 text-xs">{first.territory}</td>
                   <td className="px-3 py-2 text-xs">
-                    {earliestShip ? new Date(earliestShip).toLocaleDateString() : "—"}
+                    {earliestShip ? new Date(earliestShip).toLocaleDateString() : "-"}
                   </td>
                   {showStockClass && (
                     <td className="px-3 py-2">
@@ -558,7 +558,7 @@ function BacklogOrderTable({
                           {first.stockClass}
                         </span>
                       ) : (
-                        "—"
+                        "-"
                       )}
                     </td>
                   )}
@@ -585,9 +585,9 @@ function BacklogOrderTable({
                         <tbody>
                           {g.lines.map((l, i) => (
                             <tr key={i} className="border-t border-border/50">
-                              <td className="py-1 pr-3 font-mono">{l.item ?? "—"}</td>
+                              <td className="py-1 pr-3 font-mono">{l.item ?? "-"}</td>
                               <td className="py-1 pr-3 max-w-[280px] truncate text-muted-foreground">
-                                {l.description ?? "—"}
+                                {l.description ?? "-"}
                               </td>
                               <td className="py-1 pr-3">
                                 {l.stockClass ? (
@@ -600,11 +600,11 @@ function BacklogOrderTable({
                                     {l.stockClass}
                                   </span>
                                 ) : (
-                                  "—"
+                                  "-"
                                 )}
                               </td>
                               <td className="py-1 pr-3">
-                                {l.shipDate ? new Date(l.shipDate).toLocaleDateString() : "—"}
+                                {l.shipDate ? new Date(l.shipDate).toLocaleDateString() : "-"}
                               </td>
                               <td className="py-1 pr-3 text-right tabular-nums">{fmtMoney(l.amount)}</td>
                               <td className="py-1 text-right tabular-nums font-medium">

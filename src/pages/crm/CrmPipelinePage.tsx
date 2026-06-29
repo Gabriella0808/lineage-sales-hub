@@ -21,7 +21,7 @@ export default function CrmPipelinePage() {
     return map;
   }, [accounts]);
 
-  const repName = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name ?? "—" : "Unassigned");
+  const repName = (id: string | null) => (id ? reps.find((r) => r.id === id)?.name ?? "-" : "Unassigned");
 
   const onDrop = (stage: LifecycleStage) => {
     if (!draggingId) return;
@@ -29,7 +29,7 @@ export default function CrmPipelinePage() {
     if (acct && acct.lifecycle_stage !== stage) {
       update.mutate(
         { id: acct.id, patch: { lifecycle_stage: stage } },
-        { onSuccess: () => toast({ title: "Stage updated", description: `${acct.company_name} → ${LIFECYCLE_STAGES.find((s) => s.id === stage)?.label}` }) }
+        { onSuccess: () => toast({ title: "Stage updated", description: `${acct.company_name} -  ${LIFECYCLE_STAGES.find((s) => s.id === stage)?.label}` }) }
       );
     }
     setDraggingId(null);
@@ -77,7 +77,7 @@ export default function CrmPipelinePage() {
                     <div className="text-[13px] font-medium text-foreground truncate">{a.company_name}</div>
                     <div className="text-[11px] text-muted-foreground truncate">{repName(a.assigned_rep_id)}</div>
                     <div className="mt-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span className="truncate">{[a.city, a.state].filter(Boolean).join(", ") || "—"}</span>
+                      <span className="truncate">{[a.city, a.state].filter(Boolean).join(", ") || "-"}</span>
                       {a.contact_first_name && <span className="truncate ml-2">{a.contact_first_name}</span>}
                     </div>
                   </Link>

@@ -45,7 +45,7 @@ const TaskAssignedEmail = ({
           </Button>
         ) : null}
         <Hr style={hr} />
-        <Text style={footer}>— The {SITE_NAME} Team</Text>
+        <Text style={footer}>--- The {SITE_NAME} Team</Text>
       </Container>
     </Body>
   </Html>

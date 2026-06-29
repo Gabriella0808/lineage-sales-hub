@@ -9,12 +9,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-type TeamId = "will" | "mateo" | "chris";
+type TeamId = "will" | "mateo" | "chris" | "kate";
 
 const TEAM: { id: TeamId; name: string; managerEmail: string; repOwners: string[] }[] = [
   { id: "will", name: "Will Grisack", managerEmail: "will@lineage-collections.com", repOwners: ["will"] },
   { id: "mateo", name: "Mateo De Lisa", managerEmail: "mateo@lineage-collections.com", repOwners: ["mateo"] },
   { id: "chris", name: "Chris De Lisa", managerEmail: "chris@lineage-collections.com", repOwners: ["chris"] },
+  { id: "kate", name: "Kate", managerEmail: "kate@lineage-collections.com", repOwners: ["kate"] },
 ];
 
 const RECIPIENTS: { name: string; email: string }[] = [
@@ -23,6 +24,7 @@ const RECIPIENTS: { name: string; email: string }[] = [
   { name: "Will", email: "will@lineage-collections.com" },
   { name: "Mateo", email: "mateo@lineage-collections.com" },
   { name: "Chris", email: "chris@lineage-collections.com" },
+  { name: "Kate", email: "kate@lineage-collections.com" },
   { name: "Gabriella", email: "gabriella@lineage-collections.com" },
 ];
 
@@ -132,6 +134,7 @@ Deno.serve(async (req) => {
       will: { checkIns: 0, placements: 0 },
       mateo: { checkIns: 0, placements: 0 },
       chris: { checkIns: 0, placements: 0 },
+      kate: { checkIns: 0, placements: 0 },
     };
     cis.forEach((c) => {
       const team = (c.dealer_id && dealerToTeam[c.dealer_id]) || userToTeam[c.user_id];

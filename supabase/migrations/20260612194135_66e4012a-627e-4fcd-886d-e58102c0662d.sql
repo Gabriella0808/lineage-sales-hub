@@ -1,0 +1,1 @@
+SELECT cron.unschedule('notify-weekly-clearance-friday-5pm-et');

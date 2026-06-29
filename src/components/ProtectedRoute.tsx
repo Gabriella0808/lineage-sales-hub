@@ -6,10 +6,12 @@ interface Props {
   children: React.ReactNode;
   /** If provided, only these roles can access. Otherwise any authenticated user can. */
   allow?: AppRole[];
+  /** If provided, users with these emails are denied (case-insensitive). */
+  denyEmails?: string[];
 }
 
-export default function ProtectedRoute({ children, allow }: Props) {
-  const { session, loading } = useAuth();
+export default function ProtectedRoute({ children, allow, denyEmails }: Props) {
+  const { session, loading, user } = useAuth();
   const { data: roleInfo, isLoading: roleLoading } = useUserRole();
 
   if (loading || (session && roleLoading)) {
@@ -22,6 +24,9 @@ export default function ProtectedRoute({ children, allow }: Props) {
   if (!session) return <Navigate to="/auth" replace />;
 
   if (allow && roleInfo && !allow.includes(roleInfo.role)) {
+    return <Navigate to="/" replace />;
+  }
+  if (denyEmails && user?.email && denyEmails.map(e => e.toLowerCase()).includes(user.email.toLowerCase())) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;

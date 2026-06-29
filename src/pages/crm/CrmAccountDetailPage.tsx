@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCrmAccount, useCrmReps, useUpdateAccount, useStageHistory, useAccountNotes, useAddNote, useDeleteNote, ACCOUNT_TYPES, BRANDS, type AccountType, type Brand, type CrmAccount } from "@/hooks/useCrm";
+import { useParams, useNavigate } from "react-router-dom";
+import { useCrmAccount, useCrmReps, useUpdateAccount, useAccountLastVisited, useAccountNotes, useAddNote, useDeleteNote, ACCOUNT_TYPES, BRANDS, type AccountType, type Brand, type CrmAccount } from "@/hooks/useCrm";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -10,10 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History, Trash2 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { ArrowLeft, Phone, Mail, Globe, MapPin, Save, ClipboardList, History, Trash2, CalendarClock } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function CrmAccountDetailPage() {
   const { id } = useParams();
@@ -22,7 +23,7 @@ export default function CrmAccountDetailPage() {
   const { user } = useAuth();
   const { data: account, isLoading } = useCrmAccount(id);
   const { data: reps = [] } = useCrmReps();
-  const { data: history = [] } = useStageHistory(id);
+  const { data: lastVisited } = useAccountLastVisited(id);
   const { data: notes = [] } = useAccountNotes(id);
   const update = useUpdateAccount();
   const addNote = useAddNote();
@@ -31,10 +32,13 @@ export default function CrmAccountDetailPage() {
   const [form, setForm] = useState<Partial<CrmAccount> | null>(null);
   const [newNote, setNewNote] = useState("");
   const [convertOpen, setConvertOpen] = useState(false);
+  const [followUpTitle, setFollowUpTitle] = useState("");
+  const [followUpDue, setFollowUpDue] = useState("");
+  const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
 
   useEffect(() => { if (account) setForm(account); }, [account]);
 
-  if (isLoading || !form || !account) return <div className="p-8 text-muted-foreground">Loading…</div>;
+  if (isLoading || !form || !account) return <div className="p-8 text-muted-foreground">Loading...</div>;
 
   const type = ACCOUNT_TYPES.find((s) => s.id === (form.account_type ?? "prospect"))!;
   const repName = reps.find((r) => r.id === form.assigned_rep_id)?.name ?? "Unassigned";
@@ -50,8 +54,20 @@ export default function CrmAccountDetailPage() {
     update.mutate(
       { id: account.id, patch: { account_type: "dealer" as AccountType } },
       {
-        onSuccess: () => {
-          toast({ title: "Converted to dealer", description: `${account.company_name} now appears on the Field Check-ins map.` });
+        onSuccess: async () => {
+          toast({ title: "Converted to dealer", description: `${account.company_name} was added to the Field Check-ins map and will show as never visited until a check-in is logged.` });
+          try {
+            const { data: dealerRow } = await supabase
+              .from("dealers")
+              .select("id, lat")
+              .eq("crm_account_id", account.id)
+              .maybeSingle();
+            if (dealerRow?.id && dealerRow.lat == null) {
+              await supabase.functions.invoke("geocode-dealer", { body: { dealer_id: dealerRow.id } });
+            }
+          } catch (err) {
+            console.warn("geocode-dealer failed", err);
+          }
           nav("/crm/accounts");
         },
         onError: (e: any) => toast({ title: "Conversion failed", description: e.message, variant: "destructive" }),
@@ -62,6 +78,35 @@ export default function CrmAccountDetailPage() {
 
   const set = <K extends keyof CrmAccount>(k: K, v: CrmAccount[K]) => setForm((f) => ({ ...(f ?? {}), [k]: v }));
 
+  const submitFollowUp = async () => {
+    if (!user) {
+      toast({ title: "Sign in required", variant: "destructive" });
+      return;
+    }
+    const title = followUpTitle.trim();
+    if (!title) {
+      toast({ title: "Add a task title", variant: "destructive" });
+      return;
+    }
+    setFollowUpSubmitting(true);
+    const { error } = await supabase.from("manager_tasks").insert({
+      user_id: user.id,
+      assigned_user_id: user.id,
+      title,
+      description: `Follow-up for ${account.company_name}\n/crm/accounts/${account.id}`,
+      due_date: followUpDue || null,
+      status: "todo",
+    });
+    setFollowUpSubmitting(false);
+    if (error) {
+      toast({ title: "Couldn't create task", description: error.message, variant: "destructive" });
+      return;
+    }
+    setFollowUpTitle("");
+    setFollowUpDue("");
+    toast({ title: "Follow-up task created", description: "Added to your My Tasks." });
+  };
+
   return (
     <div className="space-y-6 max-w-6xl">
       <div className="flex items-center gap-2">
@@ -70,7 +115,7 @@ export default function CrmAccountDetailPage() {
       <PageHeader
         eyebrow={repName}
         title={account.company_name}
-        subtitle={[account.city, account.state].filter(Boolean).join(", ") || "—"}
+        subtitle={[account.city, account.state].filter(Boolean).join(", ") || "-"}
         actions={
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <span className={`h-1.5 w-1.5 rounded-full ${type.dot}`} />
@@ -142,7 +187,7 @@ export default function CrmAccountDetailPage() {
               <Field label="Notes"><Textarea value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={3} /></Field>
             </div>
             <div className="sm:col-span-2 flex justify-end">
-              <Button onClick={save} disabled={update.isPending}><Save className="h-4 w-4 mr-1.5" />{update.isPending ? "Saving…" : "Save changes"}</Button>
+              <Button onClick={save} disabled={update.isPending}><Save className="h-4 w-4 mr-1.5" />{update.isPending ? "Saving..." : "Save changes"}</Button>
             </div>
           </CardContent>
         </Card>
@@ -152,56 +197,88 @@ export default function CrmAccountDetailPage() {
             <CardHeader><CardTitle className="text-sm">Quick Actions</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {form.main_phone && <Button asChild variant="outline" className="w-full justify-start"><a href={`tel:${form.main_phone}`}><Phone className="h-4 w-4 mr-2" />{form.main_phone}</a></Button>}
-              {form.email && <Button asChild variant="outline" className="w-full justify-start"><a href={`mailto:${form.email}`}><Mail className="h-4 w-4 mr-2" />{form.email}</a></Button>}
+              {form.email && form.email.split(/,\s*/).filter(Boolean).map((email) => (
+                <Button key={email} asChild variant="outline" className="w-full justify-start">
+                  <a href={`mailto:${email.trim()}`}><Mail className="h-4 w-4 mr-2" />{email.trim()}</a>
+                </Button>
+              ))}
               {form.website && <Button asChild variant="outline" className="w-full justify-start"><a href={form.website} target="_blank" rel="noreferrer"><Globe className="h-4 w-4 mr-2" />Visit website</a></Button>}
               {(form.street_1 || form.city) && <Button asChild variant="outline" className="w-full justify-start"><a href={`https://maps.google.com/?q=${encodeURIComponent([form.street_1, form.city, form.state, form.zip].filter(Boolean).join(", "))}`} target="_blank" rel="noreferrer"><MapPin className="h-4 w-4 mr-2" />Open in Maps</a></Button>}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ClipboardList className="h-4 w-4" />Notes</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <Textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Add a follow-up note…" rows={2} />
-                <Button size="sm" disabled={!newNote.trim() || addNote.isPending} onClick={() => addNote.mutate({ accountId: account.id, body: newNote }, { onSuccess: () => setNewNote("") })}>Add note</Button>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><CalendarClock className="h-4 w-4" />Follow-up Task</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <Input
+                placeholder="Task title (e.g. Call back next week)"
+                value={followUpTitle}
+                onChange={(e) => setFollowUpTitle(e.target.value)}
+              />
+              <div className="space-y-1">
+                <Label className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">Due date</Label>
+                <Input
+                  type="date"
+                  value={followUpDue}
+                  onChange={(e) => setFollowUpDue(e.target.value)}
+                />
               </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {notes.map((n: any) => (
-                  <div key={n.id} className="text-xs border-l-2 border-accent/40 pl-2 py-1 group">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="text-foreground">{n.body}</div>
-                      {n.created_by === user?.id && (
-                        <button
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
-                          onClick={() => deleteNote.mutate({ id: n.id, accountId: account.id })}
-                          disabled={deleteNote.isPending}
-                          title="Delete note"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-0.5">{formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}</div>
-                  </div>
-                ))}
-                {notes.length === 0 && <div className="text-[11px] text-muted-foreground italic">No notes yet.</div>}
-              </div>
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={followUpSubmitting || !followUpTitle.trim()}
+                onClick={submitFollowUp}
+              >
+                {followUpSubmitting ? "Creating..." : "Create follow-up task"}
+              </Button>
+              <p className="text-[11px] text-muted-foreground">
+                Saved to your My Tasks with a reference to {account.company_name}.
+              </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4" />Stage History</CardTitle></CardHeader>
-            <CardContent className="space-y-1.5">
-              {history.map((h: any) => (
-                <div key={h.id} className="text-[11px] flex items-center justify-between gap-2">
-                  <span className="text-muted-foreground">{h.from_stage ? `${h.from_stage} → ${h.to_stage}` : `Set to ${h.to_stage}`}</span>
-                  <span className="text-muted-foreground/70 tabular-nums">{formatDistanceToNow(new Date(h.changed_at), { addSuffix: true })}</span>
-                </div>
-              ))}
-              {history.length === 0 && <div className="text-[11px] text-muted-foreground italic">No history.</div>}
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4" />Last visited</CardTitle></CardHeader>
+            <CardContent>
+              {lastVisited ? (
+                <div className="text-sm text-foreground">{format(new Date(lastVisited), "MMM d, yyyy")}</div>
+              ) : (
+                <div className="text-sm text-muted-foreground italic">Never visited</div>
+              )}
             </CardContent>
           </Card>
         </div>
+
+        <Card className="lg:col-span-3">
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ClipboardList className="h-4 w-4" />Notes</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Textarea value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Add a follow-up note..." rows={4} className="min-h-[120px]" />
+              <Button size="sm" disabled={!newNote.trim() || addNote.isPending} onClick={() => addNote.mutate({ accountId: account.id, body: newNote }, { onSuccess: () => setNewNote("") })}>Add note</Button>
+            </div>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {notes.map((n: any) => (
+                <div key={n.id} className="text-sm border-l-2 border-accent/40 pl-3 py-1 group">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-foreground">{n.body}</div>
+                    {n.created_by === user?.id && (
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
+                        onClick={() => deleteNote.mutate({ id: n.id, accountId: account.id })}
+                        disabled={deleteNote.isPending}
+                        title="Delete note"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">{formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}</div>
+                </div>
+              ))}
+              {notes.length === 0 && <div className="text-sm text-muted-foreground italic">No notes yet.</div>}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <AlertDialog open={convertOpen} onOpenChange={setConvertOpen}>
@@ -209,7 +286,7 @@ export default function CrmAccountDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Convert {account.company_name} to a dealer?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes them from Accounts (prospects) and adds them to the Field Check-ins map with a "Converted from CRM" check-in.
+              This marks them as a dealer and adds them to the Field Check-ins map. They will show as never visited until someone logs a check-in.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

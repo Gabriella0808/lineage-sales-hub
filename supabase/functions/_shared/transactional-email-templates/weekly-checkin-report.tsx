@@ -32,7 +32,7 @@ const WeeklyCheckinReportEmail = ({
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Weekly check-in report{weekLabel ? ` · ${weekLabel}` : ''} — {totalCheckIns} check-ins, {totalPlacements} new placements
+      Weekly check-in report{weekLabel ? ` · ${weekLabel}` : ''} - {totalCheckIns} check-ins, {totalPlacements} new placements
     </Preview>
     <Body style={main}>
       <Container style={container}>
@@ -70,7 +70,7 @@ const WeeklyCheckinReportEmail = ({
 
         <Text style={text}>
           View the full breakdown anytime in the portal under
-          Field Check-Ins → Visit Analytics.
+          Field Check-Ins -  Visit Analytics.
         </Text>
 
         {portalUrl && (
@@ -91,7 +91,7 @@ const WeeklyCheckinReportEmail = ({
 
 
         <Hr style={hr} />
-        <Text style={footer}>— The {SITE_NAME} Team</Text>
+        <Text style={footer}>--- The {SITE_NAME} Team</Text>
       </Container>
     </Body>
   </Html>

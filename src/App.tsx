@@ -9,6 +9,7 @@ import EmailGuard from "@/components/EmailGuard";
 import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import SalesRepsPage from "@/pages/SalesRepsPage";
+import SalesRepsAcctivatePage from "@/pages/SalesRepsAcctivatePage";
 
 import DealersPage from "@/pages/DealersPage";
 import DirectoryPage from "@/pages/DirectoryPage";
@@ -69,8 +70,9 @@ const App = () => (
                   <AppLayout>
                     <Routes>
                       <Route path="/" element={<DashboardPage />} />
-                      <Route path="/managers" element={<ProtectedRoute allow={["admin"]}><ManagersPage /></ProtectedRoute>} />
+                      <Route path="/managers" element={<ProtectedRoute allow={["admin", "manager"]}><ManagersPage /></ProtectedRoute>} />
                       <Route path="/reps" element={<ProtectedRoute allow={["admin", "manager"]}><SalesRepsPage /></ProtectedRoute>} />
+                      <Route path="/reps-acctivate" element={<ProtectedRoute allow={["admin"]}><SalesRepsAcctivatePage /></ProtectedRoute>} />
                       <Route path="/dealers" element={<DealersPage />} />
                       <Route path="/directory" element={<ProtectedRoute allow={["admin", "manager"]}><DirectoryPage /></ProtectedRoute>} />
                       <Route path="/kpi" element={<CompanyWidePage />} />
@@ -96,7 +98,7 @@ const App = () => (
                       <Route path="/trade-show-leads/capture" element={<ProtectedRoute allow={["admin", "manager"]}><CaptureLeadsPage /></ProtectedRoute>} />
                       <Route path="/clearance" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceProductsPage /></ProtectedRoute>} />
                       <Route path="/clearance/analytics" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceAnalyticsPage /></ProtectedRoute>} />
-                      <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]}><OrgChartPage /></ProtectedRoute>} />
+                      <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]} denyEmails={["andrew@lineage-collections.com"]}><OrgChartPage /></ProtectedRoute>} />
                       <Route path="/crm/accounts" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsPage /></CrmGuard></ProtectedRoute>} />
                       <Route path="/crm/accounts/analytics" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsAnalyticsPage /></CrmGuard></ProtectedRoute>} />
                       <Route path="/crm/accounts/new" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmNewAccountPage /></CrmGuard></ProtectedRoute>} />

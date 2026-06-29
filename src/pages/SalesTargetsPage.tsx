@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -39,19 +39,70 @@ export default function SalesTargetsPage() {
     return m;
   }, [targets]);
 
-  // Actuals per rep per month for selected year
+  // Pull all dealer invoices for the selected year (paged) and attribute to reps.
+  const { data: invoices = [] } = useQuery({
+    queryKey: ["rep_targets_invoices", year],
+    queryFn: async () => {
+      const from = `${year}-01-01`;
+      const to = `${year}-12-31`;
+      const pageSize = 1000;
+      const rows: { dealer_id: string | null; invoice_date: string | null; subtotal: number | null; total: number | null }[] = [];
+      let start = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("dealer_id, invoice_date, subtotal, total")
+          .gte("invoice_date", from)
+          .lte("invoice_date", to)
+          .not("dealer_id", "is", null)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = data ?? [];
+        rows.push(...(batch as any));
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      return rows;
+    },
+    staleTime: 60_000,
+  });
+
+  // Attribute each invoice to a rep via the dealer's rep_id (fallback to salesperson name match).
   const actualByRep = useMemo(() => {
-    const m: Record<string, { months: Record<string, number>; total: number }> = {};
-    dealerSales.filter(s => s.year === year).forEach(s => {
-      const dealer = dealers.find(d => d.id === s.dealer_id);
-      if (!dealer?.rep_id) return;
-      const rid = dealer.rep_id;
+    const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+    const repByName = new Map<string, string>();
+    reps.forEach(r => { if (r.name) repByName.set(norm(r.name), r.id); });
+
+    const repForDealer = (d: any): string | null => {
+      if (d?.rep_id) return d.rep_id;
+      const sp = norm(d?.salesperson);
+      if (!sp) return null;
+      if (repByName.has(sp)) return repByName.get(sp)!;
+      for (const [name, id] of repByName) {
+        if (name && (name.includes(sp) || sp.includes(name))) return id;
+      }
+      return null;
+    };
+
+    const dealerRep = new Map<string, string | null>();
+    dealers.forEach((d: any) => dealerRep.set(d.id, repForDealer(d)));
+
+    const m: Record<string, { months: Record<number, number>; total: number }> = {};
+    invoices.forEach(inv => {
+      if (!inv.dealer_id || !inv.invoice_date) return;
+      const rid = dealerRep.get(inv.dealer_id);
+      if (!rid) return;
+      const amount = Number(inv.subtotal ?? inv.total ?? 0);
+      if (!amount) return;
+      const month = new Date(inv.invoice_date).getUTCMonth() + 1;
       if (!m[rid]) m[rid] = { months: {}, total: 0 };
-      m[rid].months[s.month] = (m[rid].months[s.month] ?? 0) + (s.revenue ?? 0);
-      m[rid].total += (s.revenue ?? 0);
+      m[rid].months[month] = (m[rid].months[month] ?? 0) + amount;
+      m[rid].total += amount;
     });
     return m;
-  }, [dealerSales, dealers, year]);
+  }, [invoices, dealers, reps]);
+
 
   if (roleLoading) {
     return <div className="p-6"><Skeleton className="h-64 w-full" /></div>;
@@ -93,7 +144,7 @@ export default function SalesTargetsPage() {
         annual_target: annualSum(repId),
       } as any);
       setDraft(prev => { const next = { ...prev }; delete next[repId]; return next; });
-      toast({ title: "Target saved", description: `${reps.find(r=>r.id===repId)?.name ?? "Rep"} • ${year}` });
+      toast({ title: "Target saved", description: `${reps.find(r=>r.id===repId)?.name ?? "Rep"} ... ${year}` });
     } catch (e: any) {
       toast({ title: "Failed to save", description: e.message, variant: "destructive" });
     } finally {
@@ -211,7 +262,7 @@ export default function SalesTargetsPage() {
                               />
                             ) : (
                               <div className="h-8 flex items-center justify-end text-xs tabular-nums text-muted-foreground px-1.5">
-                                {val ? formatCurrency(val) : "—"}
+                                {val ? formatCurrency(val) : "-"}
                               </div>
                             )}
                           </td>
@@ -220,7 +271,7 @@ export default function SalesTargetsPage() {
                       <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatCurrency(annual)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatCurrency(actual)}</td>
                       <td className={`px-3 py-2 text-right font-semibold tabular-nums ${pct >= 100 ? "text-success" : pct >= 75 ? "text-accent" : pct >= 50 ? "text-amber-600" : "text-destructive"}`}>
-                        {annual > 0 ? `${pct}%` : "—"}
+                        {annual > 0 ? `${pct}%` : "-"}
                       </td>
                       {canEdit && (
                         <td className="px-3 py-2 text-right">

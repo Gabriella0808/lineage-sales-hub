@@ -86,6 +86,8 @@ Deno.serve(async (req: Request) => {
       mailchimpTag = "Furniture First Lead";
     } else if (/high point/i.test(marketName)) {
       mailchimpTag = marketName; // existing behavior: tag = market name
+    } else if (/atlanta/i.test(marketName)) {
+      mailchimpTag = "Atlanta June 2026";
     }
     if (!mailchimpTag) {
       return new Response(JSON.stringify({ success: false, skipped: true, reason: "Market not mapped to a Mailchimp audience" }), {

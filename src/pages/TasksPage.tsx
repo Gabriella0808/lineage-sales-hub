@@ -24,17 +24,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Pencil, Calendar, Bell, Check, CheckCheck, Search, X, Users, Clock, ListChecks, AlertTriangle, Timer, UserCheck, CircleSlash, CheckCircle2, ChevronDown, Filter, GripVertical, MessageSquarePlus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { MetricCard } from "@/components/MetricCard";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DueDatePopover } from "@/components/DueDatePopover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfDay, endOfDay, addDays, isWithinInterval, parseISO } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import TaskBoardsView from "@/components/TaskBoardsView";
 import { TaskAttachments, PendingAttachmentPicker, uploadPendingAttachments } from "@/components/TaskAttachments";
+import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
 
@@ -94,7 +98,7 @@ const COLUMNS: {
   },
   {
     key: "in_progress",
-    label: "IN PROGRESS",
+    label: "In Progress",
     tone: "border-accent/40",
     accent: "bg-accent",
     headerBg: "bg-accent/15",
@@ -131,6 +135,12 @@ export default function TasksPage() {
   const { user } = useAuth();
   const { data: roleInfo } = useUserRole();
   const { toast } = useToast();
+  const PRIVATE_TASK_EMAILS = [
+    "justin@lineage-collections.com",
+    "scott@lineage-collections.com",
+    "gabriella@lineage-collections.com",
+  ];
+  const canSetPrivate = !!user?.email && PRIVATE_TASK_EMAILS.includes(user.email.toLowerCase());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [assignees, setAssignees] = useState<AssignableUser[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -194,11 +204,103 @@ export default function TasksPage() {
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>("all");
   const [assigneeUserId, setAssigneeUserId] = useState<string>("any");
   const [dueFilter, setDueFilter] = useState<DueFilter>("any");
+  const [statusFilter, setStatusFilter] = useState<Status[]>([]);
+  const [boardFilter, setBoardFilter] = useState<string[]>([]);
+  const [responsibleFilter, setResponsibleFilter] = useState<string[]>([]);
   const [contextQuery, setContextQuery] = useState("");
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
 
   // ---- Bulk select ----
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // ---- Inline title editing ----
+  const [inlineEditingTaskId, setInlineEditingTaskId] = useState<string | null>(null);
+  const [inlineEditTaskTitle, setInlineEditTaskTitle] = useState("");
+  const saveInlineTaskTitle = async (id: string) => {
+    const title = inlineEditTaskTitle.trim();
+    setInlineEditingTaskId(null);
+    if (!title) return;
+    const { error } = await supabase.from("manager_tasks").update({ title }).eq("id", id);
+    if (error) { toast({ title: "Failed to update title", variant: "destructive" }); return; }
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, title } : t)));
+  };
+
+  // ---- Inline add row ----
+  const [addingListItem, setAddingListItem] = useState(false);
+  const [newListItemTitle, setNewListItemTitle] = useState("");
+  const quickCreateListTask = async (title: string) => {
+    if (!user || !title.trim()) return;
+    const tempId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const optimistic: Task = {
+      id: tempId,
+      title: title.trim(),
+      description: null,
+      status: "todo",
+      due_date: null,
+      completed_at: null,
+      created_at: now,
+      assigned_manager_id: null,
+      assigned_user_id: null,
+      user_id: user.id,
+      board_id: null,
+      group_id: null,
+      visibility: "public",
+    };
+    setTasks((prev) => [optimistic, ...prev]);
+    const { data, error } = await supabase
+      .from("manager_tasks")
+      .insert({
+        id: tempId,
+        title: title.trim(),
+        status: "todo",
+        user_id: user.id,
+        visibility: "public",
+      })
+      .select("*")
+      .single();
+    if (error || !data) {
+      setTasks((prev) => prev.filter((t) => t.id !== tempId));
+      toast({ title: "Create failed", description: error?.message ?? "Unknown error", variant: "destructive" });
+    } else {
+      setTasks((prev) => prev.map((t) => (t.id === tempId ? (data as Task) : t)));
+    }
+  };
+
+  // ---- Updates dialog + counts ----
+  const [updatesTaskId, setUpdatesTaskId] = useState<string | null>(null);
+  const [updateCounts, setUpdateCounts] = useState<Record<string, number>>({});
+  const refreshUpdateCounts = async () => {
+    const { data } = await supabase.from("manager_task_updates" as any).select("task_id");
+    const counts: Record<string, number> = {};
+    ((data ?? []) as unknown as { task_id: string }[]).forEach((r) => {
+      counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+    });
+    setUpdateCounts(counts);
+  };
+
+  // ---- Inline due date + assignees ----
+  const updateTaskDueDate = async (id: string, d: Date | null) => {
+    const due_date = d ? format(d, "yyyy-MM-dd") : null;
+    const prev = tasks;
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, due_date } : t)));
+    const { error } = await supabase.from("manager_tasks").update({ due_date }).eq("id", id);
+    if (error) { setTasks(prev); toast({ title: "Date update failed", variant: "destructive" }); }
+  };
+
+  const setTaskAssigneesInline = async (taskId: string, userIds: string[]) => {
+    const prev = taskAssignees;
+    setTaskAssignees((m) => ({ ...m, [taskId]: userIds }));
+    const { error: delErr } = await supabase.from("manager_task_assignees" as any).delete().eq("task_id", taskId);
+    if (delErr) { setTaskAssignees(prev); toast({ title: "Assignee update failed", variant: "destructive" }); return; }
+    if (userIds.length > 0) {
+      const rows = userIds.map((uid) => ({ task_id: taskId, user_id: uid }));
+      const { error: insErr } = await supabase.from("manager_task_assignees" as any).insert(rows as any);
+      if (insErr) { setTaskAssignees(prev); toast({ title: "Assignee update failed", variant: "destructive" }); }
+    }
+  };
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -216,13 +318,20 @@ export default function TasksPage() {
   const filtersActive =
     assigneeUserId !== "any" ||
     dueFilter !== "any" ||
+    statusFilter.length > 0 ||
+    boardFilter.length > 0 ||
+    responsibleFilter.length > 0 ||
     contextQuery.trim() !== "";
 
   const clearFilters = () => {
     setAssigneeFilter("all");
     setAssigneeUserId("any");
     setDueFilter("any");
+    setStatusFilter([]);
+    setBoardFilter([]);
+    setResponsibleFilter([]);
     setContextQuery("");
+    setOpenFilter(null);
   };
 
   const matchesDue = (t: Task): boolean => {
@@ -265,6 +374,15 @@ export default function TasksPage() {
     return hay.includes(q);
   };
 
+  const matchesResponsible = (t: Task): boolean => {
+    if (responsibleFilter.length === 0) return true;
+    const ids = getAssigneeIds(t);
+    return responsibleFilter.some((id) => {
+      if (id === "__unassigned__") return ids.length === 0;
+      return ids.includes(id);
+    });
+  };
+
   const isTradeShowTask = (t: Task): boolean => {
     const desc = t.description ?? "";
     return /lead from/i.test(desc) || /\bTrade Show\b/i.test(desc) || /\bTrade Show\b/i.test(t.title);
@@ -287,7 +405,7 @@ export default function TasksPage() {
   };
 
   const filteredTasks = tasks.filter(
-    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t),
+    (t) => matchesAssignee(t) && matchesAssigneeUser(t) && matchesDue(t) && matchesContext(t) && matchesResponsible(t) && (statusFilter.length === 0 || statusFilter.includes(t.status)) && (boardFilter.length === 0 || boardFilter.includes(t.board_id ?? "")) && (showCompleted || t.status !== "done"),
   );
 
   const load = async () => {
@@ -336,6 +454,7 @@ export default function TasksPage() {
       });
       setTaskAssignees(map);
     }
+    await refreshUpdateCounts();
     setLoading(false);
   };
 
@@ -411,7 +530,7 @@ export default function TasksPage() {
       status: form.status,
       due_date: form.due_date || null,
       assigned_user_id: primary,
-      visibility: form.visibility,
+      visibility: canSetPrivate ? form.visibility : "public",
     } as any;
     if (editing) {
       const { error } = await supabase
@@ -667,11 +786,6 @@ export default function TasksPage() {
         
         actions={
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button onClick={openNew} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="h-4 w-4" /> {activeTab === "boards" ? "Item" : "New Action Item"}
-              </Button>
-            </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-display text-xl">{editing ? "Edit Action Item" : activeTab === "boards" ? "New Item" : "New Action Item"}</DialogTitle>
@@ -713,14 +827,14 @@ export default function TasksPage() {
                   kpiReview={form.kpi_review}
                   onKpiReviewChange={(v) => setForm({ ...form, kpi_review: v })}
                 />
-                {!(activeTab === "boards" && !editing) && (
+                {canSetPrivate && !(activeTab === "boards" && !editing) && (
                   <div className="flex items-center justify-between rounded-md border p-3">
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium">Visibility</p>
                       <p className="text-xs text-muted-foreground">
                         {form.visibility === "public"
-                          ? "Public — anyone in the portal can view this task."
-                          : "Private — only you and assignees can view this task."}
+                          ? "Public - anyone in the portal can view this task."
+                          : "Private - only you and assignees can view this task."}
                       </p>
                     </div>
                     <div className="inline-flex rounded-md border bg-muted p-0.5">
@@ -870,7 +984,7 @@ export default function TasksPage() {
                   <SelectValue placeholder="Assigned to" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any" className="text-xs">Anyone</SelectItem>
+                  <SelectItem value="any" className="text-xs">My Tasks</SelectItem>
                   <SelectItem value="__trade_show__" className="text-xs">Trade Show Leads</SelectItem>
                   <SelectItem value="__kpi_review__" className="text-xs">KPI Review</SelectItem>
                   {visibleAssignees
@@ -912,6 +1026,16 @@ export default function TasksPage() {
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {filteredTasks.length} of {tasks.length}
               </span>
+              {tasks.some((t) => t.status === "done") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 text-xs"
+                  onClick={() => setShowCompleted((v) => !v)}
+                >
+                  {showCompleted ? "Hide completed" : `Show completed (${tasks.filter((t) => t.status === "done").length})`}
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant={selectMode ? "default" : "outline"}
@@ -933,68 +1057,361 @@ export default function TasksPage() {
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading...</p>
       ) : (
-        <Card className="overflow-hidden p-0">
-          {/* Board column header (Monday-style) */}
-          <div className="hidden md:grid grid-cols-[8px_minmax(0,1fr)_180px_160px_120px_180px_80px] items-center gap-0 border-b bg-muted/30 px-0 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            <div />
-            <div className="px-3">Task</div>
-            <div className="px-3">Owner</div>
-            <div className="px-3">Status</div>
-            <div className="px-3">Due date</div>
-            <div className="px-3">Board</div>
-            <div className="px-3 text-right">Actions</div>
-          </div>
-
-          <div className="divide-y-2 divide-border">
-            {COLUMNS.map((col) => {
-              const items = filteredTasks.filter((t) => t.status === col.key);
-              const isCollapsed = !!collapsedGroups[col.key];
-              return (
-                <div key={col.key} className="">
-                  {/* Group header — editorial style */}
-                  <div className={`flex items-center gap-3 px-4 py-2.5 ${col.headerBg} border-b-2 border-border`}>
-                    <button
-                      type="button"
-                      onClick={() => setCollapsedGroups((p) => ({ ...p, [col.key]: !p[col.key] }))}
-                      aria-label={isCollapsed ? `Expand ${col.label}` : `Collapse ${col.label}`}
-                      aria-expanded={!isCollapsed}
-                      className="p-0.5 rounded text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} />
-                    </button>
-                    {selectMode && items.length > 0 && (
-                      <Checkbox
-                        checked={items.every((t) => selectedIds.has(t.id))}
-                        onCheckedChange={(v) => {
-                          setSelectedIds((prev) => {
-                            const next = new Set(prev);
-                            if (v) items.forEach((t) => next.add(t.id));
-                            else items.forEach((t) => next.delete(t.id));
-                            return next;
-                          });
-                        }}
-                        aria-label={`Select all ${col.label}`}
+        <div className="space-y-6">
+          {(() => {
+            const HEX_BY_STATUS: Record<Status, string> = {
+              todo: "#94a3b8",
+              in_progress: "#f59e0b",
+              blocked: "#ef4444",
+              done: "#10b981",
+            };
+            const columnHeader = (
+              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
+                <div className="px-2 py-1.5 border-r border-border" />
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === "item"} onOpenChange={(open) => setOpenFilter(open ? "item" : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Item
+                        {contextQuery.trim() && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            1
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by item</div>
+                      <Input
+                        value={contextQuery}
+                        onChange={(e) => setContextQuery(e.target.value)}
+                        placeholder="Search title or description"
+                        className="h-8 text-xs"
                       />
-                    )}
-                    <span className={`inline-block h-1.5 w-1.5 rounded-full ${col.accent}`} />
-                    <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/80">{col.label}</h2>
-                    <span className="text-[11px] text-muted-foreground tabular-nums">{items.length}</span>
-                    <span className="flex-1 h-px bg-border/60" />
-                  </div>
+                      {contextQuery.trim() && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setContextQuery(""); setOpenFilter(null); }}
+                        >
+                          Clear filter
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <MessageSquarePlus className="h-3.5 w-3.5 inline" />
+                </div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === "responsible"} onOpenChange={(open) => setOpenFilter(open ? "responsible" : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Responsible
+                        {responsibleFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {responsibleFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by responsible</div>
+                      <div className="space-y-1">
+                        <label className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                          <Checkbox
+                            checked={responsibleFilter.includes("__unassigned__")}
+                            onCheckedChange={(val) => {
+                              setResponsibleFilter((prev) =>
+                                val ? [...prev, "__unassigned__"] : prev.filter((x) => x !== "__unassigned__")
+                              );
+                              setOpenFilter(null);
+                            }}
+                          />
+                          <span className="text-xs">Unassigned</span>
+                        </label>
+                        {visibleAssignees
+                          .slice()
+                          .sort((a, b) =>
+                            (a.full_name || a.email || "").localeCompare(b.full_name || b.email || "")
+                          )
+                          .map((a) => {
+                            const checked = responsibleFilter.includes(a.user_id);
+                            return (
+                              <label key={a.user_id} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(val) => {
+                                    setResponsibleFilter((prev) =>
+                                      val ? [...prev, a.user_id] : prev.filter((x) => x !== a.user_id)
+                                    );
+                                    setOpenFilter(null);
+                                  }}
+                                />
+                                <span className="text-xs">{a.full_name || a.email}</span>
+                              </label>
+                            );
+                          })}
+                      </div>
+                      {responsibleFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setResponsibleFilter([]); setOpenFilter(null); }}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === "status"} onOpenChange={(open) => setOpenFilter(open ? "status" : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Status
+                        {statusFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {statusFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by status</div>
+                      <div className="space-y-1">
+                        {COLUMNS.map((c) => {
+                          const checked = statusFilter.includes(c.key);
+                          return (
+                            <label key={c.key} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  setStatusFilter((prev) =>
+                                    val ? [...prev, c.key] : prev.filter((x) => x !== c.key)
+                                  );
+                                  setOpenFilter(null);
+                                }}
+                              />
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.pillBg} ${c.pillText}`}>
+                                {c.label}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {statusFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setStatusFilter([]); setOpenFilter(null); }}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === "due"} onOpenChange={(open) => setOpenFilter(open ? "due" : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Due date
+                        {dueFilter !== "any" && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            1
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by due date</div>
+                      <div className="space-y-1">
+                        {[
+                          { value: "any", label: "Any due date" },
+                          { value: "overdue", label: "Overdue" },
+                          { value: "today", label: "Due today" },
+                          { value: "this_week", label: "This week" },
+                          { value: "next_7", label: "Next 7 days" },
+                          { value: "none", label: "No due date" },
+                        ].map((opt) => {
+                          const checked = dueFilter === opt.value;
+                          return (
+                            <label key={opt.value} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  if (val) {
+                                    setDueFilter(opt.value as DueFilter);
+                                    setOpenFilter(null);
+                                  }
+                                }}
+                              />
+                              <span className="text-xs">{opt.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {dueFilter !== "any" && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setDueFilter("any"); setOpenFilter(null); }}
+                        >
+                          Clear filter
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === "board"} onOpenChange={(open) => setOpenFilter(open ? "board" : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Board
+                        {boardFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {boardFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by board</div>
+                      <div className="space-y-1">
+                        {boards.map((b) => {
+                          const checked = boardFilter.includes(b.id);
+                          return (
+                            <label key={b.id} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  setBoardFilter((prev) =>
+                                    val ? [...prev, b.id] : prev.filter((x) => x !== b.id)
+                                  );
+                                  setOpenFilter(null);
+                                }}
+                              />
+                              <span className="flex items-center gap-1.5">
+                                <span
+                                  className="inline-block h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: b.color || "#94a3b8" }}
+                                />
+                                <span className="text-xs">{b.name}</span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {boardFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setBoardFilter([]); setOpenFilter(null); }}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="px-2 py-1.5 text-center" />
+              </div>
+            );
+            const items = filteredTasks;
+            return (
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <h2 className="text-base font-bold text-foreground">All Tasks</h2>
+                  <span className="text-xs text-muted-foreground ml-1 tabular-nums">
+                    {items.length} {items.length === 1 ? "task" : "tasks"}
+                  </span>
+                  {selectMode && items.length > 0 && (
+                    <Checkbox
+                      className="ml-2"
+                      checked={items.every((t) => selectedIds.has(t.id))}
+                      onCheckedChange={(v) => {
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (v) items.forEach((t) => next.add(t.id));
+                          else items.forEach((t) => next.delete(t.id));
+                          return next;
+                        });
+                      }}
+                      aria-label="Select all"
+                    />
+                  )}
+                </div>
 
-                  {/* Group rows */}
-                  {isCollapsed ? null : items.length === 0 ? (
-                    <div className="px-4 py-4 text-xs italic text-muted-foreground/70">
-                      No items in this lane.
+                <div className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] border-l-primary bg-card">
+                  {columnHeader}
+                  {items.length === 0 ? (
+                    <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
+                      No tasks match your filters.
                     </div>
                   ) : (
-                    <ul className="divide-y divide-border">
+                    <ul>
+                      {(() => {
+                        const submit = (close: boolean) => {
+                          const title = newListItemTitle.trim();
+                          if (title) {
+                            void quickCreateListTask(title);
+                          }
+                          setNewListItemTitle("");
+                          if (close) setAddingListItem(false);
+                        };
+                        return (
+                          <li
+                            onClick={() => {
+                              if (!addingListItem) {
+                                setAddingListItem(true);
+                                setNewListItemTitle("");
+                              }
+                            }}
+                            className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-b border-border bg-card text-xs text-muted-foreground"
+                          >
+                            <div className="border-r border-border h-full" />
+                            <div className="px-3 py-1.5" onClick={(e) => addingListItem && e.stopPropagation()}>
+                              {addingListItem ? (
+                                <Input
+                                  autoFocus
+                                  value={newListItemTitle}
+                                  onChange={(e) => setNewListItemTitle(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      submit(false);
+                                    }
+                                    if (e.key === "Escape") {
+                                      setNewListItemTitle("");
+                                      setAddingListItem(false);
+                                    }
+                                  }}
+                                  onBlur={() => submit(true)}
+                                  placeholder="Enter item name and press Enter"
+                                  className="h-7 text-sm"
+                                />
+                              ) : (
+                                <span className="italic">+ Add item</span>
+                              )}
+                            </div>
+                            <div className="border-r border-border h-full" />
+                            <div className="hidden md:block border-r border-border h-full" />
+                            <div className="hidden md:block border-r border-border h-full" />
+                            <div className="hidden md:block border-r border-border h-full" />
+                            <div className="hidden md:block border-r border-border h-full" />
+                            <div className="hidden md:block" />
+                          </li>
+                        );
+                      })()}
                       {items.map((t) => {
+                        const col = COLUMNS.find((c) => c.key === t.status) ?? COLUMNS[0];
                         const ownerIds = getAssigneeIds(t);
                         const owners = ownerIds.map((uid) => ({
                           id: uid,
                           name: assigneeName(uid) ?? "Unknown",
                         }));
+
                         const primary = owners[0];
                         const initialsOf = (n: string) =>
                           n
@@ -1010,251 +1427,262 @@ export default function TasksPage() {
                         return (
                           <li
                             key={t.id}
-                            onClick={() => {
-                              if (selectMode) { toggleSelect(t.id); return; }
-                              setDetailTask(t); markRead(t.id);
-                            }}
-                            className={`group/row grid grid-cols-[4px_minmax(0,1fr)] md:grid-cols-[4px_minmax(0,1fr)_180px_160px_120px_180px_80px] items-center gap-0 hover:bg-muted/40 transition-colors cursor-pointer ${
+                            className={`group/row grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_140px_60px] items-stretch hover:bg-muted/30 transition-colors border-b border-border last:border-b-0 bg-card ${
                               selectMode && selectedIds.has(t.id) ? "bg-primary/10" : ""
                             }`}
                           >
-                            {/* Subtle hover accent */}
-                            <div className={`self-stretch ${col.accent} opacity-0 group-hover/row:opacity-100 transition-opacity`} />
-
-                            {/* Task title + description */}
-                            <div className="px-3 py-2 min-w-0 flex items-start gap-2">
-                              {selectMode && (
+                            {/* Drag handle / select */}
+                            <div
+                              className="flex items-center justify-center text-muted-foreground/40 border-r border-border"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {selectMode ? (
                                 <Checkbox
-                                  className="mt-0.5"
                                   checked={selectedIds.has(t.id)}
                                   onCheckedChange={() => toggleSelect(t.id)}
-                                  onClick={(e) => e.stopPropagation()}
                                   aria-label="Select task"
                                 />
+                              ) : (
+                                <Checkbox
+                                  checked={t.status === "done"}
+                                  onCheckedChange={(v) => updateStatus(t.id, v ? "done" : "todo")}
+                                  aria-label="Mark complete"
+                                  className="h-4 w-4"
+                                />
                               )}
-                              <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium leading-snug break-words">
-                                {t.title}
-                              </p>
-                              {t.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                  {t.description}
+                            </div>
+
+                            {/* Title */}
+                            <div className="px-3 py-2 min-w-0 text-left border-r border-border" onClick={(e) => e.stopPropagation()}>
+                              {inlineEditingTaskId === t.id ? (
+                                <input
+                                  autoFocus
+                                  value={inlineEditTaskTitle}
+                                  onChange={(e) => setInlineEditTaskTitle(e.target.value)}
+                                  onBlur={() => saveInlineTaskTitle(t.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") { e.preventDefault(); saveInlineTaskTitle(t.id); }
+                                    else if (e.key === "Escape") { e.preventDefault(); setInlineEditingTaskId(null); }
+                                  }}
+                                  className="text-sm leading-snug break-words w-full bg-transparent border-b border-current outline-none px-0 py-0"
+                                />
+                              ) : (
+                                <p
+                                  className="text-sm leading-snug break-words cursor-pointer hover:underline"
+                                  title="Click to view details, double-click to rename"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (selectMode) { toggleSelect(t.id); return; }
+                                    setDetailTask(t);
+                                  }}
+                                  onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    if (selectMode) return;
+                                    setInlineEditingTaskId(t.id);
+                                    setInlineEditTaskTitle(t.title);
+                                  }}
+                                >
+                                  {t.title}
                                 </p>
+                              )}
+                              {t.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                               )}
                               {assignedToMe && (
-                                <p className="text-[11px] text-primary mt-1 font-medium">
-                                  Assigned to you
-                                </p>
-                              )}
-                              {/* Mobile-only inline meta */}
-                              <div className="md:hidden mt-2 flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                                {primary && (
-                                  <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
-                                      {initialsOf(primary.name)}
-                                    </span>
-                                    {primary.name}
-                                    {owners.length > 1 && (
-                                      <span className="text-muted-foreground">
-                                        +{owners.length - 1}
-                                      </span>
-                                    )}
-                                  </span>
-                                )}
-                                <Select
-                                  value={t.status}
-                                  onValueChange={(v: Status) => updateStatus(t.id, v)}
-                                >
-                                  <SelectTrigger
-                                    className={`h-6 px-2 text-[11px] font-semibold border-0 ${col.pillBg} ${col.pillText} rounded-full w-auto gap-1`}
-                                  >
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {COLUMNS.map((c) => (
-                                      <SelectItem
-                                        key={c.key}
-                                        value={c.key}
-                                        className="text-xs"
-                                      >
-                                        {c.label}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {t.due_date && (
-                                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                                    <Calendar className="h-3 w-3" />
-                                    {format(parseDateOnly(t.due_date)!, "MMM d")}
-                                  </span>
-                                )}
-                              </div>
-                              </div>
-                            </div>
-
-                            {/* Owner column (md+) */}
-                            <div className="hidden md:flex items-center gap-2 px-3 py-2 min-w-0">
-                              {owners.length === 0 ? (
-                                <span className="text-xs italic text-muted-foreground">
-                                  Unassigned
-                                </span>
-                              ) : (
-                                <div className="flex items-center min-w-0">
-                                  <div className="flex -space-x-1.5">
-                                    {owners.slice(0, 3).map((o) => (
-                                      <span
-                                        key={o.id}
-                                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary ring-2 ring-background"
-                                        title={o.name}
-                                      >
-                                        {initialsOf(o.name)}
-                                      </span>
-                                    ))}
-                                    {owners.length > 3 && (
-                                      <span
-                                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-background"
-                                        title={owners.slice(3).map((o) => o.name).join(", ")}
-                                      >
-                                        +{owners.length - 3}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="truncate text-sm ml-2">
-                                    {owners.length === 1
-                                      ? owners[0].name
-                                      : `${owners.length} people`}
-                                  </span>
-                                </div>
+                                <p className="text-[11px] text-primary mt-0.5 font-medium">Assigned to you</p>
                               )}
                             </div>
 
-                            {/* Status pill (md+) */}
-                            <div className="hidden md:flex items-center px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                              <Select
-                                value={t.status}
-                                onValueChange={(v: Status) => updateStatus(t.id, v)}
+                            {/* Comments / updates */}
+                            <div
+                              className="flex items-center justify-center border-r border-border"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={() => setUpdatesTaskId(t.id)}
+                                title="Updates & attachments"
+                                className="relative inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                               >
+                                <MessageSquarePlus className="h-4 w-4" />
+                                {updateCounts[t.id] > 0 && (
+                                  <span className="absolute -top-0.5 -right-0.5 inline-flex h-3.5 min-w-3.5 px-1 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                                    {updateCounts[t.id]}
+                                  </span>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Responsible (md+) */}
+                            <div
+                              className="hidden md:flex items-center justify-center px-2 border-r border-border"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button className="flex items-center justify-center w-full h-full py-1 hover:bg-muted/40 rounded">
+                                    {owners.length === 0 ? (
+                                      <span className="text-xs italic text-muted-foreground">Unassigned</span>
+                                    ) : (
+                                      <div className="flex -space-x-1.5">
+                                        {owners.slice(0, 3).map((o) => (
+                                          <span
+                                            key={o.id}
+                                            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[11px] font-semibold text-primary ring-2 ring-background"
+                                            title={o.name}
+                                          >
+                                            {initialsOf(o.name)}
+                                          </span>
+                                        ))}
+                                        {owners.length > 3 && (
+                                          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-background">
+                                            +{owners.length - 3}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-72 p-0" align="center">
+                                  <Command>
+                                    <CommandInput placeholder="Search people..." />
+                                    <CommandList>
+                                      <CommandEmpty>No people found.</CommandEmpty>
+                                      <CommandGroup heading="People">
+                                        {assignees.map((u) => {
+                                          const current = getAssigneeIds(t);
+                                          const selected = current.includes(u.user_id);
+                                          const name = u.full_name || u.email || u.user_id.slice(0, 8);
+                                          return (
+                                            <CommandItem
+                                              key={u.user_id}
+                                              value={`${u.full_name ?? ""} ${u.email ?? ""}`}
+                                              onSelect={() => {
+                                                const next = selected
+                                                  ? current.filter((x) => x !== u.user_id)
+                                                  : [...current, u.user_id];
+                                                setTaskAssigneesInline(t.id, next);
+                                              }}
+                                              className="flex items-center gap-2"
+                                            >
+                                              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
+                                                {initialsOf(name)}
+                                              </span>
+                                              <span className="flex-1 text-sm">{name}</span>
+                                              {selected && <Check className="h-4 w-4 text-primary" />}
+                                            </CommandItem>
+                                          );
+                                        })}
+                                      </CommandGroup>
+                                    </CommandList>
+                                  </Command>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+
+                            {/* Status (md+) full-bleed */}
+                            <div className="hidden md:flex items-stretch border-r border-border" onClick={(e) => e.stopPropagation()}>
+                              <Select value={t.status} onValueChange={(v: Status) => updateStatus(t.id, v)}>
                                 <SelectTrigger
-                                  className={`h-7 px-3 text-xs font-semibold border-0 ${col.pillBg} ${col.pillText} rounded-md w-full justify-center gap-1 shadow-sm`}
+                                  className={`h-auto w-full rounded-none border-0 ${col.pillBg} ${col.pillText} text-xs font-semibold justify-center gap-1 focus:ring-0 focus:ring-offset-0 [&>svg]:hidden hover:opacity-90`}
                                 >
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {COLUMNS.map((c) => (
-                                    <SelectItem
-                                      key={c.key}
-                                      value={c.key}
-                                      className="text-xs"
-                                    >
-                                      {c.label}
-                                    </SelectItem>
+                                    <SelectItem key={c.key} value={c.key} className="text-xs">{c.label}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </div>
 
                             {/* Due date (md+) */}
-                            <div className="hidden md:flex items-center px-3 py-2 text-xs text-muted-foreground">
-                              {t.due_date ? (
-                                <span className="inline-flex items-center gap-1">
-                                  <Calendar className="h-3.5 w-3.5" />
-                                  {format(parseDateOnly(t.due_date)!, "MMM d, yyyy")}
-                                </span>
-                              ) : (
-                                <span className="italic">—</span>
-                              )}
+                            <div className="hidden md:flex items-stretch border-r border-border" onClick={(e) => e.stopPropagation()}>
+                              <DueDatePopover dueDate={t.due_date} onChange={(d) => updateTaskDueDate(t.id, d)} />
                             </div>
 
                             {/* Board (md+) */}
-                            <div className="hidden md:flex items-center px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                              {(isMine || assignedToMe) ? (
-                                <Select
-                                  value={t.board_id ?? "__none__"}
-                                  onValueChange={(v) => updateBoard(t.id, v === "__none__" ? null : v)}
-                                >
-                                  <SelectTrigger className="h-7 px-2 text-xs w-full min-w-0 overflow-hidden [&>span]:truncate [&>span]:block [&>span]:min-w-0 [&>span]:flex-1 [&>span]:text-left">
-                                    <SelectValue placeholder="No board" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="__none__" className="text-xs italic">No board</SelectItem>
-                                    {boards.map((b) => (
-                                      <SelectItem key={b.id} value={b.id} className="text-xs">
-                                        <span className="inline-flex items-center gap-2">
-                                          {b.color && (
-                                            <span className="h-2 w-2 rounded-full" style={{ background: b.color }} />
-                                          )}
-                                          {b.name}
-                                        </span>
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <span className="text-xs text-muted-foreground truncate">
-                                  {boards.find((b) => b.id === t.board_id)?.name ?? "—"}
-                                </span>
-                              )}
+                            <div className="hidden md:flex items-stretch border-r border-border" onClick={(e) => e.stopPropagation()}>
+                              <Select
+                                value={t.board_id ?? "__none__"}
+                                onValueChange={(v) => updateBoard(t.id, v === "__none__" ? null : v)}
+                                disabled={!(isMine || assignedToMe)}
+                              >
+                                <SelectTrigger className="h-auto w-full rounded-none border-0 bg-transparent text-xs justify-center gap-1 focus:ring-0 focus:ring-offset-0 hover:bg-muted/40 [&>svg]:opacity-50">
+                                  <SelectValue placeholder="No board">
+                                    {t.board_id ? (
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <span
+                                          className="inline-block h-2 w-2 rounded-full"
+                                          style={{ background: boards.find((b) => b.id === t.board_id)?.color || "hsl(var(--muted-foreground))" }}
+                                        />
+                                        <span className="truncate">{boards.find((b) => b.id === t.board_id)?.name ?? "Board"}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="italic text-muted-foreground">No board</span>
+                                    )}
+                                  </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="__none__" className="text-xs italic">No board</SelectItem>
+                                  {boards.map((b) => (
+                                    <SelectItem key={b.id} value={b.id} className="text-xs">
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <span
+                                          className="inline-block h-2 w-2 rounded-full"
+                                          style={{ background: b.color || "hsl(var(--muted-foreground))" }}
+                                        />
+                                        {b.name}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </div>
 
-                            {/* Actions (md+) */}
 
                             {/* Actions (md+) */}
-                            <div className="hidden md:flex items-center justify-end gap-1 px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="hidden md:flex items-center justify-center gap-0.5 px-1" onClick={(e) => e.stopPropagation()}>
                               {(isMine || assignedToMe) && (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7"
-                                  onClick={() => openEdit(t)}
-                                >
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(t)}>
                                   <Pencil className="h-3.5 w-3.5" />
                                 </Button>
                               )}
                               {isMine && (
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7"
-                                  onClick={() => remove(t.id)}
-                                >
+                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(t.id)}>
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               )}
                             </div>
 
-                            {/* Mobile actions */}
-                            {(isMine || assignedToMe) && (
-                              <div className="md:hidden col-start-2 flex items-center gap-1 px-3 pb-2 -mt-1" onClick={(e) => e.stopPropagation()}>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-7 w-7"
-                                  onClick={() => openEdit(t)}
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                {isMine && (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => remove(t.id)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                )}
-                              </div>
-                            )}
+                            {/* Mobile meta */}
+                            <div className="md:hidden col-start-2 px-3 pb-2 -mt-1 flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                              <Badge className={`${col.pillBg} ${col.pillText} border-0 text-[10px]`}>{col.label}</Badge>
+                              {primary && (
+                                <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-[10px] font-semibold text-primary">
+                                    {initialsOf(primary.name)}
+                                  </span>
+                                  {primary.name}
+                                  {owners.length > 1 && <span>+{owners.length - 1}</span>}
+                                </span>
+                              )}
+                              {t.due_date && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                                  <Calendar className="h-3 w-3" />
+                                  {format(parseDateOnly(t.due_date)!, "MMM d")}
+                                </span>
+                              )}
+                            </div>
                           </li>
                         );
                       })}
                     </ul>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        </Card>
+              </div>
+            );
+          })()}
+        </div>
       )}
         </TabsContent>
       </Tabs>
@@ -1276,15 +1704,17 @@ export default function TasksPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select onValueChange={(v: "public" | "private") => bulkUpdateVisibility(v)}>
-            <SelectTrigger className="h-8 w-[140px] text-xs">
-              <SelectValue placeholder="Visibility" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="public" className="text-xs">Public</SelectItem>
-              <SelectItem value="private" className="text-xs">Private</SelectItem>
-            </SelectContent>
-          </Select>
+          {canSetPrivate && (
+            <Select onValueChange={(v: "public" | "private") => bulkUpdateVisibility(v)}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder="Visibility" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public" className="text-xs">Public</SelectItem>
+                <SelectItem value="private" className="text-xs">Private</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -1351,7 +1781,7 @@ export default function TasksPage() {
                         <Calendar className="h-3 w-3" /> Due date
                       </p>
                       <p className="text-sm">
-                        {t.due_date ? format(parseDateOnly(t.due_date)!, "MMM d, yyyy") : <span className="italic text-muted-foreground">—</span>}
+                        {t.due_date ? format(parseDateOnly(t.due_date)!, "MMM d, yyyy") : <span className="italic text-muted-foreground">-</span>}
                       </p>
                     </div>
                     <div>
@@ -1359,7 +1789,7 @@ export default function TasksPage() {
                         <Clock className="h-3 w-3" /> Completed
                       </p>
                       <p className="text-sm">
-                        {t.completed_at ? format(new Date(t.completed_at), "MMM d, yyyy") : <span className="italic text-muted-foreground">—</span>}
+                        {t.completed_at ? format(new Date(t.completed_at), "MMM d, yyyy") : <span className="italic text-muted-foreground">-</span>}
                       </p>
                     </div>
                   </div>
@@ -1422,6 +1852,14 @@ export default function TasksPage() {
           })()}
         </SheetContent>
       </Sheet>
+
+      <TaskUpdatesDialog
+        taskId={updatesTaskId}
+        open={!!updatesTaskId}
+        onOpenChange={(o) => { if (!o) { setUpdatesTaskId(null); refreshUpdateCounts(); } }}
+        users={assignees.map((a) => ({ user_id: a.user_id, full_name: a.full_name, email: a.email }))}
+        onActivityChange={refreshUpdateCounts}
+      />
     </div>
   );
 }
@@ -1457,7 +1895,7 @@ function AssigneeMultiPicker({ assignees, selectedIds, onChange, tradeShow, onTr
       ),
     );
 
-  // Flat list — no role grouping
+  // Flat list - no role grouping
 
   const toggle = (uid: string) => {
     if (selectedIds.includes(uid)) {

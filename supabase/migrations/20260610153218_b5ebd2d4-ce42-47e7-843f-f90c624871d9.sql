@@ -1,0 +1,1 @@
+ALTER TABLE public.crm_accounts ADD COLUMN IF NOT EXISTS assigned_manager_id uuid REFERENCES public.managers(id) ON DELETE SET NULL;

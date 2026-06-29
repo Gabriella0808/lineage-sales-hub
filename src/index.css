@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,75 +6,100 @@
 
 /*
   Lineage Collections — Internal Operating System
-  Editorial / premium furniture house aesthetic.
-  Foundations: deep graphite navy, warm ivory canvas, muted taupe surfaces,
-  bronze accent. Typography pairs Fraunces (display) with DM Sans (body).
+  Quiet luxury. Refined coastal. Editorial restraint.
+
+  Palette:
+    Lineage Black   #0B0B0B
+    Porcelain       #F4F1EB   (canvas)
+    Sandstone       #D9D2C7   (borders, muted surfaces)
+    Driftwood       #A79C8E   (secondary text)
+    Harbor Blue     #C8D7DE   (cool accent)
+    Sea Glass       #E2EBEC   (soft accent surfaces)
+    Weathered Taupe #8E7E69   (warm secondary text)
+    Dune            #C7B299
+    Slate Mist      #6E7375
+    Soft Brass      #B59A72   (premium highlight)
+
+  Typography: Cormorant Garamond (display) + Inter (body/UI).
 */
 
 @layer base {
   :root {
-    /* Canvas */
-    --background: 36 22% 96%;          /* warm ivory */
-    --foreground: 220 24% 11%;         /* graphite navy */
+    /* Canvas — Porcelain */
+    --background: 38 25% 94%;
+    --foreground: 0 0% 4%;              /* Lineage Black */
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 24% 11%;
+    /* Cards lift above canvas with a warm off-white */
+    --card: 36 32% 97%;
+    --card-foreground: 0 0% 4%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 24% 11%;
+    --popover: 36 32% 98%;
+    --popover-foreground: 0 0% 4%;
 
-    /* Brand */
-    --primary: 220 32% 16%;            /* deep graphite navy */
-    --primary-foreground: 36 30% 96%;
+    /* Primary — Lineage Black for confident CTAs */
+    --primary: 0 0% 6%;
+    --primary-foreground: 38 25% 96%;
 
-    --secondary: 32 18% 90%;           /* muted taupe */
-    --secondary-foreground: 220 24% 11%;
+    /* Secondary — Sea Glass */
+    --secondary: 186 17% 91%;
+    --secondary-foreground: 0 0% 8%;
 
-    --muted: 30 14% 92%;               /* parchment */
-    --muted-foreground: 220 12% 38%;
+    /* Muted — warm porcelain */
+    --muted: 36 22% 91%;
+    --muted-foreground: 200 4% 38%;     /* Slate Mist */
 
-    --accent: 28 55% 44%;              /* refined bronze */
-    --accent-foreground: 36 30% 97%;
+    /* Accent — Harbor Blue, gently deepened */
+    --accent: 199 26% 72%;
+    --accent-foreground: 0 0% 8%;
 
-    --destructive: 4 64% 46%;          /* bordeaux */
-    --destructive-foreground: 36 30% 97%;
+    --destructive: 0 48% 38%;
+    --destructive-foreground: 38 25% 96%;
 
-    --success: 152 38% 32%;            /* deep moss */
-    --success-foreground: 36 30% 97%;
+    --success: 158 32% 28%;
+    --success-foreground: 38 25% 96%;
 
-    --warning: 36 72% 46%;             /* amber */
-    --warning-foreground: 220 24% 11%;
+    --warning: 34 38% 48%;              /* Soft Brass deepened */
+    --warning-foreground: 38 25% 96%;
 
-    --border: 30 14% 86%;
-    --input: 30 14% 86%;
-    --ring: 28 55% 44%;
+    /* Borders — Sandstone */
+    --border: 34 18% 82%;
+    --input: 34 18% 82%;
+    --ring: 0 0% 12%;
 
-    --radius: 0.5rem;
+    /* Architectural radius — restrained, not bubbly */
+    --radius: 0.25rem;
 
-    /* Sidebar — bespoke graphite shell */
-    --sidebar-background: 220 28% 10%;
-    --sidebar-foreground: 36 18% 78%;
-    --sidebar-primary: 28 55% 52%;
-    --sidebar-primary-foreground: 220 28% 10%;
-    --sidebar-accent: 220 24% 16%;
-    --sidebar-accent-foreground: 36 30% 96%;
-    --sidebar-border: 220 22% 18%;
-    --sidebar-ring: 28 55% 52%;
-    --sidebar-muted: 220 12% 50%;
-    --sidebar-section: 36 14% 60%;
+    /* Sidebar — Lineage Black architectural shell */
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 38 14% 76%;
+    --sidebar-primary: 34 33% 58%;      /* Soft Brass */
+    --sidebar-primary-foreground: 0 0% 6%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 38 25% 94%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 34 33% 58%;
+    --sidebar-muted: 38 8% 52%;
+    --sidebar-section: 38 10% 58%;
 
-    /* Charts */
-    --chart-1: 220 32% 22%;
-    --chart-2: 28 55% 44%;
-    --chart-3: 152 38% 36%;
-    --chart-4: 200 42% 38%;
-    --chart-5: 12 48% 48%;
+    /* Charts — cohesive coastal */
+    --chart-1: 0 0% 12%;                /* Lineage Black */
+    --chart-2: 199 30% 56%;             /* Harbor Blue, deepened */
+    --chart-3: 34 33% 50%;              /* Soft Brass */
+    --chart-4: 33 16% 48%;              /* Weathered Taupe */
+    --chart-5: 200 12% 62%;             /* Driftwood-cool */
 
-    /* Premium effects */
-    --shadow-soft: 0 1px 2px hsl(220 24% 11% / 0.04), 0 4px 16px -8px hsl(220 24% 11% / 0.08);
-    --shadow-elev: 0 2px 4px hsl(220 24% 11% / 0.06), 0 12px 32px -12px hsl(220 24% 11% / 0.14);
-    --gradient-bronze: linear-gradient(135deg, hsl(28 55% 50%), hsl(34 60% 58%));
-    --gradient-graphite: linear-gradient(180deg, hsl(220 28% 12%), hsl(220 28% 8%));
+    /* Premium effects — tight, restrained, editorial */
+    --shadow-soft:
+      0 1px 0 hsl(34 18% 82% / 0.7),
+      0 1px 2px hsl(0 0% 4% / 0.03);
+    --shadow-elev:
+      0 1px 0 hsl(34 18% 82% / 0.7),
+      0 2px 4px hsl(0 0% 4% / 0.04),
+      0 12px 28px -16px hsl(0 0% 4% / 0.10);
+
+    --gradient-brass: linear-gradient(135deg, hsl(0 0% 6%), hsl(34 33% 38%));
+    --gradient-graphite: linear-gradient(180deg, hsl(0 0% 7%), hsl(0 0% 4%));
+    --gradient-bronze: linear-gradient(135deg, hsl(0 0% 6%), hsl(34 33% 50%));
   }
 }
 
@@ -82,54 +107,76 @@
   * { @apply border-border; }
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-feature-settings: "ss01", "cv11";
+    font-feature-settings: "ss01", "cv11", "tnum";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  h1, h2, h3, h4 { @apply font-display tracking-tight; }
-  h1 { font-feature-settings: "ss01"; }
+  h1, h2, h3, h4 { @apply font-display tracking-tight; font-weight: 500; }
 }
 
 @layer utilities {
-  /* Surfaces */
+  /* Surfaces — crisp, hairline, editorial */
   .surface {
-    @apply bg-card border border-border/70 rounded-md;
+    @apply bg-card border border-border rounded-md;
     box-shadow: var(--shadow-soft);
   }
   .surface-elev {
-    @apply bg-card border border-border/70 rounded-md;
+    @apply bg-card border border-border rounded-md;
     box-shadow: var(--shadow-elev);
   }
-  .glass-card {
-    @apply surface;
-  }
+  .glass-card { @apply surface; }
   .stat-card {
-    @apply surface p-4 sm:p-5 transition-all hover:shadow-[var(--shadow-elev)];
+    @apply surface p-5 transition-colors hover:border-foreground/25;
   }
   .table-container {
     @apply surface overflow-hidden;
   }
 
-  /* Page header */
-  .page-header { @apply mb-6 sm:mb-7; }
+  /* Page header — refined, editorial */
+  .page-header { @apply mb-7; }
   .page-eyebrow {
-    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-accent;
+    @apply text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground;
   }
   .page-title {
-    @apply font-display text-2xl sm:text-3xl font-semibold tracking-tight text-foreground;
+    @apply font-display text-[1.875rem] sm:text-[2.125rem] font-normal tracking-tight text-foreground leading-[1.1];
   }
   .page-subtitle {
-    @apply text-sm text-muted-foreground mt-1.5 max-w-2xl;
+    @apply text-[13px] text-muted-foreground mt-2 max-w-2xl leading-relaxed;
   }
 
-  /* Section label — editorial */
+  /* Section label — editorial caps */
   .section-label {
-    @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground;
+    @apply text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground;
   }
 
-  /* Refined hairline divider */
-  .hairline { @apply border-t border-border/70; }
+  /* Hairline divider */
+  .hairline { @apply border-t border-border; }
 
-  /* Bronze underline accent */
+  /* Accent rule — restrained */
   .accent-rule {
-    @apply inline-block h-px w-10 bg-accent align-middle mr-3;
+    @apply inline-block h-px w-10 bg-foreground/70 align-middle mr-3;
+  }
+
+  /* Tabular figures for KPI numerals */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+
+  /* Hide scrollbar while keeping scroll functionality */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Globally suppress focus rings across the portal */
+@layer base {
+  *:focus,
+  *:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    --tw-ring-offset-shadow: 0 0 #0000 !important;
   }
 }

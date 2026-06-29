@@ -224,7 +224,7 @@ export default function OrgChartPage() {
   };
 
   const formatPos = (p: Position) =>
-    `${p.title}${p.holder_name ? ` — ${p.holder_name}` : ""}`;
+    `${p.title}${p.holder_name ? ` - ${p.holder_name}` : ""}`;
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -242,7 +242,7 @@ export default function OrgChartPage() {
 
 
       {loading ? (
-        <Card><CardContent className="p-8 text-sm text-muted-foreground">Loading…</CardContent></Card>
+        <Card><CardContent className="p-8 text-sm text-muted-foreground">Loading...</CardContent></Card>
       ) : positions.length === 0 ? (
         <Card><CardContent className="p-8 text-sm text-muted-foreground">
           No positions yet.{isAdmin && " Click 'Add position' to start."}
@@ -278,7 +278,7 @@ export default function OrgChartPage() {
                   {selected.parent_id ? (
                     <p className="text-sm">{formatPos(posById.get(selected.parent_id)!)}</p>
                   ) : (
-                    <p className="text-sm text-muted-foreground">— Top level —</p>
+                    <p className="text-sm text-muted-foreground">--- Top level ---</p>
                   )}
                 </Section>
 
@@ -303,12 +303,12 @@ export default function OrgChartPage() {
 
                 <Section title="Job description">
                   <p className="text-sm whitespace-pre-wrap text-muted-foreground">
-                    {selected.job_description || "—"}
+                    {selected.job_description || "-"}
                   </p>
                 </Section>
                 <Section title="Main objectives">
                   <p className="text-sm whitespace-pre-wrap text-muted-foreground">
-                    {selected.main_objectives || "—"}
+                    {selected.main_objectives || "-"}
                   </p>
                 </Section>
 
@@ -414,14 +414,14 @@ export default function OrgChartPage() {
                 </div>
               </div>
               <div>
-                <Label>Reports to (solid line — primary manager)</Label>
+                <Label>Reports to (solid line - primary manager)</Label>
                 <Select
                   value={editing.parent_id ?? "__none__"}
                   onValueChange={(v) => setEditing({ ...editing, parent_id: v === "__none__" ? null : v })}
                 >
                   <SelectTrigger><SelectValue placeholder="Top-level" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">— Top level —</SelectItem>
+                    <SelectItem value="__none__">--- Top level ---</SelectItem>
                     {positions.filter((p) => p.id !== editing.id).map((p) => (
                       <SelectItem key={p.id} value={p.id}>{formatPos(p)}</SelectItem>
                     ))}
@@ -433,7 +433,7 @@ export default function OrgChartPage() {
                 <Label className="flex items-center gap-1.5">
                   <Link2 className="h-3.5 w-3.5" />
                   Dotted line reports to
-                  <span className="text-xs font-normal text-muted-foreground">— secondary / indirect</span>
+                  <span className="text-xs font-normal text-muted-foreground">--- secondary / indirect</span>
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   Optional. Add one or more secondary reporting relationships separate from the primary manager above.
@@ -442,7 +442,7 @@ export default function OrgChartPage() {
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="w-full justify-between">
                       {editingDotted.length === 0
-                        ? "Select positions…"
+                        ? "Select positions..."
                         : `${editingDotted.length} selected`}
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
@@ -605,7 +605,7 @@ function ChartViewport({ children }: { children: React.ReactNode }) {
   };
 
   useLayoutEffect(() => {
-    // Start at 100% — user can pinch / use buttons to zoom
+    // Start at 100% - user can pinch / use buttons to zoom
     if (innerRef.current) innerRef.current.style.transform = "scale(1)";
   }, []);
 
@@ -675,7 +675,7 @@ function ChartViewport({ children }: { children: React.ReactNode }) {
         <button
           className="px-2 py-0.5 rounded border hover:bg-muted"
           onClick={() => { const z = Math.max(0.4, zoom - 0.1); setZoom(z); if (innerRef.current) innerRef.current.style.transform = `scale(${z})`; }}
-        >−</button>
+        >- </button>
         <span className="tabular-nums w-10 text-center">{Math.round(zoom * 100)}%</span>
         <button
           className="px-2 py-0.5 rounded border hover:bg-muted"
@@ -718,7 +718,7 @@ function OrgChartCanvas({
   // Walk offsetParent chain up to (but not including) the container to get
   // unscaled coordinates. getBoundingClientRect would include the CSS zoom
   // transform on an ancestor, which would then be applied again to the SVG
-  // (since the SVG is inside the same scaled container) — causing the lines
+  // (since the SVG is inside the same scaled container) - causing the lines
   // to drift away from the boxes whenever zoom !== 100%.
   const offsetWithin = (el: HTMLElement, container: HTMLElement) => {
     let x = 0;

@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
-  FileText, Send, FolderOpen, Tag,
+  FileText, Send, FolderOpen, Tag, Database, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ type NavSection = {
 };
 
 /**
- * Lineage Collections — internal operating system navigation.
+ * Lineage Collections - internal operating system navigation.
  * Items are grouped into operational sections so the shell reads
  * like a purpose-built tool, not a generic admin template.
  */
@@ -75,7 +75,7 @@ const NAV_SECTIONS: NavSection[] = [
       icon: MapPinned,
       roles: ["admin", "manager"],
       children: [
-        { title: "Accounts", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
+        { title: "Prospects", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
         { title: "Accounts Analytics", url: "/crm/accounts/analytics", icon: BarChart3, roles: ["admin", "manager"] },
         { title: "Visit Analytics", url: "/check-ins/analytics", icon: PieChart, roles: ["admin", "manager"] },
       ],
@@ -118,8 +118,9 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Administration",
     items: [
       { title: "Organizational Chart", url: "/org-chart", icon: Network,  roles: ["admin"] },
-      { title: "Sales Managers", url: "/managers", icon: UserCog,  roles: ["admin"] },
+      { title: "Sales Managers", url: "/managers", icon: UserCog,  roles: ["admin", "manager"] },
       { title: "Sales Reps",     url: "/reps",     icon: Users,    roles: ["admin", "manager"] },
+      { title: "Sales Rep Database (Acctivate)", url: "/reps-acctivate", icon: Database, roles: ["admin"] },
       { title: "Settings",       url: "/settings", icon: Settings, roles: ["admin", "manager", "rep"] },
     ],
   },
@@ -144,12 +145,13 @@ function SidebarNavItemRow({
           end={item.url === "/"}
           onClick={closeOnMobile}
           className={cn(
-            "flex-1 flex items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-sidebar-foreground/90",
+            "relative flex-1 flex items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-sidebar-foreground/90",
             "hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground transition-colors",
+            "before:pointer-events-none before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:bg-sidebar-primary before:opacity-0 before:transition-opacity",
           )}
           activeClassName={cn(
             "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-            "shadow-[inset_2px_0_0_0_hsl(var(--sidebar-primary))]",
+            "before:opacity-100",
           )}
         >
           {collapsed && (
@@ -190,7 +192,7 @@ function SidebarNavItemRow({
 }
 
 function SidebarNav() {
-  const { state, isMobile, setOpenMobile } = useSidebar();
+  const { state, isMobile, setOpenMobile, toggleSidebar } = useSidebar();
   const collapsed = !isMobile && state === "collapsed";
   const closeOnMobile = () => { if (isMobile) setOpenMobile(false); };
   const { data: roleInfo } = useUserRole();
@@ -211,6 +213,7 @@ function SidebarNav() {
       ...s,
       items: s.items
         .filter((i) => (cs ? CS_ALLOWED.has(i.url) : i.roles.includes(role)))
+        .filter((i) => !(i.url === "/org-chart" && user?.email?.toLowerCase() === "andrew@lineage-collections.com"))
         .map((i) => (cs ? { ...i, children: undefined } : i)),
     }))
     .filter((s) => s.items.length > 0);
@@ -233,6 +236,7 @@ function SidebarNav() {
     setOpenGroups((prev) => ({ ...prev, [title]: !prev[title] }));
 
   return (
+    <>
     <Sidebar collapsible="icon" className="border-r-0 bg-sidebar">
       <SidebarHeader className="px-4 py-5 border-b border-sidebar-border/70">
         <div className="flex items-center gap-3">
@@ -240,7 +244,7 @@ function SidebarNav() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="py-4 px-2 overflow-y-auto">
+      <SidebarContent className="py-4 px-2 overflow-y-auto no-scrollbar">
         <nav className="space-y-5">
           {sections.map((section, idx) => (
             <div key={section.id}>
@@ -287,8 +291,27 @@ function SidebarNav() {
         </div>
       </SidebarFooter>
     </Sidebar>
+
+    {/* Floating collapse toggle at sidebar edge (desktop only) */}
+    {!isMobile && (
+      <button
+        type="button"
+        onClick={toggleSidebar}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        style={{ left: `calc(var(--sidebar-${collapsed ? "width-icon" : "width"}) - 12px)` }}
+        className={cn(
+          "hidden lg:flex fixed top-[72px] z-50 h-6 w-6 items-center justify-center rounded-full",
+          "bg-sidebar-primary text-sidebar-primary-foreground shadow-md",
+          "hover:bg-sidebar-primary/90 transition-[left,background-color] duration-200"
+        )}
+      >
+        <ChevronLeft className={cn("h-3.5 w-3.5", collapsed && "rotate-180")} />
+      </button>
+    )}
+    </>
   );
 }
+
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const defaultOpen = typeof window === "undefined" ? true : window.innerWidth >= 1024;
@@ -298,7 +321,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <SidebarNav />
         <div className="flex-1 flex flex-col min-w-0">
           <header className="h-14 flex items-center border-b border-border/70 px-3 sm:px-5 bg-card/80 backdrop-blur shrink-0 gap-2 sm:gap-3">
-            <SidebarTrigger className="mr-1 shrink-0" />
+            <SidebarTrigger className="mr-1 shrink-0 lg:hidden" />
             <div className="flex-1" />
             <span className="text-xs text-muted-foreground hidden lg:inline tabular-nums">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}

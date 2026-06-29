@@ -26,7 +26,7 @@ function fmtSize(n: number | null) {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function TaskAttachments({ taskId }: { taskId: string }) {
+export function TaskAttachments({ taskId, onChange }: { taskId: string; onChange?: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<Attachment[]>([]);
@@ -86,6 +86,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
     setUploading(false);
     if (inputRef.current) inputRef.current.value = "";
     load();
+    onChange?.();
   };
 
   const download = async (a: Attachment) => {
@@ -105,6 +106,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
       return;
     }
     setItems((arr) => arr.filter((x) => x.id !== a.id));
+    onChange?.();
   };
 
   return (
@@ -115,7 +117,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
         </p>
         <Button size="sm" variant="outline" onClick={onPick} disabled={uploading}>
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
-          {uploading ? "Uploading…" : "Attach files"}
+          {uploading ? "Uploading..." : "Attach files"}
         </Button>
         <input
           ref={inputRef}
@@ -126,7 +128,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
         />
       </div>
       {loading ? (
-        <p className="text-xs italic text-muted-foreground">Loading…</p>
+        <p className="text-xs italic text-muted-foreground">Loading...</p>
       ) : items.length === 0 ? (
         <p className="text-xs italic text-muted-foreground">No attachments</p>
       ) : (
@@ -158,7 +160,7 @@ export function TaskAttachments({ taskId }: { taskId: string }) {
   );
 }
 
-/** Pending attachment picker — used in Create dialog before task exists. */
+/** Pending attachment picker - used in Create dialog before task exists. */
 export function PendingAttachmentPicker({
   files,
   onChange,

@@ -164,7 +164,7 @@ export default function InventoryPage() {
           <h1 className="page-title">Inventory</h1>
           {usingMock && (
             <p className="page-subtitle">
-              <span>Showing sample data — Acctivate sync hasn't run yet.</span>
+              <span>Showing sample data - Acctivate sync hasn't run yet.</span>
             </p>
           )}
         </div>
@@ -176,7 +176,7 @@ export default function InventoryPage() {
           className="h-9"
         >
           <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} />
-          {refreshing ? "Refreshing…" : "Refresh inventory"}
+          {refreshing ? "Refreshing..." : "Refresh inventory"}
         </Button>
       </div>
 

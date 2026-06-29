@@ -65,7 +65,7 @@ const NewLeadAssignedEmail = ({
         ) : null}
 
         <Hr style={hr} />
-        <Text style={footer}>— The {SITE_NAME} Team</Text>
+        <Text style={footer}>--- The {SITE_NAME} Team</Text>
       </Container>
     </Body>
   </Html>
@@ -77,7 +77,7 @@ const Row = ({ label, value }: { label: string; value?: string }) => (
     <tbody>
       <tr>
         <td style={rowLabel}>{label}</td>
-        <td style={rowValue}>{value && value.trim() ? value : '—'}</td>
+        <td style={rowValue}>{value && value.trim() ? value : '---'}</td>
       </tr>
     </tbody>
   </table>

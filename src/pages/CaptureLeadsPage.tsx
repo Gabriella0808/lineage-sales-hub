@@ -22,6 +22,7 @@ import {
 import { Loader2, Plus, MapPin, Calendar, Trash2, Pencil, Mail, Phone, User, Building2, Tag, DollarSign, FileText, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
+import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 
 type Market = {
   id: string;
@@ -48,7 +49,10 @@ type Lead = {
   status: string | null;
   market_id: string | null;
   notes: string | null;
+  address: string | null;
   created_at: string;
+  prospect_types?: string[] | null;
+  crm_account_id?: string | null;
 };
 
 type SalesRep = {
@@ -61,8 +65,9 @@ const fmt = (n: number | null) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n ?? 0);
 
 const emptyLead = {
-  contact_name: "", dealer: "", email: "", additional_email: "", phone: "",
+  contact_name: "", dealer: "", email: "", additional_email: "", phone: "", address: "",
   sales_rep: "", sales_rep_id: "", rep_email: "", product_interest: "", order_amount: "", status: "New", notes: "",
+  prospect_types: [] as string[],
   followup_enabled: false, followup_title: "", followup_description: "", followup_due_date: "",
 };
 
@@ -196,17 +201,81 @@ export default function CaptureLeadsPage() {
       dealer: l.dealer ?? "",
       email: l.email ?? "",
       phone: l.phone ?? "",
+      address: l.address ?? "",
       sales_rep: l.sales_rep ?? "",
       sales_rep_id: matchedRep?.id ?? "",
       rep_email: l.rep_email ?? "",
       product_interest: l.product_interest ?? "",
       order_amount: l.order_amount != null ? String(l.order_amount) : "",
       status: l.status ?? "New",
+      notes: l.notes ?? "",
+      prospect_types: Array.isArray(l.prospect_types) ? l.prospect_types : [],
     });
     setEditingLeadId(l.id);
     setEditingOriginalRepEmail((l.rep_email ?? "").trim().toLowerCase());
     setEditRepCleared(false);
     setLeadDialog(l.market_id ?? markets.find((m) => m.name === l.trade_show)?.id ?? null);
+  };
+
+  // Create / update / unlink the linked CRM Prospect account based on selected prospect_types.
+  const syncProspectAccount = async (leadId: string, existingCrmAccountId: string | null) => {
+    const types = (leadForm.prospect_types || []).filter(Boolean);
+    const companyName = (leadForm.dealer.trim() || leadForm.contact_name.trim());
+    const [firstName, ...rest] = leadForm.contact_name.trim().split(/\s+/);
+    const lastName = rest.join(" ") || null;
+
+    if (types.length === 0) {
+      // User cleared all prospect types - unlink (and remove the auto-created prospect if it's still a prospect).
+      if (existingCrmAccountId) {
+        await supabase.from("trade_show_leads").update({ crm_account_id: null }).eq("id", leadId);
+        const { data: acct } = await supabase
+          .from("crm_accounts")
+          .select("id, account_type")
+          .eq("id", existingCrmAccountId)
+          .maybeSingle();
+        if (acct && acct.account_type === "prospect") {
+          await supabase.from("crm_accounts").delete().eq("id", existingCrmAccountId);
+        }
+      }
+      return;
+    }
+
+    if (!companyName) return;
+
+    if (existingCrmAccountId) {
+      await supabase.from("crm_accounts").update({
+        company_name: companyName,
+        prospect_types: types,
+        prospect_type: types[0] ?? null,
+        contact_first_name: firstName || null,
+        contact_last_name: lastName,
+        main_phone: leadForm.phone.trim() || null,
+        email: leadForm.email.trim() || null,
+        street_1: leadForm.address.trim() || null,
+        notes: leadForm.notes.trim() || null,
+      }).eq("id", existingCrmAccountId);
+    } else {
+      const { data: created, error: cErr } = await supabase.from("crm_accounts").insert({
+        company_name: companyName,
+        account_type: "prospect",
+        lifecycle_stage: "lead",
+        status: "active",
+        prospect_types: types,
+        prospect_type: types[0] ?? null,
+        contact_first_name: firstName || null,
+        contact_last_name: lastName,
+        main_phone: leadForm.phone.trim() || null,
+        email: leadForm.email.trim() || null,
+        street_1: leadForm.address.trim() || null,
+        notes: leadForm.notes.trim() || null,
+        created_by: user?.id ?? null,
+      }).select("id").single();
+      if (cErr) {
+        toast.error(`Prospect sync: ${cErr.message}`);
+        return;
+      }
+      await supabase.from("trade_show_leads").update({ crm_account_id: created!.id }).eq("id", leadId);
+    }
   };
 
   const submitLead = async () => {
@@ -221,6 +290,7 @@ export default function CaptureLeadsPage() {
         dealer: leadForm.dealer.trim() || null,
         email: leadForm.email.trim() || null,
         phone: leadForm.phone.trim() || null,
+        address: leadForm.address.trim() || null,
         sales_rep: leadForm.sales_rep.trim() || null,
         rep_email: leadForm.rep_email.trim() || null,
         product_interest: leadForm.product_interest.trim() || null,
@@ -229,9 +299,14 @@ export default function CaptureLeadsPage() {
         notes: leadForm.notes.trim() || null,
         market_id: leadDialog,
         trade_show: market?.name ?? null,
-      }).eq("id", editingLeadIdSnapshot);
+        prospect_types: leadForm.prospect_types ?? [],
+      } as any).eq("id", editingLeadIdSnapshot);
       if (error) return toast.error(error.message);
       toast.success("Lead updated");
+
+      // Sync prospect link
+      const existingLead = leads.find((l) => l.id === editingLeadIdSnapshot);
+      await syncProspectAccount(editingLeadIdSnapshot, existingLead?.crm_account_id ?? null);
 
       // Trigger rep notification if the rep was (re)assigned during this edit:
       // - rep was cleared and re-selected (even if same rep), OR
@@ -265,9 +340,9 @@ export default function CaptureLeadsPage() {
         });
       }
 
-      // Sync to Mailchimp on edit too — lets you trigger the automation by re-saving with a dealer email
+      // Sync to Mailchimp on edit too - lets you trigger the automation by re-saving with a dealer email
       const editedDealerEmail = leadForm.email.trim();
-      const editIsMailchimpMarket = market?.name && /high point|furniture first/i.test(market.name);
+      const editIsMailchimpMarket = market?.name && /high point|furniture first|atlanta/i.test(market.name);
       if (editedDealerEmail && editIsMailchimpMarket) {
         supabase.functions.invoke("sync-mailchimp-lead", {
           body: {
@@ -302,6 +377,7 @@ export default function CaptureLeadsPage() {
       dealer: leadForm.dealer.trim() || null,
       email: leadForm.email.trim() || null,
       phone: leadForm.phone.trim() || null,
+      address: leadForm.address.trim() || null,
       sales_rep: leadForm.sales_rep.trim() || null,
       rep_email: leadForm.rep_email.trim() || null,
       product_interest: leadForm.product_interest.trim() || null,
@@ -312,9 +388,13 @@ export default function CaptureLeadsPage() {
       trade_show: market?.name ?? null,
       lead_date: new Date().toISOString().slice(0, 10),
       created_by: user?.id ?? null,
-    });
+      prospect_types: leadForm.prospect_types ?? [],
+    } as any);
     if (error) return toast.error(error.message);
     toast.success("Lead captured");
+
+    // Create linked Prospect account if prospect types were selected
+    await syncProspectAccount(newLeadId, null);
 
     // Notify the assigned rep by email with the lead summary
     const repEmailToNotify = leadForm.rep_email.trim();
@@ -347,7 +427,7 @@ export default function CaptureLeadsPage() {
       const title = leadForm.followup_title.trim() || `Follow up: ${leadForm.contact_name.trim()}${leadForm.dealer.trim() ? ` (${leadForm.dealer.trim()})` : ""}`;
       const descParts = [
         leadForm.followup_description.trim(),
-        `— Lead from ${market?.name ?? "Trade Show"}`,
+        `--- Lead from ${market?.name ?? "Trade Show"}`,
         leadForm.dealer.trim() ? `Dealer: ${leadForm.dealer.trim()}` : "",
         leadForm.email.trim() ? `Dealer Email: ${leadForm.email.trim()}` : "",
         leadForm.product_interest.trim() ? `Collections: ${leadForm.product_interest.trim()}` : "",
@@ -383,7 +463,7 @@ export default function CaptureLeadsPage() {
 
     // Sync to Mailchimp ONLY if: (1) dealer email present and (2) market maps to a Mailchimp audience
     const dealerEmail = leadForm.email.trim();
-    const isMailchimpMarket = market?.name && /high point|furniture first/i.test(market.name);
+    const isMailchimpMarket = market?.name && /high point|furniture first|atlanta/i.test(market.name);
     if (dealerEmail && isMailchimpMarket) {
       supabase.functions.invoke("sync-mailchimp-lead", {
         body: {
@@ -460,7 +540,7 @@ export default function CaptureLeadsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
+          <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading...
         </div>
       ) : markets.length === 0 ? (
         <Card className="p-10 text-center text-muted-foreground">
@@ -507,8 +587,8 @@ export default function CaptureLeadsPage() {
                           <div key={l.id} role="button" tabIndex={0} onClick={() => setViewingLead(l)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setViewingLead(l); } }} className="border rounded-lg p-3 bg-background/40 cursor-pointer hover:bg-muted/30 transition-colors">
                             <div className="flex items-start justify-between gap-2 mb-1.5">
                               <div className="min-w-0">
-                                <p className="font-medium text-sm">{l.contact_name || "—"}</p>
-                                <p className="text-xs text-muted-foreground truncate">{l.dealer || "—"}</p>
+                                <p className="font-medium text-sm">{l.contact_name || "-"}</p>
+                                <p className="text-xs text-muted-foreground truncate">{l.dealer || "-"}</p>
                               </div>
                               <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                                 <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
@@ -528,7 +608,7 @@ export default function CaptureLeadsPage() {
                               </div>
                             )}
                             <div className="flex items-center justify-between mt-2 pt-2 border-t">
-                              {l.status ? <Badge variant="secondary">{l.status}</Badge> : <span className="text-xs text-muted-foreground">—</span>}
+                              {l.status ? <Badge variant="secondary">{l.status}</Badge> : <span className="text-xs text-muted-foreground">-</span>}
                               <span className="font-medium text-sm">{l.order_amount ? fmt(l.order_amount) : ""}</span>
                             </div>
                           </div>
@@ -555,14 +635,14 @@ export default function CaptureLeadsPage() {
                           <tbody>
                             {ml.map((l) => (
                               <tr key={l.id} onClick={() => setViewingLead(l)} className="border-t hover:bg-muted/30 cursor-pointer">
-                                <td className="px-3 py-2 font-medium">{l.contact_name || "—"}</td>
-                                <td className="px-3 py-2 text-muted-foreground">{l.dealer || "—"}</td>
+                                <td className="px-3 py-2 font-medium">{l.contact_name || "-"}</td>
+                                <td className="px-3 py-2 text-muted-foreground">{l.dealer || "-"}</td>
                                 <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">
-                                  {l.email ? <a href={`mailto:${l.email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.email}</a> : "—"}
+                                  {l.email ? <a href={`mailto:${l.email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.email}</a> : "-"}
                                 </td>
-                                <td className="px-3 py-2">{l.sales_rep || "—"}</td>
+                                <td className="px-3 py-2">{l.sales_rep || "-"}</td>
                                 <td className="px-3 py-2 text-muted-foreground truncate max-w-[200px] hidden lg:table-cell">
-                                  {l.rep_email ? <a href={`mailto:${l.rep_email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.rep_email}</a> : "—"}
+                                  {l.rep_email ? <a href={`mailto:${l.rep_email}`} onClick={(e) => e.stopPropagation()} className="hover:underline">{l.rep_email}</a> : "-"}
                                 </td>
                                 <td className="px-3 py-2 text-muted-foreground max-w-[220px] hidden md:table-cell">
                                   {l.product_interest ? (
@@ -571,11 +651,11 @@ export default function CaptureLeadsPage() {
                                         <Badge key={i} variant="outline" className="text-xs font-normal">{c.trim()}</Badge>
                                       ))}
                                     </div>
-                                  ) : "—"}
+                                  ) : "-"}
                                 </td>
-                                <td className="px-3 py-2 text-muted-foreground hidden md:table-cell">{l.phone || "—"}</td>
-                                <td className="px-3 py-2">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "—"}</td>
-                                <td className="px-3 py-2 text-right font-medium">{l.order_amount ? fmt(l.order_amount) : "—"}</td>
+                                <td className="px-3 py-2 text-muted-foreground hidden md:table-cell">{l.phone || "-"}</td>
+                                <td className="px-3 py-2">{l.status ? <Badge variant="secondary">{l.status}</Badge> : "-"}</td>
+                                <td className="px-3 py-2 text-right font-medium">{l.order_amount ? fmt(l.order_amount) : "-"}</td>
                                 <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex items-center justify-end gap-1">
                                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditLead(l)} aria-label="Edit lead">
@@ -604,10 +684,37 @@ export default function CaptureLeadsPage() {
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingLeadId ? "Edit Lead" : "Capture Lead"} — {markets.find((m) => m.id === leadDialog)?.name}
+              {editingLeadId ? "Edit Lead" : "Capture Lead"} - {markets.find((m) => m.id === leadDialog)?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            <div className="bg-background border-l-4 border-accent rounded-r-lg p-4">
+              <div className="flex flex-col gap-3">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Add as Prospect
+                </span>
+                <ProspectTypeSelect
+                  multi
+                  values={leadForm.prospect_types}
+                  onChangeMulti={(vs) => setLeadForm({ ...leadForm, prospect_types: vs })}
+                  placeholder="Select one or more prospect types..."
+                  triggerClassName="bg-transparent border border-input shadow-none"
+                />
+                {(leadForm.prospect_types || []).filter(Boolean).length > 0 && (
+                  <Field label="Address">
+                    <Textarea
+                      value={leadForm.address}
+                      onChange={(e) => setLeadForm({ ...leadForm, address: e.target.value })}
+                      rows={2}
+                      placeholder="Enter the prospect's address"
+                    />
+                  </Field>
+                )}
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Picking any type will also add this lead to the Prospects list. Leave empty to keep it as a lead only.
+                </p>
+              </div>
+            </div>
             <Field label="Contact First and Last Name" required>
               <Input value={leadForm.contact_name} onChange={(e) => setLeadForm({ ...leadForm, contact_name: e.target.value })} placeholder="Enter contact name" />
             </Field>
@@ -642,7 +749,7 @@ export default function CaptureLeadsPage() {
                   <SelectContent>
                     {salesReps.map((rep) => (
                       <SelectItem key={rep.id} value={rep.id}>
-                        {rep.name}{rep.email ? ` — ${rep.email}` : ""}
+                        {rep.name}{rep.email ? ` - ${rep.email}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -704,7 +811,7 @@ export default function CaptureLeadsPage() {
                       value={leadForm.followup_description}
                       onChange={(e) => setLeadForm({ ...leadForm, followup_description: e.target.value })}
                       rows={2}
-                      placeholder="Anything specific the rep should do…"
+                      placeholder="Anything specific the rep should do..."
                     />
                   </Field>
                 </div>
@@ -766,6 +873,7 @@ export default function CaptureLeadsPage() {
                   <DetailRow icon={Building2} label="Dealer" value={viewingLead.dealer} />
                   <DetailRow icon={Mail} label="Email" value={viewingLead.email} href={viewingLead.email ? `mailto:${viewingLead.email}` : undefined} />
                   <DetailRow icon={Phone} label="Phone" value={viewingLead.phone} href={viewingLead.phone ? `tel:${viewingLead.phone}` : undefined} />
+                  <DetailRow icon={MapPin} label="Address" value={viewingLead.address} />
                 </DetailSection>
 
                 <DetailSection title="Sales Rep">
@@ -784,10 +892,10 @@ export default function CaptureLeadsPage() {
                             <Badge key={i} variant="outline" className="text-xs font-normal">{c.trim()}</Badge>
                           ))}
                         </div>
-                      ) : <p className="text-sm">—</p>}
+                      ) : <p className="text-sm">-</p>}
                     </div>
                   </div>
-                  <DetailRow icon={DollarSign} label="Order Amount" value={viewingLead.order_amount ? fmt(viewingLead.order_amount) : "—"} />
+                  <DetailRow icon={DollarSign} label="Order Amount" value={viewingLead.order_amount ? fmt(viewingLead.order_amount) : "-"} />
                 </DetailSection>
 
                 <DetailSection title="Notes">
@@ -801,7 +909,7 @@ export default function CaptureLeadsPage() {
                   </div>
                 </DetailSection>
 
-                <DetailSection title="Meta">
+                <DetailSection title="Date Captured">
                   <DetailRow
                     icon={Clock}
                     label="Captured"
@@ -845,13 +953,13 @@ function DetailSection({ title, children }: { title: string; children: React.Rea
 }
 
 function DetailRow({ icon: Icon, label, value, href }: { icon: any; label: string; value: string | null | undefined; href?: string }) {
-  if (!value) value = "—";
+  if (!value) value = "-";
   return (
     <div className="flex items-start gap-2 text-sm">
       <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="text-xs text-muted-foreground">{label}</p>
-        {href && value !== "—" ? (
+        {href && value !== "-" ? (
           <a href={href} className="hover:underline break-all">{value}</a>
         ) : (
           <p className="break-words">{value}</p>

@@ -1,0 +1,1 @@
+GRANT CREATE, USAGE ON SCHEMA public TO postgres, authenticated, service_role, anon;

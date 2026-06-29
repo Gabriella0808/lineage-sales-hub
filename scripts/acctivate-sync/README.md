@@ -1,4 +1,4 @@
-# Acctivate → Lovable Cloud Sync (PowerShell)
+# Acctivate → Lineage Backend Sync (PowerShell)
 
 Pushes data from your on-prem Acctivate SQL Server to the `sync-acctivate`
 edge function. Run this on a Windows machine that can reach the Acctivate
@@ -15,7 +15,7 @@ SQL Server (typically the same machine Acctivate is installed on).
    Copy-Item sync.config.example.json sync.config.json
    notepad sync.config.json
    ```
-   - `syncToken` → value of the `SYNC_API_TOKEN` secret in Lovable Cloud
+   - `syncToken` → value of the `SYNC_API_TOKEN` secret in the backend
    - `sql.server` → e.g. `LOCALHOST\ACCTIVATE` or `ACCT-SQL01`
    - `sql.database` → usually `Acctivate`
    - `integratedSecurity: true` uses the logged-in Windows account; set to
@@ -61,9 +61,25 @@ may differ — open the script, edit the `$queries` hashtable, and make sure
 **every query returns an `acctivate_id` column** (used as the upsert key).
 
 Allowed target tables (defined server-side in `sync-acctivate`):
-`managers, sales_reps, territories, rep_territories, dealers, contacts,
-kpi_records, activities, tasks, dealer_sales, dealer_sales_lines,
-products, inventory`.
+`dealers, contacts, kpi_records, activities, tasks, dealer_sales,
+dealer_sales_lines, dealer_invoices, dealer_invoice_lines, products,
+inventory, open_sales_orders, acctivate_sales_reps,
+acctivate_sales_managers, acctivate_territories`.
+
+The original `sales_reps`, `managers`, `territories`, and `rep_territories`
+tables are intentionally blocked by the edge function (HTTP 403) — Acctivate
+only writes to the `acctivate_*` mirror tables shown on the
+**Sales Rep Database (Acctivate)** page.
+
+### Sync only the Acctivate sales-rep mirror tables
+
+To push just sales reps (with rep code), sales managers, and territories
+(with territory codes) into the `acctivate_*` tables — without touching
+dealers, products, invoices, etc. — run:
+
+```powershell
+pwsh .\Sync-Acctivate.ps1 -Tables acctivate_sales_reps,acctivate_sales_managers,acctivate_territories
+```
 
 ## 4. Schedule it (daily 3:00 PM Eastern)
 
@@ -102,7 +118,7 @@ Unregister-ScheduledTask -TaskName 'Lineage Acctivate Sync' -Confirm:$false
 
 | Symptom | Fix |
 |---|---|
-| `Invalid sync token` | Token in `sync.config.json` doesn't match `SYNC_API_TOKEN` in Lovable Cloud. Re-copy it. |
+| `Invalid sync token` | Token in `sync.config.json` doesn't match `SYNC_API_TOKEN` in the backend. Re-copy it. |
 | `Login failed for user` | Wrong SQL credentials — toggle `integratedSecurity` or fix user/password. |
 | `Invalid object name 'dbo.Customer'` | Your Acctivate schema differs — edit the SQL in `$queries`. |
 | HTTP 400 with column errors | A returned column isn't in the target table. Adjust the SELECT aliases. |

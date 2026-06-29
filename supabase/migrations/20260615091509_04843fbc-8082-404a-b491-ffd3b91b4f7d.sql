@@ -1,0 +1,1 @@
+GRANT USAGE, CREATE ON SCHEMA public TO skyvia_sync;

@@ -66,7 +66,7 @@ export function classifyBranch(raw: string | null | undefined): "container" | "w
  * Invoicing totals come from the server-side view
  * `dealer_monthly_invoice_totals`, which already excludes Acctivate "C" charge
  * lines (freight, tariffs, surcharges, AvaTax, etc.) and pre-aggregates by
- * month + dealer + branch — so the browser fetches a few hundred summary rows
+ * month + dealer + branch - so the browser fetches a few hundred summary rows
  * instead of paginating tens of thousands of invoice lines.
  */
 export function useDealerSalesAggregates(repNames?: string[] | null) {
@@ -94,7 +94,7 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
         }]),
       );
 
-      // Resolve rep scope → dealer ids.
+      // Resolve rep scope -  dealer ids.
       let dealerIds: string[] | null = null;
       if (repNames && repNames.length > 0) {
         const { data: repRows, error: repErr } = await supabase

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, TrendingUp, Users, CheckCircle2, Activity } from "lucide-react";
+import { Loader2, TrendingUp, Users, CheckCircle2, Activity, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   ChartContainer,
   ChartTooltip,
@@ -29,11 +29,12 @@ import {
   format,
 } from "date-fns";
 
-type TeamId = "will" | "mateo" | "chris";
+type TeamId = "will" | "mateo" | "chris" | "justin";
 const TEAM: { id: TeamId; name: string; emails: string[]; repOwners: string[] }[] = [
   { id: "will", name: "Will Grisack", emails: ["will@lineage-collections.com"], repOwners: ["will"] },
   { id: "mateo", name: "Mateo De Lisa", emails: ["mateo@lineage-collections.com"], repOwners: ["mateo"] },
   { id: "chris", name: "Chris De Lisa", emails: ["chris@lineage-collections.com"], repOwners: ["chris"] },
+  { id: "justin", name: "Kate Jones", emails: ["kate@lineage-collections.com"], repOwners: ["kate"] },
 ];
 
 interface CheckInRow {
@@ -158,6 +159,7 @@ export default function CheckInAnalyticsPage() {
   const [debugMsg, setDebugMsg] = useState<string | null>(null);
   const [lastTestId, setLastTestId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const debugEnabled =
     typeof window !== "undefined" &&
@@ -287,7 +289,7 @@ export default function CheckInAnalyticsPage() {
 
   async function logTestCheckIn() {
     if (!currentUserId) {
-      setDebugMsg("Not signed in — can't insert test check-in.");
+      setDebugMsg("Not signed in - can't insert test check-in.");
       return;
     }
     setDebugBusy(true);
@@ -315,7 +317,7 @@ export default function CheckInAnalyticsPage() {
       if (iErr) throw iErr;
 
       setLastTestId(inserted.id);
-      setDebugMsg(`Inserted check-in ${inserted.id.slice(0, 8)}… — analytics refreshed.`);
+      setDebugMsg(`Inserted check-in ${inserted.id.slice(0, 8)}... - analytics refreshed.`);
       setRefreshTick((t) => t + 1);
     } catch (e: any) {
       setDebugMsg(`Insert failed: ${e?.message ?? String(e)}`);
@@ -330,7 +332,7 @@ export default function CheckInAnalyticsPage() {
     try {
       const { error } = await supabase.from("dealer_check_ins").delete().eq("id", lastTestId);
       if (error) throw error;
-      setDebugMsg(`Removed test check-in ${lastTestId.slice(0, 8)}… — analytics refreshed.`);
+      setDebugMsg(`Removed test check-in ${lastTestId.slice(0, 8)}... - analytics refreshed.`);
       setLastTestId(null);
       setRefreshTick((t) => t + 1);
     } catch (e: any) {
@@ -347,6 +349,7 @@ export default function CheckInAnalyticsPage() {
       will: {},
       mateo: {},
       chris: {},
+      justin: {},
     };
     TEAM.forEach((t) => {
       periods.forEach((p) => {
@@ -355,8 +358,8 @@ export default function CheckInAnalyticsPage() {
     });
 
     checkIns.forEach((c) => {
-      // Attribute by dealer ownership first (rep -> manager), then by who logged it.
-      const team = (c.dealer_id && dealerToTeam[c.dealer_id]) || userToTeam[c.user_id];
+      // Attribute to the user who logged the check-in; fall back to dealer ownership.
+      const team = userToTeam[c.user_id] || (c.dealer_id && dealerToTeam[c.dealer_id]);
       if (!team) return;
       periods.forEach((p) => {
         if (inRange(c.visit_date, p.start, p.end)) {
@@ -389,6 +392,12 @@ export default function CheckInAnalyticsPage() {
         thisWeek: { checkIns: 0, placements: 0 },
         lastMonth: { checkIns: 41, placements: 6 },
         ytd: { checkIns: 110, placements: 14 },
+      },
+      justin: {
+        lastWeek: { checkIns: 0, placements: 0 },
+        thisWeek: { checkIns: 0, placements: 0 },
+        lastMonth: { checkIns: 0, placements: 0 },
+        ytd: { checkIns: 0, placements: 0 },
       },
     };
 
@@ -460,7 +469,7 @@ export default function CheckInAnalyticsPage() {
           <CardHeader className="pb-3">
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Badge variant="outline" className="uppercase text-[10px]">Debug</Badge>
-              Check-In → Analytics sync test
+              Check-In -  Analytics sync test
             </CardTitle>
             <CardDescription>
               Inserts a real check-in for the signed-in user (today, new placement = yes) and refetches.
@@ -474,7 +483,7 @@ export default function CheckInAnalyticsPage() {
                 <div className="font-display text-xl tabular-nums">{checkIns.length}</div>
               </div>
               {TEAM.map((t) => {
-                const live = checkIns.filter((c) => ((c.dealer_id && dealerToTeam[c.dealer_id]) || userToTeam[c.user_id]) === t.id).length;
+                const live = checkIns.filter((c) => (userToTeam[c.user_id] || (c.dealer_id && dealerToTeam[c.dealer_id])) === t.id).length;
                 return (
                   <div key={t.id} className="rounded-md bg-background/60 p-2">
                     <div className="text-[10px] uppercase text-muted-foreground">
@@ -491,7 +500,7 @@ export default function CheckInAnalyticsPage() {
                 disabled={debugBusy}
                 className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
-                {debugBusy ? "Working…" : "Log test check-in"}
+                {debugBusy ? "Working..." : "Log test check-in"}
               </button>
               <button
                 onClick={undoLastTest}
@@ -556,16 +565,36 @@ export default function CheckInAnalyticsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {TEAM.map((member, idx) => (
-            <RepCard
-              key={member.id}
-              name={member.name}
-              periods={periods}
-              data={stats[member.id]}
-              accentClass={["bg-primary", "bg-accent", "bg-success"][idx % 3]}
-            />
-          ))}
+        <div className="relative">
+          <button
+            onClick={() => scrollRef.current?.scrollBy({ left: -340, behavior: "smooth" })}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-background border border-border shadow-sm flex items-center justify-center hover:bg-muted transition-colors"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div
+            ref={scrollRef}
+            className="flex gap-5 overflow-x-hidden scroll-smooth py-1 px-12"
+          >
+            {TEAM.map((member, idx) => (
+              <div key={member.id} className="min-w-[320px] flex-shrink-0">
+                <RepCard
+                  name={member.name}
+                  periods={periods}
+                  data={stats[member.id]}
+                  accentClass={["bg-primary", "bg-accent", "bg-success", "bg-primary"][idx % 4]}
+                />
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => scrollRef.current?.scrollBy({ left: 340, behavior: "smooth" })}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 h-9 w-9 rounded-full bg-background border border-border shadow-sm flex items-center justify-center hover:bg-muted transition-colors"
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       </section>
 

@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// --------- Types ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 interface SalesRow {
   sku: string;
@@ -44,19 +44,24 @@ interface ImportBatch {
   totalQty: number;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// --------- Helpers ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 function fmtWeekLabel(start: Date, end: Date) {
-  return `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")}`;
+  return `${format(start, "MMM d")} - ${format(end, "MMM d, yyyy")}`;
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// --------- Page ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export default function ClearanceAnalyticsPage() {
   const [anchor, setAnchor] = useState<Date>(() => new Date());
   const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
   const weekEnd   = endOfWeek(anchor, { weekStartsOn: 1 });
-  const weekLabel = fmtWeekLabel(weekStart, weekEnd);
+  const weekLabel = useMemo(() => {
+    const fmt = fmtWeekLabel(weekStart, weekEnd);
+    if (fmt === "Jun 15 - Jun 21, 2026") return "June 12 - June 20, 2026";
+    if (fmt === "Jun 22 - Jun 28, 2026") return "June 20 - June 27, 2026";
+    return fmt;
+  }, [weekStart, weekEnd]);
 
   const [salesRows, setSalesRows]   = useState<SalesRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -177,7 +182,7 @@ export default function ClearanceAnalyticsPage() {
         </Card>
         <Card className="p-4 space-y-1">
           <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-            <DollarSign className="h-3 w-3" /> Revenue
+            <DollarSign className="h-3 w-3" /> Gross Revenue
           </div>
           <p className="text-2xl font-semibold tabular-nums">
             ${summary.totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -198,7 +203,7 @@ export default function ClearanceAnalyticsPage() {
       </div>
 
       {loadingData ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">Loading sales data…</div>
+        <div className="text-center py-16 text-muted-foreground text-sm">Loading sales data...</div>
       ) : repRows.length === 0 ? (
         <div className="text-center py-16 space-y-2">
           <p className="text-muted-foreground text-sm">No clearance sales data for this week.</p>
@@ -208,21 +213,6 @@ export default function ClearanceAnalyticsPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {/* Import batches pill row */}
-          {importBatches.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {importBatches.map((b) => (
-                <div
-                  key={b.import_id}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs text-muted-foreground border border-border"
-                >
-                  <FileText className="h-3 w-3" />
-                  <span className="font-medium">{b.import_filename ?? "Unnamed import"}</span>
-                  <span>· {b.totalQty.toLocaleString()} units · {b.rowCount} SKUs</span>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* Rep breakdown table */}
           <Card>
@@ -240,7 +230,7 @@ export default function ClearanceAnalyticsPage() {
                       Total Units
                     </th>
                     <th className="text-right px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-                      Revenue
+                      Gross Revenue
                     </th>
                     <th className="w-8" />
                   </tr>

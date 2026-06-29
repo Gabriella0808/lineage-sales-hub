@@ -91,34 +91,26 @@ function useDealerInvoiceLinesInRange(from: Date, to: Date, productIds: string[]
   });
 }
 
-/** Day-precise fetch of open_sales_orders in a date window. Used to source
- *  Bookings from the live Acctivate open-order backlog (extended_value summed
- *  by order_date) instead of the monthly dealer_sales rollup. */
+/** Day-precise fetch of ALL sales order bookings (every status) in a date
+ *  window, sourced from dbo_Orders via the bookings_all_in_range RPC. */
 function useOpenSalesOrdersInRange(from: Date, to: Date) {
   const fromStr = format(from, "yyyy-MM-dd");
   const toStr = format(to, "yyyy-MM-dd");
   return useQuery({
-    queryKey: ["open_sales_orders_range_v2", fromStr, toStr],
+    queryKey: ["bookings_all_in_range_v1", fromStr, toStr],
     queryFn: async () => {
-      const out: { dealer_id: string | null; dealer_acctivate_id: string | null; order_date: string | null; extended_value: number }[] = [];
-      const pageSize = 1000;
-      let start = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await supabase
-          .from("open_sales_orders")
-          .select("dealer_id, dealer_acctivate_id, order_date, extended_value")
-          .gte("order_date", fromStr)
-          .lte("order_date", toStr)
-          .range(start, start + pageSize - 1);
-        if (error) throw error;
-        const batch = ((data ?? []) as { dealer_id: string | null; dealer_acctivate_id: string | null; order_date: string | null; extended_value: number | null }[])
-          .map((r) => ({ dealer_id: r.dealer_id, dealer_acctivate_id: r.dealer_acctivate_id, order_date: r.order_date, extended_value: Number(r.extended_value ?? 0) }));
-        out.push(...batch);
-        if (batch.length < pageSize) break;
-        start += pageSize;
-      }
-      return out;
+      const { data, error } = await supabase.rpc("bookings_all_in_range", {
+        p_from: fromStr,
+        p_to: toStr,
+      });
+      if (error) throw error;
+      return ((data ?? []) as { dealer_id: string | null; dealer_acctivate_id: string | null; order_date: string | null; extended_value: number | null }[])
+        .map((r) => ({
+          dealer_id: r.dealer_id,
+          dealer_acctivate_id: r.dealer_acctivate_id,
+          order_date: r.order_date,
+          extended_value: Number(r.extended_value ?? 0),
+        }));
     },
   });
 }
@@ -300,7 +292,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const today = new Date();
   const yearStart = startOfYear(today);
   // Default primary window covers the full lifetime of synced sales orders
-  // (2024 → today) so Dealer/Rep reporting shows all-time bookings by default.
+  // (2024 -  today) so Dealer/Rep reporting shows all-time bookings by default.
   // Only the Live KPI view is scoped to the current year.
   const lifetimeStart = new Date(2024, 0, 1);
 
@@ -472,9 +464,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     const rowLabel = (key: Key): string => {
       if (key === "__unassigned") return "Unassigned";
       if (key.startsWith("acctivate:")) return `Dealer ID ${key.replace("acctivate:", "")}`;
-      if (groupBy === "dealer") return dealers.find((d) => d.id === key)?.name ?? "—";
-      if (groupBy === "rep") return reps.find((r) => r.id === key)?.name ?? "—";
-      return territories.find((t) => t.id === key)?.name ?? "—";
+      if (groupBy === "dealer") return dealers.find((d) => d.id === key)?.name ?? "-";
+      if (groupBy === "rep") return reps.find((r) => r.id === key)?.name ?? "-";
+      return territories.find((t) => t.id === key)?.name ?? "-";
     };
 
     const rows = new Map<Key, { primary: number; comparative: number; byMonth: Map<string, number> }>();
@@ -662,7 +654,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   }, [primary, useAggregates, useInvoiceLines, lines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealerIdSet, dealerIdByAcctivateId, unscopedOpenOrderView, filteredProductIds]);
 
   // Warn when a product-level filter is active but dealer_sales_lines has no rows
-  // overlapping the primary date range — common right now since line sync is sparse.
+  // overlapping the primary date range - common right now since line sync is sparse.
   const productFilterActive = !useAggregates;
   const lineCoverageMissing = useMemo(() => {
     if (!productFilterActive) return false;
@@ -705,7 +697,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   applyPrimary(from, to);
                 }}
               >
-                <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Select preset…" /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Select preset..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="mtd">Month to date</SelectItem>
@@ -845,7 +837,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             />
             <MultiSelect
               label="SKU" selected={skus} onChange={setSkus}
-              options={visibleSkus.map((p) => ({ value: p.id, label: p.name ? `${p.sku} — ${p.name}` : p.sku }))}
+              options={visibleSkus.map((p) => ({ value: p.id, label: p.name ? `${p.sku} - ${p.name}` : p.sku }))}
               searchable
               searchPlaceholder="Search SKU or name..."
             />
@@ -861,7 +853,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <div className="space-y-1">
               <p className="text-sm font-medium">No invoice line items in this date range</p>
               <p className="text-xs text-muted-foreground">
-                Brand, category, collection, and SKU filters use the per-SKU invoice line table. There are no matching rows in the selected window — try a wider date range or clear the product filters to see aggregate totals.
+                Brand, category, collection, and SKU filters use the per-SKU invoice line table. There are no matching rows in the selected window - try a wider date range or clear the product filters to see aggregate totals.
               </p>
             </div>
           </CardContent>
@@ -888,7 +880,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Bookings</p>
             <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.bookings)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
+              {format(primary.from, "MMM d, yyyy")} - {format(primary.to, "MMM d, yyyy")}
             </p>
           </CardContent>
         </Card>
@@ -897,7 +889,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Invoices</p>
             <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.invoices)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
+              {format(primary.from, "MMM d, yyyy")} - {format(primary.to, "MMM d, yyyy")}
             </p>
           </CardContent>
         </Card>
@@ -918,7 +910,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[55vh]">
             {display === "monthly" ? (
               <MonthlyTable
                 rows={aggregation.rows}
@@ -948,6 +940,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         rowLabel={drillRow?.label ?? ""}
         from={primary.from}
         to={primary.to}
+        compareFrom={compareMode !== "none" ? comparative.from : undefined}
+        compareTo={compareMode !== "none" ? comparative.to : undefined}
         dealers={dealers}
         reps={reps}
         territories={territories}
@@ -971,12 +965,12 @@ function TotalTable({
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b bg-muted/30">
-          <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-muted/30">{leftHeader}</th>
+        <tr className="border-b bg-card sticky top-0 z-20">
+          <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-card z-20">{leftHeader}</th>
           <th className="text-right p-3 font-medium text-muted-foreground">Primary</th>
           {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Comparative</th>}
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Δ</th>}
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">% Δ</th>}
+          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">-</th>}
+          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">% -</th>}
         </tr>
       </thead>
       <tbody>
@@ -989,7 +983,7 @@ function TotalTable({
               className={cn("border-b last:border-0 hover:bg-muted/20", onRowClick && "cursor-pointer")}
               onClick={onRowClick ? () => onRowClick(r.key, r.label) : undefined}
             >
-              <td className="p-3 font-medium sticky left-0 bg-background">
+              <td className="p-3 font-medium sticky left-0 bg-card z-10">
                 {onRowClick ? (
                   <button type="button" className="text-left text-primary hover:underline">{r.label}</button>
                 ) : r.label}
@@ -1003,7 +997,7 @@ function TotalTable({
               )}
               {showComparison && (
                 <td className={cn("p-3 text-right tabular-nums", pct >= 0 ? "text-green-600" : "text-destructive")}>
-                  {r.comparative === 0 ? "—" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
+                  {r.comparative === 0 ? "-" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
                 </td>
               )}
             </tr>
@@ -1013,14 +1007,14 @@ function TotalTable({
           <tr><td colSpan={showComparison ? 5 : 2} className="p-8 text-center text-muted-foreground text-sm">No data for the selected filters.</td></tr>
         )}
         {rows.length > 0 && (
-          <tr className="border-t-2 font-semibold bg-muted/20">
-            <td className="p-3 sticky left-0 bg-muted/20">Total</td>
+          <tr className="border-t-2 font-semibold bg-card sticky bottom-0 z-10">
+            <td className="p-3 sticky left-0 bg-card z-20">Total</td>
             <td className="p-3 text-right tabular-nums">{formatCurrency(totalP)}</td>
             {showComparison && <td className="p-3 text-right tabular-nums">{formatCurrency(totalC)}</td>}
             {showComparison && <td className="p-3 text-right tabular-nums">{formatCurrency(totalP - totalC)}</td>}
             {showComparison && (
               <td className="p-3 text-right tabular-nums">
-                {totalC === 0 ? "—" : `${((totalP - totalC) / totalC * 100).toFixed(1)}%`}
+                {totalC === 0 ? "-" : `${((totalP - totalC) / totalC * 100).toFixed(1)}%`}
               </td>
             )}
           </tr>
@@ -1053,8 +1047,8 @@ function MonthlyTable({
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr className="border-b bg-muted/30">
-          <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-muted/30 z-10">{leftHeader}</th>
+        <tr className="border-b bg-card sticky top-0 z-20">
+          <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-card z-20">{leftHeader}</th>
           {interleaved.map((m) => (
             <th key={m.key} className="text-right p-3 font-medium text-muted-foreground whitespace-nowrap">{m.label}</th>
           ))}
@@ -1069,7 +1063,7 @@ function MonthlyTable({
             className={cn("border-b last:border-0 hover:bg-muted/20", onRowClick && "cursor-pointer")}
             onClick={onRowClick ? () => onRowClick(r.key, r.label) : undefined}
           >
-            <td className="p-3 font-medium sticky left-0 bg-background z-10">
+            <td className="p-3 font-medium sticky left-0 bg-card z-10">
               {onRowClick ? (
                 <button type="button" className="text-left text-primary hover:underline">{r.label}</button>
               ) : r.label}
@@ -1083,6 +1077,27 @@ function MonthlyTable({
             {showComparison && <td className="p-3 text-right tabular-nums text-muted-foreground">{formatCurrency(r.comparative)}</td>}
           </tr>
         ))}
+        {rows.length > 0 && (
+          <tr className="border-t-2 font-semibold bg-card sticky bottom-0 z-10">
+            <td className="p-3 sticky left-0 bg-card z-20">Total</td>
+            {interleaved.map((m) => {
+              const monthTotal = rows.reduce((s, r) => s + (r.byMonth.get(m.key) ?? 0), 0);
+              return (
+                <td key={m.key} className="p-3 text-right tabular-nums whitespace-nowrap">
+                  {formatCurrency(monthTotal)}
+                </td>
+              );
+            })}
+            <td className="p-3 text-right tabular-nums border-l">
+              {formatCurrency(rows.reduce((s, r) => s + r.primary, 0))}
+            </td>
+            {showComparison && (
+              <td className="p-3 text-right tabular-nums">
+                {formatCurrency(rows.reduce((s, r) => s + r.comparative, 0))}
+              </td>
+            )}
+          </tr>
+        )}
         {rows.length === 0 && (
           <tr><td colSpan={totalCols} className="p-8 text-center text-muted-foreground text-sm">No data for the selected filters.</td></tr>
         )}

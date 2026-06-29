@@ -18,7 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// --------- Types ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 interface ClearanceItem {
   sku: string;
@@ -40,7 +40,7 @@ interface ParsedRow {
   productName: string;
 }
 
-// ─── CSV column detection ─────────────────────────────────────────────────────
+// --------- CSV column detection ---------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 const SKU_CANDIDATES     = ["sku", "item", "item #", "item#", "item number", "item_number", "product code", "product_code", "code", "part number", "part_number"];
 const QTY_CANDIDATES     = ["qty", "quantity", "units sold", "qty sold", "units_sold", "qty_sold", "quantity sold", "sold", "shipped qty", "shipped", "qty shipped", "quantity shipped"];
@@ -63,7 +63,7 @@ function parseNum(val: unknown): number {
   return isNaN(n) ? 0 : n;
 }
 
-// ─── Status pill ──────────────────────────────────────────────────────────────
+// --------- Status pill ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 const PILL_BASE = "inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground";
 
@@ -87,7 +87,7 @@ function StatusPill({ status, onHand }: { status: string | null; onHand: number 
   return <span className={PILL_BASE}><Dot cls="bg-success" />In Stock</span>;
 }
 
-// ─── Import dialog ────────────────────────────────────────────────────────────
+// --------- Import dialog ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 interface ImportDialogProps {
   open: boolean;
@@ -371,7 +371,7 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
                         <th className="text-left px-3 py-2 font-medium text-muted-foreground">SKU</th>
                         <th className="text-left px-3 py-2 font-medium text-muted-foreground">Product</th>
                         <th className="text-right px-3 py-2 font-medium text-muted-foreground">Qty Sold</th>
-                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Revenue</th>
+                        <th className="text-right px-3 py-2 font-medium text-muted-foreground">Gross Revenue</th>
                         <th className="text-left px-3 py-2 font-medium text-muted-foreground">Rep</th>
                       </tr>
                     </thead>
@@ -393,13 +393,13 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
                           </td>
                           <td className="px-3 py-1.5 font-mono">{row.sku}</td>
                           <td className="px-3 py-1.5 text-muted-foreground max-w-[160px] truncate">
-                            {row.matched ? row.productName || "—" : <span className="text-warning-foreground">Not in clearance inventory</span>}
+                            {row.matched ? row.productName || "-" : <span className="text-warning-foreground">Not in clearance inventory</span>}
                           </td>
                           <td className="px-3 py-1.5 text-right tabular-nums font-medium">{row.qty}</td>
                           <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">
-                            {row.revenue > 0 ? `$${row.revenue.toFixed(2)}` : "—"}
+                            {row.revenue > 0 ? `$${row.revenue.toFixed(2)}` : "-"}
                           </td>
-                          <td className="px-3 py-1.5 text-muted-foreground">{row.repName || "—"}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{row.repName || "-"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -420,7 +420,7 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
             <div className="py-8 text-center space-y-4">
               <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
               <div>
-                <p className="font-medium">Importing sales data…</p>
+                <p className="font-medium">Importing sales data...</p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {importProgress.done} of {importProgress.total} SKUs updated
                 </p>
@@ -471,7 +471,7 @@ function ImportDialog({ open, onClose, inventory, onImportDone }: ImportDialogPr
   );
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// --------- Main page ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export default function ClearanceProductsPage() {
   const [items, setItems] = useState<ClearanceItem[]>([]);
@@ -484,16 +484,42 @@ export default function ClearanceProductsPage() {
     setLoading(true);
     const { data } = await supabase
       .from("inventory")
-      .select("sku, product, collection, on_hand, available, list_price, status")
+      .select("sku, product, collection, on_hand, available, list_price, status, updated_at")
       .eq("is_clearance", true)
       .order("collection")
       .order("sku");
+
+    const invRows = (data ?? []) as (ClearanceItem & { updated_at: string | null })[];
+
+    // Acctivate sync overwrites inventory, so subtract clearance sales imported
+    // AFTER the last sync for each SKU on top of the synced quantities.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: salesData } = await (supabase as any)
+      .from("clearance_weekly_sales")
+      .select("sku, qty_sold, created_at");
+    const sales = (salesData ?? []) as { sku: string; qty_sold: number; created_at: string }[];
+
+    const pendingBySku = new Map<string, number>();
+    for (const inv of invRows) {
+      const since = inv.updated_at ? new Date(inv.updated_at).getTime() : 0;
+      let pending = 0;
+      for (const s of sales) {
+        if (s.sku === inv.sku && new Date(s.created_at).getTime() > since) {
+          pending += Number(s.qty_sold) || 0;
+        }
+      }
+      if (pending > 0) pendingBySku.set(inv.sku, pending);
+    }
+
     setItems(
-      ((data ?? []) as ClearanceItem[]).map((r) => ({
-        ...r,
-        on_hand: Number(r.on_hand ?? 0),
-        available: Number(r.available ?? 0),
-      })),
+      invRows.map((r) => {
+        const pending = pendingBySku.get(r.sku) ?? 0;
+        return {
+          ...r,
+          on_hand: Math.max(0, Number(r.on_hand ?? 0) - pending),
+          available: Math.max(0, Number(r.available ?? 0) - pending),
+        };
+      }),
     );
     setLoading(false);
   }, []);
@@ -562,7 +588,7 @@ export default function ClearanceProductsPage() {
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Search SKU or product…"
+            placeholder="Search SKU or product..."
             className="pl-8 h-8 text-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -589,7 +615,7 @@ export default function ClearanceProductsPage() {
 
       {/* Inventory table */}
       {loading ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">Loading clearance inventory…</div>
+        <div className="text-center py-16 text-muted-foreground text-sm">Loading clearance inventory...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">No clearance products found.</div>
       ) : (
@@ -623,13 +649,13 @@ export default function ClearanceProductsPage() {
                     )}
                   >
                     <td className="px-4 py-2.5 font-mono text-xs font-medium">{item.sku}</td>
-                    <td className="px-4 py-2.5 text-foreground max-w-[220px] truncate">{item.product ?? "—"}</td>
-                    <td className="px-4 py-2.5 text-muted-foreground">{item.collection ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-foreground max-w-[220px] truncate">{item.product ?? "-"}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{item.collection ?? "-"}</td>
                     <td className="px-4 py-2.5 text-right tabular-nums font-medium">
                       {item.available.toLocaleString()}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
-                      {item.list_price != null ? `$${item.list_price.toFixed(2)}` : "—"}
+                      {item.list_price != null ? `$${item.list_price.toFixed(2)}` : "-"}
                     </td>
                     <td className="px-4 py-2.5">
                       <StatusPill status={item.status} onHand={item.available} />

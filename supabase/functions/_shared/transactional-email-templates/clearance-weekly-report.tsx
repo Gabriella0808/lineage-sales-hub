@@ -19,8 +19,6 @@ interface RepRow {
   collections?: CollectionRow[]
 }
 
-
-
 interface ClearanceWeeklyReportProps {
   recipientName?: string
   weekLabel?: string
@@ -46,14 +44,14 @@ const ClearanceWeeklyReportEmail = ({
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Clearance weekly report{weekLabel ? ` · ${weekLabel}` : ''} — {totalUnits} units sold across{' '}
+      Summer Special weekly report{weekLabel ? ` · ${weekLabel}` : ''} - {totalUnits} units sold across{' '}
       {skusMoved} SKUs
     </Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Clearance Products – Weekly Report</Heading>
+        <Heading style={h1}>Summer Special - Weekly Report</Heading>
         <Text style={text}>
-          {recipientName ? `Hi ${recipientName},` : 'Hi,'} here is the clearance product sales
+          {recipientName ? `Hi ${recipientName},` : 'Hi,'} here is the Summer Special sales
           summary for {weekLabel || 'last week'}.
         </Text>
 
@@ -68,7 +66,7 @@ const ClearanceWeeklyReportEmail = ({
                 </td>
                 <td style={summaryCellBorder}>
                   <div style={summaryNum}>{fmt(totalRevenue)}</div>
-                  <div style={summaryLabel}>Revenue</div>
+                  <div style={summaryLabel}>Gross Revenue</div>
                 </td>
                 <td style={summaryCellBorder}>
                   <div style={summaryNum}>{rows.length}</div>
@@ -100,7 +98,7 @@ const ClearanceWeeklyReportEmail = ({
                     <tr>
                       <th style={th}>Collection</th>
                       <th style={thNum}>Units</th>
-                      <th style={thNum}>Revenue</th>
+                      <th style={thNum}>Gross Revenue</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -127,7 +125,7 @@ const ClearanceWeeklyReportEmail = ({
 
         <Hr style={hr} />
 
-        <Text style={footer}>— The {SITE_NAME} Team</Text>
+        <Text style={footer}>--- The {SITE_NAME} Team</Text>
       </Container>
     </Body>
   </Html>
@@ -137,9 +135,9 @@ export const template = {
   component: ClearanceWeeklyReportEmail,
   subject: (data: Record<string, any>) => {
     const wk = data?.weekLabel ? ` (${data.weekLabel})` : ''
-    return `Clearance products weekly report${wk}`
+    return `Summer Special weekly report${wk}`
   },
-  displayName: 'Clearance products weekly report',
+  displayName: 'Summer Special weekly report',
   previewData: {
     recipientName: 'Scott',
     weekLabel: 'Jun 2 - Jun 8, 2026',

@@ -14,6 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
+      acctivate_sales_managers: {
+        Row: {
+          acctivate_id: string
+          active: boolean | null
+          created_at: string
+          email: string | null
+          id: string
+          job_title: string | null
+          manager_code: string | null
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id: string
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          job_title?: string | null
+          manager_code?: string | null
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          job_title?: string | null
+          manager_code?: string | null
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      acctivate_sales_reps: {
+        Row: {
+          acctivate_id: string
+          active: boolean | null
+          created_at: string
+          email: string | null
+          id: string
+          manager_acctivate_id: string | null
+          manager_name: string | null
+          name: string
+          phone: string | null
+          rep_code: string | null
+          territory_acctivate_id: string | null
+          territory_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id: string
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          manager_acctivate_id?: string | null
+          manager_name?: string | null
+          name: string
+          phone?: string | null
+          rep_code?: string | null
+          territory_acctivate_id?: string | null
+          territory_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string
+          active?: boolean | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          manager_acctivate_id?: string | null
+          manager_name?: string | null
+          name?: string
+          phone?: string | null
+          rep_code?: string | null
+          territory_acctivate_id?: string | null
+          territory_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      acctivate_territories: {
+        Row: {
+          acctivate_id: string
+          active: boolean | null
+          created_at: string
+          description: string | null
+          id: string
+          manager_acctivate_id: string | null
+          manager_name: string | null
+          name: string
+          territory_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          acctivate_id: string
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          manager_acctivate_id?: string | null
+          manager_name?: string | null
+          name: string
+          territory_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acctivate_id?: string
+          active?: boolean | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          manager_acctivate_id?: string | null
+          manager_name?: string | null
+          name?: string
+          territory_code?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           created_at: string
@@ -57,6 +183,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      clearance_weekly_sales: {
+        Row: {
+          created_at: string
+          id: string
+          import_filename: string | null
+          import_id: string
+          imported_by: string | null
+          product_name: string | null
+          qty_sold: number
+          rep_name: string | null
+          revenue: number | null
+          sku: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          import_filename?: string | null
+          import_id: string
+          imported_by?: string | null
+          product_name?: string | null
+          qty_sold?: number
+          rep_name?: string | null
+          revenue?: number | null
+          sku: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          import_filename?: string | null
+          import_id?: string
+          imported_by?: string | null
+          product_name?: string | null
+          qty_sold?: number
+          rep_name?: string | null
+          revenue?: number | null
+          sku?: string
+          week_start?: string
+        }
+        Relationships: []
       }
       compare_periods_notes: {
         Row: {
@@ -206,8 +374,11 @@ export type Database = {
       crm_accounts: {
         Row: {
           account_type: string
+          assigned_manager_id: string | null
           assigned_rep_id: string | null
           brand: string
+          brands: string[]
+          buying_group: string | null
           city: string | null
           company_name: string
           contact_first_name: string | null
@@ -220,6 +391,8 @@ export type Database = {
           main_phone: string | null
           notes: string | null
           prospect_type: string | null
+          prospect_types: string[]
+          rep_owner: string | null
           state: string | null
           status: string
           street_1: string | null
@@ -229,8 +402,11 @@ export type Database = {
         }
         Insert: {
           account_type?: string
+          assigned_manager_id?: string | null
           assigned_rep_id?: string | null
           brand?: string
+          brands?: string[]
+          buying_group?: string | null
           city?: string | null
           company_name: string
           contact_first_name?: string | null
@@ -243,6 +419,8 @@ export type Database = {
           main_phone?: string | null
           notes?: string | null
           prospect_type?: string | null
+          prospect_types?: string[]
+          rep_owner?: string | null
           state?: string | null
           status?: string
           street_1?: string | null
@@ -252,8 +430,11 @@ export type Database = {
         }
         Update: {
           account_type?: string
+          assigned_manager_id?: string | null
           assigned_rep_id?: string | null
           brand?: string
+          brands?: string[]
+          buying_group?: string | null
           city?: string | null
           company_name?: string
           contact_first_name?: string | null
@@ -266,6 +447,8 @@ export type Database = {
           main_phone?: string | null
           notes?: string | null
           prospect_type?: string | null
+          prospect_types?: string[]
+          rep_owner?: string | null
           state?: string | null
           status?: string
           street_1?: string | null
@@ -274,6 +457,13 @@ export type Database = {
           zip?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_accounts_assigned_manager_id_fkey"
+            columns: ["assigned_manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_accounts_assigned_rep_id_fkey"
             columns: ["assigned_rep_id"]
@@ -393,6 +583,4587 @@ export type Database = {
           status?: string
           total?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      dbo_Customer: {
+        Row: {
+          _Rep1: string | null
+          _Rep1CommRate: number | null
+          _Rep2: string | null
+          _Rep2CommRate: number | null
+          _SalesManager: string | null
+          _skyvia_sync: string | null
+          _Territory: string | null
+          AccountNumber: string | null
+          Address: string | null
+          Address2: string | null
+          Address3: string | null
+          Address4: string | null
+          AlternateCustomerID: string | null
+          AltPhone: string | null
+          AltPhoneDesc: string | null
+          AnnualSales: unknown
+          ARAcntId: string | null
+          AvgCollectionDays: number | null
+          BalDue: unknown
+          BranchID: string | null
+          BranchName: string | null
+          CCAddress: string | null
+          CCDisplayNumber: string | null
+          CCExpMonth: number | null
+          CCExpYear: number | null
+          CCName: string | null
+          CCNumber: string | null
+          CCPostalCode: string | null
+          City: string | null
+          ClosingAgeHistory: string | null
+          Comment: string | null
+          CompanyName: string | null
+          Country: string | null
+          CreatedBy: string | null
+          CreatedDate: string | null
+          CreditHold: boolean | null
+          CreditLimit: unknown
+          CreditRating: string | null
+          CreditRatingSource: string | null
+          CurrencyCode: string | null
+          CurrencyName: string | null
+          CustId: string | null
+          CustListID: string | null
+          CustomerTaxID: string | null
+          CustomerType: string | null
+          DateOpened: string | null
+          DefaultReference: string | null
+          DefaultReference2: string | null
+          Email: string | null
+          EmailDesc: string | null
+          Fax: string | null
+          FaxDesc: string | null
+          FirstInvoiceDate: string | null
+          FirstName: string | null
+          FullAddress: string | null
+          FullName: string | null
+          GUIDCurrency: string | null
+          GUIDCustomer: string
+          GUIDCustomerType: string | null
+          GUIDParent: string | null
+          GUIDSalesperson: string | null
+          GUIDTaxCode: string | null
+          GUIDTemplate: string | null
+          GUIDTerms: string | null
+          IgnoreOverdueInvoices: boolean | null
+          InvoiceText: string | null
+          IsProject: boolean | null
+          LastCreditReview: string | null
+          LastName: string | null
+          LastSalesOrderDate: string | null
+          LocationId: string | null
+          Login: string | null
+          MarketingCode: string | null
+          Method: number | null
+          MiddleName: string | null
+          Mobile: string | null
+          MobileDesc: string | null
+          Name: string | null
+          OrderCount: number | null
+          OwnershipStyle: string | null
+          Pager: string | null
+          PagerDesc: string | null
+          Password: string | null
+          Phone: string | null
+          PhoneDesc: string | null
+          PopupNotes: boolean | null
+          PreferredPaymentMethod: string | null
+          PriceCode: string | null
+          ReferredBy: string | null
+          SalespersonID: string | null
+          SalespersonName: string | null
+          Salutation: string | null
+          State: string | null
+          StateSalesTaxId: string | null
+          Status: boolean | null
+          Suffix: string | null
+          SyncAsCustomerID: string | null
+          SyncAsGUIDCustomer: string | null
+          SyncToken: string | null
+          Taxable: boolean | null
+          TaxCodeDescription: string | null
+          TaxCodeName: string | null
+          TaxExemptionReasonDesc: string | null
+          TaxExemptionReasonID: number | null
+          TaxIncluded: boolean | null
+          TemplateID: string | null
+          TermsCode: string | null
+          TermsDescription: string | null
+          TradeDiscountPct: number | null
+          UpdatedBy: string | null
+          UpdatedDate: string | null
+          WebAddress: string | null
+          WebCustomerID: string | null
+          Zip: string | null
+        }
+        Insert: {
+          _Rep1?: string | null
+          _Rep1CommRate?: number | null
+          _Rep2?: string | null
+          _Rep2CommRate?: number | null
+          _SalesManager?: string | null
+          _skyvia_sync?: string | null
+          _Territory?: string | null
+          AccountNumber?: string | null
+          Address?: string | null
+          Address2?: string | null
+          Address3?: string | null
+          Address4?: string | null
+          AlternateCustomerID?: string | null
+          AltPhone?: string | null
+          AltPhoneDesc?: string | null
+          AnnualSales?: unknown
+          ARAcntId?: string | null
+          AvgCollectionDays?: number | null
+          BalDue?: unknown
+          BranchID?: string | null
+          BranchName?: string | null
+          CCAddress?: string | null
+          CCDisplayNumber?: string | null
+          CCExpMonth?: number | null
+          CCExpYear?: number | null
+          CCName?: string | null
+          CCNumber?: string | null
+          CCPostalCode?: string | null
+          City?: string | null
+          ClosingAgeHistory?: string | null
+          Comment?: string | null
+          CompanyName?: string | null
+          Country?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          CreditHold?: boolean | null
+          CreditLimit?: unknown
+          CreditRating?: string | null
+          CreditRatingSource?: string | null
+          CurrencyCode?: string | null
+          CurrencyName?: string | null
+          CustId?: string | null
+          CustListID?: string | null
+          CustomerTaxID?: string | null
+          CustomerType?: string | null
+          DateOpened?: string | null
+          DefaultReference?: string | null
+          DefaultReference2?: string | null
+          Email?: string | null
+          EmailDesc?: string | null
+          Fax?: string | null
+          FaxDesc?: string | null
+          FirstInvoiceDate?: string | null
+          FirstName?: string | null
+          FullAddress?: string | null
+          FullName?: string | null
+          GUIDCurrency?: string | null
+          GUIDCustomer: string
+          GUIDCustomerType?: string | null
+          GUIDParent?: string | null
+          GUIDSalesperson?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTemplate?: string | null
+          GUIDTerms?: string | null
+          IgnoreOverdueInvoices?: boolean | null
+          InvoiceText?: string | null
+          IsProject?: boolean | null
+          LastCreditReview?: string | null
+          LastName?: string | null
+          LastSalesOrderDate?: string | null
+          LocationId?: string | null
+          Login?: string | null
+          MarketingCode?: string | null
+          Method?: number | null
+          MiddleName?: string | null
+          Mobile?: string | null
+          MobileDesc?: string | null
+          Name?: string | null
+          OrderCount?: number | null
+          OwnershipStyle?: string | null
+          Pager?: string | null
+          PagerDesc?: string | null
+          Password?: string | null
+          Phone?: string | null
+          PhoneDesc?: string | null
+          PopupNotes?: boolean | null
+          PreferredPaymentMethod?: string | null
+          PriceCode?: string | null
+          ReferredBy?: string | null
+          SalespersonID?: string | null
+          SalespersonName?: string | null
+          Salutation?: string | null
+          State?: string | null
+          StateSalesTaxId?: string | null
+          Status?: boolean | null
+          Suffix?: string | null
+          SyncAsCustomerID?: string | null
+          SyncAsGUIDCustomer?: string | null
+          SyncToken?: string | null
+          Taxable?: boolean | null
+          TaxCodeDescription?: string | null
+          TaxCodeName?: string | null
+          TaxExemptionReasonDesc?: string | null
+          TaxExemptionReasonID?: number | null
+          TaxIncluded?: boolean | null
+          TemplateID?: string | null
+          TermsCode?: string | null
+          TermsDescription?: string | null
+          TradeDiscountPct?: number | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+          WebAddress?: string | null
+          WebCustomerID?: string | null
+          Zip?: string | null
+        }
+        Update: {
+          _Rep1?: string | null
+          _Rep1CommRate?: number | null
+          _Rep2?: string | null
+          _Rep2CommRate?: number | null
+          _SalesManager?: string | null
+          _skyvia_sync?: string | null
+          _Territory?: string | null
+          AccountNumber?: string | null
+          Address?: string | null
+          Address2?: string | null
+          Address3?: string | null
+          Address4?: string | null
+          AlternateCustomerID?: string | null
+          AltPhone?: string | null
+          AltPhoneDesc?: string | null
+          AnnualSales?: unknown
+          ARAcntId?: string | null
+          AvgCollectionDays?: number | null
+          BalDue?: unknown
+          BranchID?: string | null
+          BranchName?: string | null
+          CCAddress?: string | null
+          CCDisplayNumber?: string | null
+          CCExpMonth?: number | null
+          CCExpYear?: number | null
+          CCName?: string | null
+          CCNumber?: string | null
+          CCPostalCode?: string | null
+          City?: string | null
+          ClosingAgeHistory?: string | null
+          Comment?: string | null
+          CompanyName?: string | null
+          Country?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          CreditHold?: boolean | null
+          CreditLimit?: unknown
+          CreditRating?: string | null
+          CreditRatingSource?: string | null
+          CurrencyCode?: string | null
+          CurrencyName?: string | null
+          CustId?: string | null
+          CustListID?: string | null
+          CustomerTaxID?: string | null
+          CustomerType?: string | null
+          DateOpened?: string | null
+          DefaultReference?: string | null
+          DefaultReference2?: string | null
+          Email?: string | null
+          EmailDesc?: string | null
+          Fax?: string | null
+          FaxDesc?: string | null
+          FirstInvoiceDate?: string | null
+          FirstName?: string | null
+          FullAddress?: string | null
+          FullName?: string | null
+          GUIDCurrency?: string | null
+          GUIDCustomer?: string
+          GUIDCustomerType?: string | null
+          GUIDParent?: string | null
+          GUIDSalesperson?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTemplate?: string | null
+          GUIDTerms?: string | null
+          IgnoreOverdueInvoices?: boolean | null
+          InvoiceText?: string | null
+          IsProject?: boolean | null
+          LastCreditReview?: string | null
+          LastName?: string | null
+          LastSalesOrderDate?: string | null
+          LocationId?: string | null
+          Login?: string | null
+          MarketingCode?: string | null
+          Method?: number | null
+          MiddleName?: string | null
+          Mobile?: string | null
+          MobileDesc?: string | null
+          Name?: string | null
+          OrderCount?: number | null
+          OwnershipStyle?: string | null
+          Pager?: string | null
+          PagerDesc?: string | null
+          Password?: string | null
+          Phone?: string | null
+          PhoneDesc?: string | null
+          PopupNotes?: boolean | null
+          PreferredPaymentMethod?: string | null
+          PriceCode?: string | null
+          ReferredBy?: string | null
+          SalespersonID?: string | null
+          SalespersonName?: string | null
+          Salutation?: string | null
+          State?: string | null
+          StateSalesTaxId?: string | null
+          Status?: boolean | null
+          Suffix?: string | null
+          SyncAsCustomerID?: string | null
+          SyncAsGUIDCustomer?: string | null
+          SyncToken?: string | null
+          Taxable?: boolean | null
+          TaxCodeDescription?: string | null
+          TaxCodeName?: string | null
+          TaxExemptionReasonDesc?: string | null
+          TaxExemptionReasonID?: number | null
+          TaxIncluded?: boolean | null
+          TemplateID?: string | null
+          TermsCode?: string | null
+          TermsDescription?: string | null
+          TradeDiscountPct?: number | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+          WebAddress?: string | null
+          WebCustomerID?: string | null
+          Zip?: string | null
+        }
+        Relationships: []
+      }
+      dbo_CustomerShipToInfo: {
+        Row: {
+          _skyvia_sync: string | null
+          Comment: string | null
+          DefaultJobNumber: string | null
+          Distance: number | null
+          FOB: string | null
+          GUIDDistributionCenter: string | null
+          GUIDLocation: string
+          GUIDRoute: string | null
+          GUIDWarehouse: string | null
+          HoldFromDate: string | null
+          HoldShipments: boolean | null
+          HoldToDate: string | null
+          IsDistributionCenter: boolean | null
+          MapReference: string | null
+          Route: string | null
+          Routing: string | null
+          ShippingInstructions: string | null
+          ShipVia: string | null
+          SpecialInstructions: string | null
+          StopNumber: number | null
+        }
+        Insert: {
+          _skyvia_sync?: string | null
+          Comment?: string | null
+          DefaultJobNumber?: string | null
+          Distance?: number | null
+          FOB?: string | null
+          GUIDDistributionCenter?: string | null
+          GUIDLocation: string
+          GUIDRoute?: string | null
+          GUIDWarehouse?: string | null
+          HoldFromDate?: string | null
+          HoldShipments?: boolean | null
+          HoldToDate?: string | null
+          IsDistributionCenter?: boolean | null
+          MapReference?: string | null
+          Route?: string | null
+          Routing?: string | null
+          ShippingInstructions?: string | null
+          ShipVia?: string | null
+          SpecialInstructions?: string | null
+          StopNumber?: number | null
+        }
+        Update: {
+          _skyvia_sync?: string | null
+          Comment?: string | null
+          DefaultJobNumber?: string | null
+          Distance?: number | null
+          FOB?: string | null
+          GUIDDistributionCenter?: string | null
+          GUIDLocation?: string
+          GUIDRoute?: string | null
+          GUIDWarehouse?: string | null
+          HoldFromDate?: string | null
+          HoldShipments?: boolean | null
+          HoldToDate?: string | null
+          IsDistributionCenter?: boolean | null
+          MapReference?: string | null
+          Route?: string | null
+          Routing?: string | null
+          ShippingInstructions?: string | null
+          ShipVia?: string | null
+          SpecialInstructions?: string | null
+          StopNumber?: number | null
+        }
+        Relationships: []
+      }
+      dbo_InventoryOnHandByLocationSummary: {
+        Row: {
+          _skyvia_sync: string | null
+          Count: number | null
+          GUIDProduct: string | null
+          GUIDWarehouse: string | null
+          GUIDWHLocation: string | null
+          OnHandValue: unknown
+          QtyOnHand: number | null
+        }
+        Insert: {
+          _skyvia_sync?: string | null
+          Count?: number | null
+          GUIDProduct?: string | null
+          GUIDWarehouse?: string | null
+          GUIDWHLocation?: string | null
+          OnHandValue?: unknown
+          QtyOnHand?: number | null
+        }
+        Update: {
+          _skyvia_sync?: string | null
+          Count?: number | null
+          GUIDProduct?: string | null
+          GUIDWarehouse?: string | null
+          GUIDWHLocation?: string | null
+          OnHandValue?: unknown
+          QtyOnHand?: number | null
+        }
+        Relationships: []
+      }
+      dbo_Invoice: {
+        Row: {
+          _skyvia_sync: string | null
+          AmtPaid: unknown
+          ARAccountID: string | null
+          BackorderCriteria: string | null
+          Balance: unknown
+          BankId: string | null
+          BillToAddress: string | null
+          BillToAddress1: string | null
+          BillToAddress2: string | null
+          BillToAddress3: string | null
+          BillToAddress4: string | null
+          BillToCity: string | null
+          BillToCountry: string | null
+          BillToName: string | null
+          BillToState: string | null
+          BillToZip: string | null
+          BranchID: string | null
+          Carrier: string | null
+          CarrierAndService: string | null
+          CarrierService: string | null
+          CCAuthorizationCode: string | null
+          CCAVSStreet: number | null
+          CCAVSZip: number | null
+          CCExpDate: string | null
+          CCMerchAcctNumber: string | null
+          CCNumber: string | null
+          CCPaymentGroupingCode: number | null
+          CCReconBatchID: string | null
+          CCStatusCode: number | null
+          CCStatusMessage: string | null
+          CCTransID: string | null
+          CCTxnAuthStamp: number | null
+          CCTxnAuthTime: string | null
+          CheckNo: string | null
+          Class: string | null
+          CollectionDays: number | null
+          Comment: string | null
+          CompanyTaxID: string | null
+          Completed: boolean | null
+          ContactEMailAddress: string | null
+          ContactFAX: string | null
+          ContactName: string | null
+          ContactPhoneNumber: string | null
+          ContractDate: string | null
+          ContractID: string | null
+          CreatedBy: string | null
+          CreatedDate: string | null
+          CreditApprovalDate: string | null
+          CreditApprovedBy: string | null
+          CurrencyCode: string | null
+          CurrencyName: string | null
+          CustomerID: string | null
+          CustomerTaxID: string | null
+          DateCompleted: string | null
+          DatePosted: string | null
+          DatePrinted: string | null
+          DeliveredBy: string | null
+          DeliveredTo: string | null
+          DeliveryDate: string | null
+          DeliveryMiles: number | null
+          DiscountAmount: unknown
+          DiscountAvailable: unknown
+          DiscountDate: string | null
+          DiscountType: string | null
+          DoNotSync: boolean | null
+          DueDate: string | null
+          EnteredBy: string | null
+          EntryDate: string | null
+          ExchangeRate: number | null
+          ExportDate: string | null
+          Exported: boolean | null
+          FOB: string | null
+          ForeignAmtPaid: unknown
+          ForeignBalance: unknown
+          ForeignDiscountAmount: unknown
+          ForeignDiscountAvailable: unknown
+          ForeignPaymentDiscount: unknown
+          ForeignSalesTax: unknown
+          ForeignShippingCharge: unknown
+          ForeignSubTotal: unknown
+          ForeignTotalAmount: unknown
+          ForeignTotalShippingCharges: unknown
+          FromQB: boolean | null
+          FrtTaxPct: number | null
+          GUIDARAccount: string | null
+          GUIDBranch: string | null
+          GUIDClass: string | null
+          GUIDCurrency: string | null
+          GUIDCustomer: string | null
+          GUIDInvoice: string
+          GUIDInvoiceDiscountAccount: string | null
+          GUIDLocation: string | null
+          GUIDOrder: string | null
+          GUIDPaymentMethod: string | null
+          GUIDRetainageGLAccount: string | null
+          GUIDRoute: string | null
+          GUIDSalesperson: string | null
+          GUIDShippingChargeAccount: string | null
+          GUIDTaxCategory: string | null
+          GUIDTaxCode: string | null
+          GUIDTerms: string | null
+          HoldReleasedBy: string | null
+          HoldReleasedDate: string | null
+          InDispute: boolean | null
+          InvoiceDate: string | null
+          InvoiceDetailReportID: number | null
+          InvoiceDiscountAccountID: string | null
+          InvoiceDiscountPct: number | null
+          InvoiceFormat: string | null
+          InvoiceFormatGUID: string | null
+          InvoiceLink: string | null
+          InvoiceNumber: string | null
+          InvoiceNumberSort: string | null
+          InvoiceReportID: number | null
+          InvoiceStyle: string | null
+          InvoiceText: string | null
+          JobID: string | null
+          JobNumber: string | null
+          LastPaymentDate: string | null
+          LastShipmentDate: string | null
+          LocationID: string | null
+          ManualHold: boolean | null
+          MarketingCode: string | null
+          MethodOfPayment: number | null
+          Note: string | null
+          NumberOfPackages: number | null
+          NumberShipments: number | null
+          OrderDate: string | null
+          OrderNumber: string | null
+          PackageWeight: number | null
+          PaymentDiscount: unknown
+          PaymentMethod: string | null
+          PO: string | null
+          PostedToAR: boolean | null
+          PreviousAmount: unknown
+          PreviousRetainage: unknown
+          Printed: boolean | null
+          ReadyToPrint: boolean | null
+          Reference: string | null
+          Reference2: string | null
+          RequestedShipDate: string | null
+          RetainageAmount: unknown
+          RetainageBilled: boolean | null
+          RetainageGLAccountID: string | null
+          Route: string | null
+          Routing: string | null
+          SalespersonID: string | null
+          SalespersonName: string | null
+          SalesTax: unknown
+          ScheduleOfValuesType: string | null
+          ShipmentPromisedDate: string | null
+          ShippingCharge: unknown
+          ShippingChargeAccountID: string | null
+          ShippingInstructions: string | null
+          ShipToAddress: string | null
+          ShipToAddress1: string | null
+          ShipToAddress2: string | null
+          ShipToAddress3: string | null
+          ShipToAddress4: string | null
+          ShipToAttn: string | null
+          ShipToCity: string | null
+          ShipToCountry: string | null
+          ShipToOverride: boolean | null
+          ShipToPhoneNumber: string | null
+          ShipToState: string | null
+          ShipToZip: string | null
+          ShipVia: string | null
+          SpecialInstructions: string | null
+          StopNumber: number | null
+          SubTotal: unknown
+          Taxable: boolean | null
+          TaxCode: string | null
+          TaxCodeDescription: string | null
+          TaxID: string | null
+          TaxIncluded: boolean | null
+          TaxPct: number | null
+          TermsCode: string | null
+          TermsDescription: string | null
+          TotalAmount: unknown
+          TotalShippingCharges: unknown
+          TrackingNumber: string | null
+          TransactionPeriod: number | null
+          TransactionYear: number | null
+          TxnID: string | null
+          Type: string | null
+          UpdatedBy: string | null
+          UpdatedDate: string | null
+        }
+        Insert: {
+          _skyvia_sync?: string | null
+          AmtPaid?: unknown
+          ARAccountID?: string | null
+          BackorderCriteria?: string | null
+          Balance?: unknown
+          BankId?: string | null
+          BillToAddress?: string | null
+          BillToAddress1?: string | null
+          BillToAddress2?: string | null
+          BillToAddress3?: string | null
+          BillToAddress4?: string | null
+          BillToCity?: string | null
+          BillToCountry?: string | null
+          BillToName?: string | null
+          BillToState?: string | null
+          BillToZip?: string | null
+          BranchID?: string | null
+          Carrier?: string | null
+          CarrierAndService?: string | null
+          CarrierService?: string | null
+          CCAuthorizationCode?: string | null
+          CCAVSStreet?: number | null
+          CCAVSZip?: number | null
+          CCExpDate?: string | null
+          CCMerchAcctNumber?: string | null
+          CCNumber?: string | null
+          CCPaymentGroupingCode?: number | null
+          CCReconBatchID?: string | null
+          CCStatusCode?: number | null
+          CCStatusMessage?: string | null
+          CCTransID?: string | null
+          CCTxnAuthStamp?: number | null
+          CCTxnAuthTime?: string | null
+          CheckNo?: string | null
+          Class?: string | null
+          CollectionDays?: number | null
+          Comment?: string | null
+          CompanyTaxID?: string | null
+          Completed?: boolean | null
+          ContactEMailAddress?: string | null
+          ContactFAX?: string | null
+          ContactName?: string | null
+          ContactPhoneNumber?: string | null
+          ContractDate?: string | null
+          ContractID?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          CreditApprovalDate?: string | null
+          CreditApprovedBy?: string | null
+          CurrencyCode?: string | null
+          CurrencyName?: string | null
+          CustomerID?: string | null
+          CustomerTaxID?: string | null
+          DateCompleted?: string | null
+          DatePosted?: string | null
+          DatePrinted?: string | null
+          DeliveredBy?: string | null
+          DeliveredTo?: string | null
+          DeliveryDate?: string | null
+          DeliveryMiles?: number | null
+          DiscountAmount?: unknown
+          DiscountAvailable?: unknown
+          DiscountDate?: string | null
+          DiscountType?: string | null
+          DoNotSync?: boolean | null
+          DueDate?: string | null
+          EnteredBy?: string | null
+          EntryDate?: string | null
+          ExchangeRate?: number | null
+          ExportDate?: string | null
+          Exported?: boolean | null
+          FOB?: string | null
+          ForeignAmtPaid?: unknown
+          ForeignBalance?: unknown
+          ForeignDiscountAmount?: unknown
+          ForeignDiscountAvailable?: unknown
+          ForeignPaymentDiscount?: unknown
+          ForeignSalesTax?: unknown
+          ForeignShippingCharge?: unknown
+          ForeignSubTotal?: unknown
+          ForeignTotalAmount?: unknown
+          ForeignTotalShippingCharges?: unknown
+          FromQB?: boolean | null
+          FrtTaxPct?: number | null
+          GUIDARAccount?: string | null
+          GUIDBranch?: string | null
+          GUIDClass?: string | null
+          GUIDCurrency?: string | null
+          GUIDCustomer?: string | null
+          GUIDInvoice: string
+          GUIDInvoiceDiscountAccount?: string | null
+          GUIDLocation?: string | null
+          GUIDOrder?: string | null
+          GUIDPaymentMethod?: string | null
+          GUIDRetainageGLAccount?: string | null
+          GUIDRoute?: string | null
+          GUIDSalesperson?: string | null
+          GUIDShippingChargeAccount?: string | null
+          GUIDTaxCategory?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTerms?: string | null
+          HoldReleasedBy?: string | null
+          HoldReleasedDate?: string | null
+          InDispute?: boolean | null
+          InvoiceDate?: string | null
+          InvoiceDetailReportID?: number | null
+          InvoiceDiscountAccountID?: string | null
+          InvoiceDiscountPct?: number | null
+          InvoiceFormat?: string | null
+          InvoiceFormatGUID?: string | null
+          InvoiceLink?: string | null
+          InvoiceNumber?: string | null
+          InvoiceNumberSort?: string | null
+          InvoiceReportID?: number | null
+          InvoiceStyle?: string | null
+          InvoiceText?: string | null
+          JobID?: string | null
+          JobNumber?: string | null
+          LastPaymentDate?: string | null
+          LastShipmentDate?: string | null
+          LocationID?: string | null
+          ManualHold?: boolean | null
+          MarketingCode?: string | null
+          MethodOfPayment?: number | null
+          Note?: string | null
+          NumberOfPackages?: number | null
+          NumberShipments?: number | null
+          OrderDate?: string | null
+          OrderNumber?: string | null
+          PackageWeight?: number | null
+          PaymentDiscount?: unknown
+          PaymentMethod?: string | null
+          PO?: string | null
+          PostedToAR?: boolean | null
+          PreviousAmount?: unknown
+          PreviousRetainage?: unknown
+          Printed?: boolean | null
+          ReadyToPrint?: boolean | null
+          Reference?: string | null
+          Reference2?: string | null
+          RequestedShipDate?: string | null
+          RetainageAmount?: unknown
+          RetainageBilled?: boolean | null
+          RetainageGLAccountID?: string | null
+          Route?: string | null
+          Routing?: string | null
+          SalespersonID?: string | null
+          SalespersonName?: string | null
+          SalesTax?: unknown
+          ScheduleOfValuesType?: string | null
+          ShipmentPromisedDate?: string | null
+          ShippingCharge?: unknown
+          ShippingChargeAccountID?: string | null
+          ShippingInstructions?: string | null
+          ShipToAddress?: string | null
+          ShipToAddress1?: string | null
+          ShipToAddress2?: string | null
+          ShipToAddress3?: string | null
+          ShipToAddress4?: string | null
+          ShipToAttn?: string | null
+          ShipToCity?: string | null
+          ShipToCountry?: string | null
+          ShipToOverride?: boolean | null
+          ShipToPhoneNumber?: string | null
+          ShipToState?: string | null
+          ShipToZip?: string | null
+          ShipVia?: string | null
+          SpecialInstructions?: string | null
+          StopNumber?: number | null
+          SubTotal?: unknown
+          Taxable?: boolean | null
+          TaxCode?: string | null
+          TaxCodeDescription?: string | null
+          TaxID?: string | null
+          TaxIncluded?: boolean | null
+          TaxPct?: number | null
+          TermsCode?: string | null
+          TermsDescription?: string | null
+          TotalAmount?: unknown
+          TotalShippingCharges?: unknown
+          TrackingNumber?: string | null
+          TransactionPeriod?: number | null
+          TransactionYear?: number | null
+          TxnID?: string | null
+          Type?: string | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+        }
+        Update: {
+          _skyvia_sync?: string | null
+          AmtPaid?: unknown
+          ARAccountID?: string | null
+          BackorderCriteria?: string | null
+          Balance?: unknown
+          BankId?: string | null
+          BillToAddress?: string | null
+          BillToAddress1?: string | null
+          BillToAddress2?: string | null
+          BillToAddress3?: string | null
+          BillToAddress4?: string | null
+          BillToCity?: string | null
+          BillToCountry?: string | null
+          BillToName?: string | null
+          BillToState?: string | null
+          BillToZip?: string | null
+          BranchID?: string | null
+          Carrier?: string | null
+          CarrierAndService?: string | null
+          CarrierService?: string | null
+          CCAuthorizationCode?: string | null
+          CCAVSStreet?: number | null
+          CCAVSZip?: number | null
+          CCExpDate?: string | null
+          CCMerchAcctNumber?: string | null
+          CCNumber?: string | null
+          CCPaymentGroupingCode?: number | null
+          CCReconBatchID?: string | null
+          CCStatusCode?: number | null
+          CCStatusMessage?: string | null
+          CCTransID?: string | null
+          CCTxnAuthStamp?: number | null
+          CCTxnAuthTime?: string | null
+          CheckNo?: string | null
+          Class?: string | null
+          CollectionDays?: number | null
+          Comment?: string | null
+          CompanyTaxID?: string | null
+          Completed?: boolean | null
+          ContactEMailAddress?: string | null
+          ContactFAX?: string | null
+          ContactName?: string | null
+          ContactPhoneNumber?: string | null
+          ContractDate?: string | null
+          ContractID?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          CreditApprovalDate?: string | null
+          CreditApprovedBy?: string | null
+          CurrencyCode?: string | null
+          CurrencyName?: string | null
+          CustomerID?: string | null
+          CustomerTaxID?: string | null
+          DateCompleted?: string | null
+          DatePosted?: string | null
+          DatePrinted?: string | null
+          DeliveredBy?: string | null
+          DeliveredTo?: string | null
+          DeliveryDate?: string | null
+          DeliveryMiles?: number | null
+          DiscountAmount?: unknown
+          DiscountAvailable?: unknown
+          DiscountDate?: string | null
+          DiscountType?: string | null
+          DoNotSync?: boolean | null
+          DueDate?: string | null
+          EnteredBy?: string | null
+          EntryDate?: string | null
+          ExchangeRate?: number | null
+          ExportDate?: string | null
+          Exported?: boolean | null
+          FOB?: string | null
+          ForeignAmtPaid?: unknown
+          ForeignBalance?: unknown
+          ForeignDiscountAmount?: unknown
+          ForeignDiscountAvailable?: unknown
+          ForeignPaymentDiscount?: unknown
+          ForeignSalesTax?: unknown
+          ForeignShippingCharge?: unknown
+          ForeignSubTotal?: unknown
+          ForeignTotalAmount?: unknown
+          ForeignTotalShippingCharges?: unknown
+          FromQB?: boolean | null
+          FrtTaxPct?: number | null
+          GUIDARAccount?: string | null
+          GUIDBranch?: string | null
+          GUIDClass?: string | null
+          GUIDCurrency?: string | null
+          GUIDCustomer?: string | null
+          GUIDInvoice?: string
+          GUIDInvoiceDiscountAccount?: string | null
+          GUIDLocation?: string | null
+          GUIDOrder?: string | null
+          GUIDPaymentMethod?: string | null
+          GUIDRetainageGLAccount?: string | null
+          GUIDRoute?: string | null
+          GUIDSalesperson?: string | null
+          GUIDShippingChargeAccount?: string | null
+          GUIDTaxCategory?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTerms?: string | null
+          HoldReleasedBy?: string | null
+          HoldReleasedDate?: string | null
+          InDispute?: boolean | null
+          InvoiceDate?: string | null
+          InvoiceDetailReportID?: number | null
+          InvoiceDiscountAccountID?: string | null
+          InvoiceDiscountPct?: number | null
+          InvoiceFormat?: string | null
+          InvoiceFormatGUID?: string | null
+          InvoiceLink?: string | null
+          InvoiceNumber?: string | null
+          InvoiceNumberSort?: string | null
+          InvoiceReportID?: number | null
+          InvoiceStyle?: string | null
+          InvoiceText?: string | null
+          JobID?: string | null
+          JobNumber?: string | null
+          LastPaymentDate?: string | null
+          LastShipmentDate?: string | null
+          LocationID?: string | null
+          ManualHold?: boolean | null
+          MarketingCode?: string | null
+          MethodOfPayment?: number | null
+          Note?: string | null
+          NumberOfPackages?: number | null
+          NumberShipments?: number | null
+          OrderDate?: string | null
+          OrderNumber?: string | null
+          PackageWeight?: number | null
+          PaymentDiscount?: unknown
+          PaymentMethod?: string | null
+          PO?: string | null
+          PostedToAR?: boolean | null
+          PreviousAmount?: unknown
+          PreviousRetainage?: unknown
+          Printed?: boolean | null
+          ReadyToPrint?: boolean | null
+          Reference?: string | null
+          Reference2?: string | null
+          RequestedShipDate?: string | null
+          RetainageAmount?: unknown
+          RetainageBilled?: boolean | null
+          RetainageGLAccountID?: string | null
+          Route?: string | null
+          Routing?: string | null
+          SalespersonID?: string | null
+          SalespersonName?: string | null
+          SalesTax?: unknown
+          ScheduleOfValuesType?: string | null
+          ShipmentPromisedDate?: string | null
+          ShippingCharge?: unknown
+          ShippingChargeAccountID?: string | null
+          ShippingInstructions?: string | null
+          ShipToAddress?: string | null
+          ShipToAddress1?: string | null
+          ShipToAddress2?: string | null
+          ShipToAddress3?: string | null
+          ShipToAddress4?: string | null
+          ShipToAttn?: string | null
+          ShipToCity?: string | null
+          ShipToCountry?: string | null
+          ShipToOverride?: boolean | null
+          ShipToPhoneNumber?: string | null
+          ShipToState?: string | null
+          ShipToZip?: string | null
+          ShipVia?: string | null
+          SpecialInstructions?: string | null
+          StopNumber?: number | null
+          SubTotal?: unknown
+          Taxable?: boolean | null
+          TaxCode?: string | null
+          TaxCodeDescription?: string | null
+          TaxID?: string | null
+          TaxIncluded?: boolean | null
+          TaxPct?: number | null
+          TermsCode?: string | null
+          TermsDescription?: string | null
+          TotalAmount?: unknown
+          TotalShippingCharges?: unknown
+          TrackingNumber?: string | null
+          TransactionPeriod?: number | null
+          TransactionYear?: number | null
+          TxnID?: string | null
+          Type?: string | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+        }
+        Relationships: []
+      }
+      dbo_InvoiceDetail: {
+        Row: {
+          _CommissionOverride: number | null
+          _FreightAmt: unknown
+          _FreightPct: number | null
+          _OriginalPrice: unknown
+          _skyvia_sync: string | null
+          _TariffAmt: unknown
+          _TariffPct: number | null
+          ActivityDate: string | null
+          Amount: unknown
+          AvgCost: number | null
+          BillingType: string | null
+          CGSAccountID: string | null
+          CGSAmount: unknown
+          CGSAmountPostedToGL: unknown
+          CGSPostedToGL: boolean | null
+          Class: string | null
+          ComponentLevel: number | null
+          ComponentQuantity: number | null
+          CostUnit: string | null
+          CurrentCGSAccountID: string | null
+          CurrentChangeOrderAdditions: unknown
+          CurrentChangeOrderDeductions: unknown
+          CustomerProductID: string | null
+          Description: string | null
+          Discountable: boolean | null
+          DisplayAmount: unknown
+          DisplayPrice: number | null
+          DisplayQtyBackOrdered: number | null
+          DisplayQtyOrdered: number | null
+          DisplayQtyShipped: number | null
+          DisplayUnit: string | null
+          DisplayUnitFactor: number | null
+          EmployeeID: string | null
+          ForeignAmount: unknown
+          ForeignDisplayAmount: unknown
+          ForeignDisplayPrice: number | null
+          ForeignInvoiceDiscountAmount: unknown
+          ForeignLineTaxAmount: unknown
+          ForeignLineTaxPrice: number | null
+          ForeignListPrice: number | null
+          ForeignPrice: number | null
+          ForeignSalesAmount: unknown
+          Freight: boolean | null
+          GLTransactionBatch: number | null
+          GLTransactionLine: number | null
+          GUIDCGSAccount: string | null
+          GUIDClass: string | null
+          GUIDEmployee: string | null
+          GUIDInvoice: string | null
+          GUIDInvoiceDetail: string
+          GUIDIssue: string | null
+          GUIDOrderDetail: string | null
+          GUIDProduct: string | null
+          GUIDProductClass: string | null
+          GUIDSalesAccount: string | null
+          GUIDTaxCode: string | null
+          GUIDWarehouse: string | null
+          InventoryControlType: string | null
+          InvoiceComment: string | null
+          InvoiceDate: string | null
+          InvoiceDiscountAmount: unknown
+          InvoiceNumber: string | null
+          LineCancelled: boolean | null
+          LineDiscountPct: number | null
+          LineNumber: number | null
+          LineTaxAmount: unknown
+          LineTaxPrice: number | null
+          LineType: string | null
+          ListPrice: number | null
+          ListPriceType: string | null
+          MgmtCost: number | null
+          MiscChargeType: string | null
+          Note: string | null
+          OrderNumber: string | null
+          PercentCompleteLastBilling: number | null
+          PercentCompleteThisBilling: number | null
+          PreviousBilling: unknown
+          PreviousChangeOrderAdditions: unknown
+          PreviousChangeOrderDeductions: unknown
+          PreviousRetainage: unknown
+          Price: number | null
+          PriceCode: string | null
+          PriceUnit: string | null
+          ProductClass: string | null
+          ProductID: string | null
+          ProductTaxID: string | null
+          ProductTaxPct: number | null
+          QtyBackOrdered: number | null
+          QtyInvoiced: number | null
+          QtyOrdered: number | null
+          QtyShipped: number | null
+          Reference: string | null
+          RetainageAmount: unknown
+          RetainagePercent: number | null
+          SalesAccountID: string | null
+          SalesAmount: unknown
+          ScheduledValue: unknown
+          ScheduleOfValuesCode: string | null
+          ShortDescription: string | null
+          SpecialInstructions: string | null
+          StoredMaterials: unknown
+          SubLineNumber: number | null
+          Taxable: boolean | null
+          TaxCode: string | null
+          TaxCodeDescription: string | null
+          TransactionDate: string | null
+          TransactionPeriod: number | null
+          TransactionYear: number | null
+          Unit: string | null
+          UnitCost: number | null
+          Warehouse: string | null
+        }
+        Insert: {
+          _CommissionOverride?: number | null
+          _FreightAmt?: unknown
+          _FreightPct?: number | null
+          _OriginalPrice?: unknown
+          _skyvia_sync?: string | null
+          _TariffAmt?: unknown
+          _TariffPct?: number | null
+          ActivityDate?: string | null
+          Amount?: unknown
+          AvgCost?: number | null
+          BillingType?: string | null
+          CGSAccountID?: string | null
+          CGSAmount?: unknown
+          CGSAmountPostedToGL?: unknown
+          CGSPostedToGL?: boolean | null
+          Class?: string | null
+          ComponentLevel?: number | null
+          ComponentQuantity?: number | null
+          CostUnit?: string | null
+          CurrentCGSAccountID?: string | null
+          CurrentChangeOrderAdditions?: unknown
+          CurrentChangeOrderDeductions?: unknown
+          CustomerProductID?: string | null
+          Description?: string | null
+          Discountable?: boolean | null
+          DisplayAmount?: unknown
+          DisplayPrice?: number | null
+          DisplayQtyBackOrdered?: number | null
+          DisplayQtyOrdered?: number | null
+          DisplayQtyShipped?: number | null
+          DisplayUnit?: string | null
+          DisplayUnitFactor?: number | null
+          EmployeeID?: string | null
+          ForeignAmount?: unknown
+          ForeignDisplayAmount?: unknown
+          ForeignDisplayPrice?: number | null
+          ForeignInvoiceDiscountAmount?: unknown
+          ForeignLineTaxAmount?: unknown
+          ForeignLineTaxPrice?: number | null
+          ForeignListPrice?: number | null
+          ForeignPrice?: number | null
+          ForeignSalesAmount?: unknown
+          Freight?: boolean | null
+          GLTransactionBatch?: number | null
+          GLTransactionLine?: number | null
+          GUIDCGSAccount?: string | null
+          GUIDClass?: string | null
+          GUIDEmployee?: string | null
+          GUIDInvoice?: string | null
+          GUIDInvoiceDetail: string
+          GUIDIssue?: string | null
+          GUIDOrderDetail?: string | null
+          GUIDProduct?: string | null
+          GUIDProductClass?: string | null
+          GUIDSalesAccount?: string | null
+          GUIDTaxCode?: string | null
+          GUIDWarehouse?: string | null
+          InventoryControlType?: string | null
+          InvoiceComment?: string | null
+          InvoiceDate?: string | null
+          InvoiceDiscountAmount?: unknown
+          InvoiceNumber?: string | null
+          LineCancelled?: boolean | null
+          LineDiscountPct?: number | null
+          LineNumber?: number | null
+          LineTaxAmount?: unknown
+          LineTaxPrice?: number | null
+          LineType?: string | null
+          ListPrice?: number | null
+          ListPriceType?: string | null
+          MgmtCost?: number | null
+          MiscChargeType?: string | null
+          Note?: string | null
+          OrderNumber?: string | null
+          PercentCompleteLastBilling?: number | null
+          PercentCompleteThisBilling?: number | null
+          PreviousBilling?: unknown
+          PreviousChangeOrderAdditions?: unknown
+          PreviousChangeOrderDeductions?: unknown
+          PreviousRetainage?: unknown
+          Price?: number | null
+          PriceCode?: string | null
+          PriceUnit?: string | null
+          ProductClass?: string | null
+          ProductID?: string | null
+          ProductTaxID?: string | null
+          ProductTaxPct?: number | null
+          QtyBackOrdered?: number | null
+          QtyInvoiced?: number | null
+          QtyOrdered?: number | null
+          QtyShipped?: number | null
+          Reference?: string | null
+          RetainageAmount?: unknown
+          RetainagePercent?: number | null
+          SalesAccountID?: string | null
+          SalesAmount?: unknown
+          ScheduledValue?: unknown
+          ScheduleOfValuesCode?: string | null
+          ShortDescription?: string | null
+          SpecialInstructions?: string | null
+          StoredMaterials?: unknown
+          SubLineNumber?: number | null
+          Taxable?: boolean | null
+          TaxCode?: string | null
+          TaxCodeDescription?: string | null
+          TransactionDate?: string | null
+          TransactionPeriod?: number | null
+          TransactionYear?: number | null
+          Unit?: string | null
+          UnitCost?: number | null
+          Warehouse?: string | null
+        }
+        Update: {
+          _CommissionOverride?: number | null
+          _FreightAmt?: unknown
+          _FreightPct?: number | null
+          _OriginalPrice?: unknown
+          _skyvia_sync?: string | null
+          _TariffAmt?: unknown
+          _TariffPct?: number | null
+          ActivityDate?: string | null
+          Amount?: unknown
+          AvgCost?: number | null
+          BillingType?: string | null
+          CGSAccountID?: string | null
+          CGSAmount?: unknown
+          CGSAmountPostedToGL?: unknown
+          CGSPostedToGL?: boolean | null
+          Class?: string | null
+          ComponentLevel?: number | null
+          ComponentQuantity?: number | null
+          CostUnit?: string | null
+          CurrentCGSAccountID?: string | null
+          CurrentChangeOrderAdditions?: unknown
+          CurrentChangeOrderDeductions?: unknown
+          CustomerProductID?: string | null
+          Description?: string | null
+          Discountable?: boolean | null
+          DisplayAmount?: unknown
+          DisplayPrice?: number | null
+          DisplayQtyBackOrdered?: number | null
+          DisplayQtyOrdered?: number | null
+          DisplayQtyShipped?: number | null
+          DisplayUnit?: string | null
+          DisplayUnitFactor?: number | null
+          EmployeeID?: string | null
+          ForeignAmount?: unknown
+          ForeignDisplayAmount?: unknown
+          ForeignDisplayPrice?: number | null
+          ForeignInvoiceDiscountAmount?: unknown
+          ForeignLineTaxAmount?: unknown
+          ForeignLineTaxPrice?: number | null
+          ForeignListPrice?: number | null
+          ForeignPrice?: number | null
+          ForeignSalesAmount?: unknown
+          Freight?: boolean | null
+          GLTransactionBatch?: number | null
+          GLTransactionLine?: number | null
+          GUIDCGSAccount?: string | null
+          GUIDClass?: string | null
+          GUIDEmployee?: string | null
+          GUIDInvoice?: string | null
+          GUIDInvoiceDetail?: string
+          GUIDIssue?: string | null
+          GUIDOrderDetail?: string | null
+          GUIDProduct?: string | null
+          GUIDProductClass?: string | null
+          GUIDSalesAccount?: string | null
+          GUIDTaxCode?: string | null
+          GUIDWarehouse?: string | null
+          InventoryControlType?: string | null
+          InvoiceComment?: string | null
+          InvoiceDate?: string | null
+          InvoiceDiscountAmount?: unknown
+          InvoiceNumber?: string | null
+          LineCancelled?: boolean | null
+          LineDiscountPct?: number | null
+          LineNumber?: number | null
+          LineTaxAmount?: unknown
+          LineTaxPrice?: number | null
+          LineType?: string | null
+          ListPrice?: number | null
+          ListPriceType?: string | null
+          MgmtCost?: number | null
+          MiscChargeType?: string | null
+          Note?: string | null
+          OrderNumber?: string | null
+          PercentCompleteLastBilling?: number | null
+          PercentCompleteThisBilling?: number | null
+          PreviousBilling?: unknown
+          PreviousChangeOrderAdditions?: unknown
+          PreviousChangeOrderDeductions?: unknown
+          PreviousRetainage?: unknown
+          Price?: number | null
+          PriceCode?: string | null
+          PriceUnit?: string | null
+          ProductClass?: string | null
+          ProductID?: string | null
+          ProductTaxID?: string | null
+          ProductTaxPct?: number | null
+          QtyBackOrdered?: number | null
+          QtyInvoiced?: number | null
+          QtyOrdered?: number | null
+          QtyShipped?: number | null
+          Reference?: string | null
+          RetainageAmount?: unknown
+          RetainagePercent?: number | null
+          SalesAccountID?: string | null
+          SalesAmount?: unknown
+          ScheduledValue?: unknown
+          ScheduleOfValuesCode?: string | null
+          ShortDescription?: string | null
+          SpecialInstructions?: string | null
+          StoredMaterials?: unknown
+          SubLineNumber?: number | null
+          Taxable?: boolean | null
+          TaxCode?: string | null
+          TaxCodeDescription?: string | null
+          TransactionDate?: string | null
+          TransactionPeriod?: number | null
+          TransactionYear?: number | null
+          Unit?: string | null
+          UnitCost?: number | null
+          Warehouse?: string | null
+        }
+        Relationships: []
+      }
+      dbo_Orders: {
+        Row: {
+          _Rep1: string | null
+          _Rep2: string | null
+          _Rep2Pct: number | null
+          _RepPct: number | null
+          _skyvia_sync: string | null
+          AmtPaid: unknown
+          BackorderCriteria: string | null
+          BankId: string | null
+          BeingPickedBy: string | null
+          BranchID: string | null
+          BranchName: string | null
+          Carrier: string | null
+          CarrierAndService: string | null
+          CarrierService: string | null
+          CCAddress: string | null
+          CCExpDate: string | null
+          CCName: string | null
+          CCNumber: string | null
+          CCPostalCode: string | null
+          CheckNo: string | null
+          Class: string | null
+          Comment: string | null
+          CompanyName: string | null
+          CompanyTaxID: string | null
+          Completed: boolean | null
+          ContactEMailAddress: string | null
+          ContactFax: string | null
+          ContactName: string | null
+          ContactPhoneNumber: string | null
+          ContractID: string | null
+          CreditApprovalDate: string | null
+          CreditApprovedBy: string | null
+          CurrencyCode: string | null
+          CurrencyName: string | null
+          CustomerID: string | null
+          CustomerTaxID: string | null
+          DeliveredBy: string | null
+          DeliveredTo: string | null
+          DeliveryDate: string | null
+          DeliveryMiles: number | null
+          DiscAmt: unknown
+          DiscountAmount: unknown
+          DiscountType: string | null
+          DontShipAfter: string | null
+          DontShipBefore: string | null
+          EnteredBy: string | null
+          EntryDate: string | null
+          ExchangeRate: number | null
+          FOB: string | null
+          ForeignAmtPaid: unknown
+          ForeignDiscountAmount: unknown
+          ForeignPendingShippingCharges: unknown
+          ForeignSalesTax: unknown
+          ForeignSchedDiscountAmount: unknown
+          ForeignSchedSalesTax: unknown
+          ForeignSchedShippingCharge: unknown
+          ForeignSchedSubTotal: unknown
+          ForeignSchedTermsDiscountAvailable: unknown
+          ForeignSchedTotalAmount: unknown
+          ForeignSubTotal: unknown
+          ForeignTotalAmount: unknown
+          ForeignTotalShippingCharges: unknown
+          FromEDI: boolean | null
+          FrtTaxPct: number | null
+          GUIDBranch: string | null
+          GUIDClass: string | null
+          GUIDCurrency: string | null
+          GUIDCustomer: string | null
+          GUIDCustomerType: string | null
+          GUIDLocation: string | null
+          GUIDOrder: string
+          GUIDOrderWorkFlowStatus: string | null
+          GUIDPaymentMethod: string | null
+          GUIDRelatedOrder: string | null
+          GUIDRoute: string | null
+          GUIDSalesperson: string | null
+          GUIDTaxCategory: string | null
+          GUIDTaxCode: string | null
+          GUIDTemplate: string | null
+          GUIDTerms: string | null
+          HoldReleasedBy: string | null
+          HoldReleasedDate: string | null
+          InvoiceDiscountPct: number | null
+          InvoiceFormat: string | null
+          InvoiceFormatGUID: string | null
+          InvoicingError: boolean | null
+          InvoicingErrorMessage: string | null
+          JobNumber: string | null
+          LastShipmentDate: string | null
+          LocationID: string | null
+          LostBusinessCode: string | null
+          LostBusinessComment: string | null
+          ManualHold: boolean | null
+          MarketingCode: string | null
+          MethodOfPayment: number | null
+          NextInvoiceNumber: string | null
+          NextShipmentNumber: number | null
+          Note: string | null
+          NumberOfPackages: number | null
+          OrderDate: string | null
+          OrderNumber: string | null
+          OrderNumberSort: string | null
+          OrderStatus: string | null
+          OrderStatusDescription: string | null
+          OriginID: string | null
+          OriginType: string | null
+          PackageWeight: number | null
+          PaymentMethod: string | null
+          PendingShippingCharges: unknown
+          PickTicketPrinted: boolean | null
+          PickTicketReadyToPrint: boolean | null
+          PO: string | null
+          Printed: boolean | null
+          QuotedDaysToShip: number | null
+          ReadyToInvoice: boolean | null
+          ReadyToPrint: boolean | null
+          Reference: string | null
+          Reference2: string | null
+          RelatedOrderNumber: string | null
+          RequestedShipDate: string | null
+          Route: string | null
+          SalespersonID: string | null
+          SalespersonName: string | null
+          SalesTax: unknown
+          SchedDiscountAmount: unknown
+          SchedSalesTax: unknown
+          SchedShippingCharge: unknown
+          SchedSubTotal: unknown
+          SchedTermsDiscountAvailable: unknown
+          SchedTotalAmount: unknown
+          ScheduledWeight: number | null
+          ShipmentPromisedDate: string | null
+          ShippingDocumentPrinted: boolean | null
+          ShippingDocumentReadyToPrint: boolean | null
+          ShippingInstructions: string | null
+          ShipQuoteDate: string | null
+          ShipQuoteGUIDTemplate: string | null
+          ShipQuoteID: string | null
+          ShipToAddress: string | null
+          ShipToAddress1: string | null
+          ShipToAddress2: string | null
+          ShipToAddress3: string | null
+          ShipToAddress4: string | null
+          ShipToAttn: string | null
+          ShipToCity: string | null
+          ShipToCountry: string | null
+          ShipToDescription: string | null
+          ShipToOverride: boolean | null
+          ShipToState: string | null
+          ShipToZip: string | null
+          ShipVia: string | null
+          ShipWorkstationExportDate: string | null
+          ShipWorkstationShipmentID: string | null
+          SoldToAddress: string | null
+          SoldToAddress1: string | null
+          SoldToAddress2: string | null
+          SoldToAddress3: string | null
+          SoldToAddress4: string | null
+          SoldToCity: string | null
+          SoldToCountry: string | null
+          SoldToName: string | null
+          SoldToOverride: boolean | null
+          SoldToState: string | null
+          SoldToZip: string | null
+          SpecialInstructions: string | null
+          StatusChangedBy: string | null
+          StatusDate: string | null
+          StopNumber: number | null
+          SubTotal: unknown
+          Taxable: boolean | null
+          TaxCatID: string | null
+          TaxIncluded: boolean | null
+          TaxPct: number | null
+          TaxPercentText: string | null
+          TemplateID: string | null
+          TermsCode: string | null
+          TermsDescription: string | null
+          TotalAmount: unknown
+          TotalShippingCharges: number | null
+          TrackingNumber: string | null
+          Type: string | null
+          UpdatedBy: string | null
+          UpdatedDate: string | null
+          WebOrder: boolean | null
+          WebOrderID: string | null
+          WebOrderNumber: string | null
+          WorkFlowStatus: string | null
+          WorkFlowStatusAbbreviation: string | null
+          WorkFlowStatusChangedBy: string | null
+          WorkFlowStatusDate: string | null
+        }
+        Insert: {
+          _Rep1?: string | null
+          _Rep2?: string | null
+          _Rep2Pct?: number | null
+          _RepPct?: number | null
+          _skyvia_sync?: string | null
+          AmtPaid?: unknown
+          BackorderCriteria?: string | null
+          BankId?: string | null
+          BeingPickedBy?: string | null
+          BranchID?: string | null
+          BranchName?: string | null
+          Carrier?: string | null
+          CarrierAndService?: string | null
+          CarrierService?: string | null
+          CCAddress?: string | null
+          CCExpDate?: string | null
+          CCName?: string | null
+          CCNumber?: string | null
+          CCPostalCode?: string | null
+          CheckNo?: string | null
+          Class?: string | null
+          Comment?: string | null
+          CompanyName?: string | null
+          CompanyTaxID?: string | null
+          Completed?: boolean | null
+          ContactEMailAddress?: string | null
+          ContactFax?: string | null
+          ContactName?: string | null
+          ContactPhoneNumber?: string | null
+          ContractID?: string | null
+          CreditApprovalDate?: string | null
+          CreditApprovedBy?: string | null
+          CurrencyCode?: string | null
+          CurrencyName?: string | null
+          CustomerID?: string | null
+          CustomerTaxID?: string | null
+          DeliveredBy?: string | null
+          DeliveredTo?: string | null
+          DeliveryDate?: string | null
+          DeliveryMiles?: number | null
+          DiscAmt?: unknown
+          DiscountAmount?: unknown
+          DiscountType?: string | null
+          DontShipAfter?: string | null
+          DontShipBefore?: string | null
+          EnteredBy?: string | null
+          EntryDate?: string | null
+          ExchangeRate?: number | null
+          FOB?: string | null
+          ForeignAmtPaid?: unknown
+          ForeignDiscountAmount?: unknown
+          ForeignPendingShippingCharges?: unknown
+          ForeignSalesTax?: unknown
+          ForeignSchedDiscountAmount?: unknown
+          ForeignSchedSalesTax?: unknown
+          ForeignSchedShippingCharge?: unknown
+          ForeignSchedSubTotal?: unknown
+          ForeignSchedTermsDiscountAvailable?: unknown
+          ForeignSchedTotalAmount?: unknown
+          ForeignSubTotal?: unknown
+          ForeignTotalAmount?: unknown
+          ForeignTotalShippingCharges?: unknown
+          FromEDI?: boolean | null
+          FrtTaxPct?: number | null
+          GUIDBranch?: string | null
+          GUIDClass?: string | null
+          GUIDCurrency?: string | null
+          GUIDCustomer?: string | null
+          GUIDCustomerType?: string | null
+          GUIDLocation?: string | null
+          GUIDOrder: string
+          GUIDOrderWorkFlowStatus?: string | null
+          GUIDPaymentMethod?: string | null
+          GUIDRelatedOrder?: string | null
+          GUIDRoute?: string | null
+          GUIDSalesperson?: string | null
+          GUIDTaxCategory?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTemplate?: string | null
+          GUIDTerms?: string | null
+          HoldReleasedBy?: string | null
+          HoldReleasedDate?: string | null
+          InvoiceDiscountPct?: number | null
+          InvoiceFormat?: string | null
+          InvoiceFormatGUID?: string | null
+          InvoicingError?: boolean | null
+          InvoicingErrorMessage?: string | null
+          JobNumber?: string | null
+          LastShipmentDate?: string | null
+          LocationID?: string | null
+          LostBusinessCode?: string | null
+          LostBusinessComment?: string | null
+          ManualHold?: boolean | null
+          MarketingCode?: string | null
+          MethodOfPayment?: number | null
+          NextInvoiceNumber?: string | null
+          NextShipmentNumber?: number | null
+          Note?: string | null
+          NumberOfPackages?: number | null
+          OrderDate?: string | null
+          OrderNumber?: string | null
+          OrderNumberSort?: string | null
+          OrderStatus?: string | null
+          OrderStatusDescription?: string | null
+          OriginID?: string | null
+          OriginType?: string | null
+          PackageWeight?: number | null
+          PaymentMethod?: string | null
+          PendingShippingCharges?: unknown
+          PickTicketPrinted?: boolean | null
+          PickTicketReadyToPrint?: boolean | null
+          PO?: string | null
+          Printed?: boolean | null
+          QuotedDaysToShip?: number | null
+          ReadyToInvoice?: boolean | null
+          ReadyToPrint?: boolean | null
+          Reference?: string | null
+          Reference2?: string | null
+          RelatedOrderNumber?: string | null
+          RequestedShipDate?: string | null
+          Route?: string | null
+          SalespersonID?: string | null
+          SalespersonName?: string | null
+          SalesTax?: unknown
+          SchedDiscountAmount?: unknown
+          SchedSalesTax?: unknown
+          SchedShippingCharge?: unknown
+          SchedSubTotal?: unknown
+          SchedTermsDiscountAvailable?: unknown
+          SchedTotalAmount?: unknown
+          ScheduledWeight?: number | null
+          ShipmentPromisedDate?: string | null
+          ShippingDocumentPrinted?: boolean | null
+          ShippingDocumentReadyToPrint?: boolean | null
+          ShippingInstructions?: string | null
+          ShipQuoteDate?: string | null
+          ShipQuoteGUIDTemplate?: string | null
+          ShipQuoteID?: string | null
+          ShipToAddress?: string | null
+          ShipToAddress1?: string | null
+          ShipToAddress2?: string | null
+          ShipToAddress3?: string | null
+          ShipToAddress4?: string | null
+          ShipToAttn?: string | null
+          ShipToCity?: string | null
+          ShipToCountry?: string | null
+          ShipToDescription?: string | null
+          ShipToOverride?: boolean | null
+          ShipToState?: string | null
+          ShipToZip?: string | null
+          ShipVia?: string | null
+          ShipWorkstationExportDate?: string | null
+          ShipWorkstationShipmentID?: string | null
+          SoldToAddress?: string | null
+          SoldToAddress1?: string | null
+          SoldToAddress2?: string | null
+          SoldToAddress3?: string | null
+          SoldToAddress4?: string | null
+          SoldToCity?: string | null
+          SoldToCountry?: string | null
+          SoldToName?: string | null
+          SoldToOverride?: boolean | null
+          SoldToState?: string | null
+          SoldToZip?: string | null
+          SpecialInstructions?: string | null
+          StatusChangedBy?: string | null
+          StatusDate?: string | null
+          StopNumber?: number | null
+          SubTotal?: unknown
+          Taxable?: boolean | null
+          TaxCatID?: string | null
+          TaxIncluded?: boolean | null
+          TaxPct?: number | null
+          TaxPercentText?: string | null
+          TemplateID?: string | null
+          TermsCode?: string | null
+          TermsDescription?: string | null
+          TotalAmount?: unknown
+          TotalShippingCharges?: number | null
+          TrackingNumber?: string | null
+          Type?: string | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+          WebOrder?: boolean | null
+          WebOrderID?: string | null
+          WebOrderNumber?: string | null
+          WorkFlowStatus?: string | null
+          WorkFlowStatusAbbreviation?: string | null
+          WorkFlowStatusChangedBy?: string | null
+          WorkFlowStatusDate?: string | null
+        }
+        Update: {
+          _Rep1?: string | null
+          _Rep2?: string | null
+          _Rep2Pct?: number | null
+          _RepPct?: number | null
+          _skyvia_sync?: string | null
+          AmtPaid?: unknown
+          BackorderCriteria?: string | null
+          BankId?: string | null
+          BeingPickedBy?: string | null
+          BranchID?: string | null
+          BranchName?: string | null
+          Carrier?: string | null
+          CarrierAndService?: string | null
+          CarrierService?: string | null
+          CCAddress?: string | null
+          CCExpDate?: string | null
+          CCName?: string | null
+          CCNumber?: string | null
+          CCPostalCode?: string | null
+          CheckNo?: string | null
+          Class?: string | null
+          Comment?: string | null
+          CompanyName?: string | null
+          CompanyTaxID?: string | null
+          Completed?: boolean | null
+          ContactEMailAddress?: string | null
+          ContactFax?: string | null
+          ContactName?: string | null
+          ContactPhoneNumber?: string | null
+          ContractID?: string | null
+          CreditApprovalDate?: string | null
+          CreditApprovedBy?: string | null
+          CurrencyCode?: string | null
+          CurrencyName?: string | null
+          CustomerID?: string | null
+          CustomerTaxID?: string | null
+          DeliveredBy?: string | null
+          DeliveredTo?: string | null
+          DeliveryDate?: string | null
+          DeliveryMiles?: number | null
+          DiscAmt?: unknown
+          DiscountAmount?: unknown
+          DiscountType?: string | null
+          DontShipAfter?: string | null
+          DontShipBefore?: string | null
+          EnteredBy?: string | null
+          EntryDate?: string | null
+          ExchangeRate?: number | null
+          FOB?: string | null
+          ForeignAmtPaid?: unknown
+          ForeignDiscountAmount?: unknown
+          ForeignPendingShippingCharges?: unknown
+          ForeignSalesTax?: unknown
+          ForeignSchedDiscountAmount?: unknown
+          ForeignSchedSalesTax?: unknown
+          ForeignSchedShippingCharge?: unknown
+          ForeignSchedSubTotal?: unknown
+          ForeignSchedTermsDiscountAvailable?: unknown
+          ForeignSchedTotalAmount?: unknown
+          ForeignSubTotal?: unknown
+          ForeignTotalAmount?: unknown
+          ForeignTotalShippingCharges?: unknown
+          FromEDI?: boolean | null
+          FrtTaxPct?: number | null
+          GUIDBranch?: string | null
+          GUIDClass?: string | null
+          GUIDCurrency?: string | null
+          GUIDCustomer?: string | null
+          GUIDCustomerType?: string | null
+          GUIDLocation?: string | null
+          GUIDOrder?: string
+          GUIDOrderWorkFlowStatus?: string | null
+          GUIDPaymentMethod?: string | null
+          GUIDRelatedOrder?: string | null
+          GUIDRoute?: string | null
+          GUIDSalesperson?: string | null
+          GUIDTaxCategory?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTemplate?: string | null
+          GUIDTerms?: string | null
+          HoldReleasedBy?: string | null
+          HoldReleasedDate?: string | null
+          InvoiceDiscountPct?: number | null
+          InvoiceFormat?: string | null
+          InvoiceFormatGUID?: string | null
+          InvoicingError?: boolean | null
+          InvoicingErrorMessage?: string | null
+          JobNumber?: string | null
+          LastShipmentDate?: string | null
+          LocationID?: string | null
+          LostBusinessCode?: string | null
+          LostBusinessComment?: string | null
+          ManualHold?: boolean | null
+          MarketingCode?: string | null
+          MethodOfPayment?: number | null
+          NextInvoiceNumber?: string | null
+          NextShipmentNumber?: number | null
+          Note?: string | null
+          NumberOfPackages?: number | null
+          OrderDate?: string | null
+          OrderNumber?: string | null
+          OrderNumberSort?: string | null
+          OrderStatus?: string | null
+          OrderStatusDescription?: string | null
+          OriginID?: string | null
+          OriginType?: string | null
+          PackageWeight?: number | null
+          PaymentMethod?: string | null
+          PendingShippingCharges?: unknown
+          PickTicketPrinted?: boolean | null
+          PickTicketReadyToPrint?: boolean | null
+          PO?: string | null
+          Printed?: boolean | null
+          QuotedDaysToShip?: number | null
+          ReadyToInvoice?: boolean | null
+          ReadyToPrint?: boolean | null
+          Reference?: string | null
+          Reference2?: string | null
+          RelatedOrderNumber?: string | null
+          RequestedShipDate?: string | null
+          Route?: string | null
+          SalespersonID?: string | null
+          SalespersonName?: string | null
+          SalesTax?: unknown
+          SchedDiscountAmount?: unknown
+          SchedSalesTax?: unknown
+          SchedShippingCharge?: unknown
+          SchedSubTotal?: unknown
+          SchedTermsDiscountAvailable?: unknown
+          SchedTotalAmount?: unknown
+          ScheduledWeight?: number | null
+          ShipmentPromisedDate?: string | null
+          ShippingDocumentPrinted?: boolean | null
+          ShippingDocumentReadyToPrint?: boolean | null
+          ShippingInstructions?: string | null
+          ShipQuoteDate?: string | null
+          ShipQuoteGUIDTemplate?: string | null
+          ShipQuoteID?: string | null
+          ShipToAddress?: string | null
+          ShipToAddress1?: string | null
+          ShipToAddress2?: string | null
+          ShipToAddress3?: string | null
+          ShipToAddress4?: string | null
+          ShipToAttn?: string | null
+          ShipToCity?: string | null
+          ShipToCountry?: string | null
+          ShipToDescription?: string | null
+          ShipToOverride?: boolean | null
+          ShipToState?: string | null
+          ShipToZip?: string | null
+          ShipVia?: string | null
+          ShipWorkstationExportDate?: string | null
+          ShipWorkstationShipmentID?: string | null
+          SoldToAddress?: string | null
+          SoldToAddress1?: string | null
+          SoldToAddress2?: string | null
+          SoldToAddress3?: string | null
+          SoldToAddress4?: string | null
+          SoldToCity?: string | null
+          SoldToCountry?: string | null
+          SoldToName?: string | null
+          SoldToOverride?: boolean | null
+          SoldToState?: string | null
+          SoldToZip?: string | null
+          SpecialInstructions?: string | null
+          StatusChangedBy?: string | null
+          StatusDate?: string | null
+          StopNumber?: number | null
+          SubTotal?: unknown
+          Taxable?: boolean | null
+          TaxCatID?: string | null
+          TaxIncluded?: boolean | null
+          TaxPct?: number | null
+          TaxPercentText?: string | null
+          TemplateID?: string | null
+          TermsCode?: string | null
+          TermsDescription?: string | null
+          TotalAmount?: unknown
+          TotalShippingCharges?: number | null
+          TrackingNumber?: string | null
+          Type?: string | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+          WebOrder?: boolean | null
+          WebOrderID?: string | null
+          WebOrderNumber?: string | null
+          WorkFlowStatus?: string | null
+          WorkFlowStatusAbbreviation?: string | null
+          WorkFlowStatusChangedBy?: string | null
+          WorkFlowStatusDate?: string | null
+        }
+        Relationships: []
+      }
+      dbo_PO: {
+        Row: {
+          _ContainerNum: string | null
+          _CustomsBroker: string | null
+          _Drayage: string | null
+          _DrayageCost: unknown
+          _DueInPort: string | null
+          _ETA: string | null
+          _ETD: string | null
+          _Forwarder: string | null
+          _Notes: string | null
+          _OceanFreightCost: unknown
+          _PFShipDate: string | null
+          _POA: string | null
+          _ShortDescription: string | null
+          _skyvia_sync: string | null
+          _SSL: string | null
+          _Vessel: string | null
+          APAccountID: string | null
+          ApprovedBy: string | null
+          ApprovedByID: string | null
+          ApprovedInvoiceDate: string | null
+          ApprovedInvoiceDiscountAmount: unknown
+          ApprovedInvoiceDiscountDate: string | null
+          ApprovedInvoiceDueDate: string | null
+          ApprovedInvoiceNumber: string | null
+          CompanyTaxID: string | null
+          Contact: string | null
+          CurrencyCode: string | null
+          CurrencyName: string | null
+          DateApproved: string | null
+          DateCompleted: string | null
+          DateEntered: string | null
+          DateIssued: string | null
+          DatePrinted: string | null
+          DateRequested: string | null
+          DontShipAfter: string | null
+          DontShipBefore: string | null
+          Email: string | null
+          EnteredBy: string | null
+          ExchangeRate: number | null
+          FAX: string | null
+          FOB: string | null
+          ForeignApprovedInvoiceDiscountAmount: unknown
+          ForeignSalesTax: unknown
+          ForeignSalesTaxAmountApproved: number | null
+          ForeignSubTotalAmountApproved: unknown
+          ForeignTotalAmount: unknown
+          ForeignTotalAmountApproved: unknown
+          ForeignTotalAmountInvoiced: unknown
+          ForeignTotalAmountOutstanding: unknown
+          ForeignTotalAmountReceived: unknown
+          ForeignTotalOtherAmount: unknown
+          GUIDAPAccount: string | null
+          GUIDOrder: string | null
+          GUIDPO: string
+          GUIDPurchaseAccount: string | null
+          GUIDTaxCode: string | null
+          GUIDTerms: string | null
+          GUIDVendor: string | null
+          GUIDVendorType: string | null
+          GUIDWarehouse: string | null
+          IssuedBy: string | null
+          Notes: string | null
+          Phone: string | null
+          PONumber: string | null
+          PONumberSort: string | null
+          POStatus: string | null
+          POStatusDescription: string | null
+          Printed: boolean | null
+          PromisedDate: string | null
+          PurchaseAccountID: string | null
+          ReadyToPrint: boolean | null
+          Reference: string | null
+          RelatedDocument: string | null
+          RequestDate: string | null
+          RequestedBy: string | null
+          RequestedByID: string | null
+          SalesOrderNumber: string | null
+          SalesTax: unknown
+          SalesTaxAmountApproved: unknown
+          ShipToAddress: string | null
+          ShipToAddress1: string | null
+          ShipToAddress2: string | null
+          ShipToAddress3: string | null
+          ShipToAddress4: string | null
+          ShipToAttention: string | null
+          ShipToCity: string | null
+          ShipToCountry: string | null
+          ShipToName: string | null
+          ShipToOverride: boolean | null
+          ShipToState: string | null
+          ShipToZip: string | null
+          ShipVia: string | null
+          SpecialInstructions: string | null
+          StatusChangedBy: string | null
+          StatusDate: string | null
+          SubTotalAmountApproved: unknown
+          SupplierAddress: string | null
+          SupplierAddress1: string | null
+          SupplierAddress2: string | null
+          SupplierAddress3: string | null
+          SupplierAddress4: string | null
+          SupplierBillAddress: string | null
+          SupplierBillAddress1: string | null
+          SupplierBillAddress2: string | null
+          SupplierBillAddress3: string | null
+          SupplierBillAddress4: string | null
+          SupplierBillCity: string | null
+          SupplierBillCountry: string | null
+          SupplierBillState: string | null
+          SupplierBillZip: string | null
+          SupplierCity: string | null
+          SupplierCountry: string | null
+          SupplierName: string | null
+          SupplierOverride: boolean | null
+          SupplierState: string | null
+          SupplierZip: string | null
+          TaxExempt: boolean | null
+          TaxIncluded: boolean | null
+          Terms: string | null
+          TotalAmount: unknown
+          TotalAmountApproved: unknown
+          TotalAmountInvoiced: unknown
+          TotalAmountOutstanding: unknown
+          TotalAmountReceived: unknown
+          TotalOtherAmount: unknown
+          Type: string | null
+          VendCustID: string | null
+          VendorAccountNumber: string | null
+          VendorID: string | null
+          VendorType: string | null
+          Warehouse: string | null
+        }
+        Insert: {
+          _ContainerNum?: string | null
+          _CustomsBroker?: string | null
+          _Drayage?: string | null
+          _DrayageCost?: unknown
+          _DueInPort?: string | null
+          _ETA?: string | null
+          _ETD?: string | null
+          _Forwarder?: string | null
+          _Notes?: string | null
+          _OceanFreightCost?: unknown
+          _PFShipDate?: string | null
+          _POA?: string | null
+          _ShortDescription?: string | null
+          _skyvia_sync?: string | null
+          _SSL?: string | null
+          _Vessel?: string | null
+          APAccountID?: string | null
+          ApprovedBy?: string | null
+          ApprovedByID?: string | null
+          ApprovedInvoiceDate?: string | null
+          ApprovedInvoiceDiscountAmount?: unknown
+          ApprovedInvoiceDiscountDate?: string | null
+          ApprovedInvoiceDueDate?: string | null
+          ApprovedInvoiceNumber?: string | null
+          CompanyTaxID?: string | null
+          Contact?: string | null
+          CurrencyCode?: string | null
+          CurrencyName?: string | null
+          DateApproved?: string | null
+          DateCompleted?: string | null
+          DateEntered?: string | null
+          DateIssued?: string | null
+          DatePrinted?: string | null
+          DateRequested?: string | null
+          DontShipAfter?: string | null
+          DontShipBefore?: string | null
+          Email?: string | null
+          EnteredBy?: string | null
+          ExchangeRate?: number | null
+          FAX?: string | null
+          FOB?: string | null
+          ForeignApprovedInvoiceDiscountAmount?: unknown
+          ForeignSalesTax?: unknown
+          ForeignSalesTaxAmountApproved?: number | null
+          ForeignSubTotalAmountApproved?: unknown
+          ForeignTotalAmount?: unknown
+          ForeignTotalAmountApproved?: unknown
+          ForeignTotalAmountInvoiced?: unknown
+          ForeignTotalAmountOutstanding?: unknown
+          ForeignTotalAmountReceived?: unknown
+          ForeignTotalOtherAmount?: unknown
+          GUIDAPAccount?: string | null
+          GUIDOrder?: string | null
+          GUIDPO: string
+          GUIDPurchaseAccount?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTerms?: string | null
+          GUIDVendor?: string | null
+          GUIDVendorType?: string | null
+          GUIDWarehouse?: string | null
+          IssuedBy?: string | null
+          Notes?: string | null
+          Phone?: string | null
+          PONumber?: string | null
+          PONumberSort?: string | null
+          POStatus?: string | null
+          POStatusDescription?: string | null
+          Printed?: boolean | null
+          PromisedDate?: string | null
+          PurchaseAccountID?: string | null
+          ReadyToPrint?: boolean | null
+          Reference?: string | null
+          RelatedDocument?: string | null
+          RequestDate?: string | null
+          RequestedBy?: string | null
+          RequestedByID?: string | null
+          SalesOrderNumber?: string | null
+          SalesTax?: unknown
+          SalesTaxAmountApproved?: unknown
+          ShipToAddress?: string | null
+          ShipToAddress1?: string | null
+          ShipToAddress2?: string | null
+          ShipToAddress3?: string | null
+          ShipToAddress4?: string | null
+          ShipToAttention?: string | null
+          ShipToCity?: string | null
+          ShipToCountry?: string | null
+          ShipToName?: string | null
+          ShipToOverride?: boolean | null
+          ShipToState?: string | null
+          ShipToZip?: string | null
+          ShipVia?: string | null
+          SpecialInstructions?: string | null
+          StatusChangedBy?: string | null
+          StatusDate?: string | null
+          SubTotalAmountApproved?: unknown
+          SupplierAddress?: string | null
+          SupplierAddress1?: string | null
+          SupplierAddress2?: string | null
+          SupplierAddress3?: string | null
+          SupplierAddress4?: string | null
+          SupplierBillAddress?: string | null
+          SupplierBillAddress1?: string | null
+          SupplierBillAddress2?: string | null
+          SupplierBillAddress3?: string | null
+          SupplierBillAddress4?: string | null
+          SupplierBillCity?: string | null
+          SupplierBillCountry?: string | null
+          SupplierBillState?: string | null
+          SupplierBillZip?: string | null
+          SupplierCity?: string | null
+          SupplierCountry?: string | null
+          SupplierName?: string | null
+          SupplierOverride?: boolean | null
+          SupplierState?: string | null
+          SupplierZip?: string | null
+          TaxExempt?: boolean | null
+          TaxIncluded?: boolean | null
+          Terms?: string | null
+          TotalAmount?: unknown
+          TotalAmountApproved?: unknown
+          TotalAmountInvoiced?: unknown
+          TotalAmountOutstanding?: unknown
+          TotalAmountReceived?: unknown
+          TotalOtherAmount?: unknown
+          Type?: string | null
+          VendCustID?: string | null
+          VendorAccountNumber?: string | null
+          VendorID?: string | null
+          VendorType?: string | null
+          Warehouse?: string | null
+        }
+        Update: {
+          _ContainerNum?: string | null
+          _CustomsBroker?: string | null
+          _Drayage?: string | null
+          _DrayageCost?: unknown
+          _DueInPort?: string | null
+          _ETA?: string | null
+          _ETD?: string | null
+          _Forwarder?: string | null
+          _Notes?: string | null
+          _OceanFreightCost?: unknown
+          _PFShipDate?: string | null
+          _POA?: string | null
+          _ShortDescription?: string | null
+          _skyvia_sync?: string | null
+          _SSL?: string | null
+          _Vessel?: string | null
+          APAccountID?: string | null
+          ApprovedBy?: string | null
+          ApprovedByID?: string | null
+          ApprovedInvoiceDate?: string | null
+          ApprovedInvoiceDiscountAmount?: unknown
+          ApprovedInvoiceDiscountDate?: string | null
+          ApprovedInvoiceDueDate?: string | null
+          ApprovedInvoiceNumber?: string | null
+          CompanyTaxID?: string | null
+          Contact?: string | null
+          CurrencyCode?: string | null
+          CurrencyName?: string | null
+          DateApproved?: string | null
+          DateCompleted?: string | null
+          DateEntered?: string | null
+          DateIssued?: string | null
+          DatePrinted?: string | null
+          DateRequested?: string | null
+          DontShipAfter?: string | null
+          DontShipBefore?: string | null
+          Email?: string | null
+          EnteredBy?: string | null
+          ExchangeRate?: number | null
+          FAX?: string | null
+          FOB?: string | null
+          ForeignApprovedInvoiceDiscountAmount?: unknown
+          ForeignSalesTax?: unknown
+          ForeignSalesTaxAmountApproved?: number | null
+          ForeignSubTotalAmountApproved?: unknown
+          ForeignTotalAmount?: unknown
+          ForeignTotalAmountApproved?: unknown
+          ForeignTotalAmountInvoiced?: unknown
+          ForeignTotalAmountOutstanding?: unknown
+          ForeignTotalAmountReceived?: unknown
+          ForeignTotalOtherAmount?: unknown
+          GUIDAPAccount?: string | null
+          GUIDOrder?: string | null
+          GUIDPO?: string
+          GUIDPurchaseAccount?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTerms?: string | null
+          GUIDVendor?: string | null
+          GUIDVendorType?: string | null
+          GUIDWarehouse?: string | null
+          IssuedBy?: string | null
+          Notes?: string | null
+          Phone?: string | null
+          PONumber?: string | null
+          PONumberSort?: string | null
+          POStatus?: string | null
+          POStatusDescription?: string | null
+          Printed?: boolean | null
+          PromisedDate?: string | null
+          PurchaseAccountID?: string | null
+          ReadyToPrint?: boolean | null
+          Reference?: string | null
+          RelatedDocument?: string | null
+          RequestDate?: string | null
+          RequestedBy?: string | null
+          RequestedByID?: string | null
+          SalesOrderNumber?: string | null
+          SalesTax?: unknown
+          SalesTaxAmountApproved?: unknown
+          ShipToAddress?: string | null
+          ShipToAddress1?: string | null
+          ShipToAddress2?: string | null
+          ShipToAddress3?: string | null
+          ShipToAddress4?: string | null
+          ShipToAttention?: string | null
+          ShipToCity?: string | null
+          ShipToCountry?: string | null
+          ShipToName?: string | null
+          ShipToOverride?: boolean | null
+          ShipToState?: string | null
+          ShipToZip?: string | null
+          ShipVia?: string | null
+          SpecialInstructions?: string | null
+          StatusChangedBy?: string | null
+          StatusDate?: string | null
+          SubTotalAmountApproved?: unknown
+          SupplierAddress?: string | null
+          SupplierAddress1?: string | null
+          SupplierAddress2?: string | null
+          SupplierAddress3?: string | null
+          SupplierAddress4?: string | null
+          SupplierBillAddress?: string | null
+          SupplierBillAddress1?: string | null
+          SupplierBillAddress2?: string | null
+          SupplierBillAddress3?: string | null
+          SupplierBillAddress4?: string | null
+          SupplierBillCity?: string | null
+          SupplierBillCountry?: string | null
+          SupplierBillState?: string | null
+          SupplierBillZip?: string | null
+          SupplierCity?: string | null
+          SupplierCountry?: string | null
+          SupplierName?: string | null
+          SupplierOverride?: boolean | null
+          SupplierState?: string | null
+          SupplierZip?: string | null
+          TaxExempt?: boolean | null
+          TaxIncluded?: boolean | null
+          Terms?: string | null
+          TotalAmount?: unknown
+          TotalAmountApproved?: unknown
+          TotalAmountInvoiced?: unknown
+          TotalAmountOutstanding?: unknown
+          TotalAmountReceived?: unknown
+          TotalOtherAmount?: unknown
+          Type?: string | null
+          VendCustID?: string | null
+          VendorAccountNumber?: string | null
+          VendorID?: string | null
+          VendorType?: string | null
+          Warehouse?: string | null
+        }
+        Relationships: []
+      }
+      dbo_PODetail: {
+        Row: {
+          _skyvia_sync: string | null
+          AmountApproved: unknown
+          AmountOpen: unknown
+          AmountReceived: unknown
+          Complete: boolean | null
+          Description: string | null
+          DisplayAmount: unknown
+          DisplayPrice: number | null
+          DisplayQtyInvoiceApproved: number | null
+          DisplayQtyInvoiced: number | null
+          DisplayQtyOrdered: number | null
+          DisplayQtyOutstanding: number | null
+          DisplayQtyReceived: number | null
+          DisplayUnit: string | null
+          DisplayUnitFactor: number | null
+          ForeignAmountApproved: unknown
+          ForeignAmountOpen: unknown
+          ForeignAmountReceived: unknown
+          ForeignDisplayAmount: unknown
+          ForeignDisplayPrice: number | null
+          ForeignLineAmount: unknown
+          ForeignPriceInvoiced: number | null
+          ForeignPriceRequested: number | null
+          ForeignSalesTax: unknown
+          GLExpenseAccountDescription: string | null
+          GLExpenseAccountID: string | null
+          GUIDGLExpenseAccount: string | null
+          GUIDOrder: string
+          GUIDOrderDetail: string | null
+          GUIDPO: string | null
+          GUIDPODetail: string
+          GUIDProduct: string | null
+          GUIDTaxCode: string | null
+          GUIDWarehouse: string | null
+          LineAmount: unknown
+          LineNumber: number | null
+          LineType: string | null
+          Notes: string | null
+          PONumber: string | null
+          POStatus: string | null
+          POType: string | null
+          PriceInvoiced: number | null
+          PriceRequested: number | null
+          ProductID: string | null
+          QuantityInvoiceApproved: number | null
+          QuantityInvoiced: number | null
+          QuantityOrdered: number | null
+          QuantityOutstanding: number | null
+          QuantityReceived: number | null
+          SalesOrderNumber: string | null
+          SalesTax: unknown
+          SpecialInstructions: string | null
+          SupplierProductID: string | null
+          TaxCode: string | null
+          TaxCodeDescription: string | null
+          Unit: string | null
+          Warehouse: string | null
+        }
+        Insert: {
+          _skyvia_sync?: string | null
+          AmountApproved?: unknown
+          AmountOpen?: unknown
+          AmountReceived?: unknown
+          Complete?: boolean | null
+          Description?: string | null
+          DisplayAmount?: unknown
+          DisplayPrice?: number | null
+          DisplayQtyInvoiceApproved?: number | null
+          DisplayQtyInvoiced?: number | null
+          DisplayQtyOrdered?: number | null
+          DisplayQtyOutstanding?: number | null
+          DisplayQtyReceived?: number | null
+          DisplayUnit?: string | null
+          DisplayUnitFactor?: number | null
+          ForeignAmountApproved?: unknown
+          ForeignAmountOpen?: unknown
+          ForeignAmountReceived?: unknown
+          ForeignDisplayAmount?: unknown
+          ForeignDisplayPrice?: number | null
+          ForeignLineAmount?: unknown
+          ForeignPriceInvoiced?: number | null
+          ForeignPriceRequested?: number | null
+          ForeignSalesTax?: unknown
+          GLExpenseAccountDescription?: string | null
+          GLExpenseAccountID?: string | null
+          GUIDGLExpenseAccount?: string | null
+          GUIDOrder: string
+          GUIDOrderDetail?: string | null
+          GUIDPO?: string | null
+          GUIDPODetail: string
+          GUIDProduct?: string | null
+          GUIDTaxCode?: string | null
+          GUIDWarehouse?: string | null
+          LineAmount?: unknown
+          LineNumber?: number | null
+          LineType?: string | null
+          Notes?: string | null
+          PONumber?: string | null
+          POStatus?: string | null
+          POType?: string | null
+          PriceInvoiced?: number | null
+          PriceRequested?: number | null
+          ProductID?: string | null
+          QuantityInvoiceApproved?: number | null
+          QuantityInvoiced?: number | null
+          QuantityOrdered?: number | null
+          QuantityOutstanding?: number | null
+          QuantityReceived?: number | null
+          SalesOrderNumber?: string | null
+          SalesTax?: unknown
+          SpecialInstructions?: string | null
+          SupplierProductID?: string | null
+          TaxCode?: string | null
+          TaxCodeDescription?: string | null
+          Unit?: string | null
+          Warehouse?: string | null
+        }
+        Update: {
+          _skyvia_sync?: string | null
+          AmountApproved?: unknown
+          AmountOpen?: unknown
+          AmountReceived?: unknown
+          Complete?: boolean | null
+          Description?: string | null
+          DisplayAmount?: unknown
+          DisplayPrice?: number | null
+          DisplayQtyInvoiceApproved?: number | null
+          DisplayQtyInvoiced?: number | null
+          DisplayQtyOrdered?: number | null
+          DisplayQtyOutstanding?: number | null
+          DisplayQtyReceived?: number | null
+          DisplayUnit?: string | null
+          DisplayUnitFactor?: number | null
+          ForeignAmountApproved?: unknown
+          ForeignAmountOpen?: unknown
+          ForeignAmountReceived?: unknown
+          ForeignDisplayAmount?: unknown
+          ForeignDisplayPrice?: number | null
+          ForeignLineAmount?: unknown
+          ForeignPriceInvoiced?: number | null
+          ForeignPriceRequested?: number | null
+          ForeignSalesTax?: unknown
+          GLExpenseAccountDescription?: string | null
+          GLExpenseAccountID?: string | null
+          GUIDGLExpenseAccount?: string | null
+          GUIDOrder?: string
+          GUIDOrderDetail?: string | null
+          GUIDPO?: string | null
+          GUIDPODetail?: string
+          GUIDProduct?: string | null
+          GUIDTaxCode?: string | null
+          GUIDWarehouse?: string | null
+          LineAmount?: unknown
+          LineNumber?: number | null
+          LineType?: string | null
+          Notes?: string | null
+          PONumber?: string | null
+          POStatus?: string | null
+          POType?: string | null
+          PriceInvoiced?: number | null
+          PriceRequested?: number | null
+          ProductID?: string | null
+          QuantityInvoiceApproved?: number | null
+          QuantityInvoiced?: number | null
+          QuantityOrdered?: number | null
+          QuantityOutstanding?: number | null
+          QuantityReceived?: number | null
+          SalesOrderNumber?: string | null
+          SalesTax?: unknown
+          SpecialInstructions?: string | null
+          SupplierProductID?: string | null
+          TaxCode?: string | null
+          TaxCodeDescription?: string | null
+          Unit?: string | null
+          Warehouse?: string | null
+        }
+        Relationships: []
+      }
+      dbo_Product: {
+        Row: {
+          _CommissionPct: number | null
+          _NewIntroUnavail: boolean | null
+          _QBID: string | null
+          _RoyaltyParty: string | null
+          _RoyaltyPct: number | null
+          _skyvia_sync: string | null
+          AltDescription: string | null
+          AlternateProductID: string | null
+          AlternateUnit: string
+          AlternateUnitConversionFactor: number | null
+          AltHeight: number | null
+          AltLength: number | null
+          AltUnitsPerPalletLayer: number | null
+          AltVolume: number | null
+          AltWeight: number | null
+          AltWidth: number | null
+          AssemblyType: string | null
+          AvailOnWeb: boolean | null
+          Color: string | null
+          CostMethod: string | null
+          CountCycle: string | null
+          CreatedBy: string | null
+          CreatedDate: string | null
+          Description: string | null
+          Discontinued: boolean | null
+          ExternalDocument: string | null
+          GUIDProduct: string
+          GUIDProductClass: string | null
+          GUIDTaxCategory: string | null
+          Height: number | null
+          InnerPackQty: number | null
+          InventoryControlType: string | null
+          ItemType: string | null
+          Keywords: string | null
+          LandedCostFactor: number | null
+          LeadTime: number | null
+          Length: number | null
+          ListPrice: number | null
+          ListPriceTaxIncluded: boolean | null
+          ListPriceType: string | null
+          ListPriceUnit: string | null
+          MaintainInventoryType: number | null
+          Note: string | null
+          NotForResale: boolean | null
+          OuterPackQty: number | null
+          PackageUnit: string | null
+          PalletLayers: number | null
+          PiecesPerStockUnit: number | null
+          PONote: string | null
+          POPopup: boolean | null
+          Popup: boolean | null
+          PreferredGUIDVendor: string | null
+          PreferredVendorID: string | null
+          ProductClassID: string | null
+          ProductID: string | null
+          ProductPicture: string | null
+          ProductPicture256: string | null
+          ProductPriceCategory: string | null
+          ProductType: string | null
+          PurchaseGUIDTaxCode: string | null
+          PurchaseUnit: string | null
+          SalesCategory: string | null
+          SalesGUIDTaxCode: string | null
+          SalesUnit: string | null
+          ShipCompleteLots: boolean | null
+          ShortDescription: string | null
+          Size: string | null
+          Specification: string | null
+          Status: boolean | null
+          Taxable: boolean | null
+          TechSpec: string | null
+          Unit: string | null
+          UPC: string | null
+          UpdatedBy: string | null
+          UpdatedDate: string | null
+          VariableHeight: boolean | null
+          VariableLength: boolean | null
+          VariableVolume: boolean | null
+          VariableWeight: boolean | null
+          VariableWidth: boolean | null
+          Volume: number | null
+          WebAddress: string | null
+          Weight: number | null
+          Width: number | null
+        }
+        Insert: {
+          _CommissionPct?: number | null
+          _NewIntroUnavail?: boolean | null
+          _QBID?: string | null
+          _RoyaltyParty?: string | null
+          _RoyaltyPct?: number | null
+          _skyvia_sync?: string | null
+          AltDescription?: string | null
+          AlternateProductID?: string | null
+          AlternateUnit: string
+          AlternateUnitConversionFactor?: number | null
+          AltHeight?: number | null
+          AltLength?: number | null
+          AltUnitsPerPalletLayer?: number | null
+          AltVolume?: number | null
+          AltWeight?: number | null
+          AltWidth?: number | null
+          AssemblyType?: string | null
+          AvailOnWeb?: boolean | null
+          Color?: string | null
+          CostMethod?: string | null
+          CountCycle?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          Description?: string | null
+          Discontinued?: boolean | null
+          ExternalDocument?: string | null
+          GUIDProduct: string
+          GUIDProductClass?: string | null
+          GUIDTaxCategory?: string | null
+          Height?: number | null
+          InnerPackQty?: number | null
+          InventoryControlType?: string | null
+          ItemType?: string | null
+          Keywords?: string | null
+          LandedCostFactor?: number | null
+          LeadTime?: number | null
+          Length?: number | null
+          ListPrice?: number | null
+          ListPriceTaxIncluded?: boolean | null
+          ListPriceType?: string | null
+          ListPriceUnit?: string | null
+          MaintainInventoryType?: number | null
+          Note?: string | null
+          NotForResale?: boolean | null
+          OuterPackQty?: number | null
+          PackageUnit?: string | null
+          PalletLayers?: number | null
+          PiecesPerStockUnit?: number | null
+          PONote?: string | null
+          POPopup?: boolean | null
+          Popup?: boolean | null
+          PreferredGUIDVendor?: string | null
+          PreferredVendorID?: string | null
+          ProductClassID?: string | null
+          ProductID?: string | null
+          ProductPicture?: string | null
+          ProductPicture256?: string | null
+          ProductPriceCategory?: string | null
+          ProductType?: string | null
+          PurchaseGUIDTaxCode?: string | null
+          PurchaseUnit?: string | null
+          SalesCategory?: string | null
+          SalesGUIDTaxCode?: string | null
+          SalesUnit?: string | null
+          ShipCompleteLots?: boolean | null
+          ShortDescription?: string | null
+          Size?: string | null
+          Specification?: string | null
+          Status?: boolean | null
+          Taxable?: boolean | null
+          TechSpec?: string | null
+          Unit?: string | null
+          UPC?: string | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+          VariableHeight?: boolean | null
+          VariableLength?: boolean | null
+          VariableVolume?: boolean | null
+          VariableWeight?: boolean | null
+          VariableWidth?: boolean | null
+          Volume?: number | null
+          WebAddress?: string | null
+          Weight?: number | null
+          Width?: number | null
+        }
+        Update: {
+          _CommissionPct?: number | null
+          _NewIntroUnavail?: boolean | null
+          _QBID?: string | null
+          _RoyaltyParty?: string | null
+          _RoyaltyPct?: number | null
+          _skyvia_sync?: string | null
+          AltDescription?: string | null
+          AlternateProductID?: string | null
+          AlternateUnit?: string
+          AlternateUnitConversionFactor?: number | null
+          AltHeight?: number | null
+          AltLength?: number | null
+          AltUnitsPerPalletLayer?: number | null
+          AltVolume?: number | null
+          AltWeight?: number | null
+          AltWidth?: number | null
+          AssemblyType?: string | null
+          AvailOnWeb?: boolean | null
+          Color?: string | null
+          CostMethod?: string | null
+          CountCycle?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          Description?: string | null
+          Discontinued?: boolean | null
+          ExternalDocument?: string | null
+          GUIDProduct?: string
+          GUIDProductClass?: string | null
+          GUIDTaxCategory?: string | null
+          Height?: number | null
+          InnerPackQty?: number | null
+          InventoryControlType?: string | null
+          ItemType?: string | null
+          Keywords?: string | null
+          LandedCostFactor?: number | null
+          LeadTime?: number | null
+          Length?: number | null
+          ListPrice?: number | null
+          ListPriceTaxIncluded?: boolean | null
+          ListPriceType?: string | null
+          ListPriceUnit?: string | null
+          MaintainInventoryType?: number | null
+          Note?: string | null
+          NotForResale?: boolean | null
+          OuterPackQty?: number | null
+          PackageUnit?: string | null
+          PalletLayers?: number | null
+          PiecesPerStockUnit?: number | null
+          PONote?: string | null
+          POPopup?: boolean | null
+          Popup?: boolean | null
+          PreferredGUIDVendor?: string | null
+          PreferredVendorID?: string | null
+          ProductClassID?: string | null
+          ProductID?: string | null
+          ProductPicture?: string | null
+          ProductPicture256?: string | null
+          ProductPriceCategory?: string | null
+          ProductType?: string | null
+          PurchaseGUIDTaxCode?: string | null
+          PurchaseUnit?: string | null
+          SalesCategory?: string | null
+          SalesGUIDTaxCode?: string | null
+          SalesUnit?: string | null
+          ShipCompleteLots?: boolean | null
+          ShortDescription?: string | null
+          Size?: string | null
+          Specification?: string | null
+          Status?: boolean | null
+          Taxable?: boolean | null
+          TechSpec?: string | null
+          Unit?: string | null
+          UPC?: string | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+          VariableHeight?: boolean | null
+          VariableLength?: boolean | null
+          VariableVolume?: boolean | null
+          VariableWeight?: boolean | null
+          VariableWidth?: boolean | null
+          Volume?: number | null
+          WebAddress?: string | null
+          Weight?: number | null
+          Width?: number | null
+        }
+        Relationships: []
+      }
+      dbo_ProductWarehouse: {
+        Row: {
+          _skyvia_sync: string | null
+          CountInProgress: number | null
+          Deleted: boolean | null
+          GUIDProduct: string | null
+          GUIDProductWarehouse: string
+          GUIDWarehouse: string | null
+          GUIDWHLocation: string | null
+          LastCost: number | null
+          LastCountDate: string | null
+          Location: string | null
+          MgmtCost: number | null
+          Note: string | null
+          PrimaryLocationStockingLevel: number | null
+          ProductID: string | null
+          QtyReserved: number | null
+          QtyToReorder: number | null
+          ReorderPoint: number | null
+          StandardCost: number | null
+          StdCost: number | null
+          StockingLevel: number | null
+          UnitCost: number | null
+          Value: unknown
+          Warehouse: string | null
+        }
+        Insert: {
+          _skyvia_sync?: string | null
+          CountInProgress?: number | null
+          Deleted?: boolean | null
+          GUIDProduct?: string | null
+          GUIDProductWarehouse: string
+          GUIDWarehouse?: string | null
+          GUIDWHLocation?: string | null
+          LastCost?: number | null
+          LastCountDate?: string | null
+          Location?: string | null
+          MgmtCost?: number | null
+          Note?: string | null
+          PrimaryLocationStockingLevel?: number | null
+          ProductID?: string | null
+          QtyReserved?: number | null
+          QtyToReorder?: number | null
+          ReorderPoint?: number | null
+          StandardCost?: number | null
+          StdCost?: number | null
+          StockingLevel?: number | null
+          UnitCost?: number | null
+          Value?: unknown
+          Warehouse?: string | null
+        }
+        Update: {
+          _skyvia_sync?: string | null
+          CountInProgress?: number | null
+          Deleted?: boolean | null
+          GUIDProduct?: string | null
+          GUIDProductWarehouse?: string
+          GUIDWarehouse?: string | null
+          GUIDWHLocation?: string | null
+          LastCost?: number | null
+          LastCountDate?: string | null
+          Location?: string | null
+          MgmtCost?: number | null
+          Note?: string | null
+          PrimaryLocationStockingLevel?: number | null
+          ProductID?: string | null
+          QtyReserved?: number | null
+          QtyToReorder?: number | null
+          ReorderPoint?: number | null
+          StandardCost?: number | null
+          StdCost?: number | null
+          StockingLevel?: number | null
+          UnitCost?: number | null
+          Value?: unknown
+          Warehouse?: string | null
+        }
+        Relationships: []
+      }
+      dbo_SalespersonInfo: {
+        Row: {
+          _skyvia_sync: string | null
+          COGSAccountSegment: string | null
+          GUIDClass: string | null
+          GUIDCOGSAccount: string | null
+          GUIDLink: string | null
+          GUIDReturnsAccount: string | null
+          GUIDSalesAccount: string | null
+          GUIDSalesperson: string
+          GUIDTradeDiscount: string | null
+          ItemListID: string | null
+          LinkType: string | null
+          Name: string | null
+          ReturnsAccountSegment: string | null
+          SalesAccountSegment: string | null
+          SalespersonID: string | null
+          SalespersonListID: string | null
+          Status: boolean | null
+          TimeCreated: string | null
+          TimeModified: string | null
+          TradeDiscountSegment: string | null
+        }
+        Insert: {
+          _skyvia_sync?: string | null
+          COGSAccountSegment?: string | null
+          GUIDClass?: string | null
+          GUIDCOGSAccount?: string | null
+          GUIDLink?: string | null
+          GUIDReturnsAccount?: string | null
+          GUIDSalesAccount?: string | null
+          GUIDSalesperson: string
+          GUIDTradeDiscount?: string | null
+          ItemListID?: string | null
+          LinkType?: string | null
+          Name?: string | null
+          ReturnsAccountSegment?: string | null
+          SalesAccountSegment?: string | null
+          SalespersonID?: string | null
+          SalespersonListID?: string | null
+          Status?: boolean | null
+          TimeCreated?: string | null
+          TimeModified?: string | null
+          TradeDiscountSegment?: string | null
+        }
+        Update: {
+          _skyvia_sync?: string | null
+          COGSAccountSegment?: string | null
+          GUIDClass?: string | null
+          GUIDCOGSAccount?: string | null
+          GUIDLink?: string | null
+          GUIDReturnsAccount?: string | null
+          GUIDSalesAccount?: string | null
+          GUIDSalesperson?: string
+          GUIDTradeDiscount?: string | null
+          ItemListID?: string | null
+          LinkType?: string | null
+          Name?: string | null
+          ReturnsAccountSegment?: string | null
+          SalesAccountSegment?: string | null
+          SalespersonID?: string | null
+          SalespersonListID?: string | null
+          Status?: boolean | null
+          TimeCreated?: string | null
+          TimeModified?: string | null
+          TradeDiscountSegment?: string | null
+        }
+        Relationships: []
+      }
+      dbo_tbCustomer: {
+        Row: {
+          _Rep1: string | null
+          _Rep1CommRate: number | null
+          _Rep2: string | null
+          _Rep2CommRate: number | null
+          _SalesManager: string | null
+          _skyvia_sync: string | null
+          _Territory: string | null
+          AccountNumber: string | null
+          Address: string | null
+          Address2: string | null
+          Address3: string | null
+          Address4: string | null
+          AltPhone: string | null
+          AltPhoneDesc: string | null
+          CCAddress: string | null
+          CCDisplayNumber: string | null
+          CCExpMonth: number | null
+          CCExpYear: number | null
+          CCName: string | null
+          CCNumber: string | null
+          CCPostalCode: string | null
+          City: string | null
+          Comment: string | null
+          CompanyName: string | null
+          Country: string | null
+          CreatedBy: string | null
+          CreatedDate: string | null
+          CreditHold: boolean | null
+          CreditLimit: unknown
+          CustId: string | null
+          CustListID: string | null
+          Email: string | null
+          EmailDesc: string | null
+          Fax: string | null
+          FaxDesc: string | null
+          FirstName: string | null
+          GUIDCurrency: string | null
+          GUIDCustomer: string
+          GUIDCustomerType: string | null
+          GUIDParent: string | null
+          GUIDSalesperson: string | null
+          GUIDTaxCode: string | null
+          GUIDTerms: string | null
+          IsProject: boolean | null
+          LastName: string | null
+          LocationId: string | null
+          Method: number | null
+          MiddleName: string | null
+          Mobile: string | null
+          MobileDesc: string | null
+          Name: string | null
+          Pager: string | null
+          PagerDesc: string | null
+          Phone: string | null
+          PhoneDesc: string | null
+          PopupNotes: boolean | null
+          PreferredPaymentMethod: string | null
+          Salutation: string | null
+          State: string | null
+          StateSalesTaxId: string | null
+          Status: boolean | null
+          Suffix: string | null
+          SyncAsGUIDCustomer: string | null
+          SyncToken: string | null
+          TaxExemptionReasonID: number | null
+          TaxIncluded: boolean | null
+          UpdatedBy: string | null
+          UpdatedDate: string | null
+          Zip: string | null
+        }
+        Insert: {
+          _Rep1?: string | null
+          _Rep1CommRate?: number | null
+          _Rep2?: string | null
+          _Rep2CommRate?: number | null
+          _SalesManager?: string | null
+          _skyvia_sync?: string | null
+          _Territory?: string | null
+          AccountNumber?: string | null
+          Address?: string | null
+          Address2?: string | null
+          Address3?: string | null
+          Address4?: string | null
+          AltPhone?: string | null
+          AltPhoneDesc?: string | null
+          CCAddress?: string | null
+          CCDisplayNumber?: string | null
+          CCExpMonth?: number | null
+          CCExpYear?: number | null
+          CCName?: string | null
+          CCNumber?: string | null
+          CCPostalCode?: string | null
+          City?: string | null
+          Comment?: string | null
+          CompanyName?: string | null
+          Country?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          CreditHold?: boolean | null
+          CreditLimit?: unknown
+          CustId?: string | null
+          CustListID?: string | null
+          Email?: string | null
+          EmailDesc?: string | null
+          Fax?: string | null
+          FaxDesc?: string | null
+          FirstName?: string | null
+          GUIDCurrency?: string | null
+          GUIDCustomer: string
+          GUIDCustomerType?: string | null
+          GUIDParent?: string | null
+          GUIDSalesperson?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTerms?: string | null
+          IsProject?: boolean | null
+          LastName?: string | null
+          LocationId?: string | null
+          Method?: number | null
+          MiddleName?: string | null
+          Mobile?: string | null
+          MobileDesc?: string | null
+          Name?: string | null
+          Pager?: string | null
+          PagerDesc?: string | null
+          Phone?: string | null
+          PhoneDesc?: string | null
+          PopupNotes?: boolean | null
+          PreferredPaymentMethod?: string | null
+          Salutation?: string | null
+          State?: string | null
+          StateSalesTaxId?: string | null
+          Status?: boolean | null
+          Suffix?: string | null
+          SyncAsGUIDCustomer?: string | null
+          SyncToken?: string | null
+          TaxExemptionReasonID?: number | null
+          TaxIncluded?: boolean | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+          Zip?: string | null
+        }
+        Update: {
+          _Rep1?: string | null
+          _Rep1CommRate?: number | null
+          _Rep2?: string | null
+          _Rep2CommRate?: number | null
+          _SalesManager?: string | null
+          _skyvia_sync?: string | null
+          _Territory?: string | null
+          AccountNumber?: string | null
+          Address?: string | null
+          Address2?: string | null
+          Address3?: string | null
+          Address4?: string | null
+          AltPhone?: string | null
+          AltPhoneDesc?: string | null
+          CCAddress?: string | null
+          CCDisplayNumber?: string | null
+          CCExpMonth?: number | null
+          CCExpYear?: number | null
+          CCName?: string | null
+          CCNumber?: string | null
+          CCPostalCode?: string | null
+          City?: string | null
+          Comment?: string | null
+          CompanyName?: string | null
+          Country?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          CreditHold?: boolean | null
+          CreditLimit?: unknown
+          CustId?: string | null
+          CustListID?: string | null
+          Email?: string | null
+          EmailDesc?: string | null
+          Fax?: string | null
+          FaxDesc?: string | null
+          FirstName?: string | null
+          GUIDCurrency?: string | null
+          GUIDCustomer?: string
+          GUIDCustomerType?: string | null
+          GUIDParent?: string | null
+          GUIDSalesperson?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTerms?: string | null
+          IsProject?: boolean | null
+          LastName?: string | null
+          LocationId?: string | null
+          Method?: number | null
+          MiddleName?: string | null
+          Mobile?: string | null
+          MobileDesc?: string | null
+          Name?: string | null
+          Pager?: string | null
+          PagerDesc?: string | null
+          Phone?: string | null
+          PhoneDesc?: string | null
+          PopupNotes?: boolean | null
+          PreferredPaymentMethod?: string | null
+          Salutation?: string | null
+          State?: string | null
+          StateSalesTaxId?: string | null
+          Status?: boolean | null
+          Suffix?: string | null
+          SyncAsGUIDCustomer?: string | null
+          SyncToken?: string | null
+          TaxExemptionReasonID?: number | null
+          TaxIncluded?: boolean | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+          Zip?: string | null
+        }
+        Relationships: []
+      }
+      dbo_tbInvoice: {
+        Row: {
+          _skyvia_sync: string | null
+          AmtPaid: unknown
+          BackorderCriteria: string | null
+          BankId: string | null
+          BillToAddress1: string | null
+          BillToAddress2: string | null
+          BillToAddress3: string | null
+          BillToAddress4: string | null
+          BillToCity: string | null
+          BillToCountry: string | null
+          BillToName: string | null
+          BillToState: string | null
+          BillToZip: string | null
+          BranchID: string | null
+          Carrier: string | null
+          CarrierService: string | null
+          CCAuthorizationCode: string | null
+          CCAVSStreet: number | null
+          CCAVSZip: number | null
+          CCExpDate: string | null
+          CCMerchAcctNumber: string | null
+          CCNumber: string | null
+          CCPaymentGroupingCode: number | null
+          CCReconBatchID: string | null
+          CCStatusCode: number | null
+          CCStatusMessage: string | null
+          CCTransID: string | null
+          CCTxnAuthStamp: number | null
+          CCTxnAuthTime: string | null
+          CheckNo: string | null
+          Comment: string | null
+          CompanyTaxID: string | null
+          Completed: boolean | null
+          ContactEMailAddress: string | null
+          ContactFAX: string | null
+          ContactName: string | null
+          ContactPhoneNumber: string | null
+          ContractDate: string | null
+          ContractID: string | null
+          CreatedBy: string | null
+          CreatedDate: string | null
+          CreditApprovalDate: string | null
+          CreditApprovedBy: string | null
+          CustomerID: string | null
+          CustomerTaxID: string | null
+          DateCompleted: string | null
+          DatePosted: string | null
+          DatePrinted: string | null
+          DeliveredBy: string | null
+          DeliveredTo: string | null
+          DeliveryDate: string | null
+          DeliveryMiles: number | null
+          DiscountAmount: unknown
+          DiscountAvailable: unknown
+          DiscountDate: string | null
+          DiscountType: string | null
+          DoNotSync: boolean | null
+          DueDate: string | null
+          EnteredBy: string | null
+          EntryDate: string | null
+          ExchangeRate: number | null
+          ExportDate: string | null
+          Exported: boolean | null
+          FOB: string | null
+          FromQB: boolean | null
+          FrtTaxPct: number | null
+          GUIDARAccount: string | null
+          GUIDBranch: string | null
+          GUIDClass: string | null
+          GUIDCurrency: string | null
+          GUIDCustomer: string | null
+          GUIDDepartment: string | null
+          GUIDInvoice: string
+          GUIDInvoiceDiscountAccount: string | null
+          GUIDLocation: string | null
+          GUIDOrder: string | null
+          GUIDOrderWorkflowStatus: string | null
+          GUIDPaymentMethod: string | null
+          GUIDRetainageGLAccount: string | null
+          GUIDRoute: string | null
+          GUIDSalesperson: string | null
+          GUIDShippingChargeAccount: string | null
+          GUIDTaxCategory: string | null
+          GUIDTaxCode: string | null
+          GUIDTerms: string | null
+          HoldReleasedBy: string | null
+          HoldReleasedDate: string | null
+          InDispute: boolean | null
+          InvoiceDate: string | null
+          InvoiceDiscountPct: number | null
+          InvoiceFormatGUID: string | null
+          InvoiceLink: string | null
+          InvoiceNumber: string | null
+          InvoiceStyle: string | null
+          InvoiceText: string | null
+          JobID: string | null
+          JobNumber: string | null
+          LastShipmentDate: string | null
+          LocationID: string | null
+          ManualHold: boolean | null
+          MarketingCode: string | null
+          MethodOfPayment: number | null
+          Note: string | null
+          NumberOfPackages: number | null
+          NumberShipments: number | null
+          OrderDate: string | null
+          OrderNumber: string | null
+          PackageWeight: number | null
+          PO: string | null
+          PostedToAR: boolean | null
+          PreviousAmount: unknown
+          PreviousRetainage: unknown
+          Printed: boolean | null
+          ReadyToPrint: boolean | null
+          Reference: string | null
+          Reference2: string | null
+          RequestedShipDate: string | null
+          RetainageAmount: unknown
+          RetainageBilled: boolean | null
+          Routing: string | null
+          SalespersonID: string | null
+          SalespersonName: string | null
+          SalesTax: unknown
+          ScheduleOfValuesType: string | null
+          ShipmentPromisedDate: string | null
+          ShippingCharge: unknown
+          ShippingInstructions: string | null
+          ShipToAddress1: string | null
+          ShipToAddress2: string | null
+          ShipToAddress3: string | null
+          ShipToAddress4: string | null
+          ShipToAttn: string | null
+          ShipToCity: string | null
+          ShipToCountry: string | null
+          ShipToOverride: boolean | null
+          ShipToPhoneNumber: string | null
+          ShipToState: string | null
+          ShipToZip: string | null
+          ShipVia: string | null
+          SpecialInstructions: string | null
+          StopNumber: number | null
+          SubTotal: unknown
+          SyncToken: string | null
+          TaxCode: string | null
+          TaxCodeDescription: string | null
+          TaxID: string | null
+          TaxIncluded: boolean | null
+          TaxPct: number | null
+          TermsCode: string | null
+          TermsDescription: string | null
+          TotalAmount: unknown
+          TrackingNumber: string | null
+          TransactionPeriod: number | null
+          TransactionYear: number | null
+          TxnID: string | null
+          Type: string | null
+          UpdatedBy: string | null
+          UpdatedDate: string | null
+        }
+        Insert: {
+          _skyvia_sync?: string | null
+          AmtPaid?: unknown
+          BackorderCriteria?: string | null
+          BankId?: string | null
+          BillToAddress1?: string | null
+          BillToAddress2?: string | null
+          BillToAddress3?: string | null
+          BillToAddress4?: string | null
+          BillToCity?: string | null
+          BillToCountry?: string | null
+          BillToName?: string | null
+          BillToState?: string | null
+          BillToZip?: string | null
+          BranchID?: string | null
+          Carrier?: string | null
+          CarrierService?: string | null
+          CCAuthorizationCode?: string | null
+          CCAVSStreet?: number | null
+          CCAVSZip?: number | null
+          CCExpDate?: string | null
+          CCMerchAcctNumber?: string | null
+          CCNumber?: string | null
+          CCPaymentGroupingCode?: number | null
+          CCReconBatchID?: string | null
+          CCStatusCode?: number | null
+          CCStatusMessage?: string | null
+          CCTransID?: string | null
+          CCTxnAuthStamp?: number | null
+          CCTxnAuthTime?: string | null
+          CheckNo?: string | null
+          Comment?: string | null
+          CompanyTaxID?: string | null
+          Completed?: boolean | null
+          ContactEMailAddress?: string | null
+          ContactFAX?: string | null
+          ContactName?: string | null
+          ContactPhoneNumber?: string | null
+          ContractDate?: string | null
+          ContractID?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          CreditApprovalDate?: string | null
+          CreditApprovedBy?: string | null
+          CustomerID?: string | null
+          CustomerTaxID?: string | null
+          DateCompleted?: string | null
+          DatePosted?: string | null
+          DatePrinted?: string | null
+          DeliveredBy?: string | null
+          DeliveredTo?: string | null
+          DeliveryDate?: string | null
+          DeliveryMiles?: number | null
+          DiscountAmount?: unknown
+          DiscountAvailable?: unknown
+          DiscountDate?: string | null
+          DiscountType?: string | null
+          DoNotSync?: boolean | null
+          DueDate?: string | null
+          EnteredBy?: string | null
+          EntryDate?: string | null
+          ExchangeRate?: number | null
+          ExportDate?: string | null
+          Exported?: boolean | null
+          FOB?: string | null
+          FromQB?: boolean | null
+          FrtTaxPct?: number | null
+          GUIDARAccount?: string | null
+          GUIDBranch?: string | null
+          GUIDClass?: string | null
+          GUIDCurrency?: string | null
+          GUIDCustomer?: string | null
+          GUIDDepartment?: string | null
+          GUIDInvoice: string
+          GUIDInvoiceDiscountAccount?: string | null
+          GUIDLocation?: string | null
+          GUIDOrder?: string | null
+          GUIDOrderWorkflowStatus?: string | null
+          GUIDPaymentMethod?: string | null
+          GUIDRetainageGLAccount?: string | null
+          GUIDRoute?: string | null
+          GUIDSalesperson?: string | null
+          GUIDShippingChargeAccount?: string | null
+          GUIDTaxCategory?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTerms?: string | null
+          HoldReleasedBy?: string | null
+          HoldReleasedDate?: string | null
+          InDispute?: boolean | null
+          InvoiceDate?: string | null
+          InvoiceDiscountPct?: number | null
+          InvoiceFormatGUID?: string | null
+          InvoiceLink?: string | null
+          InvoiceNumber?: string | null
+          InvoiceStyle?: string | null
+          InvoiceText?: string | null
+          JobID?: string | null
+          JobNumber?: string | null
+          LastShipmentDate?: string | null
+          LocationID?: string | null
+          ManualHold?: boolean | null
+          MarketingCode?: string | null
+          MethodOfPayment?: number | null
+          Note?: string | null
+          NumberOfPackages?: number | null
+          NumberShipments?: number | null
+          OrderDate?: string | null
+          OrderNumber?: string | null
+          PackageWeight?: number | null
+          PO?: string | null
+          PostedToAR?: boolean | null
+          PreviousAmount?: unknown
+          PreviousRetainage?: unknown
+          Printed?: boolean | null
+          ReadyToPrint?: boolean | null
+          Reference?: string | null
+          Reference2?: string | null
+          RequestedShipDate?: string | null
+          RetainageAmount?: unknown
+          RetainageBilled?: boolean | null
+          Routing?: string | null
+          SalespersonID?: string | null
+          SalespersonName?: string | null
+          SalesTax?: unknown
+          ScheduleOfValuesType?: string | null
+          ShipmentPromisedDate?: string | null
+          ShippingCharge?: unknown
+          ShippingInstructions?: string | null
+          ShipToAddress1?: string | null
+          ShipToAddress2?: string | null
+          ShipToAddress3?: string | null
+          ShipToAddress4?: string | null
+          ShipToAttn?: string | null
+          ShipToCity?: string | null
+          ShipToCountry?: string | null
+          ShipToOverride?: boolean | null
+          ShipToPhoneNumber?: string | null
+          ShipToState?: string | null
+          ShipToZip?: string | null
+          ShipVia?: string | null
+          SpecialInstructions?: string | null
+          StopNumber?: number | null
+          SubTotal?: unknown
+          SyncToken?: string | null
+          TaxCode?: string | null
+          TaxCodeDescription?: string | null
+          TaxID?: string | null
+          TaxIncluded?: boolean | null
+          TaxPct?: number | null
+          TermsCode?: string | null
+          TermsDescription?: string | null
+          TotalAmount?: unknown
+          TrackingNumber?: string | null
+          TransactionPeriod?: number | null
+          TransactionYear?: number | null
+          TxnID?: string | null
+          Type?: string | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+        }
+        Update: {
+          _skyvia_sync?: string | null
+          AmtPaid?: unknown
+          BackorderCriteria?: string | null
+          BankId?: string | null
+          BillToAddress1?: string | null
+          BillToAddress2?: string | null
+          BillToAddress3?: string | null
+          BillToAddress4?: string | null
+          BillToCity?: string | null
+          BillToCountry?: string | null
+          BillToName?: string | null
+          BillToState?: string | null
+          BillToZip?: string | null
+          BranchID?: string | null
+          Carrier?: string | null
+          CarrierService?: string | null
+          CCAuthorizationCode?: string | null
+          CCAVSStreet?: number | null
+          CCAVSZip?: number | null
+          CCExpDate?: string | null
+          CCMerchAcctNumber?: string | null
+          CCNumber?: string | null
+          CCPaymentGroupingCode?: number | null
+          CCReconBatchID?: string | null
+          CCStatusCode?: number | null
+          CCStatusMessage?: string | null
+          CCTransID?: string | null
+          CCTxnAuthStamp?: number | null
+          CCTxnAuthTime?: string | null
+          CheckNo?: string | null
+          Comment?: string | null
+          CompanyTaxID?: string | null
+          Completed?: boolean | null
+          ContactEMailAddress?: string | null
+          ContactFAX?: string | null
+          ContactName?: string | null
+          ContactPhoneNumber?: string | null
+          ContractDate?: string | null
+          ContractID?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          CreditApprovalDate?: string | null
+          CreditApprovedBy?: string | null
+          CustomerID?: string | null
+          CustomerTaxID?: string | null
+          DateCompleted?: string | null
+          DatePosted?: string | null
+          DatePrinted?: string | null
+          DeliveredBy?: string | null
+          DeliveredTo?: string | null
+          DeliveryDate?: string | null
+          DeliveryMiles?: number | null
+          DiscountAmount?: unknown
+          DiscountAvailable?: unknown
+          DiscountDate?: string | null
+          DiscountType?: string | null
+          DoNotSync?: boolean | null
+          DueDate?: string | null
+          EnteredBy?: string | null
+          EntryDate?: string | null
+          ExchangeRate?: number | null
+          ExportDate?: string | null
+          Exported?: boolean | null
+          FOB?: string | null
+          FromQB?: boolean | null
+          FrtTaxPct?: number | null
+          GUIDARAccount?: string | null
+          GUIDBranch?: string | null
+          GUIDClass?: string | null
+          GUIDCurrency?: string | null
+          GUIDCustomer?: string | null
+          GUIDDepartment?: string | null
+          GUIDInvoice?: string
+          GUIDInvoiceDiscountAccount?: string | null
+          GUIDLocation?: string | null
+          GUIDOrder?: string | null
+          GUIDOrderWorkflowStatus?: string | null
+          GUIDPaymentMethod?: string | null
+          GUIDRetainageGLAccount?: string | null
+          GUIDRoute?: string | null
+          GUIDSalesperson?: string | null
+          GUIDShippingChargeAccount?: string | null
+          GUIDTaxCategory?: string | null
+          GUIDTaxCode?: string | null
+          GUIDTerms?: string | null
+          HoldReleasedBy?: string | null
+          HoldReleasedDate?: string | null
+          InDispute?: boolean | null
+          InvoiceDate?: string | null
+          InvoiceDiscountPct?: number | null
+          InvoiceFormatGUID?: string | null
+          InvoiceLink?: string | null
+          InvoiceNumber?: string | null
+          InvoiceStyle?: string | null
+          InvoiceText?: string | null
+          JobID?: string | null
+          JobNumber?: string | null
+          LastShipmentDate?: string | null
+          LocationID?: string | null
+          ManualHold?: boolean | null
+          MarketingCode?: string | null
+          MethodOfPayment?: number | null
+          Note?: string | null
+          NumberOfPackages?: number | null
+          NumberShipments?: number | null
+          OrderDate?: string | null
+          OrderNumber?: string | null
+          PackageWeight?: number | null
+          PO?: string | null
+          PostedToAR?: boolean | null
+          PreviousAmount?: unknown
+          PreviousRetainage?: unknown
+          Printed?: boolean | null
+          ReadyToPrint?: boolean | null
+          Reference?: string | null
+          Reference2?: string | null
+          RequestedShipDate?: string | null
+          RetainageAmount?: unknown
+          RetainageBilled?: boolean | null
+          Routing?: string | null
+          SalespersonID?: string | null
+          SalespersonName?: string | null
+          SalesTax?: unknown
+          ScheduleOfValuesType?: string | null
+          ShipmentPromisedDate?: string | null
+          ShippingCharge?: unknown
+          ShippingInstructions?: string | null
+          ShipToAddress1?: string | null
+          ShipToAddress2?: string | null
+          ShipToAddress3?: string | null
+          ShipToAddress4?: string | null
+          ShipToAttn?: string | null
+          ShipToCity?: string | null
+          ShipToCountry?: string | null
+          ShipToOverride?: boolean | null
+          ShipToPhoneNumber?: string | null
+          ShipToState?: string | null
+          ShipToZip?: string | null
+          ShipVia?: string | null
+          SpecialInstructions?: string | null
+          StopNumber?: number | null
+          SubTotal?: unknown
+          SyncToken?: string | null
+          TaxCode?: string | null
+          TaxCodeDescription?: string | null
+          TaxID?: string | null
+          TaxIncluded?: boolean | null
+          TaxPct?: number | null
+          TermsCode?: string | null
+          TermsDescription?: string | null
+          TotalAmount?: unknown
+          TrackingNumber?: string | null
+          TransactionPeriod?: number | null
+          TransactionYear?: number | null
+          TxnID?: string | null
+          Type?: string | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+        }
+        Relationships: []
+      }
+      dbo_tbInvoiceDetail: {
+        Row: {
+          _CommissionOverride: number | null
+          _FreightAmt: unknown
+          _FreightPct: number | null
+          _OriginalPrice: unknown
+          _skyvia_sync: string | null
+          _TariffAmt: unknown
+          _TariffPct: number | null
+          ActivityDate: string | null
+          Amount: unknown
+          AvgCost: number | null
+          BillingType: string | null
+          CGSAmount: unknown
+          CGSAmountPostedToGL: unknown
+          CGSPostedToGL: boolean | null
+          ComponentLevel: number | null
+          ComponentQuantity: number | null
+          CostUnit: string | null
+          CurrentChangeOrderAdditions: unknown
+          CurrentChangeOrderDeductions: unknown
+          Description: string | null
+          Discountable: boolean | null
+          DisplayAmount: unknown
+          DisplayPrice: number | null
+          DisplayUnit: string | null
+          DisplayUnitFactor: number | null
+          Freight: boolean | null
+          GLTransactionBatch: number | null
+          GLTransactionLine: number | null
+          GUIDCGSAccount: string | null
+          GUIDClass: string | null
+          GUIDEmployee: string | null
+          GUIDInvoice: string | null
+          GUIDInvoiceDetail: string
+          GUIDIssue: string | null
+          GUIDOrderDetail: string | null
+          GUIDProduct: string | null
+          GUIDProductClass: string | null
+          GUIDSalesAccount: string | null
+          GUIDTaxCode: string | null
+          GUIDWarehouse: string | null
+          GUIDWHLocation: string | null
+          InventoryControlType: string | null
+          InvoiceComment: string | null
+          InvoiceDiscountAmount: unknown
+          LineCancelled: boolean | null
+          LineDiscountPct: number | null
+          LineNumber: number | null
+          LineTaxAmount: unknown
+          LineTaxPrice: number | null
+          LineType: string | null
+          ListPrice: number | null
+          ListPriceType: string | null
+          MgmtCost: number | null
+          MiscChargeType: string | null
+          Note: string | null
+          PercentCompleteLastBilling: number | null
+          PercentCompleteThisBilling: number | null
+          PreviousBilling: unknown
+          PreviousChangeOrderAdditions: unknown
+          PreviousChangeOrderDeductions: unknown
+          PreviousRetainage: unknown
+          Price: number | null
+          PriceCode: string | null
+          PriceUnit: string | null
+          ProductID: string | null
+          ProductTaxID: string | null
+          ProductTaxPct: number | null
+          QtyBackOrdered: number | null
+          QtyInvoiced: number | null
+          QtyOrdered: number | null
+          QtyShipped: number | null
+          Reference: string | null
+          RetainageAmount: unknown
+          RetainagePercent: number | null
+          SalesAmount: unknown
+          ScheduledValue: unknown
+          ScheduleOfValuesCode: string | null
+          SpecialInstructions: string | null
+          StoredMaterials: unknown
+          SubLineNumber: number | null
+          TransactionDate: string | null
+          TransactionPeriod: number | null
+          TransactionYear: number | null
+          Unit: string | null
+          UnitCost: number | null
+        }
+        Insert: {
+          _CommissionOverride?: number | null
+          _FreightAmt?: unknown
+          _FreightPct?: number | null
+          _OriginalPrice?: unknown
+          _skyvia_sync?: string | null
+          _TariffAmt?: unknown
+          _TariffPct?: number | null
+          ActivityDate?: string | null
+          Amount?: unknown
+          AvgCost?: number | null
+          BillingType?: string | null
+          CGSAmount?: unknown
+          CGSAmountPostedToGL?: unknown
+          CGSPostedToGL?: boolean | null
+          ComponentLevel?: number | null
+          ComponentQuantity?: number | null
+          CostUnit?: string | null
+          CurrentChangeOrderAdditions?: unknown
+          CurrentChangeOrderDeductions?: unknown
+          Description?: string | null
+          Discountable?: boolean | null
+          DisplayAmount?: unknown
+          DisplayPrice?: number | null
+          DisplayUnit?: string | null
+          DisplayUnitFactor?: number | null
+          Freight?: boolean | null
+          GLTransactionBatch?: number | null
+          GLTransactionLine?: number | null
+          GUIDCGSAccount?: string | null
+          GUIDClass?: string | null
+          GUIDEmployee?: string | null
+          GUIDInvoice?: string | null
+          GUIDInvoiceDetail: string
+          GUIDIssue?: string | null
+          GUIDOrderDetail?: string | null
+          GUIDProduct?: string | null
+          GUIDProductClass?: string | null
+          GUIDSalesAccount?: string | null
+          GUIDTaxCode?: string | null
+          GUIDWarehouse?: string | null
+          GUIDWHLocation?: string | null
+          InventoryControlType?: string | null
+          InvoiceComment?: string | null
+          InvoiceDiscountAmount?: unknown
+          LineCancelled?: boolean | null
+          LineDiscountPct?: number | null
+          LineNumber?: number | null
+          LineTaxAmount?: unknown
+          LineTaxPrice?: number | null
+          LineType?: string | null
+          ListPrice?: number | null
+          ListPriceType?: string | null
+          MgmtCost?: number | null
+          MiscChargeType?: string | null
+          Note?: string | null
+          PercentCompleteLastBilling?: number | null
+          PercentCompleteThisBilling?: number | null
+          PreviousBilling?: unknown
+          PreviousChangeOrderAdditions?: unknown
+          PreviousChangeOrderDeductions?: unknown
+          PreviousRetainage?: unknown
+          Price?: number | null
+          PriceCode?: string | null
+          PriceUnit?: string | null
+          ProductID?: string | null
+          ProductTaxID?: string | null
+          ProductTaxPct?: number | null
+          QtyBackOrdered?: number | null
+          QtyInvoiced?: number | null
+          QtyOrdered?: number | null
+          QtyShipped?: number | null
+          Reference?: string | null
+          RetainageAmount?: unknown
+          RetainagePercent?: number | null
+          SalesAmount?: unknown
+          ScheduledValue?: unknown
+          ScheduleOfValuesCode?: string | null
+          SpecialInstructions?: string | null
+          StoredMaterials?: unknown
+          SubLineNumber?: number | null
+          TransactionDate?: string | null
+          TransactionPeriod?: number | null
+          TransactionYear?: number | null
+          Unit?: string | null
+          UnitCost?: number | null
+        }
+        Update: {
+          _CommissionOverride?: number | null
+          _FreightAmt?: unknown
+          _FreightPct?: number | null
+          _OriginalPrice?: unknown
+          _skyvia_sync?: string | null
+          _TariffAmt?: unknown
+          _TariffPct?: number | null
+          ActivityDate?: string | null
+          Amount?: unknown
+          AvgCost?: number | null
+          BillingType?: string | null
+          CGSAmount?: unknown
+          CGSAmountPostedToGL?: unknown
+          CGSPostedToGL?: boolean | null
+          ComponentLevel?: number | null
+          ComponentQuantity?: number | null
+          CostUnit?: string | null
+          CurrentChangeOrderAdditions?: unknown
+          CurrentChangeOrderDeductions?: unknown
+          Description?: string | null
+          Discountable?: boolean | null
+          DisplayAmount?: unknown
+          DisplayPrice?: number | null
+          DisplayUnit?: string | null
+          DisplayUnitFactor?: number | null
+          Freight?: boolean | null
+          GLTransactionBatch?: number | null
+          GLTransactionLine?: number | null
+          GUIDCGSAccount?: string | null
+          GUIDClass?: string | null
+          GUIDEmployee?: string | null
+          GUIDInvoice?: string | null
+          GUIDInvoiceDetail?: string
+          GUIDIssue?: string | null
+          GUIDOrderDetail?: string | null
+          GUIDProduct?: string | null
+          GUIDProductClass?: string | null
+          GUIDSalesAccount?: string | null
+          GUIDTaxCode?: string | null
+          GUIDWarehouse?: string | null
+          GUIDWHLocation?: string | null
+          InventoryControlType?: string | null
+          InvoiceComment?: string | null
+          InvoiceDiscountAmount?: unknown
+          LineCancelled?: boolean | null
+          LineDiscountPct?: number | null
+          LineNumber?: number | null
+          LineTaxAmount?: unknown
+          LineTaxPrice?: number | null
+          LineType?: string | null
+          ListPrice?: number | null
+          ListPriceType?: string | null
+          MgmtCost?: number | null
+          MiscChargeType?: string | null
+          Note?: string | null
+          PercentCompleteLastBilling?: number | null
+          PercentCompleteThisBilling?: number | null
+          PreviousBilling?: unknown
+          PreviousChangeOrderAdditions?: unknown
+          PreviousChangeOrderDeductions?: unknown
+          PreviousRetainage?: unknown
+          Price?: number | null
+          PriceCode?: string | null
+          PriceUnit?: string | null
+          ProductID?: string | null
+          ProductTaxID?: string | null
+          ProductTaxPct?: number | null
+          QtyBackOrdered?: number | null
+          QtyInvoiced?: number | null
+          QtyOrdered?: number | null
+          QtyShipped?: number | null
+          Reference?: string | null
+          RetainageAmount?: unknown
+          RetainagePercent?: number | null
+          SalesAmount?: unknown
+          ScheduledValue?: unknown
+          ScheduleOfValuesCode?: string | null
+          SpecialInstructions?: string | null
+          StoredMaterials?: unknown
+          SubLineNumber?: number | null
+          TransactionDate?: string | null
+          TransactionPeriod?: number | null
+          TransactionYear?: number | null
+          Unit?: string | null
+          UnitCost?: number | null
+        }
+        Relationships: []
+      }
+      dbo_tbOrderDetail: {
+        Row: {
+          _CommissionOverride: number | null
+          _FreightAmt: unknown
+          _FreightPct: number | null
+          _OriginalPrice: unknown
+          _skyvia_sync: string | null
+          _TariffAmt: unknown
+          _TariffPct: number | null
+          ActivityDate: string | null
+          Amount: unknown
+          BillingType: string | null
+          Completed: boolean | null
+          ComponentLevel: number | null
+          ComponentQuantity: number | null
+          CreatePO: boolean | null
+          Description: string | null
+          Discountable: boolean | null
+          DisplayAmount: unknown
+          DisplayPrice: number | null
+          DisplayUnit: string | null
+          DisplayUnitFactor: number | null
+          Exported940: boolean | null
+          Exported940Date: string | null
+          Freight: boolean | null
+          GUIDClass: string | null
+          GUIDEmployee: string | null
+          GUIDIssue: string | null
+          GUIDOrder: string | null
+          GUIDOrderDetail: string
+          GUIDParentOrderDetail: string | null
+          GUIDPODetail: string | null
+          GUIDProduct: string | null
+          GUIDProductClass: string | null
+          GUIDSubstituteForProduct: string | null
+          GUIDTaxCode: string | null
+          GUIDVendor: string | null
+          GUIDWarehouse: string | null
+          GUIDWHLocation: string | null
+          InventoryControlType: string | null
+          InvoiceComment: string | null
+          InvoiceDiscountAmount: unknown
+          Length: number | null
+          LineCancelled: boolean | null
+          LineDiscountPct: number | null
+          LineNumber: number | null
+          LineTaxAmount: unknown
+          LineTaxPrice: number | null
+          LineType: string | null
+          MiscChargeType: string | null
+          Note: string | null
+          POGUIDTaxCode: string | null
+          POPrice: number | null
+          Price: number | null
+          PriceCode: string | null
+          PriceUnit: string | null
+          PriceUnitFactor: number | null
+          PriceUnitFactorType: string | null
+          ProductID: string | null
+          ProductTaxID: string | null
+          ProductTaxPct: number | null
+          QtyBackordered: number | null
+          QtyInvoiced: number | null
+          QtyLotSerial: number | null
+          QtyOrdered: number | null
+          QtyPicked: number | null
+          QtyScheduled: number | null
+          QtyShipped: number | null
+          Reference: string | null
+          SalesCategory: string | null
+          SchedAmount: unknown
+          SchedInvoiceDiscountAmount: unknown
+          SchedLineTaxAmount: unknown
+          SpecialInstructions: string | null
+          Specification: string | null
+          SubLineNumber: number | null
+          ToBeBilled: boolean | null
+          Unit: string | null
+          VariableLength: boolean | null
+          VariableWeight: boolean | null
+          VendorProductID: string | null
+          WebOrderLineID: string | null
+          Weight: number | null
+        }
+        Insert: {
+          _CommissionOverride?: number | null
+          _FreightAmt?: unknown
+          _FreightPct?: number | null
+          _OriginalPrice?: unknown
+          _skyvia_sync?: string | null
+          _TariffAmt?: unknown
+          _TariffPct?: number | null
+          ActivityDate?: string | null
+          Amount?: unknown
+          BillingType?: string | null
+          Completed?: boolean | null
+          ComponentLevel?: number | null
+          ComponentQuantity?: number | null
+          CreatePO?: boolean | null
+          Description?: string | null
+          Discountable?: boolean | null
+          DisplayAmount?: unknown
+          DisplayPrice?: number | null
+          DisplayUnit?: string | null
+          DisplayUnitFactor?: number | null
+          Exported940?: boolean | null
+          Exported940Date?: string | null
+          Freight?: boolean | null
+          GUIDClass?: string | null
+          GUIDEmployee?: string | null
+          GUIDIssue?: string | null
+          GUIDOrder?: string | null
+          GUIDOrderDetail: string
+          GUIDParentOrderDetail?: string | null
+          GUIDPODetail?: string | null
+          GUIDProduct?: string | null
+          GUIDProductClass?: string | null
+          GUIDSubstituteForProduct?: string | null
+          GUIDTaxCode?: string | null
+          GUIDVendor?: string | null
+          GUIDWarehouse?: string | null
+          GUIDWHLocation?: string | null
+          InventoryControlType?: string | null
+          InvoiceComment?: string | null
+          InvoiceDiscountAmount?: unknown
+          Length?: number | null
+          LineCancelled?: boolean | null
+          LineDiscountPct?: number | null
+          LineNumber?: number | null
+          LineTaxAmount?: unknown
+          LineTaxPrice?: number | null
+          LineType?: string | null
+          MiscChargeType?: string | null
+          Note?: string | null
+          POGUIDTaxCode?: string | null
+          POPrice?: number | null
+          Price?: number | null
+          PriceCode?: string | null
+          PriceUnit?: string | null
+          PriceUnitFactor?: number | null
+          PriceUnitFactorType?: string | null
+          ProductID?: string | null
+          ProductTaxID?: string | null
+          ProductTaxPct?: number | null
+          QtyBackordered?: number | null
+          QtyInvoiced?: number | null
+          QtyLotSerial?: number | null
+          QtyOrdered?: number | null
+          QtyPicked?: number | null
+          QtyScheduled?: number | null
+          QtyShipped?: number | null
+          Reference?: string | null
+          SalesCategory?: string | null
+          SchedAmount?: unknown
+          SchedInvoiceDiscountAmount?: unknown
+          SchedLineTaxAmount?: unknown
+          SpecialInstructions?: string | null
+          Specification?: string | null
+          SubLineNumber?: number | null
+          ToBeBilled?: boolean | null
+          Unit?: string | null
+          VariableLength?: boolean | null
+          VariableWeight?: boolean | null
+          VendorProductID?: string | null
+          WebOrderLineID?: string | null
+          Weight?: number | null
+        }
+        Update: {
+          _CommissionOverride?: number | null
+          _FreightAmt?: unknown
+          _FreightPct?: number | null
+          _OriginalPrice?: unknown
+          _skyvia_sync?: string | null
+          _TariffAmt?: unknown
+          _TariffPct?: number | null
+          ActivityDate?: string | null
+          Amount?: unknown
+          BillingType?: string | null
+          Completed?: boolean | null
+          ComponentLevel?: number | null
+          ComponentQuantity?: number | null
+          CreatePO?: boolean | null
+          Description?: string | null
+          Discountable?: boolean | null
+          DisplayAmount?: unknown
+          DisplayPrice?: number | null
+          DisplayUnit?: string | null
+          DisplayUnitFactor?: number | null
+          Exported940?: boolean | null
+          Exported940Date?: string | null
+          Freight?: boolean | null
+          GUIDClass?: string | null
+          GUIDEmployee?: string | null
+          GUIDIssue?: string | null
+          GUIDOrder?: string | null
+          GUIDOrderDetail?: string
+          GUIDParentOrderDetail?: string | null
+          GUIDPODetail?: string | null
+          GUIDProduct?: string | null
+          GUIDProductClass?: string | null
+          GUIDSubstituteForProduct?: string | null
+          GUIDTaxCode?: string | null
+          GUIDVendor?: string | null
+          GUIDWarehouse?: string | null
+          GUIDWHLocation?: string | null
+          InventoryControlType?: string | null
+          InvoiceComment?: string | null
+          InvoiceDiscountAmount?: unknown
+          Length?: number | null
+          LineCancelled?: boolean | null
+          LineDiscountPct?: number | null
+          LineNumber?: number | null
+          LineTaxAmount?: unknown
+          LineTaxPrice?: number | null
+          LineType?: string | null
+          MiscChargeType?: string | null
+          Note?: string | null
+          POGUIDTaxCode?: string | null
+          POPrice?: number | null
+          Price?: number | null
+          PriceCode?: string | null
+          PriceUnit?: string | null
+          PriceUnitFactor?: number | null
+          PriceUnitFactorType?: string | null
+          ProductID?: string | null
+          ProductTaxID?: string | null
+          ProductTaxPct?: number | null
+          QtyBackordered?: number | null
+          QtyInvoiced?: number | null
+          QtyLotSerial?: number | null
+          QtyOrdered?: number | null
+          QtyPicked?: number | null
+          QtyScheduled?: number | null
+          QtyShipped?: number | null
+          Reference?: string | null
+          SalesCategory?: string | null
+          SchedAmount?: unknown
+          SchedInvoiceDiscountAmount?: unknown
+          SchedLineTaxAmount?: unknown
+          SpecialInstructions?: string | null
+          Specification?: string | null
+          SubLineNumber?: number | null
+          ToBeBilled?: boolean | null
+          Unit?: string | null
+          VariableLength?: boolean | null
+          VariableWeight?: boolean | null
+          VendorProductID?: string | null
+          WebOrderLineID?: string | null
+          Weight?: number | null
+        }
+        Relationships: []
+      }
+      dbo_tbProduct: {
+        Row: {
+          _CommissionPct: number | null
+          _NewIntroUnavail: boolean | null
+          _QBID: string | null
+          _RoyaltyParty: string | null
+          _RoyaltyPct: number | null
+          _skyvia_sync: string | null
+          AltDescription: string | null
+          AltHeight: number | null
+          AltLength: number | null
+          AltUnitsPerPalletLayer: number | null
+          AltVolume: number | null
+          AltWeight: number | null
+          AltWidth: number | null
+          AssemblyType: string | null
+          AvailOnWeb: boolean | null
+          Color: string | null
+          CostMethod: string | null
+          CountCycle: string | null
+          CreatedBy: string | null
+          CreatedDate: string | null
+          Description: string | null
+          Discontinued: boolean | null
+          GUIDProduct: string
+          GUIDProductClass: string | null
+          GUIDTaxCategory: string | null
+          Height: number | null
+          InnerPackQty: number | null
+          InventoryControlType: string | null
+          LandedCostFactor: number | null
+          LeadTime: number | null
+          Length: number | null
+          MaintainInventoryType: number | null
+          Note: string | null
+          NotForResale: boolean | null
+          OuterPackQty: number | null
+          PackageUnit: string | null
+          PalletLayers: number | null
+          PONote: string | null
+          POPopup: boolean | null
+          Popup: boolean | null
+          ProductID: string | null
+          ProductPicture: string | null
+          ProductPicture256: string | null
+          ProductPriceCategory: string | null
+          ProductType: string | null
+          PurchaseGUIDTaxCode: string | null
+          PurchaseUnit: string | null
+          SalesCategory: string | null
+          SalesGUIDTaxCode: string | null
+          SalesUnit: string | null
+          ShipCompleteLots: boolean | null
+          Size: string | null
+          Specification: string | null
+          Status: boolean | null
+          TechSpec: string | null
+          Unit: string | null
+          UpdatedBy: string | null
+          UpdatedDate: string | null
+          VariableHeight: boolean | null
+          VariableLength: boolean | null
+          VariableVolume: boolean | null
+          VariableWeight: boolean | null
+          VariableWidth: boolean | null
+          Volume: number | null
+          WebAddress: string | null
+          Weight: number | null
+          Width: number | null
+        }
+        Insert: {
+          _CommissionPct?: number | null
+          _NewIntroUnavail?: boolean | null
+          _QBID?: string | null
+          _RoyaltyParty?: string | null
+          _RoyaltyPct?: number | null
+          _skyvia_sync?: string | null
+          AltDescription?: string | null
+          AltHeight?: number | null
+          AltLength?: number | null
+          AltUnitsPerPalletLayer?: number | null
+          AltVolume?: number | null
+          AltWeight?: number | null
+          AltWidth?: number | null
+          AssemblyType?: string | null
+          AvailOnWeb?: boolean | null
+          Color?: string | null
+          CostMethod?: string | null
+          CountCycle?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          Description?: string | null
+          Discontinued?: boolean | null
+          GUIDProduct: string
+          GUIDProductClass?: string | null
+          GUIDTaxCategory?: string | null
+          Height?: number | null
+          InnerPackQty?: number | null
+          InventoryControlType?: string | null
+          LandedCostFactor?: number | null
+          LeadTime?: number | null
+          Length?: number | null
+          MaintainInventoryType?: number | null
+          Note?: string | null
+          NotForResale?: boolean | null
+          OuterPackQty?: number | null
+          PackageUnit?: string | null
+          PalletLayers?: number | null
+          PONote?: string | null
+          POPopup?: boolean | null
+          Popup?: boolean | null
+          ProductID?: string | null
+          ProductPicture?: string | null
+          ProductPicture256?: string | null
+          ProductPriceCategory?: string | null
+          ProductType?: string | null
+          PurchaseGUIDTaxCode?: string | null
+          PurchaseUnit?: string | null
+          SalesCategory?: string | null
+          SalesGUIDTaxCode?: string | null
+          SalesUnit?: string | null
+          ShipCompleteLots?: boolean | null
+          Size?: string | null
+          Specification?: string | null
+          Status?: boolean | null
+          TechSpec?: string | null
+          Unit?: string | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+          VariableHeight?: boolean | null
+          VariableLength?: boolean | null
+          VariableVolume?: boolean | null
+          VariableWeight?: boolean | null
+          VariableWidth?: boolean | null
+          Volume?: number | null
+          WebAddress?: string | null
+          Weight?: number | null
+          Width?: number | null
+        }
+        Update: {
+          _CommissionPct?: number | null
+          _NewIntroUnavail?: boolean | null
+          _QBID?: string | null
+          _RoyaltyParty?: string | null
+          _RoyaltyPct?: number | null
+          _skyvia_sync?: string | null
+          AltDescription?: string | null
+          AltHeight?: number | null
+          AltLength?: number | null
+          AltUnitsPerPalletLayer?: number | null
+          AltVolume?: number | null
+          AltWeight?: number | null
+          AltWidth?: number | null
+          AssemblyType?: string | null
+          AvailOnWeb?: boolean | null
+          Color?: string | null
+          CostMethod?: string | null
+          CountCycle?: string | null
+          CreatedBy?: string | null
+          CreatedDate?: string | null
+          Description?: string | null
+          Discontinued?: boolean | null
+          GUIDProduct?: string
+          GUIDProductClass?: string | null
+          GUIDTaxCategory?: string | null
+          Height?: number | null
+          InnerPackQty?: number | null
+          InventoryControlType?: string | null
+          LandedCostFactor?: number | null
+          LeadTime?: number | null
+          Length?: number | null
+          MaintainInventoryType?: number | null
+          Note?: string | null
+          NotForResale?: boolean | null
+          OuterPackQty?: number | null
+          PackageUnit?: string | null
+          PalletLayers?: number | null
+          PONote?: string | null
+          POPopup?: boolean | null
+          Popup?: boolean | null
+          ProductID?: string | null
+          ProductPicture?: string | null
+          ProductPicture256?: string | null
+          ProductPriceCategory?: string | null
+          ProductType?: string | null
+          PurchaseGUIDTaxCode?: string | null
+          PurchaseUnit?: string | null
+          SalesCategory?: string | null
+          SalesGUIDTaxCode?: string | null
+          SalesUnit?: string | null
+          ShipCompleteLots?: boolean | null
+          Size?: string | null
+          Specification?: string | null
+          Status?: boolean | null
+          TechSpec?: string | null
+          Unit?: string | null
+          UpdatedBy?: string | null
+          UpdatedDate?: string | null
+          VariableHeight?: boolean | null
+          VariableLength?: boolean | null
+          VariableVolume?: boolean | null
+          VariableWeight?: boolean | null
+          VariableWidth?: boolean | null
+          Volume?: number | null
+          WebAddress?: string | null
+          Weight?: number | null
+          Width?: number | null
+        }
+        Relationships: []
+      }
+      dbo_tbSalespersonInfo: {
+        Row: {
+          _skyvia_sync: string | null
+          GUIDClass: string | null
+          GUIDCOGSAccount: string | null
+          GUIDLink: string | null
+          GUIDReturnsAccount: string | null
+          GUIDSalesAccount: string | null
+          GUIDSalesperson: string
+          GUIDTradeDiscount: string | null
+          ItemListID: string | null
+          LinkType: string | null
+          Name: string | null
+          SalespersonID: string | null
+          SalespersonListID: string | null
+          Status: boolean | null
+          TimeCreated: string | null
+          TimeModified: string | null
+        }
+        Insert: {
+          _skyvia_sync?: string | null
+          GUIDClass?: string | null
+          GUIDCOGSAccount?: string | null
+          GUIDLink?: string | null
+          GUIDReturnsAccount?: string | null
+          GUIDSalesAccount?: string | null
+          GUIDSalesperson: string
+          GUIDTradeDiscount?: string | null
+          ItemListID?: string | null
+          LinkType?: string | null
+          Name?: string | null
+          SalespersonID?: string | null
+          SalespersonListID?: string | null
+          Status?: boolean | null
+          TimeCreated?: string | null
+          TimeModified?: string | null
+        }
+        Update: {
+          _skyvia_sync?: string | null
+          GUIDClass?: string | null
+          GUIDCOGSAccount?: string | null
+          GUIDLink?: string | null
+          GUIDReturnsAccount?: string | null
+          GUIDSalesAccount?: string | null
+          GUIDSalesperson?: string
+          GUIDTradeDiscount?: string | null
+          ItemListID?: string | null
+          LinkType?: string | null
+          Name?: string | null
+          SalespersonID?: string | null
+          SalespersonListID?: string | null
+          Status?: boolean | null
+          TimeCreated?: string | null
+          TimeModified?: string | null
+        }
+        Relationships: []
+      }
+      dbo_Warehouse: {
+        Row: {
+          _skyvia_sync: string | null
+          Active: boolean | null
+          Address: string | null
+          Address1: string | null
+          Address2: string | null
+          Address3: string | null
+          Address4: string | null
+          AdjustmentAccountID: string | null
+          AllowPicklists: boolean | null
+          AssemblyLaborAccountID: string | null
+          AssemblyOtherCostAccountID: string | null
+          AssociatedBranchID: string | null
+          AssociatedGUIDBranch: string | null
+          City: string | null
+          Country: string | null
+          Description: string | null
+          EMail: string | null
+          FAX: string | null
+          FOB: string | null
+          GainLossAccountID: string | null
+          GUIDAdjustmentAccount: string | null
+          GUIDAssemblyLaborAccount: string | null
+          GUIDAssemblyOtherCostAccount: string | null
+          GUIDDepartment: string | null
+          GUIDGainLossAccount: string | null
+          GUIDInventoryAccount: string | null
+          GUIDIssueAccount: string | null
+          GUIDLaborOffsetAccount: string | null
+          GUIDLandedCostOffsetAccount: string | null
+          GUIDNonInvOffsetAccount: string | null
+          GUIDOtherChargeOffsetAccount: string | null
+          GUIDPartner: string | null
+          GUIDPurchaseAccount: string | null
+          GUIDShippingOffsetAccount: string | null
+          GUIDWarehouse: string
+          InventoryAccountID: string | null
+          IssueAccountID: string | null
+          LaborCost: unknown
+          LaborOffsetAccountID: string | null
+          LandedCostOffsetAccountID: string | null
+          Layout: string | null
+          MaintainInventory: boolean | null
+          Name: string | null
+          NonInvOffsetAccountID: string | null
+          OtherChargeOffsetAccountID: string | null
+          Phone: string | null
+          PurchaseAccountID: string | null
+          ShippingOffsetAccountID: string | null
+          ShipToAttentionOf: string | null
+          ShipVia: string | null
+          State: string | null
+          WarehouseID: string | null
+          Zip: string | null
+        }
+        Insert: {
+          _skyvia_sync?: string | null
+          Active?: boolean | null
+          Address?: string | null
+          Address1?: string | null
+          Address2?: string | null
+          Address3?: string | null
+          Address4?: string | null
+          AdjustmentAccountID?: string | null
+          AllowPicklists?: boolean | null
+          AssemblyLaborAccountID?: string | null
+          AssemblyOtherCostAccountID?: string | null
+          AssociatedBranchID?: string | null
+          AssociatedGUIDBranch?: string | null
+          City?: string | null
+          Country?: string | null
+          Description?: string | null
+          EMail?: string | null
+          FAX?: string | null
+          FOB?: string | null
+          GainLossAccountID?: string | null
+          GUIDAdjustmentAccount?: string | null
+          GUIDAssemblyLaborAccount?: string | null
+          GUIDAssemblyOtherCostAccount?: string | null
+          GUIDDepartment?: string | null
+          GUIDGainLossAccount?: string | null
+          GUIDInventoryAccount?: string | null
+          GUIDIssueAccount?: string | null
+          GUIDLaborOffsetAccount?: string | null
+          GUIDLandedCostOffsetAccount?: string | null
+          GUIDNonInvOffsetAccount?: string | null
+          GUIDOtherChargeOffsetAccount?: string | null
+          GUIDPartner?: string | null
+          GUIDPurchaseAccount?: string | null
+          GUIDShippingOffsetAccount?: string | null
+          GUIDWarehouse: string
+          InventoryAccountID?: string | null
+          IssueAccountID?: string | null
+          LaborCost?: unknown
+          LaborOffsetAccountID?: string | null
+          LandedCostOffsetAccountID?: string | null
+          Layout?: string | null
+          MaintainInventory?: boolean | null
+          Name?: string | null
+          NonInvOffsetAccountID?: string | null
+          OtherChargeOffsetAccountID?: string | null
+          Phone?: string | null
+          PurchaseAccountID?: string | null
+          ShippingOffsetAccountID?: string | null
+          ShipToAttentionOf?: string | null
+          ShipVia?: string | null
+          State?: string | null
+          WarehouseID?: string | null
+          Zip?: string | null
+        }
+        Update: {
+          _skyvia_sync?: string | null
+          Active?: boolean | null
+          Address?: string | null
+          Address1?: string | null
+          Address2?: string | null
+          Address3?: string | null
+          Address4?: string | null
+          AdjustmentAccountID?: string | null
+          AllowPicklists?: boolean | null
+          AssemblyLaborAccountID?: string | null
+          AssemblyOtherCostAccountID?: string | null
+          AssociatedBranchID?: string | null
+          AssociatedGUIDBranch?: string | null
+          City?: string | null
+          Country?: string | null
+          Description?: string | null
+          EMail?: string | null
+          FAX?: string | null
+          FOB?: string | null
+          GainLossAccountID?: string | null
+          GUIDAdjustmentAccount?: string | null
+          GUIDAssemblyLaborAccount?: string | null
+          GUIDAssemblyOtherCostAccount?: string | null
+          GUIDDepartment?: string | null
+          GUIDGainLossAccount?: string | null
+          GUIDInventoryAccount?: string | null
+          GUIDIssueAccount?: string | null
+          GUIDLaborOffsetAccount?: string | null
+          GUIDLandedCostOffsetAccount?: string | null
+          GUIDNonInvOffsetAccount?: string | null
+          GUIDOtherChargeOffsetAccount?: string | null
+          GUIDPartner?: string | null
+          GUIDPurchaseAccount?: string | null
+          GUIDShippingOffsetAccount?: string | null
+          GUIDWarehouse?: string
+          InventoryAccountID?: string | null
+          IssueAccountID?: string | null
+          LaborCost?: unknown
+          LaborOffsetAccountID?: string | null
+          LandedCostOffsetAccountID?: string | null
+          Layout?: string | null
+          MaintainInventory?: boolean | null
+          Name?: string | null
+          NonInvOffsetAccountID?: string | null
+          OtherChargeOffsetAccountID?: string | null
+          Phone?: string | null
+          PurchaseAccountID?: string | null
+          ShippingOffsetAccountID?: string | null
+          ShipToAttentionOf?: string | null
+          ShipVia?: string | null
+          State?: string | null
+          WarehouseID?: string | null
+          Zip?: string | null
         }
         Relationships: []
       }
@@ -1276,6 +6047,44 @@ export type Database = {
           },
         ]
       }
+      manager_task_updates: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          mentions: string[]
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          mentions?: string[]
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          mentions?: string[]
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_task_updates_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "manager_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       manager_tasks: {
         Row: {
           assigned_manager_id: string | null
@@ -1287,6 +6096,7 @@ export type Database = {
           due_date: string | null
           group_id: string | null
           id: string
+          is_sop: boolean
           position: number | null
           status: Database["public"]["Enums"]["manager_task_status"]
           title: string
@@ -1304,6 +6114,7 @@ export type Database = {
           due_date?: string | null
           group_id?: string | null
           id?: string
+          is_sop?: boolean
           position?: number | null
           status?: Database["public"]["Enums"]["manager_task_status"]
           title: string
@@ -1321,6 +6132,7 @@ export type Database = {
           due_date?: string | null
           group_id?: string | null
           id?: string
+          is_sop?: boolean
           position?: number | null
           status?: Database["public"]["Enums"]["manager_task_status"]
           title?: string
@@ -1341,6 +6153,47 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "task_board_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manager_weekly_reviews: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          manager_id: string
+          responses: Json
+          updated_at: string
+          updated_by: string | null
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          manager_id: string
+          responses?: Json
+          updated_at?: string
+          updated_by?: string | null
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          manager_id?: string
+          responses?: Json
+          updated_at?: string
+          updated_by?: string | null
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_weekly_reviews_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "managers"
             referencedColumns: ["id"]
           },
         ]
@@ -2379,6 +7232,68 @@ export type Database = {
         }
         Relationships: []
       }
+      sop_template_items: {
+        Row: {
+          created_at: string
+          id: string
+          position: number
+          template_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          position?: number
+          template_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          position?: number
+          template_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sop_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "sop_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sop_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_builtin: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_builtin?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_builtin?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -2610,9 +7525,11 @@ export type Database = {
       trade_show_leads: {
         Row: {
           additional_email: string | null
+          address: string | null
           contact_name: string | null
           created_at: string
           created_by: string | null
+          crm_account_id: string | null
           dealer: string | null
           email: string | null
           id: string
@@ -2623,6 +7540,7 @@ export type Database = {
           order_amount: number | null
           phone: string | null
           product_interest: string | null
+          prospect_types: string[]
           raw: Json | null
           rep_email: string | null
           sales_rep: string | null
@@ -2632,9 +7550,11 @@ export type Database = {
         }
         Insert: {
           additional_email?: string | null
+          address?: string | null
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
+          crm_account_id?: string | null
           dealer?: string | null
           email?: string | null
           id?: string
@@ -2645,6 +7565,7 @@ export type Database = {
           order_amount?: number | null
           phone?: string | null
           product_interest?: string | null
+          prospect_types?: string[]
           raw?: Json | null
           rep_email?: string | null
           sales_rep?: string | null
@@ -2654,9 +7575,11 @@ export type Database = {
         }
         Update: {
           additional_email?: string | null
+          address?: string | null
           contact_name?: string | null
           created_at?: string
           created_by?: string | null
+          crm_account_id?: string | null
           dealer?: string | null
           email?: string | null
           id?: string
@@ -2667,6 +7590,7 @@ export type Database = {
           order_amount?: number | null
           phone?: string | null
           product_interest?: string | null
+          prospect_types?: string[]
           raw?: Json | null
           rep_email?: string | null
           sales_rep?: string | null
@@ -2675,6 +7599,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trade_show_leads_crm_account_id_fkey"
+            columns: ["crm_account_id"]
+            isOneToOne: false
+            referencedRelation: "crm_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trade_show_leads_market_id_fkey"
             columns: ["market_id"]
@@ -2908,6 +7839,15 @@ export type Database = {
           },
         ]
       }
+      inventory_live_onhand: {
+        Row: {
+          last_synced_at: string | null
+          on_hand: number | null
+          on_hand_value: number | null
+          sku: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _post_task_assigned_email: {
@@ -2921,6 +7861,15 @@ export type Database = {
           full_name: string
           role: string
           user_id: string
+        }[]
+      }
+      bookings_all_in_range: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          dealer_acctivate_id: string
+          dealer_id: string
+          extended_value: number
+          order_date: string
         }[]
       }
       can_view_manager_task: { Args: { _task_id: string }; Returns: boolean }

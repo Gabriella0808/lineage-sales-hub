@@ -29,6 +29,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DueDatePopover } from "@/components/DueDatePopover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Plus,
   LayoutGrid,
@@ -40,8 +51,15 @@ import {
   GripVertical,
   UserPlus,
   X,
+  Check,
+  Filter,
+  MessageSquarePlus,
 } from "lucide-react";
-import { format } from "date-fns";
+import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
+
+import { format, addDays, endOfDay, endOfWeek, isWithinInterval, parseISO, startOfDay, startOfWeek } from "date-fns";
+
+type DueFilter = "any" | "overdue" | "today" | "this_week" | "next_7" | "none";
 import { parseDateOnly } from "@/lib/utils";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
@@ -92,6 +110,8 @@ interface BoardTask {
   group_id: string | null;
   user_id: string;
   assigned_user_id: string | null;
+  is_sop?: boolean;
+  created_at?: string;
 }
 
 export default function TaskBoardsView() {
@@ -101,16 +121,30 @@ export default function TaskBoardsView() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [tasks, setTasks] = useState<BoardTask[]>([]);
   const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
+  const [addingGroupId, setAddingGroupId] = useState<string | null>(null);
+  const [newItemTitle, setNewItemTitle] = useState("");
+  const [statusFilter, setStatusFilter] = useState<Status[]>([]);
+  const [contextQuery, setContextQuery] = useState("");
+  const [responsibleFilter, setResponsibleFilter] = useState<string[]>([]);
+  const [dueFilter, setDueFilter] = useState<DueFilter>("any");
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatesTaskId, setUpdatesTaskId] = useState<string | null>(null);
+  const [updateCounts, setUpdateCounts] = useState<Record<string, number>>({});
 
   // dialogs
   const [boardDlgOpen, setBoardDlgOpen] = useState(false);
   const [editingBoard, setEditingBoard] = useState<Board | null>(null);
   const [boardForm, setBoardForm] = useState({ name: "", description: "", color: GROUP_COLORS[0] });
+  const [showCompletedSop, setShowCompletedSop] = useState(false);
 
   const [groupDlgOpen, setGroupDlgOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [groupForm, setGroupForm] = useState({ name: "", color: GROUP_COLORS[0] });
+  const [inlineEditingGroupId, setInlineEditingGroupId] = useState<string | null>(null);
+  const [inlineEditName, setInlineEditName] = useState("");
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
 
   const [taskDlgOpen, setTaskDlgOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<BoardTask | null>(null);
@@ -122,12 +156,14 @@ export default function TaskBoardsView() {
     group_id: string | null;
     assignee_ids: string[];
   }>({ title: "", description: "", status: "todo", due_date: "", group_id: null, assignee_ids: [] });
+  const [inlineEditingTaskId, setInlineEditingTaskId] = useState<string | null>(null);
+  const [inlineEditTaskTitle, setInlineEditTaskTitle] = useState("");
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [detailsTask, setDetailsTask] = useState<BoardTask | null>(null);
 
   // members / subscribers
-  const [shareDlgOpen, setShareDlgOpen] = useState(false);
+  const [subscribeDlgOpen, setSubscribeDlgOpen] = useState(false);
   const [members, setMembers] = useState<{ user_id: string }[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<{ user_id: string; full_name: string | null; email: string | null }[]>([]);
   const [taskAssignees, setTaskAssignees] = useState<Record<string, string[]>>({});
@@ -141,8 +177,9 @@ export default function TaskBoardsView() {
       supabase.from("task_board_groups" as any).select("*").order("position", { ascending: true }),
       supabase
         .from("manager_tasks")
-        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id")
-        .not("board_id", "is", null),
+        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id,is_sop,created_at")
+        .not("board_id", "is", null)
+        .order("created_at", { ascending: false }),
       supabase.rpc("assignable_users"),
     ]);
     if (!bRes.error) {
@@ -167,8 +204,22 @@ export default function TaskBoardsView() {
           (map[r.task_id] ||= []).push(r.user_id);
         });
         setTaskAssignees(map);
+
+        const [{ data: uData }, { data: atData }] = await Promise.all([
+          supabase.from("manager_task_updates" as any).select("task_id").in("task_id", ids),
+          supabase.from("manager_task_attachments" as any).select("task_id").in("task_id", ids),
+        ]);
+        const counts: Record<string, number> = {};
+        (uData ?? []).forEach((r: any) => {
+          counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+        });
+        (atData ?? []).forEach((r: any) => {
+          counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+        });
+        setUpdateCounts(counts);
       } else {
         setTaskAssignees({});
+        setUpdateCounts({});
       }
     }
     if (!uRes.error) setAssignableUsers((uRes.data ?? []) as any);
@@ -196,13 +247,13 @@ export default function TaskBoardsView() {
           if (payload.eventType === "INSERT") {
             if (!newRow?.board_id) return;
             setTasks((prev) =>
-              prev.some((t) => t.id === newRow.id) ? prev : [...prev, newRow as BoardTask]
+              prev.some((t) => t.id === newRow.id) ? prev : [newRow as BoardTask, ...prev]
             );
           } else if (payload.eventType === "UPDATE") {
             setTasks((prev) => {
               const exists = prev.some((t) => t.id === newRow.id);
               if (!exists) {
-                return newRow?.board_id ? [...prev, newRow as BoardTask] : prev;
+                return newRow?.board_id ? [newRow as BoardTask, ...prev] : prev;
               }
               if (!newRow?.board_id) return prev.filter((t) => t.id !== newRow.id);
               return prev.map((t) => (t.id === newRow.id ? { ...t, ...newRow } : t));
@@ -228,6 +279,7 @@ export default function TaskBoardsView() {
 
   const activeBoard = boards.find((b) => b.id === activeBoardId) ?? null;
   const isBoardOwner = !!user && !!activeBoard && activeBoard.created_by === user.id;
+  const canManageBoardGroups = !!user && !!activeBoard;
   const boardGroups = useMemo(
     () => groups.filter((g) => g.board_id === activeBoardId).sort((a, b) => a.position - b.position),
     [groups, activeBoardId],
@@ -237,8 +289,8 @@ export default function TaskBoardsView() {
     [tasks, activeBoardId],
   );
 
-  // --- Board CRUD ---
-  const openNewBoard = () => {
+  // - Board CRUD ---
+  const openNewBoard = async () => {
     setEditingBoard(null);
     setBoardForm({ name: "", description: "", color: GROUP_COLORS[0] });
     setBoardDlgOpen(true);
@@ -275,8 +327,9 @@ export default function TaskBoardsView() {
         .select("id")
         .single();
       if (error || !data) return toast({ title: "Create failed", description: error?.message, variant: "destructive" });
-      // seed default groups
       const newId = (data as any).id as string;
+
+      // seed default groups
       await supabase.from("task_board_groups" as any).insert([
         { board_id: newId, name: "To Do", color: "#6366f1", position: 0 },
         { board_id: newId, name: "In Progress", color: "#f59e0b", position: 1 },
@@ -296,11 +349,11 @@ export default function TaskBoardsView() {
     load();
   };
 
-  // --- Members / Subscribers ---
-  const openShareDialog = async () => {
+  // - Members / Subscribers ---
+  const openSubscribeDialog = async () => {
     if (!activeBoardId) return;
     setAddUserId("");
-    setShareDlgOpen(true);
+    setSubscribeDlgOpen(true);
     const [mRes, uRes] = await Promise.all([
       supabase.from("task_board_members" as any).select("user_id").eq("board_id", activeBoardId),
       supabase.rpc("assignable_users"),
@@ -361,7 +414,7 @@ export default function TaskBoardsView() {
     setMembers((m) => m.filter((x) => x.user_id !== uid));
   };
 
-  // --- Group CRUD ---
+  // - Group CRUD ---
   const openNewGroup = () => {
     setEditingGroup(null);
     setGroupForm({ name: "", color: GROUP_COLORS[boardGroups.length % GROUP_COLORS.length] });
@@ -398,8 +451,78 @@ export default function TaskBoardsView() {
     if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     load();
   };
+  const saveInlineGroupName = async (groupId: string, name: string) => {
+    if (!name.trim()) return;
+    const { error } = await supabase
+      .from("task_board_groups" as any)
+      .update({ name: name.trim() })
+      .eq("id", groupId);
+    if (error) {
+      toast({ title: "Rename failed", description: error.message, variant: "destructive" });
+    } else {
+      setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, name: name.trim() } : g)));
+    }
+    setInlineEditingGroupId(null);
+    setInlineEditName("");
+  };
 
-  // --- Task CRUD ---
+  // Reorder a "block" within the active board. A block is either the merged
+  // default workflow block (key "default") or a single custom group
+  // (key "custom:<id>"). The default block's groups always stay grouped.
+  const reorderBlock = async (draggedKey: string, targetKey: string) => {
+    if (!activeBoardId || draggedKey === targetKey) return;
+    const current = groups
+      .filter((g) => g.board_id === activeBoardId)
+      .sort((a, b) => a.position - b.position);
+    const defaults = current
+      .filter((g) => (DEFAULT_GROUP_NAMES as readonly string[]).includes(g.name))
+      .sort(
+        (a, b) =>
+          (DEFAULT_GROUP_NAMES as readonly string[]).indexOf(a.name) -
+          (DEFAULT_GROUP_NAMES as readonly string[]).indexOf(b.name),
+      );
+    const customs = current.filter(
+      (g) => !(DEFAULT_GROUP_NAMES as readonly string[]).includes(g.name),
+    );
+    type Block = { key: string; groups: Group[]; minPos: number };
+    const blocks: Block[] = [];
+    if (defaults.length > 0) {
+      blocks.push({
+        key: "default",
+        groups: defaults,
+        minPos: Math.min(...defaults.map((g) => g.position)),
+      });
+    }
+    customs.forEach((g) => blocks.push({ key: `custom:${g.id}`, groups: [g], minPos: g.position }));
+    blocks.sort((a, b) => a.minPos - b.minPos);
+    const fromIdx = blocks.findIndex((b) => b.key === draggedKey);
+    const toIdx = blocks.findIndex((b) => b.key === targetKey);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const next = [...blocks];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    let counter = 0;
+    const updates: { id: string; position: number }[] = [];
+    next.forEach((b) => {
+      b.groups.forEach((g) => {
+        updates.push({ id: g.id, position: counter });
+        counter += 1;
+      });
+    });
+    const byId = new Map(updates.map((u) => [u.id, u.position] as const));
+    setGroups((prev) =>
+      prev.map((g) => (byId.has(g.id) ? { ...g, position: byId.get(g.id)! } : g)),
+    );
+    await Promise.all(
+      updates.map((u) =>
+        supabase.from("task_board_groups" as any).update({ position: u.position }).eq("id", u.id),
+      ),
+    );
+  };
+
+
+
+  // - Task CRUD ---
   const openNewTask = (groupId: string | null, status: Status = "todo") => {
     setEditingTask(null);
     setTaskForm({ title: "", description: "", status, due_date: "", group_id: groupId, assignee_ids: [] });
@@ -425,15 +548,17 @@ export default function TaskBoardsView() {
       toast({ title: "Title is required", variant: "destructive" });
       return;
     }
-    // Auto-route group_id from status: if the chosen status maps to one of this
-    // board's groups (by name) and the user didn't pick a different matching
-    // group, move the task into the status-matching group automatically.
+    // Auto-route group_id from status only for default workflow groups.
+    // If the task is in (or being placed in) a custom user-created group,
+    // respect that choice and never auto-move it based on status.
     let effectiveGroupId = taskForm.group_id;
     const currentGroup = effectiveGroupId
       ? groups.find((g) => g.id === effectiveGroupId)
       : null;
+    const isCustomGroup =
+      !!currentGroup && !(DEFAULT_GROUP_NAMES as readonly string[]).includes(currentGroup.name);
     const currentGroupStatus = inferStatusFromGroupName(currentGroup?.name);
-    if (!currentGroup || (currentGroupStatus && currentGroupStatus !== taskForm.status)) {
+    if (!isCustomGroup && (!currentGroup || (currentGroupStatus && currentGroupStatus !== taskForm.status))) {
       const matchedGroupId = findGroupForStatus(activeBoardId, taskForm.status);
       if (matchedGroupId) effectiveGroupId = matchedGroupId;
     }
@@ -489,6 +614,24 @@ export default function TaskBoardsView() {
     if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     load();
   };
+  const saveInlineTaskTitle = async (taskId: string, title: string) => {
+    if (!title.trim()) {
+      setInlineEditingTaskId(null);
+      setInlineEditTaskTitle("");
+      return;
+    }
+    const { error } = await supabase
+      .from("manager_tasks")
+      .update({ title: title.trim() })
+      .eq("id", taskId);
+    if (error) {
+      toast({ title: "Rename failed", description: error.message, variant: "destructive" });
+    } else {
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, title: title.trim() } : t)));
+    }
+    setInlineEditingTaskId(null);
+    setInlineEditTaskTitle("");
+  };
   const findGroupForStatus = (boardId: string | null, status: Status): string | null => {
     if (!boardId) return null;
     const candidates = groups.filter((g) => g.board_id === boardId);
@@ -498,7 +641,14 @@ export default function TaskBoardsView() {
   const updateTaskStatus = async (id: string, status: Status) => {
     const prev = tasks;
     const task = tasks.find((t) => t.id === id);
-    const targetGroupId = task ? findGroupForStatus(task.board_id, status) : null;
+    // Only auto-route into a default workflow group when the task is currently
+    // ungrouped or already in a default group. Tasks inside custom user-created
+    // groups must stay put regardless of status changes.
+    const currentGroup = task?.group_id ? groups.find((g) => g.id === task.group_id) : null;
+    const isInCustomGroup =
+      !!currentGroup && !(DEFAULT_GROUP_NAMES as readonly string[]).includes(currentGroup.name);
+    const targetGroupId =
+      task && !isInCustomGroup ? findGroupForStatus(task.board_id, status) : null;
     const shouldMove = targetGroupId && task && task.group_id !== targetGroupId;
 
     setTasks((ts) =>
@@ -512,6 +662,79 @@ export default function TaskBoardsView() {
     if (error) {
       setTasks(prev);
       toast({ title: "Status update failed", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const updateTaskDueDate = async (id: string, date: Date | null) => {
+    const iso = date ? format(date, "yyyy-MM-dd") : null;
+    const prev = tasks;
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, due_date: iso } : t)));
+    const { error } = await supabase.from("manager_tasks").update({ due_date: iso }).eq("id", id);
+    if (error) {
+      setTasks(prev);
+      toast({ title: "Date update failed", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const setTaskAssigneesInline = async (id: string, ids: string[]) => {
+    const prev = taskAssignees;
+    setTaskAssignees((m) => ({ ...m, [id]: ids }));
+    await supabase.from("manager_task_assignees").delete().eq("task_id", id);
+    if (ids.length) {
+      const rows = ids.map((uid) => ({ task_id: id, user_id: uid }));
+      const { error } = await supabase.from("manager_task_assignees").insert(rows);
+      if (error) {
+        setTaskAssignees(prev);
+        toast({ title: "Assign failed", description: error.message, variant: "destructive" });
+        return;
+      }
+    }
+    await supabase
+      .from("manager_tasks")
+      .update({ assigned_user_id: ids[0] ?? null })
+      .eq("id", id);
+    setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, assigned_user_id: ids[0] ?? null } : t)));
+  };
+
+  const quickCreateTask = async (groupId: string, title: string, status: Status = "todo") => {
+    if (!user || !activeBoardId || !title.trim()) return;
+    const group = groups.find((g) => g.id === groupId);
+    const inferred = inferStatusFromGroupName(group?.name);
+    const finalStatus = inferred ?? status;
+    const tempId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    const optimistic: BoardTask = {
+      id: tempId,
+      title: title.trim(),
+      description: null,
+      status: finalStatus,
+      due_date: null,
+      board_id: activeBoardId,
+      group_id: groupId,
+      user_id: user.id,
+      assigned_user_id: null,
+      is_sop: false,
+      created_at: now,
+    };
+    setTasks((prev) => [optimistic, ...prev]);
+    const { data, error } = await supabase
+      .from("manager_tasks")
+      .insert({
+        id: tempId,
+        title: title.trim(),
+        status: finalStatus,
+        board_id: activeBoardId,
+        group_id: groupId,
+        user_id: user.id,
+        visibility: "public",
+      })
+      .select("*")
+      .single();
+    if (error || !data) {
+      setTasks((prev) => prev.filter((t) => t.id !== tempId));
+      toast({ title: "Create failed", description: error?.message ?? "Unknown error", variant: "destructive" });
+    } else {
+      setTasks((prev) => prev.map((t) => (t.id === tempId ? (data as BoardTask) : t)));
     }
   };
   const inferStatusFromGroupName = (name: string | undefined): Status | null => {
@@ -556,7 +779,7 @@ export default function TaskBoardsView() {
     await updateTaskStatus(id, status);
   };
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading boards…</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>;
 
   return (
     <div className="space-y-4">
@@ -568,7 +791,7 @@ export default function TaskBoardsView() {
             onValueChange={(v) => setActiveBoardId(v)}
           >
             <SelectTrigger className="h-9 w-[280px] bg-card">
-              <SelectValue placeholder={boards.length ? "Select a board…" : "No boards yet"} />
+              <SelectValue placeholder={boards.length ? "Select a board" : "No boards yet"} />
             </SelectTrigger>
             <SelectContent>
               {boards.map((b) => (
@@ -623,14 +846,26 @@ export default function TaskBoardsView() {
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              <Button size="sm" variant="outline" onClick={openShareDialog}>
-                <UserPlus className="h-3.5 w-3.5" /> Share
+              {boardTasks.some((t) => t.status === "done") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-xs"
+                  onClick={() => setShowCompletedSop((v) => !v)}
+                >
+                  {showCompletedSop ? "Hide completed" : `Show completed (${boardTasks.filter((t) => t.status === "done").length})`}
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={openSubscribeDialog}>
+                <UserPlus className="h-3.5 w-3.5" /> Subscribe
               </Button>
+              {canManageBoardGroups && (
+                <Button size="sm" variant="outline" onClick={openNewGroup}>
+                  <Plus className="h-3.5 w-3.5" /> Add group
+                </Button>
+              )}
               {isBoardOwner && (
                 <>
-                  <Button size="sm" variant="outline" onClick={openNewGroup}>
-                    <Plus className="h-3.5 w-3.5" /> Add group
-                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => openEditBoard(activeBoard)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -647,7 +882,218 @@ export default function TaskBoardsView() {
             </div>
           </div>
 
+          {/* Top filter bar - always visible */}
+          {(() => {
+            const boardAssignees = assignableUsers.filter(
+              (u) => members.some((m) => m.user_id === u.user_id) || u.user_id === activeBoard.created_by
+            );
+            const dueOptions: { value: DueFilter; label: string }[] = [
+              { value: "any", label: "Any due date" },
+              { value: "overdue", label: "Overdue" },
+              { value: "today", label: "Due today" },
+              { value: "this_week", label: "This week" },
+              { value: "next_7", label: "Next 7 days" },
+              { value: "none", label: "No due date" },
+            ];
+            return (
+              <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 px-4 py-2">
+                <span className="text-xs font-semibold text-muted-foreground mr-1">Filters:</span>
+
+                <Popover open={openFilter === "top-item"} onOpenChange={(o) => setOpenFilter(o ? "top-item" : null)}>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <Filter className="h-3 w-3" /> Item
+                      {contextQuery.trim() && (
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">1</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2" align="start">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by item</div>
+                    <Input
+                      value={contextQuery}
+                      onChange={(e) => setContextQuery(e.target.value)}
+                      placeholder="Search title or description"
+                      className="h-8 text-xs"
+                    />
+                    {contextQuery.trim() && (
+                      <button
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                        onClick={() => { setContextQuery(""); setOpenFilter(null); }}
+                      >
+                        Clear filter
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+
+                <Popover open={openFilter === "top-responsible"} onOpenChange={(o) => setOpenFilter(o ? "top-responsible" : null)}>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <Filter className="h-3 w-3" /> Responsible
+                      {responsibleFilter.length > 0 && (
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                          {responsibleFilter.length}
+                        </span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2" align="start">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by responsible</div>
+                    <div className="space-y-1 max-h-64 overflow-auto">
+                      <label className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                        <Checkbox
+                          checked={responsibleFilter.includes("__unassigned__")}
+                          onCheckedChange={(val) => {
+                            setResponsibleFilter((prev) =>
+                              val ? [...prev, "__unassigned__"] : prev.filter((x) => x !== "__unassigned__")
+                            );
+                            setOpenFilter(null);
+                          }}
+                        />
+                        <span className="text-xs">Unassigned</span>
+                      </label>
+                      {boardAssignees
+                        .slice()
+                        .sort((a, b) => (a.full_name || a.email || "").localeCompare(b.full_name || b.email || ""))
+                        .map((a) => {
+                          const checked = responsibleFilter.includes(a.user_id);
+                          return (
+                            <label key={a.user_id} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  setResponsibleFilter((prev) =>
+                                    val ? [...prev, a.user_id] : prev.filter((x) => x !== a.user_id)
+                                  );
+                                  setOpenFilter(null);
+                                }}
+                              />
+                              <span className="text-xs">{a.full_name || a.email}</span>
+                            </label>
+                          );
+                        })}
+                    </div>
+                    {responsibleFilter.length > 0 && (
+                      <button
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                        onClick={() => { setResponsibleFilter([]); setOpenFilter(null); }}
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+
+                <Popover open={openFilter === "top-status"} onOpenChange={(o) => setOpenFilter(o ? "top-status" : null)}>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <Filter className="h-3 w-3" /> Status
+                      {statusFilter.length > 0 && (
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                          {statusFilter.length}
+                        </span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2" align="start">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by status</div>
+                    <div className="space-y-1">
+                      {(Object.keys(STATUS_META) as Status[]).map((s) => {
+                        const meta = STATUS_META[s];
+                        const checked = statusFilter.includes(s);
+                        return (
+                          <label key={s} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(val) => {
+                                setStatusFilter((prev) =>
+                                  val ? [...prev, s] : prev.filter((x) => x !== s)
+                                );
+                                setOpenFilter(null);
+                              }}
+                            />
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.pillBg} ${meta.pillText}`}>
+                              {meta.label}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {statusFilter.length > 0 && (
+                      <button
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                        onClick={() => { setStatusFilter([]); setOpenFilter(null); }}
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+
+                <Popover open={openFilter === "top-due"} onOpenChange={(o) => setOpenFilter(o ? "top-due" : null)}>
+                  <PopoverTrigger asChild>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                      <Filter className="h-3 w-3" /> Due date
+                      {dueFilter !== "any" && (
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">1</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2" align="start">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by due date</div>
+                    <div className="space-y-1">
+                      {dueOptions.map((opt) => {
+                        const checked = dueFilter === opt.value;
+                        return (
+                          <label key={opt.value} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={(val) => {
+                                if (val) {
+                                  setDueFilter(opt.value);
+                                  setOpenFilter(null);
+                                }
+                              }}
+                            />
+                            <span className="text-xs">{opt.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {dueFilter !== "any" && (
+                      <button
+                        className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                        onClick={() => { setDueFilter("any"); setOpenFilter(null); }}
+                      >
+                        Clear filter
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
+
+                {(contextQuery.trim() || responsibleFilter.length > 0 || statusFilter.length > 0 || dueFilter !== "any") && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs text-muted-foreground ml-auto"
+                    onClick={() => {
+                      setContextQuery("");
+                      setResponsibleFilter([]);
+                      setStatusFilter([]);
+                      setDueFilter("any");
+                      setOpenFilter(null);
+                    }}
+                  >
+                    Clear all
+                  </Button>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Groups */}
+
           {(() => {
             const defaultGroups = boardGroups
               .filter((g) => (DEFAULT_GROUP_NAMES as readonly string[]).includes(g.name))
@@ -718,25 +1164,124 @@ export default function TaskBoardsView() {
                   key={t.id}
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
-                  className="grid grid-cols-[24px_minmax(0,1fr)] md:grid-cols-[24px_minmax(0,1fr)_140px_120px_140px_60px] items-center hover:bg-muted/40 cursor-grab active:cursor-grabbing"
+                  onClick={() => openEditTask(t)}
+                  className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card"
                 >
-                  <div className="flex items-center justify-center text-muted-foreground/40">
-                    <GripVertical className="h-3.5 w-3.5" />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setDetailsTask(t)}
-                    className="px-2 py-2 min-w-0 text-left hover:underline underline-offset-2 decoration-muted-foreground/40"
+                  <div
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
+                    className="flex items-center justify-center border-r border-border cursor-grab active:cursor-grabbing"
+                    onClick={(e) => e.stopPropagation()}
+                    title="Drag to move ... check to complete"
                   >
-                    <p className="text-sm font-medium leading-snug break-words">{t.title}</p>
+                    <Checkbox
+                      checked={t.status === "done"}
+                      onCheckedChange={(v) => updateTaskStatus(t.id, v ? "done" : "todo")}
+                      className="h-4 w-4"
+                    />
+                  </div>
+                  <div className="px-3 py-2 min-w-0 text-left border-r border-border" onClick={(e) => e.stopPropagation()}>
+                    {inlineEditingTaskId === t.id ? (
+                      <input
+                        autoFocus
+                        value={inlineEditTaskTitle}
+                        onChange={(e) => setInlineEditTaskTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveInlineTaskTitle(t.id, inlineEditTaskTitle);
+                          if (e.key === "Escape") {
+                            setInlineEditingTaskId(null);
+                            setInlineEditTaskTitle("");
+                          }
+                        }}
+                        onBlur={() => saveInlineTaskTitle(t.id, inlineEditTaskTitle)}
+                        className="text-sm leading-snug break-words w-full bg-transparent border-b border-current outline-none px-0 py-0"
+                      />
+                    ) : (
+                      <p
+                        className="text-sm leading-snug break-words cursor-text"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setInlineEditingTaskId(t.id);
+                          setInlineEditTaskTitle(t.title);
+                        }}
+                      >
+                        {t.title}
+                      </p>
+                    )}
                     {t.description && (
                       <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{t.description}</p>
                     )}
-                  </button>
-                  <div className="hidden md:flex items-center px-2">
+                  </div>
+                  <div
+                    className="flex items-center justify-center border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={() => setUpdatesTaskId(t.id)}
+                      title="Updates & attachments"
+                      className="relative inline-flex items-center justify-center h-7 w-7 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    >
+                      <MessageSquarePlus className="h-4 w-4" />
+                      {updateCounts[t.id] > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 inline-flex h-3.5 min-w-3.5 px-1 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                          {updateCounts[t.id]}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                  <div
+                    className="hidden md:flex items-center justify-center px-2 border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="flex items-center justify-center w-full h-full py-1 hover:bg-muted/40 rounded">
+                          {renderAssignees(t)}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-0" align="center">
+                        <Command>
+                          <CommandInput placeholder="Search people..." />
+                          <CommandList>
+                            <CommandEmpty>No people found.</CommandEmpty>
+                            <CommandGroup heading="People">
+                              {assignableUsers.map((u) => {
+                                const current = assigneeIdsFor(t);
+                                const selected = current.includes(u.user_id);
+                                const name = u.full_name || u.email || u.user_id.slice(0, 8);
+                                return (
+                                  <CommandItem
+                                    key={u.user_id}
+                                    value={`${u.full_name ?? ""} ${u.email ?? ""}`}
+                                    onSelect={() => {
+                                      const next = selected
+                                        ? current.filter((x) => x !== u.user_id)
+                                        : [...current, u.user_id];
+                                      setTaskAssigneesInline(t.id, next);
+                                    }}
+                                    className="flex items-center gap-2"
+                                  >
+                                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
+                                      {getInitials(name)}
+                                    </span>
+                                    <span className="flex-1 text-sm">{name}</span>
+                                    {selected && <Check className="h-4 w-4 text-primary" />}
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div
+                    className="hidden md:flex items-stretch border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Select value={t.status} onValueChange={(v: Status) => updateTaskStatus(t.id, v)}>
                       <SelectTrigger
-                        className={`h-7 px-3 text-xs font-semibold border-0 ${meta.pillBg} ${meta.pillText} rounded-md w-full justify-center gap-1 shadow-sm`}
+                        className={`h-auto w-full rounded-none border-0 ${meta.pillBg} ${meta.pillText} text-xs font-semibold justify-center gap-1 focus:ring-0 focus:ring-offset-0 [&>svg]:hidden hover:opacity-90`}
                       >
                         <SelectValue />
                       </SelectTrigger>
@@ -749,20 +1294,16 @@ export default function TaskBoardsView() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="hidden md:flex items-center px-2">
-                    {renderAssignees(t)}
+                  <div
+                    className="hidden md:flex items-stretch border-r border-border"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <DueDatePopover dueDate={t.due_date} onChange={(d) => updateTaskDueDate(t.id, d)} />
                   </div>
-                  <div className="hidden md:flex items-center px-2 text-xs text-muted-foreground">
-                    {t.due_date ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {format(parseDateOnly(t.due_date)!, "MMM d")}
-                      </span>
-                    ) : (
-                      <span className="italic">—</span>
-                    )}
-                  </div>
-                  <div className="hidden md:flex items-center justify-end gap-0.5 px-1">
+                  <div
+                    className="hidden md:flex items-center justify-center gap-0.5 px-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditTask(t)}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -773,7 +1314,7 @@ export default function TaskBoardsView() {
                     )}
                   </div>
                   {/* mobile meta */}
-                  <div className="md:hidden col-start-2 px-2 pb-2 -mt-1 flex flex-wrap items-center gap-2">
+                  <div className="md:hidden col-start-2 px-3 pb-2 -mt-1 flex flex-wrap items-center gap-2">
                     <Badge className={`${meta.pillBg} ${meta.pillText} border-0 text-[10px]`}>{meta.label}</Badge>
                     {renderAssignees(t)}
                     {t.due_date && (
@@ -787,169 +1328,575 @@ export default function TaskBoardsView() {
               );
             };
 
-            const columnHeader = (
-              <div className="hidden md:grid grid-cols-[24px_minmax(0,1fr)_140px_120px_140px_60px] items-center gap-0 bg-muted/20 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <div />
-                <div className="px-2">Task</div>
-                <div className="px-2">Status</div>
-                <div className="px-2">Assignee</div>
-                <div className="px-2">Due date</div>
+            const renderAddRow = (groupId: string, status: Status = "todo") => {
+              const isActive = addingGroupId === groupId;
+              const submit = (close: boolean) => {
+                const title = newItemTitle.trim();
+                if (title) {
+                  void quickCreateTask(groupId, title, status);
+                }
+                setNewItemTitle("");
+                if (close) setAddingGroupId(null);
+              };
+              return (
+                <li
+                  onClick={() => {
+                    if (!isActive) {
+                      setAddingGroupId(groupId);
+                      setNewItemTitle("");
+                    }
+                  }}
+                  className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center hover:bg-muted/30 cursor-pointer min-h-[36px] border-b border-border bg-card text-xs text-muted-foreground"
+                >
+                  <div className="border-r border-border h-full" />
+                  <div className="px-3 py-1.5" onClick={(e) => isActive && e.stopPropagation()}>
+                    {isActive ? (
+                      <Input
+                        autoFocus
+                        value={newItemTitle}
+                        onChange={(e) => setNewItemTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            submit(false);
+                          }
+                          if (e.key === "Escape") {
+                            setNewItemTitle("");
+                            setAddingGroupId(null);
+                          }
+                        }}
+                        onBlur={() => submit(true)}
+                        placeholder="Enter item name and press Enter"
+                        className="h-7 text-sm"
+                      />
+                    ) : (
+                      <span className="italic">+ Add item</span>
+                    )}
+                  </div>
+                  <div className="border-r border-border h-full" />
+                  <div className="hidden md:block border-r border-border h-full" />
+                  <div className="hidden md:block border-r border-border h-full" />
+                  <div className="hidden md:block border-r border-border h-full" />
+                  <div className="hidden md:block" />
+                </li>
+              );
+            };
+
+
+            const getTaskAssigneeIds = (t: BoardTask): string[] => {
+              const ids = new Set<string>(taskAssignees[t.id] ?? []);
+              if (t.assigned_user_id) ids.add(t.assigned_user_id);
+              return [...ids];
+            };
+            const matchesContext = (t: BoardTask): boolean => {
+              const q = contextQuery.trim().toLowerCase();
+              if (!q) return true;
+              return `${t.title} ${t.description ?? ""}`.toLowerCase().includes(q);
+            };
+            const matchesResponsible = (t: BoardTask): boolean => {
+              if (responsibleFilter.length === 0) return true;
+              const ids = getTaskAssigneeIds(t);
+              return responsibleFilter.some((id) =>
+                id === "__unassigned__" ? ids.length === 0 : ids.includes(id)
+              );
+            };
+            const matchesDue = (t: BoardTask): boolean => {
+              if (dueFilter === "any") return true;
+              if (dueFilter === "none") return !t.due_date;
+              if (!t.due_date) return false;
+              const d = parseISO(t.due_date);
+              const now = new Date();
+              if (dueFilter === "overdue") return d < startOfDay(now) && t.status !== "done";
+              if (dueFilter === "today")
+                return isWithinInterval(d, { start: startOfDay(now), end: endOfDay(now) });
+              if (dueFilter === "this_week")
+                return isWithinInterval(d, {
+                  start: startOfWeek(now, { weekStartsOn: 1 }),
+                  end: endOfWeek(now, { weekStartsOn: 1 }),
+                });
+              if (dueFilter === "next_7")
+                return isWithinInterval(d, { start: startOfDay(now), end: endOfDay(addDays(now, 7)) });
+              return true;
+            };
+            const passesFilters = (t: BoardTask): boolean =>
+              matchesContext(t) && matchesResponsible(t) && matchesDue(t);
+
+            const boardAssignees = assignableUsers.filter(
+              (u) => members.some((m) => m.user_id === u.user_id) || u.user_id === activeBoard.created_by
+            );
+
+            const renderColumnHeader = (filterScope: string) => {
+              const itemFilterKey = `${filterScope}-item`;
+              const responsibleFilterKey = `${filterScope}-responsible`;
+              const statusFilterKey = `${filterScope}-status`;
+              const dueFilterKey = `${filterScope}-due`;
+
+              return (
+              <div className="hidden md:grid grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-center bg-muted/40 text-[11px] font-medium text-muted-foreground border-b border-border">
+                <div className="border-r border-border h-8" />
+                <div className="px-3 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === itemFilterKey} onOpenChange={(o) => setOpenFilter(o ? itemFilterKey : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Item
+                        {contextQuery.trim() && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">1</span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by item</div>
+                      <Input
+                        value={contextQuery}
+                        onChange={(e) => setContextQuery(e.target.value)}
+                        placeholder="Search title or description"
+                        className="h-8 text-xs"
+                      />
+                      {contextQuery.trim() && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setContextQuery(""); setOpenFilter(null); }}
+                        >
+                          Clear filter
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="px-1 py-1.5 border-r border-border text-center" title="Updates & attachments">
+                  <MessageSquarePlus className="h-3.5 w-3.5 mx-auto opacity-70" />
+                </div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === responsibleFilterKey} onOpenChange={(o) => setOpenFilter(o ? responsibleFilterKey : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Responsible
+                        {responsibleFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {responsibleFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by responsible</div>
+                      <div className="space-y-1 max-h-64 overflow-auto">
+                        <label className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                          <Checkbox
+                            checked={responsibleFilter.includes("__unassigned__")}
+                            onCheckedChange={(val) => {
+                              setResponsibleFilter((prev) =>
+                                val ? [...prev, "__unassigned__"] : prev.filter((x) => x !== "__unassigned__")
+                              );
+                              setOpenFilter(null);
+                            }}
+                          />
+                          <span className="text-xs">Unassigned</span>
+                        </label>
+                        {boardAssignees
+                          .slice()
+                          .sort((a, b) => (a.full_name || a.email || "").localeCompare(b.full_name || b.email || ""))
+                          .map((a) => {
+                            const checked = responsibleFilter.includes(a.user_id);
+                            return (
+                              <label key={a.user_id} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(val) => {
+                                    setResponsibleFilter((prev) =>
+                                      val ? [...prev, a.user_id] : prev.filter((x) => x !== a.user_id)
+                                    );
+                                    setOpenFilter(null);
+                                  }}
+                                />
+                                <span className="text-xs">{a.full_name || a.email}</span>
+                              </label>
+                            );
+                          })}
+                      </div>
+                      {responsibleFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setResponsibleFilter([]); setOpenFilter(null); }}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === statusFilterKey} onOpenChange={(o) => setOpenFilter(o ? statusFilterKey : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Status
+                        {statusFilter.length > 0 && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
+                            {statusFilter.length}
+                          </span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by status</div>
+                      <div className="space-y-1">
+                        {(Object.keys(STATUS_META) as Status[]).map((s) => {
+                          const meta = STATUS_META[s];
+                          const checked = statusFilter.includes(s);
+                          return (
+                            <label
+                              key={s}
+                              className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  setStatusFilter((prev) =>
+                                    val ? [...prev, s] : prev.filter((x) => x !== s)
+                                  );
+                                  setOpenFilter(null);
+                                }}
+                              />
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.pillBg} ${meta.pillText}`}>
+                                {meta.label}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {statusFilter.length > 0 && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setStatusFilter([]); setOpenFilter(null); }}
+                        >
+                          Clear filters
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="px-2 py-1.5 border-r border-border text-center">
+                  <Popover open={openFilter === dueFilterKey} onOpenChange={(o) => setOpenFilter(o ? dueFilterKey : null)}>
+                    <PopoverTrigger asChild>
+                      <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors">
+                        Due date
+                        {dueFilter !== "any" && (
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">1</span>
+                        )}
+                        <Filter className="h-3 w-3 opacity-60" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-2" align="center">
+                      <div className="text-xs font-semibold text-muted-foreground mb-2 px-1">Filter by due date</div>
+                      <div className="space-y-1">
+                        {[
+                          { value: "any", label: "Any due date" },
+                          { value: "overdue", label: "Overdue" },
+                          { value: "today", label: "Due today" },
+                          { value: "this_week", label: "This week" },
+                          { value: "next_7", label: "Next 7 days" },
+                          { value: "none", label: "No due date" },
+                        ].map((opt) => {
+                          const checked = dueFilter === opt.value;
+                          return (
+                            <label key={opt.value} className="flex items-center gap-2 px-1 py-1 rounded cursor-pointer hover:bg-muted/50">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(val) => {
+                                  if (val) {
+                                    setDueFilter(opt.value as DueFilter);
+                                    setOpenFilter(null);
+                                  }
+                                }}
+                              />
+                              <span className="text-xs">{opt.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {dueFilter !== "any" && (
+                        <button
+                          className="mt-2 text-xs text-muted-foreground hover:text-foreground underline w-full text-left px-1"
+                          onClick={() => { setDueFilter("any"); setOpenFilter(null); }}
+                        >
+                          Clear filter
+                        </button>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div />
               </div>
-            );
+              );
+            };
 
             return (
               <div className="space-y-6 p-4">
                 {boardGroups.length === 0 && (
                   <div className="p-6 text-sm italic text-muted-foreground">
-                    No groups yet. {isBoardOwner && "Click \"Add group\" to create one."}
+                    No groups yet. {canManageBoardGroups && "Click \"Add group\" to create one."}
                   </div>
                 )}
 
-                {/* Main workflow — the 4 default groups treated as ONE section */}
-                {defaultGroups.length > 0 && (
-                  <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
-                    <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border bg-muted/30">
-                      <LayoutGrid className="h-4 w-4 text-primary" />
-                      <h3 className="text-sm font-semibold">Main workflow</h3>
-                      <span className="text-xs text-muted-foreground">
-                        · {boardTasks.filter((t) => defaultGroups.some((g) => g.id === t.group_id)).length} tasks
+                {/* Unified ordered render: default workflow block + custom groups,
+                    sorted by position so the user can drag any group up/down. */}
+                {(() => {
+                  type Block =
+                    | { kind: "default"; key: "default"; groups: Group[]; minPos: number }
+                    | { kind: "custom"; key: string; group: Group; minPos: number };
+                  const blocks: Block[] = [];
+                  if (defaultGroups.length > 0) {
+                    blocks.push({
+                      kind: "default",
+                      key: "default",
+                      groups: defaultGroups,
+                      minPos: Math.min(...defaultGroups.map((g) => g.position)),
+                    });
+                  }
+                  customGroups.forEach((g) =>
+                    blocks.push({ kind: "custom", key: `custom:${g.id}`, group: g, minPos: g.position }),
+                  );
+                  blocks.sort((a, b) => a.minPos - b.minPos);
+
+                  const wrapperProps = (key: string) => ({
+                    onDragOver: (e: React.DragEvent) => {
+                      if (draggingGroupId && draggingGroupId !== key) {
+                        e.preventDefault();
+                        setDragOverGroupId(key);
+                      }
+                    },
+                    onDragLeave: () =>
+                      setDragOverGroupId((id) => (id === key ? null : id)),
+                    onDrop: (e: React.DragEvent) => {
+                      if (draggingGroupId && draggingGroupId !== key) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        reorderBlock(draggingGroupId, key);
+                      }
+                      setDraggingGroupId(null);
+                      setDragOverGroupId(null);
+                    },
+                    className:
+                      dragOverGroupId === key
+                        ? "rounded-md ring-2 ring-accent ring-offset-2 ring-offset-background transition-all"
+                        : draggingGroupId === key
+                        ? "opacity-50 transition-opacity"
+                        : "",
+                  });
+
+                  const dragHandle = (key: string) =>
+                    canManageBoardGroups ? (
+                      <span
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggingGroupId(key);
+                          e.dataTransfer.effectAllowed = "move";
+                          try { e.dataTransfer.setData("text/group-key", key); } catch {}
+                        }}
+                        onDragEnd={() => {
+                          setDraggingGroupId(null);
+                          setDragOverGroupId(null);
+                        }}
+                        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-0.5"
+                        title="Drag to reorder group"
+                      >
+                        <GripVertical className="h-4 w-4" />
                       </span>
-                    </div>
-                    <div className="divide-y-2 divide-border">
-                      {defaultGroups.map((g) => {
-                        const items = boardTasks.filter((t) => t.group_id === g.id);
-                        const isCollapsed = collapsed[g.id];
-                        return (
+                    ) : null;
+
+                  return blocks.map((block) => {
+                    if (block.kind === "default") {
+                      const defaultGroupIds = new Set(block.groups.map((g) => g.id));
+                      const items = boardTasks
+                        .filter((t) => t.group_id && defaultGroupIds.has(t.group_id))
+                        .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
+                        .filter(passesFilters)
+                        .filter((t) => showCompletedSop || t.status !== "done");
+                      const firstGroup = block.groups[0];
+                      const isCollapsed = collapsed[firstGroup.id];
+                      const color = firstGroup.color ?? "#6366f1";
+                      const wp = wrapperProps(block.key);
+                      return (
+                        <div key={block.key} {...wp}>
                           <div
-                            key={g.id}
-                            onDragOver={(e) => e.preventDefault()}
-                            onDrop={(e) => onDropToGroup(e, g.id)}
+                            onDragOver={(e) => {
+                              if (!draggingGroupId) e.preventDefault();
+                            }}
+                            onDrop={(e) => {
+                              if (!draggingGroupId) onDropToGroup(e, firstGroup.id);
+                            }}
                           >
-                            <div
-                              className="flex items-center gap-2 px-3 py-2 border-b-2 border-border"
-                              style={{ backgroundColor: `${g.color ?? "#6366f1"}10` }}
-                            >
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              {dragHandle(block.key)}
                               <button
-                                onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
-                                className="text-muted-foreground hover:text-foreground"
+                                onClick={() =>
+                                  setCollapsed((c) => ({ ...c, [firstGroup.id]: !c[firstGroup.id] }))
+                                }
+                                className="flex items-center gap-1.5 group"
                               >
-                                {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                {isCollapsed ? (
+                                  <ChevronRight className="h-4 w-4" style={{ color }} />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" style={{ color }} />
+                                )}
+                                {inlineEditingGroupId === firstGroup.id ? (
+                                  <input
+                                    autoFocus
+                                    value={inlineEditName}
+                                    onChange={(e) => setInlineEditName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") saveInlineGroupName(firstGroup.id, inlineEditName);
+                                      if (e.key === "Escape") {
+                                        setInlineEditingGroupId(null);
+                                        setInlineEditName("");
+                                      }
+                                    }}
+                                    onBlur={() => saveInlineGroupName(firstGroup.id, inlineEditName)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-base font-bold bg-transparent border-b-2 border-current outline-none px-1 py-0 min-w-[120px]"
+                                    style={{ color }}
+                                  />
+                                ) : (
+                                  <h3
+                                    className="text-base font-bold cursor-text hover:opacity-80"
+                                    style={{ color }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setInlineEditingGroupId(firstGroup.id);
+                                      setInlineEditName(firstGroup.name);
+                                    }}
+                                  >
+                                    {firstGroup.name}
+                                  </h3>
+                                )}
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  {items.length} {items.length === 1 ? "task" : "tasks"}
+                                </span>
                               </button>
-                              <span
-                                className="inline-block h-2 w-2 rounded-full"
-                                style={{ backgroundColor: g.color ?? "#6366f1" }}
-                              />
-                              <h4 className="text-sm font-medium" style={{ color: g.color ?? undefined }}>
-                                {g.name}
-                              </h4>
-                              <span className="text-xs text-muted-foreground tabular-nums">{items.length}</span>
-                               <span className="flex-1" />
                             </div>
                             {!isCollapsed && (
-                              <>
-                                {columnHeader}
-                                {items.length === 0 ? (
-                                  <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
-                                    Drag tasks here or click "+ Item".
-                                  </div>
-                                ) : (
-                                  <ul className="divide-y divide-border">{items.map(renderTaskRow)}</ul>
-                                )}
-                              </>
+                              <div
+                                className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
+                                style={{ borderLeftColor: color }}
+                              >
+                                {renderColumnHeader(`default-${firstGroup.id}`)}
+                                <ul>
+                                  {renderAddRow(firstGroup.id)}
+                                  {items.map(renderTaskRow)}
+                                </ul>
+                              </div>
                             )}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                        </div>
+                      );
+                    }
 
-                {/* Custom groups — each its own section with internal status sub-rows */}
-                {customGroups.map((g) => {
-                  const groupTasks = boardTasks.filter((t) => t.group_id === g.id);
-                  const isCollapsed = collapsed[g.id];
-                  return (
-                    <div
-                      key={g.id}
-                      className="rounded-lg border border-border bg-card overflow-hidden shadow-sm"
-                    >
-                      <div
-                        className="flex items-center gap-2 px-3 py-2.5 border-b border-border"
-                        style={{ backgroundColor: `${g.color ?? "#6366f1"}14` }}
-                      >
-                        <button
-                          onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                        </button>
-                        <span
-                          className="inline-block h-2 w-2 rounded-full"
-                          style={{ backgroundColor: g.color ?? "#6366f1" }}
-                        />
-                        <h3 className="text-sm font-semibold" style={{ color: g.color ?? undefined }}>
-                          {g.name}
-                        </h3>
-                        <span className="text-xs text-muted-foreground tabular-nums">{groupTasks.length}</span>
-                        <span className="flex-1" />
-                        {isBoardOwner && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                              onClick={() => openEditGroup(g)}
-                              title="Edit group"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                              onClick={() => deleteGroup(g)}
-                              title="Delete group"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
+                    const g = block.group;
+                    const groupTasks = boardTasks
+                      .filter((t) => t.group_id === g.id)
+                      .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
+                      .filter(passesFilters)
+                      .filter((t) => showCompletedSop || t.status !== "done");
+                    const isCollapsed = collapsed[g.id];
+                    const color = g.color ?? "#6366f1";
+                    const wp = wrapperProps(block.key);
+                    return (
+                      <div key={block.key} {...wp}>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          {dragHandle(block.key)}
+                          <button
+                            onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
+                            className="flex items-center gap-1.5"
+                          >
+                            {isCollapsed ? (
+                              <ChevronRight className="h-4 w-4" style={{ color }} />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" style={{ color }} />
+                            )}
+                            {inlineEditingGroupId === g.id ? (
+                              <input
+                                autoFocus
+                                value={inlineEditName}
+                                onChange={(e) => setInlineEditName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveInlineGroupName(g.id, inlineEditName);
+                                  if (e.key === "Escape") {
+                                    setInlineEditingGroupId(null);
+                                    setInlineEditName("");
+                                  }
+                                }}
+                                onBlur={() => saveInlineGroupName(g.id, inlineEditName)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-base font-bold bg-transparent border-b-2 border-current outline-none px-1 py-0 min-w-[120px]"
+                                style={{ color }}
+                              />
+                            ) : (
+                              <h3
+                                className="text-base font-bold cursor-text hover:opacity-80"
+                                style={{ color }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInlineEditingGroupId(g.id);
+                                  setInlineEditName(g.name);
+                                }}
+                              >
+                                {g.name}
+                              </h3>
+                            )}
+                            <span className="text-xs text-muted-foreground ml-1">
+                              {groupTasks.length} {groupTasks.length === 1 ? "task" : "tasks"}
+                            </span>
+                          </button>
+                          {canManageBoardGroups && (
+                            <div className="flex items-center gap-0.5 ml-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                onClick={() => openEditGroup(g)}
+                                title="Edit group"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                onClick={() => deleteGroup(g)}
+                                title="Delete group"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+
+                        {!isCollapsed && (
+                          <div
+                            onDragOver={(e) => {
+                              if (!draggingGroupId) e.preventDefault();
+                            }}
+                            onDrop={(e) => {
+                              if (!draggingGroupId) onDropToGroup(e, g.id);
+                            }}
+                            className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
+                            style={{ borderLeftColor: color }}
+                          >
+                            {renderColumnHeader(`group-${g.id}`)}
+                            <ul>
+                              {renderAddRow(g.id)}
+                              {groupTasks.map(renderTaskRow)}
+                            </ul>
+                          </div>
                         )}
                       </div>
-                      {!isCollapsed && (
-                        <div className="divide-y-2 divide-border">
-                          {STATUS_ORDER.map(({ key: status, label }) => {
-                            const items = groupTasks.filter((t) => t.status === status);
-                            const meta = STATUS_META[status];
-                            return (
-                              <div
-                                key={status}
-                                onDragOver={(e) => e.preventDefault()}
-                                onDrop={(e) => onDropToCustomSubsection(e, g.id, status)}
-                              >
-                                <div className="flex items-center gap-2 px-3 py-2 bg-muted/20 border-b-2 border-border">
-                                  <Badge className={`${meta.pillBg} ${meta.pillText} border-0 text-[10px]`}>
-                                    {label}
-                                  </Badge>
-                                  <span className="text-xs text-muted-foreground tabular-nums">{items.length}</span>
-                                   <span className="flex-1" />
-                                </div>
-                                {columnHeader}
-                                {items.length === 0 ? (
-                                  <div className="px-4 py-3 text-xs italic text-muted-foreground/70">
-                                    Drag tasks here or click "+ Item".
-                                  </div>
-                                ) : (
-                                  <ul className="divide-y divide-border">{items.map(renderTaskRow)}</ul>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
+
               </div>
             );
           })()}
@@ -997,6 +1944,7 @@ export default function TaskBoardsView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Group dialog */}
       <Dialog open={groupDlgOpen} onOpenChange={setGroupDlgOpen}>
@@ -1137,11 +2085,11 @@ export default function TaskBoardsView() {
         </DialogContent>
       </Dialog>
 
-      {/* Share / subscribers dialog */}
-      <Dialog open={shareDlgOpen} onOpenChange={setShareDlgOpen}>
+      {/* Subscribe / subscribers dialog */}
+      <Dialog open={subscribeDlgOpen} onOpenChange={setSubscribeDlgOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-display text-xl">Share board</DialogTitle>
+            <DialogTitle className="font-display text-xl">Subscribe board</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground -mt-1">
             Subscribers can view this board and add tasks to it.
@@ -1150,7 +2098,7 @@ export default function TaskBoardsView() {
             <div className="flex gap-2">
               <Select value={addUserId} onValueChange={setAddUserId}>
                 <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select a person to add…" />
+                  <SelectValue placeholder="Select a person to add..." />
                 </SelectTrigger>
                 <SelectContent>
                   {Array.from(
@@ -1209,7 +2157,7 @@ export default function TaskBoardsView() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setShareDlgOpen(false)}>Done</Button>
+            <Button onClick={() => setSubscribeDlgOpen(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1301,7 +2249,7 @@ export default function TaskBoardsView() {
                             {format(parseDateOnly(live.due_date)!, "EEE, MMM d, yyyy")}
                           </>
                         ) : (
-                          <span className="italic text-muted-foreground">—</span>
+                          <span className="italic text-muted-foreground">-</span>
                         )}
                       </p>
                     </div>
@@ -1382,6 +2330,32 @@ export default function TaskBoardsView() {
           })()}
         </SheetContent>
       </Sheet>
+
+      <TaskUpdatesDialog
+        taskId={updatesTaskId}
+        taskTitle={tasks.find((t) => t.id === updatesTaskId)?.title}
+        open={!!updatesTaskId}
+        onOpenChange={(v) => {
+          if (!v) setUpdatesTaskId(null);
+        }}
+        onActivityChange={async () => {
+          const ids = tasks.map((t) => t.id);
+          if (!ids.length) return;
+          const [{ data: uData }, { data: atData }] = await Promise.all([
+            supabase.from("manager_task_updates" as any).select("task_id").in("task_id", ids),
+            supabase.from("manager_task_attachments" as any).select("task_id").in("task_id", ids),
+          ]);
+          const counts: Record<string, number> = {};
+          (uData ?? []).forEach((r: any) => {
+            counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+          });
+          (atData ?? []).forEach((r: any) => {
+            counts[r.task_id] = (counts[r.task_id] ?? 0) + 1;
+          });
+          setUpdateCounts(counts);
+        }}
+        users={assignableUsers}
+      />
     </div>
   );
 }

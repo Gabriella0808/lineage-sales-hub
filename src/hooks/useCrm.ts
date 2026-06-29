@@ -76,9 +76,12 @@ export interface CrmAccount {
   lifecycle_stage: LifecycleStage;
   account_type: AccountType;
   prospect_type: ProspectType | null;
+  prospect_types: string[];
   brand: Brand;
+  brands: Brand[];
   status: string;
   assigned_rep_id: string | null;
+  assigned_manager_id: string | null;
   contact_first_name: string | null;
   contact_last_name: string | null;
   main_phone: string | null;
@@ -89,6 +92,8 @@ export interface CrmAccount {
   state: string | null;
   zip: string | null;
   notes: string | null;
+  rep_owner: string | null;
+  buying_group: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -97,18 +102,32 @@ export interface Rep {
   id: string;
   name: string;
   email: string | null;
+  manager_id: string | null;
 }
+
 
 export function useCrmAccounts() {
   return useQuery({
     queryKey: ["crm_accounts"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("crm_accounts")
-        .select("*")
-        .order("updated_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as CrmAccount[];
+      const PAGE = 1000;
+      let from = 0;
+      const allById = new Map<string, CrmAccount>();
+      // Paginate past PostgREST's default 1000-row cap so all prospects/dealers load.
+      while (true) {
+        const { data, error } = await supabase
+          .from("crm_accounts")
+          .select("*")
+          .order("updated_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const chunk = (data ?? []) as CrmAccount[];
+        chunk.forEach((account) => allById.set(account.id, account));
+        if (chunk.length < PAGE) break;
+        from += PAGE;
+      }
+      return Array.from(allById.values());
     },
     staleTime: CRM_STALE_TIME,
   });
@@ -142,10 +161,31 @@ export function useCrmReps() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sales_reps")
-        .select("id, name, email")
+        .select("id, name, email, manager_id")
         .order("name");
       if (error) throw error;
       return (data ?? []) as Rep[];
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
+export interface Manager {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
+export function useCrmManagers() {
+  return useQuery({
+    queryKey: ["crm_managers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("managers")
+        .select("id, name, email")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as Manager[];
     },
     staleTime: 5 * 60_000,
   });
@@ -186,6 +226,25 @@ export function useUpdateAccount() {
   });
 }
 
+export function useDeleteAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      // Remove the linked dealer row first (cascades dealer_check_ins).
+      // Prospect-shell dealers share the crm_account.id, but match by FK to be safe.
+      const { error: dErr } = await supabase.from("dealers").delete().eq("crm_account_id", id);
+      if (dErr) throw dErr;
+      const { error } = await supabase.from("crm_accounts").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["crm_accounts"] });
+      qc.invalidateQueries({ queryKey: ["dealers"] });
+      qc.invalidateQueries({ queryKey: ["dealer_check_ins"] });
+    },
+  });
+}
+
 export function useCreateAccount() {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -215,6 +274,31 @@ export function useStageHistory(accountId: string | undefined) {
         .order("changed_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
+    },
+    staleTime: CRM_STALE_TIME,
+  });
+}
+
+export function useAccountLastVisited(accountId: string | undefined) {
+  return useQuery({
+    queryKey: ["crm_last_visited", accountId],
+    enabled: !!accountId,
+    queryFn: async () => {
+      const { data: linkedDealers, error: dealerError } = await supabase
+        .from("dealers")
+        .select("id")
+        .eq("crm_account_id", accountId!);
+      if (dealerError) throw dealerError;
+      if (!linkedDealers?.length) return null;
+      const dealerIds = linkedDealers.map((d) => d.id);
+      const { data: checkIns, error: checkInError } = await supabase
+        .from("dealer_check_ins")
+        .select("visit_date")
+        .in("dealer_id", dealerIds)
+        .order("visit_date", { ascending: false })
+        .limit(1);
+      if (checkInError) throw checkInError;
+      return (checkIns?.[0]?.visit_date as string | null) ?? null;
     },
     staleTime: CRM_STALE_TIME,
   });

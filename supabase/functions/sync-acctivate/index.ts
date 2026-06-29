@@ -5,9 +5,11 @@ import { z } from "npm:zod@3";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const protectedRepTables = ["managers", "sales_reps", "territories", "rep_territories"] as const;
+const allowedSyncTables = ["dealers", "contacts", "kpi_records", "activities", "tasks", "dealer_sales", "dealer_sales_lines", "dealer_invoices", "dealer_invoice_lines", "products", "inventory", "open_sales_orders", "acctivate_sales_reps", "acctivate_sales_managers", "acctivate_territories"] as const;
 
 const SyncPayloadSchema = z.object({
-  table: z.enum(["managers", "sales_reps", "territories", "rep_territories", "dealers", "contacts", "kpi_records", "activities", "tasks", "dealer_sales", "dealer_sales_lines", "dealer_invoices", "dealer_invoice_lines", "products", "inventory", "open_sales_orders"]),
+  table: z.enum(allowedSyncTables),
   rows: z.array(z.record(z.unknown())).min(1).max(5000),
   on_conflict: z.string().optional(),
 });
@@ -24,7 +26,7 @@ const PrunePayloadSchema = z.object({
 
 const LookupPayloadSchema = z.object({
   action: z.literal("lookup"),
-  table: z.enum(["dealers", "products", "sales_reps", "managers", "territories"]),
+  table: z.enum(["dealers", "products"]),
 });
 
 const ListNamesPayloadSchema = z.object({
@@ -61,6 +63,16 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const supabase = createClient(supabaseUrl, supabaseKey);
     const results: Record<string, { synced: number; error?: string }> = {};
+    const requestedTables = [
+      body.table,
+      ...(Array.isArray(body.batches) ? body.batches.map((batch: { table?: unknown }) => batch.table) : []),
+    ].filter(Boolean);
+    if (requestedTables.some((table) => protectedRepTables.includes(table as typeof protectedRepTables[number]))) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Acctivate sync is not allowed to update sales reps, managers, territories, or rep territories." }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
+    }
 
     // Lookup mode: return {acctivate_id: id} map for the requested table
     if (body.action === "lookup") {

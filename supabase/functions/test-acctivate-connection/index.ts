@@ -13,7 +13,7 @@ Deno.serve(async (req: Request) => {
   const user = Deno.env.get("ACCTIVATE_DB_USER") ?? "";
   const password = Deno.env.get("ACCTIVATE_DB_PASSWORD") ?? "";
 
-  // Acctivate host may be stored as "host,port" — split if so
+  // Acctivate host may be stored as "host,port" - split if so
   let server = hostRaw;
   let port = parseInt(portEnv, 10);
   if (hostRaw.includes(",")) {

@@ -62,13 +62,13 @@ const parseDateOnly = (s: string | null | undefined): Date => {
   if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0);
   return new Date(s);
 };
-import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Plus, Users, Navigation } from "lucide-react";
+import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Users, Navigation } from "lucide-react";
 import { STATE_TO_TERRITORY, STATE_NAME_TO_CODE, colorForTerritory } from "@/lib/territoryMap";
 
-// Team member → match config. We match dealers by rep_owner (authoritative
+// Team member -  match config. We match dealers by rep_owner (authoritative
 // when present, e.g. "will") OR by state code (so reps without a rep_owner
 // tag still get attributed to the right manager via territory).
-type TeamMemberId = "will" | "mateo" | "chris";
+type TeamMemberId = "will" | "mateo" | "chris" | "justin";
 const TEAM_MEMBERS: {
   id: TeamMemberId;
   name: string;
@@ -80,7 +80,11 @@ const TEAM_MEMBERS: {
   {
     id: "will",
     name: "Will Grisack",
-    managerIds: ["fc3184b3-848c-4921-8770-46127a2821bf"],
+    // Both Will manager records (Will Grisack + legacy "Will") map to this owner
+    managerIds: [
+      "fc3184b3-848c-4921-8770-46127a2821bf",
+      "3b3de88e-5bfd-482b-9c26-af5003a79bba",
+    ],
     repOwners: ["will"],
     states: [],
     ownerOnly: true,
@@ -88,7 +92,10 @@ const TEAM_MEMBERS: {
   {
     id: "mateo",
     name: "Mateo De Lisa",
-    managerIds: ["b291385c-e5db-470c-93d3-9e034361b3d4"],
+    managerIds: [
+      "b291385c-e5db-470c-93d3-9e034361b3d4",
+      "20affa59-6b52-4fc9-8375-e068bc0e2a6d",
+    ],
     repOwners: ["mateo"],
     states: [],
     ownerOnly: true,
@@ -101,7 +108,19 @@ const TEAM_MEMBERS: {
     states: [],
     ownerOnly: true,
   },
+  {
+    id: "justin",
+    name: "Kate Jones",
+    managerIds: [
+      "970f22fb-f3bf-4c14-9b11-ce399b71b70f",
+      "9ee7a284-0982-4cd6-94d4-288d9f1e7f71",
+    ],
+    repOwners: ["justin"],
+    states: [],
+    ownerOnly: true,
+  },
 ];
+
 
 // Returns true when a dealer belongs to the given team member, matching by
 // manager_id (set during sync/import) OR legacy rep_owner string.
@@ -132,8 +151,29 @@ interface Dealer {
   website?: string | null;
   notes?: string | null;
   buying_group?: string | null;
+  source?: string | null;
   lat: number | null;
   lng: number | null;
+}
+
+const PROSPECT_COLOR = "#36454F"; // charcoal - prospects (not yet a customer in Acctivate)
+
+function isProspectDealer(d: { source?: string | null }): boolean {
+  // True only for CRM accounts marked as account_type='prospect' (injected
+  // client-side with source='crm_prospect'). Field-only and Acctivate
+  // dealers are NOT prospects.
+  return (d.source ?? "").toLowerCase() === "crm_prospect";
+}
+
+function pinColorFor(d: { source?: string | null; daysSince: number | null }): string {
+  // Prospects with no check-in yet stay fully charcoal. Once a check-in is
+  // logged the fill switches to the recency color, and a charcoal ring (added
+  // at marker render time) keeps signalling "still a prospect" until the
+  // account is promoted to dealer in Acctivate.
+  if (isProspectDealer(d)) {
+    return d.daysSince == null ? PROSPECT_COLOR : recencyColor(d.daysSince);
+  }
+  return recencyColor(d.daysSince);
 }
 
 interface CheckIn {
@@ -203,6 +243,11 @@ function recencyColor(days: number | null): string {
   return "#dc2626"; // red
 }
 
+function isRealFieldCheckIn(c: Pick<CheckIn, "log_type" | "outcome" | "notes">): boolean {
+  if (c.log_type === "conversion" || c.outcome === "converted") return false;
+  return !(c.notes ?? "").toLowerCase().startsWith("converted from crm account");
+}
+
 export default function CheckInsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -214,6 +259,7 @@ export default function CheckInsPage() {
 
   const [token, setToken] = useState<string | null>(null);
   const [dealers, setDealers] = useState<Dealer[]>([]);
+  const [prospectDealers, setProspectDealers] = useState<Dealer[]>([]);
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -223,11 +269,12 @@ export default function CheckInsPage() {
   const [detailCheckIn, setDetailCheckIn] = useState<CheckIn | null>(null);
   const [form, setForm] = useState({
     visit_date: todayEST(),
-    log_type: "",
+    log_types: [] as string[],
     new_placement: "",
     brands: [] as string[],
     notes: "",
     follow_up_date: "",
+    follow_up_title: "",
   });
   const [recentRange, setRecentRange] = useState<{ from: string; to: string }>({
     from: "",
@@ -238,6 +285,7 @@ export default function CheckInsPage() {
   const [addSaving, setAddSaving] = useState(false);
   const [territoriesOnly, setTerritoriesOnly] = useState(false);
   const [teamFilter, setTeamFilter] = useState<TeamMemberId | "all">("all");
+  const [colorFilter, setColorFilter] = useState<string | "all">("all");
   const [salesReps, setSalesReps] = useState<{ id: string; name: string }[]>([]);
   const [newDealer, setNewDealer] = useState<{
     first_name: string;
@@ -310,20 +358,30 @@ export default function CheckInsPage() {
   }, [checkIns]);
 
   const dealersWithMeta = useMemo(() => {
-    return dealers.map((d) => {
+    return [...dealers, ...prospectDealers].map((d) => {
       const last = lastVisitMap.get(d.id) ?? null;
       const days = last
         ? Math.floor((Date.now() - new Date(last).getTime()) / 86400000)
         : null;
       return { ...d, lastVisit: last, daysSince: days };
     });
-  }, [dealers, lastVisitMap]);
+  }, [dealers, prospectDealers, lastVisitMap]);
 
   const filteredDealers = useMemo(() => {
     const q = search.trim().toLowerCase();
     const team = teamFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === teamFilter);
     return dealersWithMeta.filter((d) => {
       if (team && !dealerMatchesTeam(d, team)) return false;
+      if (colorFilter !== "all") {
+        const pinColor = pinColorFor(d);
+        // Prospect filter: include any prospect, even if the fill color has
+        // switched to a recency color after a check-in (the charcoal ring
+        // still marks them as a prospect).
+        // Recency filter: include prospects whose current fill matches the
+        // selected recency color too.
+        const matchesProspect = colorFilter === PROSPECT_COLOR && isProspectDealer(d);
+        if (!matchesProspect && pinColor !== colorFilter) return false;
+      }
       if (!q) return true;
       return (
         d.name.toLowerCase().includes(q) ||
@@ -331,7 +389,7 @@ export default function CheckInsPage() {
         (d.state ?? "").toLowerCase().includes(q)
       );
     });
-  }, [dealersWithMeta, search, teamFilter]);
+  }, [dealersWithMeta, search, teamFilter, colorFilter]);
 
   // Fetch token
   useEffect(() => {
@@ -349,6 +407,132 @@ export default function CheckInsPage() {
     })();
   }, [toast]);
 
+  // Fetch CRM prospects (account_type='prospect') and geocode their
+  // addresses client-side via Mapbox. Cached in localStorage so we only
+  // hit the geocoder once per address. Injected as charcoal pins.
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      const PAGE = 1000;
+      type CrmRow = {
+        id: string;
+        company_name: string;
+        street_1: string | null;
+        city: string | null;
+        state: string | null;
+        zip: string | null;
+        main_phone: string | null;
+        email: string | null;
+        website: string | null;
+        notes: string | null;
+        assigned_rep_id: string | null;
+        assigned_manager_id: string | null;
+      };
+      let from = 0;
+      const all: CrmRow[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from("crm_accounts")
+          .select(
+            "id, company_name, street_1, city, state, zip, main_phone, email, website, notes, assigned_rep_id, assigned_manager_id",
+          )
+          .eq("account_type", "prospect")
+          .range(from, from + PAGE - 1);
+        if (error) break;
+        const batch = (data ?? []) as CrmRow[];
+        all.push(...batch);
+        if (batch.length < PAGE) break;
+        from += PAGE;
+      }
+      if (cancelled) return;
+
+      const CACHE_KEY = "lineage:crm-prospect-geocode:v1";
+      let cache: Record<string, { lat: number; lng: number } | null> = {};
+      try {
+        cache = JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+      } catch {
+        cache = {};
+      }
+
+      const buildAddr = (r: CrmRow) =>
+        [r.street_1, r.city, r.state, r.zip].filter((p) => p && String(p).trim()).join(", ");
+
+      const geocode = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
+        try {
+          const url =
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addr)}.json` +
+            `?access_token=${encodeURIComponent(token)}&country=us&limit=1`;
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          const json = await res.json();
+          const feat = json?.features?.[0];
+          if (!feat?.center) return null;
+          return { lng: Number(feat.center[0]), lat: Number(feat.center[1]) };
+        } catch {
+          return null;
+        }
+      };
+
+      // Resolve coords for each prospect (cache first), then update state
+      // progressively in small batches so pins appear as they're geocoded.
+      const out: Dealer[] = [];
+      let pendingFlush = 0;
+      const flush = () => {
+        if (cancelled) return;
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+        } catch {
+          // ignore quota errors
+        }
+        setProspectDealers([...out]);
+      };
+
+      for (const r of all) {
+        const addr = buildAddr(r);
+        if (!addr) continue;
+        let coords = cache[addr];
+        if (coords === undefined) {
+          coords = await geocode(addr);
+          cache[addr] = coords;
+          pendingFlush++;
+        }
+        if (!coords) continue;
+        out.push({
+          id: r.id,
+          name: r.company_name,
+          first_name: null,
+          last_name: null,
+          street_address: r.street_1,
+          city: r.city,
+          state: r.state,
+          status: "active",
+          rep_id: r.assigned_rep_id,
+          rep_owner: null,
+          manager_id: r.assigned_manager_id,
+          phone: r.main_phone,
+          email: r.email,
+          website: r.website,
+          notes: r.notes,
+          buying_group: null,
+          source: "crm_prospect",
+          lat: coords.lat,
+          lng: coords.lng,
+        });
+        if (pendingFlush >= 10) {
+          pendingFlush = 0;
+          flush();
+        }
+      }
+      flush();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+
   // Load dealers + check-ins
   const load = async () => {
     setLoading(true);
@@ -360,7 +544,7 @@ export default function CheckInsPage() {
       while (true) {
         const { data, error } = await supabase
           .from("dealers")
-          .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, lat, lng")
+          .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, source, lat, lng")
           .order("name")
           .range(from, from + PAGE - 1);
         if (error) return { data: null, error };
@@ -404,7 +588,7 @@ export default function CheckInsPage() {
       if (checkInsRes.error) {
         toast({ title: "Failed to load check-ins", description: checkInsRes.error.message, variant: "destructive" });
       } else {
-        const ci = (checkInsRes.data ?? []) as CheckIn[];
+        const ci = ((checkInsRes.data ?? []) as CheckIn[]).filter(isRealFieldCheckIn);
         setCheckIns(ci);
         const ids = Array.from(new Set(ci.map((c) => c.user_id).filter(Boolean)));
         if (ids.length > 0) {
@@ -437,7 +621,7 @@ export default function CheckInsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Client-side geocoding disabled — too slow at this volume and many
+  // Client-side geocoding disabled - too slow at this volume and many
   // street_address values contain business names rather than real streets.
   // Geocoding should be done server-side during the Acctivate sync.
   // (Keeping the state var so existing UI references still work.)
@@ -480,7 +664,7 @@ export default function CheckInsPage() {
         // Tag each feature with its territory
         for (const f of geo.features ?? []) {
           // Feature 'id' is the FIPS code; we need the 2-letter state code.
-          // The GeoJSON uses `properties.name` (full state name) — convert.
+          // The GeoJSON uses `properties.name` (full state name) - convert.
           const code = STATE_NAME_TO_CODE[f.properties?.name] ?? null;
           const territory = code ? STATE_TO_TERRITORY[code] ?? null : null;
           f.properties.territory = territory;
@@ -529,7 +713,7 @@ export default function CheckInsPage() {
 
         let hoveredId: number | string | null = null;
         map.on("mousemove", "us-states-fill", (e) => {
-          const f = e.features?.[0];
+          const f = e.features?.[0] as any;
           if (!f || !f.properties?.territory) return;
           if (dealerHoverRef.current) {
             // Suppress territory hover while pointer is over a dealer pin
@@ -594,10 +778,13 @@ export default function CheckInsPage() {
       const el = document.createElement("button");
       el.type = "button";
       el.setAttribute("aria-label", `${d.name} marker`);
+      const isProspect = isProspectDealer(d);
+      const hasCheckIn = d.daysSince != null;
+      const ringCharcoal = isProspect && hasCheckIn;
       el.style.cssText = `
         width: 18px; height: 18px; border-radius: 9999px;
-        background: ${recencyColor(d.daysSince)};
-        border: 2px solid white;
+        background: ${pinColorFor(d)};
+        border: ${ringCharcoal ? `3px solid ${PROSPECT_COLOR}` : "2px solid white"};
         box-shadow: 0 1px 4px rgba(0,0,0,0.35);
         cursor: pointer; padding: 0;
         transition: background-color 200ms ease;
@@ -708,23 +895,56 @@ export default function CheckInsPage() {
 
   const saveCheckIn = async () => {
     if (!user || !selected) return;
-    if (!form.log_type) {
-      toast({ title: "Log Type required", description: "Pick a log type.", variant: "destructive" });
+    if (!form.log_types.length) {
+      toast({ title: "Log Type required", description: "Pick at least one log type.", variant: "destructive" });
       return;
     }
-    if (form.log_type === "follow_up" && !form.follow_up_date) {
+    const hasFollowUp = form.log_types.includes("follow_up");
+    if (hasFollowUp && !form.follow_up_date) {
       toast({ title: "Follow-up date required", description: "Pick a date for the follow-up task.", variant: "destructive" });
       return;
     }
     setSaving(true);
+    // Prospects live in crm_accounts and have no dealers row yet. The
+    // dealer_check_ins.dealer_id FK points to dealers(id), so we upsert a
+    // matching dealers row (same uuid) before inserting the check-in.
+    if (isProspectDealer(selected)) {
+      const { error: upsertErr } = await supabase
+        .from("dealers")
+        .upsert(
+          {
+            id: selected.id,
+            name: selected.name,
+            status: "active",
+            source: "crm_prospect",
+            street_address: selected.street_address,
+            city: selected.city,
+            state: selected.state,
+            phone: selected.phone,
+            email: selected.email,
+            website: selected.website,
+            rep_id: selected.rep_id,
+            manager_id: selected.manager_id,
+            lat: selected.lat,
+            lng: selected.lng,
+            crm_account_id: selected.id,
+          },
+          { onConflict: "id" },
+        );
+      if (upsertErr) {
+        setSaving(false);
+        toast({ title: "Failed to save check-in", description: upsertErr.message, variant: "destructive" });
+        return;
+      }
+    }
     const { data, error } = await supabase
       .from("dealer_check_ins")
       .insert({
         dealer_id: selected.id,
         user_id: user.id,
         visit_date: form.visit_date,
-        outcome: form.log_type,
-        log_type: form.log_type,
+        outcome: form.log_types.join(","),
+        log_type: form.log_types.join(","),
         new_placement: form.new_placement || null,
         brand: form.brands.length ? form.brands.join(", ") : null,
         notes: form.notes.trim() || null,
@@ -751,8 +971,8 @@ export default function CheckInsPage() {
     }
 
     // If follow-up, create a task + notification
-    if (form.log_type === "follow_up" && form.follow_up_date) {
-      const taskTitle = `Follow up with ${selected.name}`;
+    if (hasFollowUp && form.follow_up_date) {
+      const taskTitle = form.follow_up_title.trim() || `Follow up with ${selected.name}`;
       const taskDesc = form.notes.trim()
         ? `From check-in on ${form.visit_date}: ${form.notes.trim()}`
         : `From check-in on ${form.visit_date}`;
@@ -775,7 +995,7 @@ export default function CheckInsPage() {
           user_id: user.id,
           type: "follow_up_scheduled",
           title: "Follow-up scheduled",
-          body: `${taskTitle} — due ${format(parseDateOnly(form.follow_up_date), "MMM d, yyyy")}`,
+          body: `${taskTitle} - due ${format(parseDateOnly(form.follow_up_date), "MMM d, yyyy")}`,
           link: "/tasks",
           related_id: taskRow?.id ?? null,
         });
@@ -788,11 +1008,12 @@ export default function CheckInsPage() {
     setSaving(false);
     setForm({
       visit_date: todayEST(),
-      log_type: "",
+      log_types: [],
       new_placement: "",
       brands: [],
       notes: "",
       follow_up_date: "",
+      follow_up_title: "",
     });
   };
 
@@ -854,7 +1075,7 @@ export default function CheckInsPage() {
         rep_owner: owner,
         rep_id: newDealer.rep_id || null,
       })
-      .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, lat, lng")
+      .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, source, lat, lng")
       .single();
     setAddSaving(false);
     if (error) {
@@ -891,210 +1112,10 @@ export default function CheckInsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="h-9">
-                <Plus className="h-4 w-4" /> Add dealer
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Add a dealer account</DialogTitle>
-                <DialogDescription>
-                  Create a new dealer. Coordinates are auto-filled from the address.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-3 py-2">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="d-first-name">First name</Label>
-                    <Input
-                      id="d-first-name"
-                      value={newDealer.first_name}
-                      onChange={(e) => setNewDealer({ ...newDealer, first_name: e.target.value })}
-                      maxLength={100}
-                      placeholder="First name"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="d-last-name">Last name</Label>
-                    <Input
-                      id="d-last-name"
-                      value={newDealer.last_name}
-                      onChange={(e) => setNewDealer({ ...newDealer, last_name: e.target.value })}
-                      maxLength={100}
-                      placeholder="Last name"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="d-name">Dealer name *</Label>
-                  <Input
-                    id="d-name"
-                    value={newDealer.name}
-                    onChange={(e) => setNewDealer({ ...newDealer, name: e.target.value })}
-                    maxLength={200}
-                    placeholder="Dealer name"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="d-street">Street address *</Label>
-                  <Input
-                    id="d-street"
-                    value={newDealer.street_address}
-                    onChange={(e) => setNewDealer({ ...newDealer, street_address: e.target.value })}
-                    maxLength={200}
-                    placeholder="123 Main St"
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-2 space-y-1.5">
-                    <Label htmlFor="d-city">City *</Label>
-                    <Input
-                      id="d-city"
-                      value={newDealer.city}
-                      onChange={(e) => setNewDealer({ ...newDealer, city: e.target.value })}
-                      maxLength={100}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="d-state">State *</Label>
-                    <Input
-                      id="d-state"
-                      value={newDealer.state}
-                      onChange={(e) => setNewDealer({ ...newDealer, state: e.target.value })}
-                      maxLength={2}
-                      placeholder="UT"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="d-phone">Phone</Label>
-                    <Input
-                      id="d-phone"
-                      type="tel"
-                      value={newDealer.phone}
-                      onChange={(e) => setNewDealer({ ...newDealer, phone: e.target.value })}
-                      maxLength={30}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="d-email">Email</Label>
-                    <Input
-                      id="d-email"
-                      type="email"
-                      value={newDealer.email}
-                      onChange={(e) => setNewDealer({ ...newDealer, email: e.target.value })}
-                      maxLength={255}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="d-website">Website</Label>
-                  <Input
-                    id="d-website"
-                    type="url"
-                    value={newDealer.website}
-                    onChange={(e) => setNewDealer({ ...newDealer, website: e.target.value })}
-                    maxLength={255}
-                    placeholder="https://"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="d-rep">Rep *</Label>
-                  <Select
-                    value={newDealer.rep_id || ""}
-                    onValueChange={(v) => setNewDealer({ ...newDealer, rep_id: v })}
-                  >
-                    <SelectTrigger id="d-rep">
-                      <SelectValue placeholder="Select sales rep" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {salesReps.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {!detectedOwner && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="d-owner">Owner *</Label>
-                    <Select
-                      value={newDealer.rep_owner || ""}
-                      onValueChange={(v) =>
-                        setNewDealer({ ...newDealer, rep_owner: v as TeamMemberId })
-                      }
-                    >
-                      <SelectTrigger id="d-owner">
-                        <SelectValue placeholder="Select owner" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TEAM_MEMBERS.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                <div className="space-y-1.5">
-                  <Label htmlFor="d-buying-group">Buying group</Label>
-                  <Select
-                    value={newDealer.buying_group || ""}
-                    onValueChange={(v) =>
-                      setNewDealer({ ...newDealer, buying_group: v as typeof newDealer.buying_group })
-                    }
-                  >
-                    <SelectTrigger id="d-buying-group">
-                      <SelectValue placeholder="Select buying group" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nothing</SelectItem>
-                      <SelectItem value="fmg">FMG</SelectItem>
-                      <SelectItem value="furniture_first">Furniture First</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="d-notes">Notes</Label>
-                  <Textarea
-                    id="d-notes"
-                    value={newDealer.notes}
-                    onChange={(e) => setNewDealer({ ...newDealer, notes: e.target.value })}
-                    maxLength={2000}
-                    rows={3}
-                    placeholder="Write notes about this dealer"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setAddOpen(false)} disabled={addSaving}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={addDealer}
-                  disabled={
-                    addSaving ||
-                    !newDealer.name.trim() ||
-                    !newDealer.street_address.trim() ||
-                    !newDealer.city.trim() ||
-                    !newDealer.state.trim() ||
-                    !(newDealer.rep_owner || detectedOwner)
-                  }
-                >
-                  {addSaving ? "Saving..." : "Add dealer"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             {geocoding && (
               <span className="inline-flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Geocoding…
+                <Loader2 className="h-3 w-3 animate-spin" /> Geocoding...
               </span>
             )}
             <span>
@@ -1108,20 +1129,40 @@ export default function CheckInsPage() {
       <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
         <span className="font-medium text-foreground">Last visit:</span>
         {[
-          { c: "#16a34a", l: "≤ 2 weeks" },
-          { c: "#eab308", l: "≤ 45 days" },
-          { c: "#f97316", l: "≤ 90 days" },
+          { c: "#16a34a", l: "-  2 weeks" },
+          { c: "#eab308", l: "-  45 days" },
+          { c: "#f97316", l: "-  90 days" },
           { c: "#dc2626", l: "> 90 days" },
           { c: "#94a3b8", l: "Never" },
-        ].map((x) => (
-          <span key={x.l} className="inline-flex items-center gap-1.5">
-            <span
-              className="inline-block h-2.5 w-2.5 rounded-full border border-white shadow"
-              style={{ backgroundColor: x.c }}
-            />
-            {x.l}
-          </span>
-        ))}
+          { c: PROSPECT_COLOR, l: "Prospect" },
+        ].map((x) => {
+          const active = colorFilter === x.c;
+          return (
+            <button
+              key={x.l}
+              type="button"
+              onClick={() => setColorFilter(active ? "all" : x.c)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 transition-colors cursor-pointer ${active ? "bg-accent text-accent-foreground ring-1 ring-primary" : "hover:bg-accent/50"}`}
+            >
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full border border-white shadow"
+                style={{ backgroundColor: x.c }}
+              />
+              {x.l}
+            </button>
+          );
+        })}
+        {colorFilter !== "all" && (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 text-[10px] px-2"
+            onClick={() => setColorFilter("all")}
+          >
+            Clear color
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"
@@ -1133,7 +1174,7 @@ export default function CheckInsPage() {
         </Button>
       </div>
 
-      {/* My Team — filter dealers on the map by team member */}
+      {/* My Team - filter dealers on the map by team member */}
       <Card className="p-3">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1185,7 +1226,7 @@ export default function CheckInsPage() {
           style={{ height: "calc(100vh - 280px)", minHeight: 420 }}
         />
         {!token && (
-          <div className="p-6 text-sm text-muted-foreground">Loading map…</div>
+          <div className="p-6 text-sm text-muted-foreground">Loading map...</div>
         )}
       </Card>
 
@@ -1247,12 +1288,12 @@ export default function CheckInsPage() {
               <div className="flex items-center justify-end -mt-1 mb-2">
                 <span className="text-xs text-muted-foreground">
                   {hasRange
-                    ? `${filtered.length} in range • ${teamScoped.length} total`
+                    ? `${filtered.length} in range ... ${teamScoped.length} total`
                     : `${teamScoped.length} total`}
                 </span>
               </div>
               {loading ? (
-                <p className="text-sm text-muted-foreground">Loading…</p>
+                <p className="text-sm text-muted-foreground">Loading...</p>
               ) : filtered.length === 0 ? (
                 <p className="text-sm text-muted-foreground italic">
                   {teamScoped.length === 0
@@ -1355,7 +1396,7 @@ export default function CheckInsPage() {
                             {selected.phone}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">—</span>
+                          <span className="text-muted-foreground italic">-</span>
                         )}
                       </dd>
                     </div>
@@ -1367,7 +1408,7 @@ export default function CheckInsPage() {
                             {selected.email}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">—</span>
+                          <span className="text-muted-foreground italic">-</span>
                         )}
                       </dd>
                     </div>
@@ -1384,7 +1425,7 @@ export default function CheckInsPage() {
                             {selected.website}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground italic">—</span>
+                          <span className="text-muted-foreground italic">-</span>
                         )}
                       </dd>
                     </div>
@@ -1406,7 +1447,7 @@ export default function CheckInsPage() {
                       <dd className="mt-0.5">
                         {(() => {
                           const rep = salesReps.find((r) => r.id === selected.rep_id);
-                          return rep ? rep.name : <span className="text-muted-foreground italic">—</span>;
+                          return rep ? rep.name : <span className="text-muted-foreground italic">-</span>;
                         })()}
                       </dd>
                     </div>
@@ -1421,7 +1462,7 @@ export default function CheckInsPage() {
                             furniture_first: "Furniture First",
                             nationwide: "Nationwide",
                           };
-                          return bg ? (map[bg] ?? bg) : <span className="text-muted-foreground italic">—</span>;
+                          return bg ? (map[bg] ?? bg) : <span className="text-muted-foreground italic">-</span>;
                         })()}
                       </dd>
                     </div>
@@ -1433,7 +1474,7 @@ export default function CheckInsPage() {
                             .filter(Boolean)
                             .join(", ");
                           if (!addr && selected.lat == null) {
-                            return <span className="text-muted-foreground italic">—</span>;
+                            return <span className="text-muted-foreground italic">-</span>;
                           }
                           const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
                             selected.lat != null && selected.lng != null
@@ -1444,7 +1485,7 @@ export default function CheckInsPage() {
 
                           return (
                             <div className="flex items-start justify-between gap-2">
-                              <span className="flex-1">{addr || "—"}</span>
+                              <span className="flex-1">{addr || "-"}</span>
                               <a
                                 href={mapsUrl}
                                 target={linkTarget}
@@ -1485,7 +1526,7 @@ export default function CheckInsPage() {
                     <div className="px-3 py-2">
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Notes</dt>
                       <dd className="mt-0.5 whitespace-pre-wrap text-sm">
-                        {selected.notes || <span className="text-muted-foreground italic">—</span>}
+                        {selected.notes || <span className="text-muted-foreground italic">-</span>}
                       </dd>
                     </div>
                   </dl>
@@ -1518,21 +1559,47 @@ export default function CheckInsPage() {
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1.5 block">Log Type</Label>
-                      <Select
-                        value={form.log_type}
-                        onValueChange={(v) => setForm({ ...form, log_type: v })}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a log type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LOG_TYPES.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                          >
+                            <span className={form.log_types.length ? "" : "text-muted-foreground"}>
+                              {form.log_types.length
+                                ? LOG_TYPES.filter((o) => form.log_types.includes(o.value))
+                                    .map((o) => o.label)
+                                    .join(", ")
+                                : "Select log type(s)"}
+                            </span>
+                            <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-2" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-1" align="start">
+                          {LOG_TYPES.map((o) => {
+                            const checked = form.log_types.includes(o.value);
+                            return (
+                              <label
+                                key={o.value}
+                                className="flex items-center gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-accent"
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(v) => {
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      log_types: v
+                                        ? [...prev.log_types, o.value]
+                                        : prev.log_types.filter((b) => b !== o.value),
+                                    }));
+                                  }}
+                                />
+                                <span className="text-sm">{o.label}</span>
+                              </label>
+                            );
+                          })}
+                        </PopoverContent>
+                      </Popover>
                     </div>
                     <div>
                       <Label className="text-xs font-medium mb-1.5 block">New Placement</Label>
@@ -1596,10 +1663,19 @@ export default function CheckInsPage() {
                         </PopoverContent>
                       </Popover>
                     </div>
-                    {form.log_type === "follow_up" && (
-                      <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-1.5">
+                    {form.log_types.includes("follow_up") && (
+                      <div className="rounded-md border border-dashed border-primary/40 bg-primary/5 p-3 space-y-2">
+                        <Label htmlFor="follow-up-title" className="text-xs font-medium">
+                          Follow-up task
+                        </Label>
+                        <Input
+                          id="follow-up-title"
+                          placeholder={selected ? `Follow up with ${selected.name}` : "Task title"}
+                          value={form.follow_up_title}
+                          onChange={(e) => setForm({ ...form, follow_up_title: e.target.value })}
+                        />
                         <Label htmlFor="follow-up-date" className="text-xs font-medium">
-                          Follow-up date
+                          Due date
                         </Label>
                         <Input
                           id="follow-up-date"
@@ -1686,7 +1762,7 @@ export default function CheckInsPage() {
                   {(selected?.id === detailCheckIn.dealer_id
                     ? selected?.name
                     : dealers.find((d) => d.id === detailCheckIn.dealer_id)?.name) ?? "Dealer"}{" "}
-                  • {format(parseDateOnly(detailCheckIn.visit_date), "EEEE, MMM d, yyyy")}
+                  ... {format(parseDateOnly(detailCheckIn.visit_date), "EEEE, MMM d, yyyy")}
                 </DialogDescription>
               </DialogHeader>
 
@@ -1717,7 +1793,7 @@ export default function CheckInsPage() {
                       {LOG_TYPES.find((l) => l.value === (detailCheckIn.log_type ?? detailCheckIn.outcome))?.label
                         ?? detailCheckIn.log_type
                         ?? detailCheckIn.outcome
-                        ?? "—"}
+                        ?? "-"}
                     </p>
                   </div>
                   <div>
@@ -1727,7 +1803,7 @@ export default function CheckInsPage() {
                     <p className="mt-1 font-medium">
                       {PLACEMENT_OPTIONS.find((p) => p.value === detailCheckIn.new_placement)?.label
                         ?? detailCheckIn.new_placement
-                        ?? "—"}
+                        ?? "-"}
                     </p>
                   </div>
                 </div>
@@ -1747,7 +1823,7 @@ export default function CheckInsPage() {
                             </Badge>
                           );
                         })
-                      : <span className="text-muted-foreground">—</span>}
+                      : <span className="text-muted-foreground">-</span>}
                   </div>
                 </div>
 

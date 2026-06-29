@@ -24,7 +24,7 @@ type Product = {
 };
 
 function formatPrice(n: number | null) {
-  if (n == null) return "—";
+  if (n == null) return "-";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
 }
 
@@ -62,7 +62,7 @@ export default function ProductDetailPage() {
   }, [sku]);
 
   if (loading) {
-    return <div className="p-12 text-center text-muted-foreground">Loading product…</div>;
+    return <div className="p-12 text-center text-muted-foreground">Loading product...</div>;
   }
   if (!product) {
     return (

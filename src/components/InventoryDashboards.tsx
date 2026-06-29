@@ -31,6 +31,16 @@ const fmtMoney = (n: number) =>
   `$${n.toFixed(0)}`;
 const fmtNum = (n: number) => n.toLocaleString();
 
+const isOutOfStockSku = (it: InventoryItem) => (it.onHand ?? 0) <= 0;
+
+const isCloseoutSku = (it: InventoryItem) => it.isCloseout || /^C:/i.test(it.sku ?? "");
+
+const isInventoryExcludedSku = (it: InventoryItem) => {
+  const category = (it as InventoryItem & { category?: string }).category ?? "";
+  const hay = `${it.sku ?? ""} ${it.product ?? ""} ${it.brand ?? ""} ${it.collection ?? ""} ${category} ${it.supplier ?? ""}`.toLowerCase();
+  return /freight|dropship|drop ship|drop-ship|tariff surcharge|delivery charge/.test(hay);
+};
+
 const STAGES = [
   { key: "in_manufacturing", label: "In Manufacturing" },
   { key: "loaded", label: "Loaded" },
@@ -119,9 +129,9 @@ function ReportSkuValue({ items, total }: { items: InventoryItem[]; total: numbe
             <td className="px-3 py-2 max-w-[260px] truncate">{it.product}</td>
             <td className="px-3 py-2 text-xs text-muted-foreground">{it.collection}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onHand)}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{it.unitCost ? `$${it.unitCost.toFixed(2)}` : "—"}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{it.unitCost ? `$${it.unitCost.toFixed(2)}` : "-"}</td>
             <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(value)}</td>
-            <td className="px-3 py-2 text-right tabular-nums text-xs text-muted-foreground">{total > 0 ? `${((value / total) * 100).toFixed(1)}%` : "—"}</td>
+            <td className="px-3 py-2 text-right tabular-nums text-xs text-muted-foreground">{total > 0 ? `${((value / total) * 100).toFixed(1)}%` : "-"}</td>
           </tr>
         ))}
       </tbody>
@@ -183,7 +193,7 @@ function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
           port: PORTS[(seed >> 14) % PORTS.length],
           whereToTrack: ["Carrier site", "Forwarder portal", "N/A"][(seed >> 16) % 3],
           drayage,
-          notes: (seed >> 18) % 7 === 0 ? "Customer responsible" : "—",
+          notes: (seed >> 18) % 7 === 0 ? "Customer responsible" : "-",
           tariffDisc,
           invoiceValue: value,
           invoiceEntered,
@@ -531,10 +541,10 @@ function ReportPOs({ pos, prepaidMode }: { pos: PurchaseOrder[]; prepaidMode?: b
       <tbody>
         {rows.map((p) => (
           <tr key={p.id} className="border-t border-border hover:bg-muted/30">
-            <td className="px-3 py-2 font-mono text-xs">{p.po_number ?? "—"}</td>
-            <td className="px-3 py-2">{p.factory ?? "—"}</td>
-            <td className="px-3 py-2 text-xs">{p.production_stage ?? p.status ?? "—"}</td>
-            <td className="px-3 py-2 text-xs">{p.eta ? new Date(p.eta).toLocaleDateString() : "—"}</td>
+            <td className="px-3 py-2 font-mono text-xs">{p.po_number ?? "-"}</td>
+            <td className="px-3 py-2">{p.factory ?? "-"}</td>
+            <td className="px-3 py-2 text-xs">{p.production_stage ?? p.status ?? "-"}</td>
+            <td className="px-3 py-2 text-xs">{p.eta ? new Date(p.eta).toLocaleDateString() : "-"}</td>
             <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(Number(p.total_value))}</td>
             {prepaidMode && <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(Number(p.prepaid_amount ?? 0))}</td>}
           </tr>
@@ -563,13 +573,13 @@ function ReportBacklog({ rows }: { rows: { id: string; order_number: string | nu
       <tbody>
         {sorted.map((r) => (
           <tr key={r.id} className="border-t border-border hover:bg-muted/30">
-            <td className="px-3 py-2 font-mono text-xs">{r.order_number ?? "—"}</td>
-            <td className="px-3 py-2 max-w-[200px] truncate">{r.dealer_name ?? "—"}</td>
+            <td className="px-3 py-2 font-mono text-xs">{r.order_number ?? "-"}</td>
+            <td className="px-3 py-2 max-w-[200px] truncate">{r.dealer_name ?? "-"}</td>
             <td className="px-3 py-2 font-mono text-xs">{r.sku}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(Number(r.qty_open))}</td>
             <td className="px-3 py-2 text-right tabular-nums">${Number(r.unit_price).toFixed(2)}</td>
             <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(Number(r.extended_value))}</td>
-            <td className="px-3 py-2 text-xs">{r.promised_date ? new Date(r.promised_date).toLocaleDateString() : "—"}</td>
+            <td className="px-3 py-2 text-xs">{r.promised_date ? new Date(r.promised_date).toLocaleDateString() : "-"}</td>
           </tr>
         ))}
       </tbody>
@@ -645,30 +655,43 @@ function ReportTurnover({ items }: { items: InventoryItem[] }) {
   );
 }
 
-function ReportLost({ items }: { items: InventoryItem[] }) {
-  const rows = useMemo(() => items.map((it) => ({
-    it, lost: it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0),
-  })).filter((r) => r.lost > 0).sort((a, b) => b.lost - a.lost), [items]);
-  if (rows.length === 0) return <EmptyState message="No active stockouts with sales history." />;
+function ReportLost({ items, allItems }: { items: InventoryItem[]; allItems?: InventoryItem[] }) {
+  void allItems;
+  const rows = useMemo(() => {
+    return items
+      .filter((it) => isOutOfStockSku(it))
+      .filter((it) => (it.avgMonthlySales ?? 0) > 0)
+      .map((it) => {
+        const units = it.avgMonthlySales as number;
+        const price = it.listPrice ?? it.unitCost ?? 0;
+        return { it, units, lost: units * price };
+      })
+      .sort((a, b) => b.lost - a.lost);
+  }, [items]);
+  if (rows.length === 0) return <EmptyState message="No out-of-stock SKUs with sales history." />;
   return (
     <table className="w-full text-sm">
       <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
         <tr>
           <th className="text-left px-3 py-2">SKU</th>
           <th className="text-left px-3 py-2">Product</th>
-          <th className="text-right px-3 py-2">Mo Sales (units)</th>
+          <th className="text-right px-3 py-2">Available</th>
+          <th className="text-right px-3 py-2">Avg Mo Sales (units)</th>
           <th className="text-right px-3 py-2">On PO</th>
           <th className="text-right px-3 py-2">Lost / mo</th>
         </tr>
       </thead>
       <tbody>
-        {rows.map(({ it, lost }) => (
+        {rows.map(({ it, units, lost }) => (
           <tr key={it.sku} className="border-t border-border hover:bg-muted/30">
             <td className="px-3 py-2 font-mono text-xs">{it.sku}</td>
             <td className="px-3 py-2 max-w-[260px] truncate">{it.product}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{it.avgMonthlySales.toFixed(1)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.available ?? 0)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{units.toFixed(1)}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onPo ?? 0)}</td>
-            <td className="px-3 py-2 text-right tabular-nums font-semibold text-destructive">{fmtMoney(lost)}</td>
+            <td className={cn("px-3 py-2 text-right tabular-nums font-semibold", lost > 0 ? "text-destructive" : "text-muted-foreground")}>
+              {lost > 0 ? fmtMoney(lost) : "-"}
+            </td>
           </tr>
         ))}
       </tbody>
@@ -677,7 +700,7 @@ function ReportLost({ items }: { items: InventoryItem[] }) {
 }
 
 function StagePill({ stage }: { stage: string | null }) {
-  if (!stage) return <span className="text-xs text-muted-foreground">—</span>;
+  if (!stage) return <span className="text-xs text-muted-foreground">-</span>;
   const cls = STAGE_COLOR[stage] ?? "bg-muted text-muted-foreground border-border";
   const label = STAGES.find((s) => s.key === stage)?.label ?? stage;
   return <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs border", cls)}>{label}</span>;
@@ -718,11 +741,15 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       units += it.onHand;
       monthlySales += it.avgMonthlySales * (it.listPrice ?? cost);
       annualUnits += it.avgMonthlySales * 12;
-      if (it.status === "out-of-stock") {
-        lostSales += it.avgMonthlySales * (it.listPrice ?? cost);
-        outOfStockValue += it.avgMonthlySales * (it.listPrice ?? cost);
+      const oos = isOutOfStockSku(it);
+      // Only count REAL lost sales: SKUs that are out-of-stock AND have actual
+      // Acctivate sales history (avgMonthlySales > 0). No estimates / fallbacks.
+      if (oos && !isInventoryExcludedSku(it) && (it.avgMonthlySales ?? 0) > 0) {
+        const price = it.listPrice ?? cost;
+        lostSales += it.avgMonthlySales * price;
+        outOfStockValue += it.avgMonthlySales * price;
       }
-      if (it.isCloseout || it.isClearance) closeoutValue += lineValue;
+      if (isCloseoutSku(it) || it.isClearance) closeoutValue += lineValue;
     }
     const backlogValue = hub.openOrders.reduce((s, o) => s + Number(o.extended_value ?? 0), 0);
     const backlogUnits = hub.openOrders.reduce((s, o) => s + Number(o.qty_open ?? 0), 0);
@@ -733,16 +760,16 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       .filter((p) => p.is_prepaid)
       .reduce((s, p) => s + Number(p.prepaid_amount ?? 0), 0);
     const salesToInv = value > 0 ? monthlySales / value : 0;
-    // Annual turnover ≈ annual COGS / avg inventory value (proxy: annual units * cost / value)
     const turnover = value > 0 ? (monthlySales * 12) / value : 0;
     return { value, units, monthlySales, backlogValue, backlogUnits, openPoValue, prepaidValue, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
   }, [items, hub.openOrders, hub.purchaseOrders]);
+
 
   // Value by collection / brand for drilldown
   const valueByCollection = useMemo(() => {
     const m = new Map<string, { value: number; skus: number; units: number }>();
     for (const it of items) {
-      const k = it.collection || "—";
+      const k = it.collection || "-";
       const e = m.get(k) ?? { value: 0, skus: 0, units: 0 };
       e.value += it.onHandValue ?? (it.unitCost ?? 0) * it.onHand;
       e.skus += 1;
@@ -755,7 +782,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const valueByBrand = useMemo(() => {
     const m = new Map<string, number>();
     for (const it of items) {
-      const k = it.brand || "—";
+      const k = it.brand || "-";
       m.set(k, (m.get(k) ?? 0) + (it.onHandValue ?? (it.unitCost ?? 0) * it.onHand));
     }
     return Array.from(m, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
@@ -779,7 +806,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       // Aggregate vendor-level value from items (matches vendorPerf logic upstream)
       const vendorValue = new Map<string, number>();
       for (const it of items) {
-        const v = it.supplier ?? "—";
+        const v = it.supplier ?? "-";
         const sales = it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
         vendorValue.set(v, (vendorValue.get(v) ?? 0) + sales);
       }
@@ -893,7 +920,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const vendorPerf = useMemo(() => {
     const m = new Map<string, { sales: number; value: number; l3m: number; l12m: number; hasTrend: boolean }>();
     for (const it of items) {
-      const v = it.supplier ?? "—";
+      const v = it.supplier ?? "-";
       const sales = it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
       const e = m.get(v) ?? { sales: 0, value: 0, l3m: 0, l12m: 0, hasTrend: false };
       e.sales += sales;
@@ -936,7 +963,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   // YTD Purchase Orders by vendor (current year vs prior year YTD)
   const vendorPoYtd = useMemo(() => {
     const skuToSupplier = new Map<string, string>();
-    for (const it of items) skuToSupplier.set(it.sku, it.supplier ?? "—");
+    for (const it of items) skuToSupplier.set(it.sku, it.supplier ?? "-");
 
     const now = new Date();
     const thisYear = now.getFullYear();
@@ -967,7 +994,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         const yearStart = new Date(y, 0, 1).getTime();
         if (d.getTime() - yearStart > cutoffMs) continue;
 
-        const vendor = skuToSupplier.get(line.sku) ?? po.factory ?? "—";
+        const vendor = skuToSupplier.get(line.sku) ?? po.factory ?? "-";
         const lineValue = Number(line.qty_ordered ?? 0) * Number(line.unit_cost ?? 0);
         const e = ensure(vendor);
         if (y === thisYear) e.ty += lineValue; else e.ly += lineValue;
@@ -990,7 +1017,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         const yearStart = new Date(y, 0, 1).getTime();
         if (d.getTime() - yearStart > cutoffMs) continue;
 
-        const vendor = po.factory ?? "—";
+        const vendor = po.factory ?? "-";
         const e = ensure(vendor);
         const val = Number(po.total_value ?? 0);
         if (y === thisYear) { e.ty += val; e.tyCount += 1; }
@@ -1050,7 +1077,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       return {
         sku: it.sku,
         product: it.product,
-        vendor: it.supplier ?? "—",
+        vendor: it.supplier ?? "-",
         sales,
         value: (it.unitCost ?? 0) * it.onHand,
         growthPct,
@@ -1132,7 +1159,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       .slice(0, 30),
     [items]);
 
-  // Inventory aging (received_date based — only available items shown)
+  // Inventory aging (received_date based - only available items shown)
   const aging = useMemo(() => {
     const today = Date.now();
     const buckets = { d030: 0, d3160: 0, d6190: 0, d90plus: 0, unknown: 0 };
@@ -1185,7 +1212,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // ============ SECTION 4: CLOSEOUT ============
   const closeoutRows = useMemo(() =>
-    items.filter((it) => it.isCloseout).map((it) => {
+    items.filter((it) => isCloseoutSku(it)).map((it) => {
       const initial = (it as any).closeout_initial_qty as number | undefined;
       const sold = (it as any).closeout_units_sold as number | undefined;
       const pctSold = initial && initial > 0 ? ((sold ?? 0) / initial) * 100 : null;
@@ -1258,7 +1285,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const reorderByFactory = useMemo(() => {
     const m = new Map<string, { suggested: number; moq: number; skus: number; totalCubes: number }>();
     for (const it of reorderSuggestions) {
-      const f = it.factory ?? it.supplier ?? "—";
+      const f = it.factory ?? it.supplier ?? "-";
       const e = m.get(f) ?? { suggested: 0, moq: 0, skus: 0, totalCubes: 0 };
       e.suggested += it.suggestedOrder;
       e.moq += it.moq ?? 0;
@@ -1351,7 +1378,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         | "Liquidate"
         | "Do Not Order";
       if (it.isDiscontinued) decision = "Liquidate";
-      else if (it.isCloseout || it.isClearance) decision = "Do Not Order";
+      else if (isCloseoutSku(it) || it.isClearance) decision = "Do Not Order";
       else if ((it.monthsSupply ?? 0) >= 12 && it.salesPerWeek < 0.25)
         decision = "Discontinue Candidate";
       else if (coveredByPo) decision = "Covered by PO";
@@ -1395,7 +1422,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   // ============ STOCKOUTS / LOST SALES ============
   const stockoutRows = useMemo(() => {
     return items
-      .filter((it) => it.onHand <= 0 || it.status === "out-of-stock")
+      .filter((it) => isOutOfStockSku(it) && !isInventoryExcludedSku(it))
       .map((it) => {
         const dailySales = (it.avgMonthlySales || 0) / 30;
         const monthlyLost = it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
@@ -1454,7 +1481,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const collectionPerf = useMemo(() => {
     const m = new Map<string, { sales: number; value: number; skus: number }>();
     for (const it of items) {
-      const k = it.collection || "—";
+      const k = it.collection || "-";
       const e = m.get(k) ?? { sales: 0, value: 0, skus: 0 };
       e.sales += it.avgMonthlySales * (it.listPrice ?? it.unitCost ?? 0);
       e.value += (it.unitCost ?? 0) * it.onHand;
@@ -1473,8 +1500,8 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const closeoutByCollection = useMemo(() => {
     const m = new Map<string, number>();
     for (const it of items) {
-      if (!(it.isCloseout || it.isClearance)) continue;
-      const k = (it as any).brand || "—";
+      if (!(isCloseoutSku(it) || it.isClearance)) continue;
+      const k = (it as any).brand || "-";
       m.set(k, (m.get(k) ?? 0) + (it.onHandValue ?? (it.unitCost ?? 0) * it.onHand));
     }
     return Array.from(m, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
@@ -1488,7 +1515,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const closeoutSkuOptions = useMemo(() => {
     const s = new Set<string>();
     for (const it of items) {
-      if ((it.isCloseout || it.isClearance) && Math.round(closeoutSkuValue(it)) > 0) s.add(it.sku);
+      if ((isCloseoutSku(it) || it.isClearance) && Math.round(closeoutSkuValue(it)) > 0) s.add(it.sku);
     }
     return Array.from(s).sort();
   }, [items, closeoutSkuValue]);
@@ -1497,7 +1524,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const closeoutBySku = useMemo(() => {
     const arr = items
       .filter((it) => {
-        if (!(it.isCloseout || it.isClearance)) return false;
+        if (!(isCloseoutSku(it) || it.isClearance)) return false;
         const value = closeoutSkuValue(it);
         return Math.round(value) > 0 && (closeoutSkuFilter === "all" || it.sku === closeoutSkuFilter);
       })
@@ -1647,7 +1674,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         </div>
         <Card className="p-5">
           <h3 className="text-base font-semibold mb-3">Closeout Inventory</h3>
-          {closeoutRows.length === 0 ? <EmptyState message="No closeout SKUs flagged. Set is_closeout = true on inventory rows." /> : (
+          {closeoutRows.length === 0 ? <EmptyState message="No closeout SKUs found. Closeout items are identified by SKUs starting with C:." /> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
@@ -1669,10 +1696,10 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                       <td className="px-3 py-2">{it.product}</td>
                       <td className="px-3 py-2">{it.collection}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{it.onHand}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{it.pctSold == null ? "—" : `${it.pctSold.toFixed(0)}%`}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{it.burnDownMonths == null ? "—" : it.burnDownMonths.toFixed(1)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{it.pctSold == null ? "-" : `${it.pctSold.toFixed(0)}%`}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{it.burnDownMonths == null ? "-" : it.burnDownMonths.toFixed(1)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.onHandValue ?? (it.unitCost ?? 0) * it.onHand)}</td>
-                      <td className="px-3 py-2 text-center">{it.isClearance ? <Badge variant="secondary" className="text-[10px]">Yes</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
+                      <td className="px-3 py-2 text-center">{it.isClearance ? <Badge variant="secondary" className="text-[10px]">Yes</Badge> : <span className="text-muted-foreground text-xs">-</span>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1699,9 +1726,9 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         <KPI label="Total Inventory Value" value={fmtMoney(summary.value)} hint={`${fmtNum(summary.units)} units`} icon={DollarSign} onClick={() => toggleDrill("value")} active={drilldown === "value"} />
         <KPI label="Total Open POs" value={fmtMoney(summary.openPoValue)} hint="not yet arrived" icon={Truck} onClick={() => toggleDrill("openpo")} active={drilldown === "openpo"} />
         <KPI label="Prepaid Inventory" value={fmtMoney(summary.prepaidValue)} icon={DollarSign} onClick={() => toggleDrill("prepaid")} active={drilldown === "prepaid"} />
-        <KPI label="Backlog (Open Orders)" value={hub.loading ? "—" : fmtMoney(summary.backlogValue)} hint={hub.loading ? "loading…" : `${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} onClick={() => toggleDrill("backlog")} active={drilldown === "backlog"} />
+        <KPI label="Backlog (Open Orders)" value={hub.loading ? "-" : fmtMoney(summary.backlogValue)} hint={hub.loading ? "loading..." : `${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} onClick={() => toggleDrill("backlog")} active={drilldown === "backlog"} />
         <KPI label="Closeout Inventory" value={fmtMoney(summary.closeoutValue)} hint="clearance + closeout" icon={Tag} onClick={() => toggleDrill("closeout")} active={drilldown === "closeout"} />
-        <KPI label="Out of Stock — Lost Sales" value={fmtMoney(summary.lostSales)} hint="per month" icon={AlertCircle} accent="text-destructive" onClick={() => toggleDrill("lost")} active={drilldown === "lost"} />
+        <KPI label="OUT OF STOCK - LOST SALES" value={fmtMoney(summary.lostSales)} hint="per month" icon={AlertCircle} accent="text-destructive" onClick={() => toggleDrill("lost")} active={drilldown === "lost"} />
         <KPI label="Sales / Inv Ratio" value={summary.salesToInv.toFixed(2)} hint={summary.salesToInv > 0.5 ? "healthy" : summary.salesToInv > 0.2 ? "OK" : "carrying too much"} icon={Activity} accent={summary.salesToInv < 0.2 ? "text-warning-foreground" : undefined} />
         <KPI label="Annual Turnover" value={`${summary.turnover.toFixed(1)}×`} hint="sales ÷ inventory" icon={Activity} />
       </div>
@@ -1737,7 +1764,11 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             })()} />}
             {drilldown === "prepaid" && <ReportPOs pos={hub.purchaseOrders.filter((p) => p.is_prepaid)} prepaidMode />}
             {drilldown === "backlog" && <BacklogSummary />}
-            {drilldown === "lost" && <ReportLost items={items.filter((it) => it.status === "out-of-stock" && it.avgMonthlySales > 0)} />}
+            {drilldown === "lost" && <ReportLost allItems={items} items={items.filter((it) => {
+              if (!isOutOfStockSku(it)) return false;
+              if (isInventoryExcludedSku(it)) return false;
+              return true;
+            })} />}
           </div>
         </Card>
       )}
@@ -1762,7 +1793,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
           <h3 className="text-base font-semibold mb-3">Top Lost-Sales SKUs</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stockoutRows.slice(0, 10).map((r) => ({ sku: r.sku, lost: r.monthlyLost }))} layout="vertical" margin={{ left: 4, right: 12 }}>
+              <BarChart data={stockoutRows.filter((r) => r.monthlyLost > 0).slice(0, 10).map((r) => ({ sku: r.sku, lost: r.monthlyLost }))} layout="vertical" margin={{ left: 4, right: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis type="category" dataKey="sku" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
@@ -1782,6 +1813,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                     <th className="text-left px-3 py-2">SKU</th>
                     <th className="text-left px-3 py-2">Product</th>
                     <th className="text-left px-3 py-2">Collection</th>
+                    <th className="text-right px-3 py-2">Available</th>
                     <th className="text-right px-3 py-2">Mo Sales</th>
                     <th className="text-right px-3 py-2">Lost / mo</th>
                     <th className="text-right px-3 py-2">On PO</th>
@@ -1801,6 +1833,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                         <td className="px-3 py-2 font-mono">{r.sku}</td>
                         <td className="px-3 py-2 max-w-[220px] truncate">{r.product}</td>
                         <td className="px-3 py-2">{r.collection}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{r.available}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.avgMonthlySales.toFixed(1)}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-semibold text-destructive">{fmtMoney(r.monthlyLost)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.onPo ?? 0}</td>
@@ -1821,7 +1854,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
       {/* ============ SECTION 1: SUMMARY ============ */}
       <TabsContent value="summary" className="space-y-6 mt-4">
-        {/* Clickable status tiles — filter the SKU table below */}
+        {/* Clickable status tiles - filter the SKU table below */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {([
             { key: "all" as StatusFilter, label: "Total SKUs", value: statusCounts.total, icon: Package, accent: undefined as string | undefined, hint: undefined as string | undefined },
@@ -1929,7 +1962,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 </div>
                 <div className="relative w-64">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input value={skuSearch} onChange={(e) => setSkuSearch(e.target.value)} placeholder="Search SKU, product, brand…" className="pl-8 h-9 text-sm" />
+                  <Input value={skuSearch} onChange={(e) => setSkuSearch(e.target.value)} placeholder="Search SKU, product, brand..." className="pl-8 h-9 text-sm" />
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -1959,15 +1992,15 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                           <td className="px-3 py-2 font-mono">{it.sku}</td>
                           <td className="px-3 py-2 max-w-[220px] truncate" title={it.product}>{it.product}</td>
                           <td className="px-3 py-2">{it.collection}</td>
-                          <td className="px-3 py-2">{it.brand ?? "—"}</td>
+                          <td className="px-3 py-2">{it.brand ?? "-"}</td>
                           <td className="px-3 py-2 max-w-[140px] truncate">{it.supplier}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{it.onHand}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.value)}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{it.pctTotalInv.toFixed(1)}%</td>
                           <td className="px-3 py-2 text-right tabular-nums">{it.pctTotalSales.toFixed(1)}%</td>
                           <td className="px-3 py-2 text-right tabular-nums">{it.avgMonthlySales}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{invToSales == null ? "—" : invToSales.toFixed(1)}</td>
-                          <td className="px-3 py-2 text-center">{it.isClearance ? <Badge variant="secondary" className="text-[10px]">Yes</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{invToSales == null ? "-" : invToSales.toFixed(1)}</td>
+                          <td className="px-3 py-2 text-center">{it.isClearance ? <Badge variant="secondary" className="text-[10px]">Yes</Badge> : <span className="text-muted-foreground text-xs">-</span>}</td>
                         </tr>
                       );
                     })}
@@ -1989,7 +2022,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 <h3 className="text-base font-semibold">Arrival Calendar</h3>
               </div>
               {hub.purchaseOrders.length === 0 && (
-                <div className="text-xs text-muted-foreground mb-3">Showing sample data — Acctivate sync hasn't run yet.</div>
+                <div className="text-xs text-muted-foreground mb-3">Showing sample data - Acctivate sync hasn't run yet.</div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 {([
@@ -2009,7 +2042,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                     <div className="space-y-1 max-h-40 overflow-y-auto">
                       {b.pos.slice(0, 8).map((po) => (
                         <div key={po.id} className="text-xs flex items-center justify-between gap-2">
-                          <span className="font-mono truncate">{po.po_number ?? "—"}</span>
+                          <span className="font-mono truncate">{po.po_number ?? "-"}</span>
                           <span className="text-muted-foreground whitespace-nowrap">{po.eta}</span>
                         </div>
                       ))}
@@ -2092,7 +2125,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                           <Input
                             value={itemQuery}
                             onChange={(e) => setItemQuery(e.target.value)}
-                            placeholder="Search SKU or product…"
+                            placeholder="Search SKU or product..."
                             className="pl-8 h-9 text-sm bg-background"
                           />
                         </div>
@@ -2165,7 +2198,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                       const needsScroll = chartData.length > fitRows;
                       const yWidth = perfMode === "vendor" ? 160 : 220;
                       const maxChars = perfMode === "vendor" ? 22 : 30;
-                      const truncate = (s: string) => (s.length > maxChars ? s.slice(0, maxChars - 1).trimEnd() + "…" : s);
+                      const truncate = (s: string) => (s.length > maxChars ? s.slice(0, maxChars - 1).trimEnd() + "..." : s);
                       const renderTick = (props: any) => {
                         const x = Number(props?.x ?? 0);
                         const y = Number(props?.y ?? 0);
@@ -2208,9 +2241,9 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                       );
                     })()}
                     <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                      <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-success" /> Growing ≥ +10%</span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-success" /> Growing -  +10%</span>
                       <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Stable</span>
-                      <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-destructive" /> Declining ≤ -10%</span>
+                      <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-destructive" /> Declining -  -10%</span>
                     </div>
 
                     {perfMode === "vendor" ? (() => {
@@ -2252,7 +2285,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                                   {compareLY && (
                                     <>
                                       <th className="text-right px-3 py-2">YTD PO&apos;s ({ly})</th>
-                                      <th className="text-right px-3 py-2">YoY Δ</th>
+                                      <th className="text-right px-3 py-2">YoY -</th>
                                     </>
                                   )}
                                 </tr>
@@ -2263,7 +2296,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                                 ) : vendorRows.map((r) => {
                                   const d = r.delta;
                                   const dLabel = r.ytdValueLY === 0
-                                    ? (r.ytdValue > 0 ? "New" : "—")
+                                    ? (r.ytdValue > 0 ? "New" : "-")
                                     : `${d > 0 ? "+" : ""}${d.toFixed(0)}%`;
                                   const dCls = r.ytdValueLY === 0
                                     ? "text-muted-foreground"
@@ -2295,7 +2328,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                         </>
                       );
                     })() : (() => {
-                      // Item mode — YTD POs by SKU, joined with item metadata
+                      // Item mode - YTD POs by SKU, joined with item metadata
                       const itemMeta = new Map(items.map((it) => [it.sku, it]));
                       const itemRows = itemPoYtd.rows
                         .filter((r) => itemPassesFilter(r.sku))
@@ -2305,7 +2338,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                           return {
                             ...r,
                             product: meta?.product ?? r.sku,
-                            vendor: meta?.supplier ?? "—",
+                            vendor: meta?.supplier ?? "-",
                             invValue: (meta?.unitCost ?? 0) * (meta?.onHand ?? 0),
                             delta: r.ytdValueLY > 0 ? ((r.ytdValue - r.ytdValueLY) / r.ytdValueLY) * 100 : (r.ytdValue > 0 ? 999 : 0),
                           };
@@ -2351,7 +2384,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                                 ) : itemRows.map((r) => {
                                   const d = r.delta;
                                   const dLabel = r.ytdValueLY === 0
-                                    ? (r.ytdValue > 0 ? "New" : "—")
+                                    ? (r.ytdValue > 0 ? "New" : "-")
                                     : `${d > 0 ? "+" : ""}${d.toFixed(0)}%`;
                                   const dCls = r.ytdValueLY === 0
                                     ? "text-muted-foreground"
@@ -2398,7 +2431,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingDown className="h-4 w-4 text-warning-foreground" />
-                <h3 className="text-base font-semibold">Slow Movers (≥6 months supply)</h3>
+                <h3 className="text-base font-semibold">Slow Movers (- 6 months supply)</h3>
               </div>
               {slowMovers.length === 0 ? <EmptyState message="No slow movers." /> : (
                 <div className="overflow-x-auto">
@@ -2409,7 +2442,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                         <th className="text-left px-3 py-2">Product</th>
                         <th className="text-left px-3 py-2">Collection</th>
                         <th className="text-right px-3 py-2">On Hand</th>
-                        <th className="text-right px-3 py-2" title={`Lead time ≈ ${LEAD_TIME_WEEKS} weeks`}>Weeks Supply</th>
+                        <th className="text-right px-3 py-2" title={`Lead time -  ${LEAD_TIME_WEEKS} weeks`}>Weeks Supply</th>
                         <th className="text-right px-3 py-2">Tied-up Value</th>
                       </tr>
                     </thead>
@@ -2420,7 +2453,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                           <td className="px-3 py-2">{it.product}</td>
                           <td className="px-3 py-2">{it.collection}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{it.onHand}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-semibold">{(() => { const w = weeksOfSupply(it); return w == null ? "—" : `${w.toFixed(1)} wk`; })()}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-semibold">{(() => { const w = weeksOfSupply(it); return w == null ? "-" : `${w.toFixed(1)} wk`; })()}</td>
                           <td className="px-3 py-2 text-right tabular-nums">{fmtMoney((it.unitCost ?? 0) * it.onHand)}</td>
                         </tr>
                       ))}
@@ -2462,7 +2495,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                         <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.salesValue)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{it.onHand}</td>
                         <td className="px-3 py-2 text-center">
-                          {(it.monthsSupply ?? 99) < 2 ? <Badge className="text-[10px]">Buy</Badge> : <span className="text-muted-foreground text-xs">—</span>}
+                          {(it.monthsSupply ?? 99) < 2 ? <Badge className="text-[10px]">Buy</Badge> : <span className="text-muted-foreground text-xs">-</span>}
                         </td>
                       </tr>
                     ))}
@@ -2480,7 +2513,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         <Card className="p-5">
           <div className="flex items-center gap-2 mb-3">
             <Factory className="h-4 w-4 text-primary" />
-            <h3 className="text-base font-semibold">Reorder by Factory — Suggested vs MOQ</h3>
+            <h3 className="text-base font-semibold">Reorder by Factory - Suggested vs MOQ</h3>
           </div>
           {reorderByFactory.length === 0 ? <EmptyState message="Nothing to reorder right now." /> : (
             <div className="overflow-x-auto mb-4">
@@ -2498,19 +2531,19 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 </thead>
                 <tbody>
                   {reorderByFactory.map((f) => {
-                    // 40' HC ≈ 2,350 cu ft usable
+                    // 40' HC -  2,350 cu ft usable
                     const containers = f.totalCubes > 0 ? f.totalCubes / 2350 : 0;
                     return (
                       <tr key={f.factory} className="border-t border-border">
                         <td className="px-3 py-2">{f.factory}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{f.skus}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{f.moq || "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{f.moq || "-"}</td>
                         <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtNum(f.suggested)}</td>
                         <td className={cn("px-3 py-2 text-right tabular-nums", f.moq > 0 && f.suggested >= f.moq ? "text-success" : "text-warning-foreground")}>
-                          {f.moq > 0 ? `${Math.round((f.suggested / f.moq) * 100)}%` : "—"}
+                          {f.moq > 0 ? `${Math.round((f.suggested / f.moq) * 100)}%` : "-"}
                         </td>
-                        <td className="px-3 py-2 text-right tabular-nums">{f.totalCubes ? f.totalCubes.toFixed(1) : "—"}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{containers ? containers.toFixed(2) : "—"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{f.totalCubes ? f.totalCubes.toFixed(1) : "-"}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{containers ? containers.toFixed(2) : "-"}</td>
                       </tr>
                     );
                   })}
@@ -2549,7 +2582,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
         <Card className="p-5">
           <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-            <h3 className="text-base font-semibold">InvCut — Reorder Worksheet</h3>
+            <h3 className="text-base font-semibold">InvCut - Reorder Worksheet</h3>
           </div>
           {reorderRows.length === 0 ? <EmptyState message="No items." /> : (
             <div className="overflow-x-auto">
@@ -2579,7 +2612,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                     // Group by vendor/factory like the Excel sheet (vendor header + line rows + subtotal)
                     const groups = new Map<string, typeof reorderRows>();
                     for (const it of reorderRows.slice(0, 400)) {
-                      const v = (it.factory || it.supplier || "—").toUpperCase();
+                      const v = (it.factory || it.supplier || "-").toUpperCase();
                       if (!groups.has(v)) groups.set(v, [] as any);
                       (groups.get(v) as any).push(it);
                     }
@@ -2624,7 +2657,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                               {overUnder < 0 ? `(${Math.abs(Math.round(overUnder))})` : Math.round(overUnder)}
                             </td>
                             <td className={cn("px-2 py-1 text-right tabular-nums border border-border", weeksBelowLead && "bg-destructive/10 text-destructive font-semibold")}>
-                              {weeks == null ? "—" : weeks.toFixed(1)}
+                              {weeks == null ? "-" : weeks.toFixed(1)}
                             </td>
                             <td className="px-2 py-1 text-right tabular-nums border border-border bg-accent/10">
                               <input
@@ -2637,8 +2670,8 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                                 onChange={(e) => setOrder(it.sku, e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}
                               />
                             </td>
-                            <td className="px-2 py-1 text-right tabular-nums border border-border">{cubesPer ? cubesPer.toFixed(2) : "—"}</td>
-                            <td className="px-2 py-1 text-right tabular-nums border border-border">{totalCubes ? totalCubes.toFixed(2) : "—"}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{cubesPer ? cubesPer.toFixed(2) : "-"}</td>
+                            <td className="px-2 py-1 text-right tabular-nums border border-border">{totalCubes ? totalCubes.toFixed(2) : "-"}</td>
                           </tr>
                         );
                       }
@@ -2647,7 +2680,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                       out.push(
                         <tr key={`sub-${vendor}`} className="bg-muted/30 font-semibold">
                           <td colSpan={14} className="px-2 py-1.5 text-right border border-border">
-                            {vendor} — Total Cubes / Containers (40&apos; HC = 2,350 cu ft):
+                            {vendor} - Total Cubes / Containers (40&apos; HC = 2,350 cu ft):
                           </td>
                           <td className="px-2 py-1.5 text-right tabular-nums border border-border" colSpan={2}>
                             {groupCubes.toFixed(2)} cu ft · {containers.toFixed(2)} cont.
@@ -2685,12 +2718,12 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 <tbody>
                   {hub.purchaseOrders.map((po) => (
                     <tr key={po.id} className="border-t border-border">
-                      <td className="px-3 py-2 font-mono">{po.po_number ?? "—"}</td>
-                      <td className="px-3 py-2">{po.factory ?? "—"}</td>
+                      <td className="px-3 py-2 font-mono">{po.po_number ?? "-"}</td>
+                      <td className="px-3 py-2">{po.factory ?? "-"}</td>
                       <td className="px-3 py-2"><StagePill stage={po.production_stage} /></td>
-                      <td className="px-3 py-2">{po.eta ?? "—"}</td>
+                      <td className="px-3 py-2">{po.eta ?? "-"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(Number(po.total_value))}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{po.is_prepaid ? fmtMoney(Number(po.prepaid_amount)) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{po.is_prepaid ? fmtMoney(Number(po.prepaid_amount)) : "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -2712,7 +2745,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
               <div className="mt-6 space-y-4 text-sm">
                 <div className="grid grid-cols-2 gap-3">
                   <div><div className="text-xs text-muted-foreground">Collection</div><div>{drawerItem.collection}</div></div>
-                  <div><div className="text-xs text-muted-foreground">Brand</div><div>{drawerItem.brand ?? "—"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Brand</div><div>{drawerItem.brand ?? "-"}</div></div>
                   <div><div className="text-xs text-muted-foreground">Vendor / Factory</div><div>{drawerItem.factory ?? drawerItem.supplier}</div></div>
                   <div><div className="text-xs text-muted-foreground">Status</div><div>{drawerItem.status}</div></div>
                 </div>
@@ -2722,21 +2755,21 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                   <div className="rounded-lg border border-border p-3"><div className="text-xs text-muted-foreground">In Transit</div><div className="text-lg font-semibold tabular-nums">{drawerItem.inTransit ?? 0}</div></div>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
-                  <div><div className="text-xs text-muted-foreground">L12M /wk</div><div className="tabular-nums">{drawerItem.unitsL12m != null ? (drawerItem.unitsL12m / 52).toFixed(1) : "—"}</div></div>
-                  <div><div className="text-xs text-muted-foreground">L6M /wk</div><div className="tabular-nums">{drawerItem.unitsL6m != null ? (drawerItem.unitsL6m / 26).toFixed(1) : "—"}</div></div>
-                  <div><div className="text-xs text-muted-foreground">L3M /wk</div><div className="tabular-nums">{drawerItem.unitsL3m != null ? (drawerItem.unitsL3m / 13).toFixed(1) : "—"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">L12M /wk</div><div className="tabular-nums">{drawerItem.unitsL12m != null ? (drawerItem.unitsL12m / 52).toFixed(1) : "-"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">L6M /wk</div><div className="tabular-nums">{drawerItem.unitsL6m != null ? (drawerItem.unitsL6m / 26).toFixed(1) : "-"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">L3M /wk</div><div className="tabular-nums">{drawerItem.unitsL3m != null ? (drawerItem.unitsL3m / 13).toFixed(1) : "-"}</div></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><div className="text-xs text-muted-foreground">Active basis</div><div>{drawerItem.reorderBasis ?? "L12M"}</div></div>
-                  <div><div className="text-xs text-muted-foreground">Override /wk</div><div className="tabular-nums">{drawerItem.reorderOverridePerWeek ?? "—"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Override /wk</div><div className="tabular-nums">{drawerItem.reorderOverridePerWeek ?? "-"}</div></div>
                   <div><div className="text-xs text-muted-foreground">Lead time (mo)</div><div className="tabular-nums">{drawerItem.leadTimeMonths ?? 4.5}</div></div>
-                  <div><div className="text-xs text-muted-foreground">MOQ</div><div className="tabular-nums">{drawerItem.moq ?? "—"}</div></div>
-                  <div><div className="text-xs text-muted-foreground">Weeks supply</div><div className={cn("tabular-nums", weeksTone(weeksOfSupply(drawerItem)))}>{(() => { const w = weeksOfSupply(drawerItem); return w == null ? "—" : `${w.toFixed(1)} wk`; })()}</div></div>
-                  <div><div className="text-xs text-muted-foreground">Forecast/mo</div><div className="tabular-nums">{drawerItem.forecastMonthly ?? "—"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">MOQ</div><div className="tabular-nums">{drawerItem.moq ?? "-"}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Weeks supply</div><div className={cn("tabular-nums", weeksTone(weeksOfSupply(drawerItem)))}>{(() => { const w = weeksOfSupply(drawerItem); return w == null ? "-" : `${w.toFixed(1)} wk`; })()}</div></div>
+                  <div><div className="text-xs text-muted-foreground">Forecast/mo</div><div className="tabular-nums">{drawerItem.forecastMonthly ?? "-"}</div></div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   {drawerItem.isClearance && <Badge variant="secondary">Clearance</Badge>}
-                  {drawerItem.isCloseout && <Badge variant="secondary">Closeout</Badge>}
+                  {isCloseoutSku(drawerItem) && <Badge variant="secondary">Closeout</Badge>}
                   {drawerItem.isDiscontinued && <Badge variant="secondary">Discontinued</Badge>}
                 </div>
               </div>

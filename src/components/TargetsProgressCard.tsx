@@ -1,11 +1,14 @@
-import { useMemo, useId } from "react";
-import { Target } from "lucide-react";
-import { useSalesReps, useDealerSales, useDealers, formatCurrency, getInitials } from "@/hooks/usePortalData";
+import { useMemo, useId, useState } from "react";
+import { Target, ChevronLeft, ChevronRight } from "lucide-react";
+import { useSalesReps, useDealers, formatCurrency, getInitials } from "@/hooks/usePortalData";
 import { useRepTargets, MONTH_LABEL_TO_KEY, type RepTarget } from "@/hooks/useRepTargets";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 
 function ProgressRing({ pct, size = 64, label }: { pct: number; size?: number; label: string }) {
   const uid = useId();
@@ -85,8 +88,36 @@ export function TargetsProgressCard() {
 
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: targets = [], isLoading: tgtLoading } = useRepTargets(year);
-  const { data: dealerSales = [], isLoading: dsLoading } = useDealerSales();
   const { data: dealers = [] } = useDealers();
+
+  // Pull all dealer invoices for the year (paged) - same source as Sales Targets page.
+  const { data: invoices = [], isLoading: invLoading } = useQuery({
+    queryKey: ["targets_card_invoices", year],
+    queryFn: async () => {
+      const from = `${year}-01-01`;
+      const to = `${year}-12-31`;
+      const pageSize = 1000;
+      const rows: { dealer_id: string | null; invoice_date: string | null; subtotal: number | null; total: number | null }[] = [];
+      let start = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("dealer_invoices")
+          .select("dealer_id, invoice_date, subtotal, total")
+          .gte("invoice_date", from)
+          .lte("invoice_date", to)
+          .not("dealer_id", "is", null)
+          .range(start, start + pageSize - 1);
+        if (error) throw error;
+        const batch = data ?? [];
+        rows.push(...(batch as any));
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      return rows;
+    },
+    staleTime: 60_000,
+  });
 
   const targetByRep = useMemo(() => {
     const m: Record<string, RepTarget> = {};
@@ -94,20 +125,41 @@ export function TargetsProgressCard() {
     return m;
   }, [targets]);
 
-  // Actual revenue per rep, split YTD and current MTD
+  // Actual revenue per rep, split YTD and current MTD, attributed via dealer rep_id
+  // (fallback to dealer.salesperson loose-matching rep name).
   const actualByRep = useMemo(() => {
+    const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+    const repByName = new Map<string, string>();
+    reps.forEach(r => { if (r.name) repByName.set(norm(r.name), r.id); });
+    const repForDealer = (d: any): string | null => {
+      if (d?.rep_id) return d.rep_id;
+      const sp = norm(d?.salesperson);
+      if (!sp) return null;
+      if (repByName.has(sp)) return repByName.get(sp)!;
+      for (const [name, id] of repByName) {
+        if (name && (name.includes(sp) || sp.includes(name))) return id;
+      }
+      return null;
+    };
+    const dealerRep = new Map<string, string | null>();
+    dealers.forEach((d: any) => dealerRep.set(d.id, repForDealer(d)));
+
     const m: Record<string, { ytd: number; mtd: number }> = {};
-    dealerSales.filter(s => s.year === year).forEach(s => {
-      const dealer = dealers.find(d => d.id === s.dealer_id);
-      if (!dealer?.rep_id) return;
-      const rid = dealer.rep_id;
+    invoices.forEach(inv => {
+      if (!inv.dealer_id || !inv.invoice_date) return;
+      const rid = dealerRep.get(inv.dealer_id);
+      if (!rid) return;
+      const amount = Number(inv.subtotal ?? inv.total ?? 0);
+      if (!amount) return;
+      const d = new Date(inv.invoice_date);
+      const m0 = d.getUTCMonth();
       if (!m[rid]) m[rid] = { ytd: 0, mtd: 0 };
-      const rev = s.revenue ?? 0;
-      m[rid].ytd += rev;
-      if (s.month === MONTH_ORDER[monthIdx]) m[rid].mtd += rev;
+      m[rid].ytd += amount;
+      if (m0 === monthIdx) m[rid].mtd += amount;
     });
     return m;
-  }, [dealerSales, dealers, year, monthIdx]);
+  }, [invoices, dealers, reps, monthIdx]);
+
 
   const rows = reps
     .map(rep => {
@@ -137,14 +189,47 @@ export function TargetsProgressCard() {
 
   rows.sort((a: any, b: any) => b.ytdPct - a.ytdPct);
 
-  const isLoading = repsLoading || tgtLoading || dsLoading;
+  const isLoading = repsLoading || tgtLoading || invLoading;
+
+  const PAGE_SIZE = 4;
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pagedRows = rows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
 
   return (
-    <div className="glass-card p-4 sm:p-6 mb-6">
-      <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
-        <Target className="h-5 w-5 text-accent" /> Sales Targets — {year}
-        <span className="text-xs font-normal text-muted-foreground">YTD & MTD attainment</span>
-      </h3>
+    <div className="glass-card p-4 sm:p-6 h-full">
+      <div className="flex items-center justify-between mb-4 gap-2">
+        <h3 className="text-base font-semibold flex items-center gap-2">
+          <Target className="h-5 w-5 text-accent" /> Sales Targets - {year}
+          <span className="text-xs font-normal text-muted-foreground">YTD & MTD attainment</span>
+        </h3>
+        {!isLoading && rows.length > PAGE_SIZE && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {safePage * PAGE_SIZE + 1}---{Math.min((safePage + 1) * PAGE_SIZE, rows.length)} of {rows.length}
+            </span>
+            <button
+              type="button"
+              aria-label="Previous reps"
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next reps"
+              onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+              disabled={safePage >= pageCount - 1}
+              className="h-7 w-7 inline-flex items-center justify-center rounded-md border border-border bg-background hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
 
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
@@ -154,7 +239,7 @@ export function TargetsProgressCard() {
         </p>
       ) : (
         <ul className="divide-y divide-border/40">
-          {rows.map((r: any) => (
+          {pagedRows.map((r: any) => (
             <li key={r.id} className="py-3 flex items-center gap-3 sm:gap-4">
               <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
                 <span className="text-xs font-bold text-primary">{getInitials(r.name)}</span>
@@ -162,7 +247,7 @@ export function TargetsProgressCard() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold truncate">{r.name}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Annual goal {formatCurrency(r.annualTarget)} • {r.annualPct}% of full year
+                  Annual goal {formatCurrency(r.annualTarget)} ... {r.annualPct}% of full year
                 </p>
                 <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
                   <div
@@ -181,5 +266,6 @@ export function TargetsProgressCard() {
         </ul>
       )}
     </div>
+
   );
 }

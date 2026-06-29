@@ -143,6 +143,8 @@ export default function TaskBoardsView() {
   const [groupForm, setGroupForm] = useState({ name: "", color: GROUP_COLORS[0] });
   const [inlineEditingGroupId, setInlineEditingGroupId] = useState<string | null>(null);
   const [inlineEditName, setInlineEditName] = useState("");
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
+  const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
 
   const [taskDlgOpen, setTaskDlgOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<BoardTask | null>(null);
@@ -463,6 +465,30 @@ export default function TaskBoardsView() {
     setInlineEditingGroupId(null);
     setInlineEditName("");
   };
+
+  const reorderGroup = async (draggedId: string, targetId: string) => {
+    if (!activeBoardId || draggedId === targetId) return;
+    const current = groups
+      .filter((g) => g.board_id === activeBoardId)
+      .sort((a, b) => a.position - b.position);
+    const fromIdx = current.findIndex((g) => g.id === draggedId);
+    const toIdx = current.findIndex((g) => g.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const next = [...current];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    const updates = next.map((g, i) => ({ ...g, position: i }));
+    setGroups((prev) => {
+      const byId = new Map(updates.map((g) => [g.id, g.position] as const));
+      return prev.map((g) => (byId.has(g.id) ? { ...g, position: byId.get(g.id)! } : g));
+    });
+    await Promise.all(
+      updates.map((g) =>
+        supabase.from("task_board_groups" as any).update({ position: g.position }).eq("id", g.id),
+      ),
+    );
+  };
+
 
   // - Task CRUD ---
   const openNewTask = (groupId: string | null, status: Status = "todo") => {
@@ -1668,8 +1694,51 @@ export default function TaskBoardsView() {
                   const isCollapsed = collapsed[g.id];
                   const color = g.color ?? "#6366f1";
                   return (
-                    <div key={g.id}>
+                    <div
+                      key={g.id}
+                      onDragOver={(e) => {
+                        if (draggingGroupId && draggingGroupId !== g.id) {
+                          e.preventDefault();
+                          setDragOverGroupId(g.id);
+                        }
+                      }}
+                      onDragLeave={() => setDragOverGroupId((id) => (id === g.id ? null : id))}
+                      onDrop={(e) => {
+                        if (draggingGroupId && draggingGroupId !== g.id) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          reorderGroup(draggingGroupId, g.id);
+                        }
+                        setDraggingGroupId(null);
+                        setDragOverGroupId(null);
+                      }}
+                      className={
+                        dragOverGroupId === g.id
+                          ? "rounded-md ring-2 ring-accent ring-offset-2 ring-offset-background transition-all"
+                          : draggingGroupId === g.id
+                          ? "opacity-50 transition-opacity"
+                          : ""
+                      }
+                    >
                       <div className="flex items-center gap-1.5 mb-1.5">
+                        {canManageBoardGroups && (
+                          <span
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggingGroupId(g.id);
+                              e.dataTransfer.effectAllowed = "move";
+                              try { e.dataTransfer.setData("text/group-id", g.id); } catch {}
+                            }}
+                            onDragEnd={() => {
+                              setDraggingGroupId(null);
+                              setDragOverGroupId(null);
+                            }}
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-0.5"
+                            title="Drag to reorder group"
+                          >
+                            <GripVertical className="h-4 w-4" />
+                          </span>
+                        )}
                         <button
                           onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
                           className="flex items-center gap-1.5"
@@ -1736,6 +1805,7 @@ export default function TaskBoardsView() {
                           </div>
                         )}
                       </div>
+
                       {!isCollapsed && (
                         <div
                           onDragOver={(e) => e.preventDefault()}

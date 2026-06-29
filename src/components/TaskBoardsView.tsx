@@ -1694,8 +1694,51 @@ export default function TaskBoardsView() {
                   const isCollapsed = collapsed[g.id];
                   const color = g.color ?? "#6366f1";
                   return (
-                    <div key={g.id}>
+                    <div
+                      key={g.id}
+                      onDragOver={(e) => {
+                        if (draggingGroupId && draggingGroupId !== g.id) {
+                          e.preventDefault();
+                          setDragOverGroupId(g.id);
+                        }
+                      }}
+                      onDragLeave={() => setDragOverGroupId((id) => (id === g.id ? null : id))}
+                      onDrop={(e) => {
+                        if (draggingGroupId && draggingGroupId !== g.id) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          reorderGroup(draggingGroupId, g.id);
+                        }
+                        setDraggingGroupId(null);
+                        setDragOverGroupId(null);
+                      }}
+                      className={
+                        dragOverGroupId === g.id
+                          ? "rounded-md ring-2 ring-accent ring-offset-2 ring-offset-background transition-all"
+                          : draggingGroupId === g.id
+                          ? "opacity-50 transition-opacity"
+                          : ""
+                      }
+                    >
                       <div className="flex items-center gap-1.5 mb-1.5">
+                        {canManageBoardGroups && (
+                          <span
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggingGroupId(g.id);
+                              e.dataTransfer.effectAllowed = "move";
+                              try { e.dataTransfer.setData("text/group-id", g.id); } catch {}
+                            }}
+                            onDragEnd={() => {
+                              setDraggingGroupId(null);
+                              setDragOverGroupId(null);
+                            }}
+                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-0.5"
+                            title="Drag to reorder group"
+                          >
+                            <GripVertical className="h-4 w-4" />
+                          </span>
+                        )}
                         <button
                           onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
                           className="flex items-center gap-1.5"
@@ -1762,6 +1805,7 @@ export default function TaskBoardsView() {
                           </div>
                         )}
                       </div>
+
                       {!isCollapsed && (
                         <div
                           onDragOver={(e) => e.preventDefault()}

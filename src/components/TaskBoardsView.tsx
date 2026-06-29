@@ -466,6 +466,30 @@ export default function TaskBoardsView() {
     setInlineEditName("");
   };
 
+  const reorderGroup = async (draggedId: string, targetId: string) => {
+    if (!activeBoardId || draggedId === targetId) return;
+    const current = groups
+      .filter((g) => g.board_id === activeBoardId)
+      .sort((a, b) => a.position - b.position);
+    const fromIdx = current.findIndex((g) => g.id === draggedId);
+    const toIdx = current.findIndex((g) => g.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const next = [...current];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    const updates = next.map((g, i) => ({ ...g, position: i }));
+    setGroups((prev) => {
+      const byId = new Map(updates.map((g) => [g.id, g.position] as const));
+      return prev.map((g) => (byId.has(g.id) ? { ...g, position: byId.get(g.id)! } : g));
+    });
+    await Promise.all(
+      updates.map((g) =>
+        supabase.from("task_board_groups" as any).update({ position: g.position }).eq("id", g.id),
+      ),
+    );
+  };
+
+
   // - Task CRUD ---
   const openNewTask = (groupId: string | null, status: Status = "todo") => {
     setEditingTask(null);

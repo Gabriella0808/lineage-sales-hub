@@ -1641,220 +1641,262 @@ export default function TaskBoardsView() {
                   </div>
                 )}
 
-                {/* Default workflow groups - merged into one Monday-style flat table */}
-                {defaultGroups.length > 0 && (() => {
-                  const defaultGroupIds = new Set(defaultGroups.map((g) => g.id));
-                  const items = boardTasks
-                    .filter((t) => t.group_id && defaultGroupIds.has(t.group_id))
-                    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
-                    .filter(passesFilters)
-                    .filter((t) => showCompletedSop || t.status !== "done");
-                  const firstGroup = defaultGroups[0];
-                  const isCollapsed = collapsed[firstGroup.id];
-                  const color = firstGroup.color ?? "#6366f1";
-                  return (
-                    <div
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => onDropToGroup(e, firstGroup.id)}
-                    >
-                      <button
-                        onClick={() => setCollapsed((c) => ({ ...c, [firstGroup.id]: !c[firstGroup.id] }))}
-                        className="flex items-center gap-1.5 mb-1.5 group"
-                      >
-                        {isCollapsed ? (
-                          <ChevronRight className="h-4 w-4" style={{ color }} />
-                        ) : (
-                          <ChevronDown className="h-4 w-4" style={{ color }} />
-                        )}
-                        {inlineEditingGroupId === firstGroup.id ? (
-                          <input
-                            autoFocus
-                            value={inlineEditName}
-                            onChange={(e) => setInlineEditName(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") saveInlineGroupName(firstGroup.id, inlineEditName);
-                              if (e.key === "Escape") {
-                                setInlineEditingGroupId(null);
-                                setInlineEditName("");
-                              }
-                            }}
-                            onBlur={() => saveInlineGroupName(firstGroup.id, inlineEditName)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-base font-bold bg-transparent border-b-2 border-current outline-none px-1 py-0 min-w-[120px]"
-                            style={{ color }}
-                          />
-                        ) : (
-                          <h3
-                            className="text-base font-bold cursor-text hover:opacity-80"
-                            style={{ color }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setInlineEditingGroupId(firstGroup.id);
-                              setInlineEditName(firstGroup.name);
-                            }}
-                          >
-                            {firstGroup.name}
-                          </h3>
-                        )}
-                        <span className="text-xs text-muted-foreground ml-1">
-                          {items.length} {items.length === 1 ? "task" : "tasks"}
-                        </span>
-                      </button>
-                      {!isCollapsed && (
-                        <div
-                          className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
-                          style={{ borderLeftColor: color }}
-                        >
-                          {renderColumnHeader(`default-${firstGroup.id}`)}
-                          <ul>
-                            {renderAddRow(firstGroup.id)}
-                            {items.map(renderTaskRow)}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
+                {/* Unified ordered render: default workflow block + custom groups,
+                    sorted by position so the user can drag any group up/down. */}
+                {(() => {
+                  type Block =
+                    | { kind: "default"; key: "default"; groups: Group[]; minPos: number }
+                    | { kind: "custom"; key: string; group: Group; minPos: number };
+                  const blocks: Block[] = [];
+                  if (defaultGroups.length > 0) {
+                    blocks.push({
+                      kind: "default",
+                      key: "default",
+                      groups: defaultGroups,
+                      minPos: Math.min(...defaultGroups.map((g) => g.position)),
+                    });
+                  }
+                  customGroups.forEach((g) =>
+                    blocks.push({ kind: "custom", key: `custom:${g.id}`, group: g, minPos: g.position }),
                   );
-                })()}
+                  blocks.sort((a, b) => a.minPos - b.minPos);
 
-                {/* Custom groups - each its own section with internal status sub-rows */}
-                {customGroups.map((g) => {
-                  const groupTasks = boardTasks
-                    .filter((t) => t.group_id === g.id)
-                    .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
-                    .filter(passesFilters)
-                    .filter((t) => showCompletedSop || t.status !== "done");
-                  const isCollapsed = collapsed[g.id];
-                  const color = g.color ?? "#6366f1";
-                  return (
-                    <div
-                      key={g.id}
-                      onDragOver={(e) => {
-                        if (draggingGroupId && draggingGroupId !== g.id) {
-                          e.preventDefault();
-                          setDragOverGroupId(g.id);
-                        }
-                      }}
-                      onDragLeave={() => setDragOverGroupId((id) => (id === g.id ? null : id))}
-                      onDrop={(e) => {
-                        if (draggingGroupId && draggingGroupId !== g.id) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          reorderGroup(draggingGroupId, g.id);
-                        }
-                        setDraggingGroupId(null);
-                        setDragOverGroupId(null);
-                      }}
-                      className={
-                        dragOverGroupId === g.id
-                          ? "rounded-md ring-2 ring-accent ring-offset-2 ring-offset-background transition-all"
-                          : draggingGroupId === g.id
-                          ? "opacity-50 transition-opacity"
-                          : ""
+                  const wrapperProps = (key: string) => ({
+                    onDragOver: (e: React.DragEvent) => {
+                      if (draggingGroupId && draggingGroupId !== key) {
+                        e.preventDefault();
+                        setDragOverGroupId(key);
                       }
-                    >
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        {canManageBoardGroups && (
-                          <span
-                            draggable
-                            onDragStart={(e) => {
-                              setDraggingGroupId(g.id);
-                              e.dataTransfer.effectAllowed = "move";
-                              try { e.dataTransfer.setData("text/group-id", g.id); } catch {}
+                    },
+                    onDragLeave: () =>
+                      setDragOverGroupId((id) => (id === key ? null : id)),
+                    onDrop: (e: React.DragEvent) => {
+                      if (draggingGroupId && draggingGroupId !== key) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        reorderBlock(draggingGroupId, key);
+                      }
+                      setDraggingGroupId(null);
+                      setDragOverGroupId(null);
+                    },
+                    className:
+                      dragOverGroupId === key
+                        ? "rounded-md ring-2 ring-accent ring-offset-2 ring-offset-background transition-all"
+                        : draggingGroupId === key
+                        ? "opacity-50 transition-opacity"
+                        : "",
+                  });
+
+                  const dragHandle = (key: string) =>
+                    canManageBoardGroups ? (
+                      <span
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggingGroupId(key);
+                          e.dataTransfer.effectAllowed = "move";
+                          try { e.dataTransfer.setData("text/group-key", key); } catch {}
+                        }}
+                        onDragEnd={() => {
+                          setDraggingGroupId(null);
+                          setDragOverGroupId(null);
+                        }}
+                        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-0.5"
+                        title="Drag to reorder group"
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </span>
+                    ) : null;
+
+                  return blocks.map((block) => {
+                    if (block.kind === "default") {
+                      const defaultGroupIds = new Set(block.groups.map((g) => g.id));
+                      const items = boardTasks
+                        .filter((t) => t.group_id && defaultGroupIds.has(t.group_id))
+                        .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
+                        .filter(passesFilters)
+                        .filter((t) => showCompletedSop || t.status !== "done");
+                      const firstGroup = block.groups[0];
+                      const isCollapsed = collapsed[firstGroup.id];
+                      const color = firstGroup.color ?? "#6366f1";
+                      const wp = wrapperProps(block.key);
+                      return (
+                        <div key={block.key} {...wp}>
+                          <div
+                            onDragOver={(e) => {
+                              if (!draggingGroupId) e.preventDefault();
                             }}
-                            onDragEnd={() => {
-                              setDraggingGroupId(null);
-                              setDragOverGroupId(null);
+                            onDrop={(e) => {
+                              if (!draggingGroupId) onDropToGroup(e, firstGroup.id);
                             }}
-                            className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-0.5"
-                            title="Drag to reorder group"
                           >
-                            <GripVertical className="h-4 w-4" />
-                          </span>
-                        )}
-                        <button
-                          onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
-                          className="flex items-center gap-1.5"
-                        >
-                          {isCollapsed ? (
-                            <ChevronRight className="h-4 w-4" style={{ color }} />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" style={{ color }} />
-                          )}
-                          {inlineEditingGroupId === g.id ? (
-                            <input
-                              autoFocus
-                              value={inlineEditName}
-                              onChange={(e) => setInlineEditName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") saveInlineGroupName(g.id, inlineEditName);
-                                if (e.key === "Escape") {
-                                  setInlineEditingGroupId(null);
-                                  setInlineEditName("");
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              {dragHandle(block.key)}
+                              <button
+                                onClick={() =>
+                                  setCollapsed((c) => ({ ...c, [firstGroup.id]: !c[firstGroup.id] }))
                                 }
-                              }}
-                              onBlur={() => saveInlineGroupName(g.id, inlineEditName)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-base font-bold bg-transparent border-b-2 border-current outline-none px-1 py-0 min-w-[120px]"
-                              style={{ color }}
-                            />
-                          ) : (
-                            <h3
-                              className="text-base font-bold cursor-text hover:opacity-80"
-                              style={{ color }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setInlineEditingGroupId(g.id);
-                                setInlineEditName(g.name);
-                              }}
-                            >
-                              {g.name}
-                            </h3>
+                                className="flex items-center gap-1.5 group"
+                              >
+                                {isCollapsed ? (
+                                  <ChevronRight className="h-4 w-4" style={{ color }} />
+                                ) : (
+                                  <ChevronDown className="h-4 w-4" style={{ color }} />
+                                )}
+                                {inlineEditingGroupId === firstGroup.id ? (
+                                  <input
+                                    autoFocus
+                                    value={inlineEditName}
+                                    onChange={(e) => setInlineEditName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") saveInlineGroupName(firstGroup.id, inlineEditName);
+                                      if (e.key === "Escape") {
+                                        setInlineEditingGroupId(null);
+                                        setInlineEditName("");
+                                      }
+                                    }}
+                                    onBlur={() => saveInlineGroupName(firstGroup.id, inlineEditName)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-base font-bold bg-transparent border-b-2 border-current outline-none px-1 py-0 min-w-[120px]"
+                                    style={{ color }}
+                                  />
+                                ) : (
+                                  <h3
+                                    className="text-base font-bold cursor-text hover:opacity-80"
+                                    style={{ color }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setInlineEditingGroupId(firstGroup.id);
+                                      setInlineEditName(firstGroup.name);
+                                    }}
+                                  >
+                                    {firstGroup.name}
+                                  </h3>
+                                )}
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  {items.length} {items.length === 1 ? "task" : "tasks"}
+                                </span>
+                              </button>
+                            </div>
+                            {!isCollapsed && (
+                              <div
+                                className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
+                                style={{ borderLeftColor: color }}
+                              >
+                                {renderColumnHeader(`default-${firstGroup.id}`)}
+                                <ul>
+                                  {renderAddRow(firstGroup.id)}
+                                  {items.map(renderTaskRow)}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const g = block.group;
+                    const groupTasks = boardTasks
+                      .filter((t) => t.group_id === g.id)
+                      .filter((t) => statusFilter.length === 0 || statusFilter.includes(t.status))
+                      .filter(passesFilters)
+                      .filter((t) => showCompletedSop || t.status !== "done");
+                    const isCollapsed = collapsed[g.id];
+                    const color = g.color ?? "#6366f1";
+                    const wp = wrapperProps(block.key);
+                    return (
+                      <div key={block.key} {...wp}>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          {dragHandle(block.key)}
+                          <button
+                            onClick={() => setCollapsed((c) => ({ ...c, [g.id]: !c[g.id] }))}
+                            className="flex items-center gap-1.5"
+                          >
+                            {isCollapsed ? (
+                              <ChevronRight className="h-4 w-4" style={{ color }} />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" style={{ color }} />
+                            )}
+                            {inlineEditingGroupId === g.id ? (
+                              <input
+                                autoFocus
+                                value={inlineEditName}
+                                onChange={(e) => setInlineEditName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveInlineGroupName(g.id, inlineEditName);
+                                  if (e.key === "Escape") {
+                                    setInlineEditingGroupId(null);
+                                    setInlineEditName("");
+                                  }
+                                }}
+                                onBlur={() => saveInlineGroupName(g.id, inlineEditName)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-base font-bold bg-transparent border-b-2 border-current outline-none px-1 py-0 min-w-[120px]"
+                                style={{ color }}
+                              />
+                            ) : (
+                              <h3
+                                className="text-base font-bold cursor-text hover:opacity-80"
+                                style={{ color }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInlineEditingGroupId(g.id);
+                                  setInlineEditName(g.name);
+                                }}
+                              >
+                                {g.name}
+                              </h3>
+                            )}
+                            <span className="text-xs text-muted-foreground ml-1">
+                              {groupTasks.length} {groupTasks.length === 1 ? "task" : "tasks"}
+                            </span>
+                          </button>
+                          {canManageBoardGroups && (
+                            <div className="flex items-center gap-0.5 ml-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                onClick={() => openEditGroup(g)}
+                                title="Edit group"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                onClick={() => deleteGroup(g)}
+                                title="Delete group"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
                           )}
-                          <span className="text-xs text-muted-foreground ml-1">
-                            {groupTasks.length} {groupTasks.length === 1 ? "task" : "tasks"}
-                          </span>
-                        </button>
-                        {canManageBoardGroups && (
-                          <div className="flex items-center gap-0.5 ml-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                              onClick={() => openEditGroup(g)}
-                              title="Edit group"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                              onClick={() => deleteGroup(g)}
-                              title="Delete group"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                        </div>
+
+                        {!isCollapsed && (
+                          <div
+                            onDragOver={(e) => {
+                              if (!draggingGroupId) e.preventDefault();
+                            }}
+                            onDrop={(e) => {
+                              if (!draggingGroupId) onDropToGroup(e, g.id);
+                            }}
+                            className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
+                            style={{ borderLeftColor: color }}
+                          >
+                            {renderColumnHeader(`group-${g.id}`)}
+                            <ul>
+                              {renderAddRow(g.id)}
+                              {groupTasks.map(renderTaskRow)}
+                            </ul>
                           </div>
                         )}
                       </div>
+                    );
+                  });
+                })()}
 
-                      {!isCollapsed && (
-                        <div
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => onDropToGroup(e, g.id)}
-                          className="rounded-md overflow-hidden border border-border shadow-sm border-l-[6px] bg-card"
-                          style={{ borderLeftColor: color }}
-                        >
-                          {renderColumnHeader(`group-${g.id}`)}
-                          <ul>
-                            {renderAddRow(g.id)}
-                            {groupTasks.map(renderTaskRow)}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
               </div>
             );
           })()}

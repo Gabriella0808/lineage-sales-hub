@@ -165,6 +165,11 @@ function isProspectDealer(d: { source?: string | null }): boolean {
   return (d.source ?? "").toLowerCase() === "crm_prospect";
 }
 
+function isCrmInjected(d: { source?: string | null }): boolean {
+  const s = (d.source ?? "").toLowerCase();
+  return s === "crm_prospect" || s === "crm";
+}
+
 function pinColorFor(d: { source?: string | null; daysSince: number | null }): string {
   // Prospects with no check-in yet stay fully charcoal. Once a check-in is
   // logged the fill switches to the recency color, and a charcoal ring (added
@@ -935,7 +940,7 @@ export default function CheckInsPage() {
     // Prospects live in crm_accounts and have no dealers row yet. The
     // dealer_check_ins.dealer_id FK points to dealers(id), so we upsert a
     // matching dealers row (same uuid) before inserting the check-in.
-    if (isProspectDealer(selected)) {
+    if (isCrmInjected(selected)) {
       const { error: upsertErr } = await supabase
         .from("dealers")
         .upsert(
@@ -943,7 +948,7 @@ export default function CheckInsPage() {
             id: selected.id,
             name: selected.name,
             status: "active",
-            source: "crm_prospect",
+            source: isProspectDealer(selected) ? "crm_prospect" : "crm",
             street_address: selected.street_address,
             city: selected.city,
             state: selected.state,

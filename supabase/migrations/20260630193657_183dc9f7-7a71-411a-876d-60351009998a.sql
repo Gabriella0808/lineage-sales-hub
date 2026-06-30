@@ -1,0 +1,4 @@
+REVOKE EXECUTE ON FUNCTION public.log_field_check_in(uuid, text, date, text, text, text, text, text, text, text, text, text, text, text, uuid, uuid, double precision, double precision, uuid) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.log_field_check_in(uuid, text, date, text, text, text, text, text, text, text, text, text, text, text, uuid, uuid, double precision, double precision, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.log_field_check_in(uuid, text, date, text, text, text, text, text, text, text, text, text, text, text, uuid, uuid, double precision, double precision, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.log_field_check_in(uuid, text, date, text, text, text, text, text, text, text, text, text, text, text, uuid, uuid, double precision, double precision, uuid) TO service_role;

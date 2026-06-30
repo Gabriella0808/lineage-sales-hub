@@ -7948,6 +7948,48 @@ export type Database = {
           year: number
         }[]
       }
+      log_field_check_in: {
+        Args: {
+          p_brand?: string
+          p_city?: string
+          p_crm_account_id?: string
+          p_dealer_id: string
+          p_dealer_name: string
+          p_email?: string
+          p_lat?: number
+          p_lng?: number
+          p_log_type: string
+          p_manager_id?: string
+          p_new_placement?: string
+          p_notes?: string
+          p_phone?: string
+          p_rep_id?: string
+          p_source?: string
+          p_state?: string
+          p_street_address?: string
+          p_visit_date: string
+          p_website?: string
+        }
+        Returns: {
+          brand: string | null
+          created_at: string
+          dealer_id: string
+          id: string
+          log_type: string | null
+          new_placement: string | null
+          notes: string | null
+          outcome: string | null
+          updated_at: string
+          user_id: string
+          visit_date: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "dealer_check_ins"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string

@@ -937,52 +937,28 @@ export default function CheckInsPage() {
       return;
     }
     setSaving(true);
-    // Prospects live in crm_accounts and have no dealers row yet. The
-    // dealer_check_ins.dealer_id FK points to dealers(id), so we upsert a
-    // matching dealers row (same uuid) before inserting the check-in.
-    if (isCrmInjected(selected)) {
-      const { error: upsertErr } = await supabase
-        .from("dealers")
-        .upsert(
-          {
-            id: selected.id,
-            name: selected.name,
-            status: "active",
-            source: isProspectDealer(selected) ? "crm_prospect" : "crm",
-            street_address: selected.street_address,
-            city: selected.city,
-            state: selected.state,
-            phone: selected.phone,
-            email: selected.email,
-            website: selected.website,
-            rep_id: selected.rep_id,
-            manager_id: selected.manager_id,
-            lat: selected.lat,
-            lng: selected.lng,
-            crm_account_id: selected.id,
-          },
-          { onConflict: "id" },
-        );
-      if (upsertErr) {
-        setSaving(false);
-        toast({ title: "Failed to save check-in", description: upsertErr.message, variant: "destructive" });
-        return;
-      }
-    }
-    const { data, error } = await supabase
-      .from("dealer_check_ins")
-      .insert({
-        dealer_id: selected.id,
-        user_id: user.id,
-        visit_date: form.visit_date,
-        outcome: form.log_types.join(","),
-        log_type: form.log_types.join(","),
-        new_placement: form.new_placement || null,
-        brand: form.brands.length ? form.brands.join(", ") : null,
-        notes: form.notes.trim() || null,
-      })
-      .select()
-      .single();
+    const logType = form.log_types.join(",");
+    const { data, error } = await supabase.rpc("log_field_check_in", {
+      p_dealer_id: selected.id,
+      p_dealer_name: selected.name,
+      p_visit_date: form.visit_date,
+      p_log_type: logType,
+      p_new_placement: form.new_placement || null,
+      p_brand: form.brands.length ? form.brands.join(", ") : null,
+      p_notes: form.notes.trim() || null,
+      p_source: isCrmInjected(selected) ? (isProspectDealer(selected) ? "crm_prospect" : "crm") : selected.source || "field_only",
+      p_street_address: selected.street_address || null,
+      p_city: selected.city || null,
+      p_state: selected.state || null,
+      p_phone: selected.phone || null,
+      p_email: selected.email || null,
+      p_website: selected.website || null,
+      p_rep_id: selected.rep_id || null,
+      p_manager_id: selected.manager_id || null,
+      p_lat: selected.lat,
+      p_lng: selected.lng,
+      p_crm_account_id: isCrmInjected(selected) ? selected.id : null,
+    });
     if (error) {
       setSaving(false);
       toast({ title: "Failed to save check-in", description: error.message, variant: "destructive" });

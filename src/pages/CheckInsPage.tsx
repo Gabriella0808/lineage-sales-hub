@@ -165,6 +165,11 @@ function isProspectDealer(d: { source?: string | null }): boolean {
   return (d.source ?? "").toLowerCase() === "crm_prospect";
 }
 
+function isCrmInjected(d: { source?: string | null }): boolean {
+  const s = (d.source ?? "").toLowerCase();
+  return s === "crm_prospect" || s === "crm";
+}
+
 function pinColorFor(d: { source?: string | null; daysSince: number | null }): string {
   // Prospects with no check-in yet stay fully charcoal. Once a check-in is
   // logged the fill switches to the recency color, and a charcoal ring (added

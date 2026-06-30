@@ -407,9 +407,12 @@ export default function CheckInsPage() {
     })();
   }, [toast]);
 
-  // Fetch CRM prospects (account_type='prospect') and geocode their
-  // addresses client-side via Mapbox. Cached in localStorage so we only
-  // hit the geocoder once per address. Injected as charcoal pins.
+  // Fetch CRM accounts (prospects AND dealers) and geocode their
+  // addresses client-side via Mapbox so every account with an address gets
+  // a pin. Cached in localStorage so we only hit the geocoder once per
+  // address. For dealer-type accounts we also persist the geocoded
+  // coordinates back to the matching dealers row, so the pin survives
+  // future loads through the regular dealers query.
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
@@ -418,6 +421,7 @@ export default function CheckInsPage() {
       type CrmRow = {
         id: string;
         company_name: string;
+        account_type: string;
         street_1: string | null;
         city: string | null;
         state: string | null;
@@ -435,9 +439,8 @@ export default function CheckInsPage() {
         const { data, error } = await supabase
           .from("crm_accounts")
           .select(
-            "id, company_name, street_1, city, state, zip, main_phone, email, website, notes, assigned_rep_id, assigned_manager_id",
+            "id, company_name, account_type, street_1, city, state, zip, main_phone, email, website, notes, assigned_rep_id, assigned_manager_id",
           )
-          .eq("account_type", "prospect")
           .range(from, from + PAGE - 1);
         if (error) break;
         const batch = (data ?? []) as CrmRow[];
@@ -446,6 +449,17 @@ export default function CheckInsPage() {
         from += PAGE;
       }
       if (cancelled) return;
+
+      // Skip CRM accounts that already have a dealers row with lat/lng —
+      // those are rendered via the dealers query and don't need a pin here.
+      const { data: existingDealers } = await supabase
+        .from("dealers")
+        .select("id, crm_account_id, lat, lng")
+        .not("crm_account_id", "is", null);
+      const dealerByCrmId = new Map<string, { id: string; lat: number | null; lng: number | null }>();
+      (existingDealers ?? []).forEach((d: any) => {
+        if (d.crm_account_id) dealerByCrmId.set(d.crm_account_id, { id: d.id, lat: d.lat, lng: d.lng });
+      });
 
       const CACHE_KEY = "lineage:crm-prospect-geocode:v1";
       let cache: Record<string, { lat: number; lng: number } | null> = {};
@@ -474,8 +488,6 @@ export default function CheckInsPage() {
         }
       };
 
-      // Resolve coords for each prospect (cache first), then update state
-      // progressively in small batches so pins appear as they're geocoded.
       const out: Dealer[] = [];
       let pendingFlush = 0;
       const flush = () => {
@@ -491,6 +503,10 @@ export default function CheckInsPage() {
       for (const r of all) {
         const addr = buildAddr(r);
         if (!addr) continue;
+        const existing = dealerByCrmId.get(r.id);
+        // Already pinned via the dealers query — nothing to do.
+        if (existing && existing.lat != null && existing.lng != null) continue;
+
         let coords = cache[addr];
         if (coords === undefined) {
           coords = await geocode(addr);
@@ -498,8 +514,19 @@ export default function CheckInsPage() {
           pendingFlush++;
         }
         if (!coords) continue;
+
+        // Persist coords on the linked dealers row so the pin renders via
+        // the dealers query on future loads (works for both dealer-type
+        // and prospect-shell rows).
+        if (existing && (existing.lat == null || existing.lng == null)) {
+          await supabase
+            .from("dealers")
+            .update({ lat: coords.lat, lng: coords.lng })
+            .eq("id", existing.id);
+        }
+
         out.push({
-          id: r.id,
+          id: existing?.id ?? r.id,
           name: r.company_name,
           first_name: null,
           last_name: null,
@@ -515,7 +542,7 @@ export default function CheckInsPage() {
           website: r.website,
           notes: r.notes,
           buying_group: null,
-          source: "crm_prospect",
+          source: r.account_type === "dealer" ? "crm" : "crm_prospect",
           lat: coords.lat,
           lng: coords.lng,
         });

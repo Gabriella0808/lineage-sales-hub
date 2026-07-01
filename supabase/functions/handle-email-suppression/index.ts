@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Server configuration error' }, 500)
   }
 
-  // Verify HMAC signature using the Lovable API Key (same as auth-email-hook)
+  // Verify HMAC signature using the shared API key (same as auth-email-hook)
   let payload: SuppressionPayload
   try {
     const verified = await verifyWebhookRequest({

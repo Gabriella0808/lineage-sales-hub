@@ -8,7 +8,7 @@ const corsHeaders = {
 }
 
 // Renders all registered templates with their previewData.
-// Gated by LOVABLE_API_KEY - only the Go API calls this.
+// Gated by an internal API key.
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Verify the caller is authorized with LOVABLE_API_KEY
+  // Verify the caller is authorized
   const authHeader = req.headers.get('Authorization')
   const token = authHeader?.replace(/^Bearer\s+/i, '')
   if (token !== apiKey) {

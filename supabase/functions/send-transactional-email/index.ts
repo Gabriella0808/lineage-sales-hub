@@ -3,12 +3,10 @@ import { renderAsync } from 'npm:@react-email/components@0.0.22'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { TEMPLATES } from '../_shared/transactional-email-templates/registry.ts'
 
-// Configuration baked in at scaffold time - do NOT change these manually.
-// To update, re-run the email domain setup flow.
+// Email sender configuration.
 const SITE_NAME = "Lineage Collections"
 // SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.example.com").
-// It MUST match the subdomain delegated to Lovable's nameservers - never the root domain.
-// The email API looks up this exact domain; a mismatch causes "No email domain record found".
+// It must match the subdomain delegated to the email provider — never the root domain.
 const SENDER_DOMAIN = "leads.lineage-portal.com"
 // FROM_DOMAIN is the domain shown in the From: header (e.g., "example.com").
 // When display_from_root is enabled, this can be the root domain for cleaner branding,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useCreateAccount, useCrmReps, useCrmManagers, BRANDS, type Brand } from "@/hooks/useCrm";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { PageHeader } from "@/components/PageHeader";
@@ -13,13 +13,15 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function CrmNewAccountPage() {
   const nav = useNavigate();
+  const [sp] = useSearchParams();
+  const initialType = (sp.get("type") === "dealer" ? "dealer" : "prospect") as "prospect" | "dealer";
   const { toast } = useToast();
   const { data: reps = [] } = useCrmReps();
   const { data: managers = [] } = useCrmManagers();
   const create = useCreateAccount();
   const [f, setF] = useState({
     company_name: "",
-    account_type: "prospect" as "prospect" | "dealer",
+    account_type: initialType,
     prospect_type: null as string | null,
     brand: "Cabinet Beds" as Brand,
     assigned_rep_id: "none",

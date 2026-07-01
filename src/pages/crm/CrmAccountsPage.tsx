@@ -334,9 +334,15 @@ export default function CrmAccountsPage() {
         actions={
           <div className="flex items-center gap-2">
             <ImportAccountsDialog />
-            <Button asChild>
-              <Link to="/crm/accounts/new"><Plus className="h-4 w-4 mr-1.5" />New Prospect</Link>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button><Plus className="h-4 w-4 mr-1.5" />New Account<ChevronDown className="h-4 w-4 ml-1.5 opacity-70" /></Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <Link to="/crm/accounts/new?type=prospect" className="block px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer">New Prospect</Link>
+                <Link to="/crm/accounts/new?type=dealer" className="block px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer">New Dealer</Link>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         }
       />

@@ -285,6 +285,7 @@ export default function CheckInsPage() {
     from: "",
     to: "",
   });
+  const [recentManagerFilter, setRecentManagerFilter] = useState<TeamMemberId | "all">("all");
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addSaving, setAddSaving] = useState(false);
@@ -1243,6 +1244,17 @@ export default function CheckInsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <h2 className="text-sm font-semibold">Recent check-ins</h2>
           <div className="flex flex-wrap items-center gap-2">
+            <Select value={recentManagerFilter} onValueChange={(v) => setRecentManagerFilter(v as TeamMemberId | "all")}>
+              <SelectTrigger className="h-8 w-[150px] text-xs">
+                <SelectValue placeholder="All managers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All managers</SelectItem>
+                {TEAM_MEMBERS.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="flex items-center gap-1.5">
               <Label htmlFor="recent-from" className="text-xs text-muted-foreground">From</Label>
               <Input
@@ -1263,12 +1275,12 @@ export default function CheckInsPage() {
                 className="h-8 w-[140px] text-xs"
               />
             </div>
-            {(recentRange.from || recentRange.to) && (
+            {(recentRange.from || recentRange.to || recentManagerFilter !== "all") && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 text-xs"
-                onClick={() => setRecentRange({ from: "", to: "" })}
+                onClick={() => { setRecentRange({ from: "", to: "" }); setRecentManagerFilter("all"); }}
               >
                 Clear
               </Button>
@@ -1276,8 +1288,8 @@ export default function CheckInsPage() {
           </div>
         </div>
         {(() => {
-          // Filter by selected teammate via the dealer's manager_id / rep_owner.
-          const team = teamFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === teamFilter);
+          // Filter by selected manager via the dealer's manager_id / rep_owner.
+          const team = recentManagerFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === recentManagerFilter);
           const dealerById = new Map(dealers.map((d) => [d.id, d]));
           const teamScoped = checkIns.filter((c) => {
             if (!team) return true;

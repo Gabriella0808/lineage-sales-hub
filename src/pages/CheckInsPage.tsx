@@ -1325,7 +1325,7 @@ export default function CheckInsPage() {
                           <div className="min-w-0">
                             <p className="font-medium truncate">{d?.name ?? "Unknown dealer"}</p>
                             <p className="text-xs font-medium text-stone-500">
-                              {userNames[c.user_id] ?? (c.user_id === user?.id ? "You" : "Unknown")}
+                              Logged by: {userNames[c.user_id] ?? (c.user_id === user?.id ? "You" : "Unknown")}
                             </p>
                             {c.notes && (
                               <p className="text-xs text-muted-foreground line-clamp-1">{c.notes}</p>

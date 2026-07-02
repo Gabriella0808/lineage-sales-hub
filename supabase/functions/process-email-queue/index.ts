@@ -1,5 +1,42 @@
-import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
 import { createClient } from 'npm:@supabase/supabase-js@2'
+
+async function sendResendEmail(
+  payload: {
+    to: string
+    from: string
+    subject: string
+    html?: string
+    text?: string
+    message_id?: string
+  },
+  apiKey: string
+): Promise<void> {
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  }
+  if (payload.message_id) {
+    headers['Idempotency-Key'] = payload.message_id
+  }
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      from: payload.from,
+      to: [payload.to],
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+    }),
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({})) as { message?: string }
+    const err = Object.assign(new Error(body.message ?? `HTTP ${res.status}`), { status: res.status })
+    throw err
+  }
+}
 
 const MAX_RETRIES = 5
 const DEFAULT_BATCH_SIZE = 10
@@ -79,7 +116,7 @@ async function moveToDlq(
 }
 
 Deno.serve(async (req) => {
-  const apiKey = Deno.env.get('LOVABLE_API_KEY')
+  const apiKey = Deno.env.get('RESEND_API_KEY')
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -281,24 +318,16 @@ Deno.serve(async (req) => {
       }
 
       try {
-        await sendLovableEmail(
+        await sendResendEmail(
           {
-            run_id: payload.run_id,
             to: payload.to,
             from: payload.from,
-            sender_domain: payload.sender_domain,
             subject: payload.subject,
             html: payload.html,
             text: payload.text,
-            purpose: payload.purpose,
-            label: payload.label,
-            idempotency_key: payload.idempotency_key,
-            unsubscribe_token: payload.unsubscribe_token,
             message_id: payload.message_id,
           },
-          // sendUrl is optional — falls back to the default email API endpoint
-          // when unset. Override via env for local dev if needed.
-          { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') }
+          apiKey
         )
 
         // Log success

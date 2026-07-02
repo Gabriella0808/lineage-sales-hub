@@ -330,4 +330,5 @@ UPDATE public.dealers d SET
   rep_id = COALESCE(src.rep_id, d.rep_id),
   buying_group = COALESCE(src.bg, d.buying_group)
 FROM src
-WHERE lower(d.name) = lower(src.name);
+WHERE lower(d.name) = lower(src.name)
+  AND (src.rep_id IS NULL OR EXISTS (SELECT 1 FROM public.sales_reps r WHERE r.id = src.rep_id));

@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
       (m: any) => m.email && EXPECTED_MANAGER_EMAILS.includes(m.email.toLowerCase()),
     );
 
-    const anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const supaUrl = Deno.env.get("SUPABASE_URL")!;
 
     async function sendOne(templateName: string, recipient: string, tag: string, templateData: Record<string, any>) {

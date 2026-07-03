@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
           inviterName,
           boardName: board?.name ?? undefined,
           boardDescription: board?.description ?? undefined,
-          link: "https://www.lineage-portal.com/tasks",
+          link: "https://www.lineage-collections-portal.com/tasks",
         },
       }),
     });

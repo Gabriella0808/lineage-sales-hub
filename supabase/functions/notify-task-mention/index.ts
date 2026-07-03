@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
             mentionerName,
             taskTitle,
             updateBody: upd.body,
-            link: "https://www.lineage-portal.com/tasks",
+            link: "https://www.lineage-collections-portal.com/tasks",
           },
         }),
       });

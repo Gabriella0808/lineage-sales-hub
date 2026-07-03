@@ -67,7 +67,7 @@ export const template = {
   displayName: 'Sales manager weekly review (missing)',
   previewData: {
     weekLabel: '[TEST] Week of Jun 22, 2026',
-    portalUrl: 'https://www.lineage-managerhub.com/managers',
+    portalUrl: 'https://www.lineage-collections-portal.com/managers',
   },
 } satisfies TemplateEntry
 

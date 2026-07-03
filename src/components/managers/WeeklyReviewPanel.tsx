@@ -187,22 +187,36 @@ export function WeeklyReviewPanel({
 
       const [
         { data: mgr },
-        { data: ums },
         { data: mgrUserId },
-        { data: reps },
         { data: dealers },
         { data: checkIns },
       ] = await Promise.all([
         supabase.from("managers").select("name,email").eq("id", managerId).maybeSingle(),
-        supabase.from("user_managers").select("user_id").eq("manager_id", managerId),
         supabase.rpc("user_id_for_manager", { _manager_id: managerId }),
-        supabase.from("sales_reps").select("id").eq("manager_id", managerId),
         supabase.from("dealers").select("id,rep_id,rep_owner"),
         supabase
           .from("dealer_check_ins")
           .select("id,new_placement,visit_date,user_id,dealer_id")
           .gte("visit_date", start)
           .lte("visit_date", end),
+      ]);
+
+      // Collect ALL manager IDs sharing the same email (deduped manager records)
+      // so user_managers and sales_reps lookups cover all sibling records.
+      const allManagerIds = [managerId];
+      if (mgr?.email) {
+        const { data: siblings } = await supabase
+          .from("managers")
+          .select("id")
+          .eq("email", mgr.email);
+        siblings?.forEach((s: any) => {
+          if (s.id && !allManagerIds.includes(s.id)) allManagerIds.push(s.id);
+        });
+      }
+
+      const [{ data: ums }, { data: reps }] = await Promise.all([
+        supabase.from("user_managers").select("user_id").in("manager_id", allManagerIds),
+        supabase.from("sales_reps").select("id").in("manager_id", allManagerIds),
       ]);
 
       // Users belonging to this manager

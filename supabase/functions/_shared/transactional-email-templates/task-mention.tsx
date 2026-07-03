@@ -62,7 +62,7 @@ export const template = {
     taskTitle: 'Add weekly reviews to manager cards',
     boardName: 'Portal Tasks',
     updateBody: '@Gabriella can you take a look at the dealer onboarding section before Friday?',
-    link: 'https://www.lineage-portal.com/tasks',
+    link: 'https://www.lineage-collections-portal.com/tasks',
   },
 } satisfies TemplateEntry
 

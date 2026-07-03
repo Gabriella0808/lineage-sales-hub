@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
       kate: { checkIns: 0, placements: 0 },
     };
     cis.forEach((c) => {
-      const team = (c.dealer_id && dealerToTeam[c.dealer_id]) || userToTeam[c.user_id];
+      const team = userToTeam[c.user_id] || (c.dealer_id && dealerToTeam[c.dealer_id]);
       if (!team) return;
       stats[team].checkIns += 1;
       if ((c.new_placement ?? "").toLowerCase() === "yes") stats[team].placements += 1;
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
               rows,
               totalCheckIns,
               totalPlacements,
-              portalUrl: "https://www.lineage-managerhub.com/check-ins/analytics",
+              portalUrl: "https://www.lineage-collections-portal.com/check-ins/analytics",
             },
           }),
         });

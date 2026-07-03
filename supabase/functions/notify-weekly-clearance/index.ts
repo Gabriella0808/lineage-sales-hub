@@ -210,7 +210,7 @@ Deno.serve(async (req) => {
               totalUnits,
               totalRevenue,
               skusMoved,
-              portalUrl: "https://www.lineage-managerhub.com/clearance/analytics",
+              portalUrl: "https://www.lineage-collections-portal.com/clearance/analytics",
             },
           }),
         });

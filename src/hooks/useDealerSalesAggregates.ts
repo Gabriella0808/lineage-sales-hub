@@ -119,25 +119,20 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
         }
       }
 
-      // ---------- Bookings (dealer_sales monthly rollup) ----------
+      // ---------- Bookings (live rollup from dbo_Orders) ----------
       {
-        const dealerChunks: (string[] | null)[] = dealerIds ? chunk(dealerIds, 200) : [null];
-        for (const ch of dealerChunks) {
-          let q = supabase
-            .from("dealer_sales")
-            .select("year, month, bookings, dealer_id")
-            .in("year", [currentYear, prevYear]);
-          if (ch) q = q.in("dealer_id", ch);
-          const { data: salesRows, error: salesErr } = await q;
-          if (salesErr) { if (!cancelled) { setError(salesErr.message); setLoading(false); } return; }
-          for (const r of salesRows ?? []) {
-            const monthIdx = parseInt(String(r.month), 10) - 1;
-            if (monthIdx < 0 || monthIdx > 11) continue;
-            const name = MONTH_NAMES[monthIdx];
-            const bk = Number(r.bookings) || 0;
-            if (r.year === currentYear) agg[name].ytdB += bk;
-            else if (r.year === prevYear) agg[name].b25 += bk;
-          }
+        const { data: bookingRows, error: bookingErr } = await (supabase as any).rpc(
+          "kpi_monthly_booking_rollup",
+          { p_years: [currentYear, prevYear], p_dealer_ids: dealerIds },
+        );
+        if (bookingErr) { if (!cancelled) { setError(bookingErr.message); setLoading(false); } return; }
+        for (const r of bookingRows ?? []) {
+          const monthIdx = (Number(r.month) || 0) - 1;
+          if (monthIdx < 0 || monthIdx > 11) continue;
+          const name = MONTH_NAMES[monthIdx];
+          const bk = Number(r.bookings) || 0;
+          if (Number(r.year) === currentYear) agg[name].ytdB += bk;
+          else if (Number(r.year) === prevYear) agg[name].b25 += bk;
         }
       }
 

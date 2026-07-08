@@ -26,24 +26,20 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   WITH open_orders AS (
-    -- Currently-open orders: product lines only, tariffs/freight excluded
+    -- Currently-open orders using order header SubTotal (merchandise total, excludes tariffs/freight)
     SELECT
-      EXTRACT(YEAR  FROM o."OrderDate")::int                                                        AS yr,
-      EXTRACT(MONTH FROM o."OrderDate")::int                                                        AS mo,
-      o."GUIDOrder"                                                                                 AS order_id,
-      SUM(d."AmountOrdered"::numeric)                                                               AS line_total,
-      SUM(CASE WHEN o."BranchID" = 'MIXED'   THEN d."AmountOrdered"::numeric ELSE 0 END)          AS container_amt,
-      SUM(CASE WHEN o."BranchID" = 'WHSALES' THEN d."AmountOrdered"::numeric ELSE 0 END)          AS warehouse_amt
+      EXTRACT(YEAR  FROM o."OrderDate")::int                                    AS yr,
+      EXTRACT(MONTH FROM o."OrderDate")::int                                    AS mo,
+      o."GUIDOrder"                                                             AS order_id,
+      o."SubTotal"::numeric                                                     AS line_total,
+      CASE WHEN o."BranchID" = 'MIXED'   THEN o."SubTotal"::numeric ELSE 0 END AS container_amt,
+      CASE WHEN o."BranchID" = 'WHSALES' THEN o."SubTotal"::numeric ELSE 0 END AS warehouse_amt
     FROM public."dbo_Orders" o
-    JOIN public."dbo_OrderDetail" d ON d."GUIDOrder" = o."GUIDOrder"
     LEFT JOIN public.dealers dl ON dl.acctivate_id = o."CustomerID"
     WHERE EXTRACT(YEAR FROM o."OrderDate")::int = ANY(p_years)
       AND o."OrderDate" IS NOT NULL
       AND COALESCE(o."OrderStatus", '') NOT ILIKE '%cancel%'
-      AND COALESCE(d."MiscChargeType", '') = ''
-      AND COALESCE(d."Freight", false) IS NOT TRUE
       AND (p_dealer_ids IS NULL OR dl.id = ANY(p_dealer_ids))
-    GROUP BY 1, 2, o."GUIDOrder", o."BranchID"
   ),
   fulfilled_orders AS (
     -- Fulfilled orders: use original OrderDate (booking date), product lines only

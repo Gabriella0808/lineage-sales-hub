@@ -293,6 +293,7 @@ export default function CheckInsPage() {
   const [teamFilter, setTeamFilter] = useState<TeamMemberId | "all">("all");
   const [colorFilter, setColorFilter] = useState<string | "all">("all");
   const [salesReps, setSalesReps] = useState<{ id: string; name: string }[]>([]);
+  const [managersMap, setManagersMap] = useState<Record<string, string>>({});
   const [newDealer, setNewDealer] = useState<{
     first_name: string;
     last_name: string;
@@ -323,15 +324,17 @@ export default function CheckInsPage() {
     buying_group: "",
   });
 
-  // Load sales reps for the Rep dropdown
+  // Load sales reps and managers
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("sales_reps")
-        .select("id, name")
-        .eq("status", "active")
-        .order("name");
-      setSalesReps((data ?? []) as { id: string; name: string }[]);
+      const [repsRes, managersRes] = await Promise.all([
+        supabase.from("sales_reps").select("id, name").eq("status", "active").order("name"),
+        supabase.from("managers").select("id, name").order("name"),
+      ]);
+      setSalesReps((repsRes.data ?? []) as { id: string; name: string }[]);
+      const map: Record<string, string> = {};
+      (managersRes.data ?? []).forEach((m: { id: string; name: string }) => { map[m.id] = m.name; });
+      setManagersMap(map);
     })();
   }, []);
 
@@ -651,6 +654,17 @@ export default function CheckInsPage() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-fetch dealers when the user tabs back in so edits made in the CRM
+  // (prospect assignments, contact info, etc.) are reflected immediately.
+  useEffect(() => {
+    const handleVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", handleVisible);
+    return () => document.removeEventListener("visibilitychange", handleVisible);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1456,6 +1470,11 @@ export default function CheckInsPage() {
                       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Account Owner</dt>
                       <dd className="mt-0.5">
                         {(() => {
+                          // Prefer the actual manager name from the managers table
+                          if (selected.manager_id && managersMap[selected.manager_id]) {
+                            return <span className="font-medium">{managersMap[selected.manager_id]}</span>;
+                          }
+                          // Fallback: match by legacy rep_owner string
                           const member = TEAM_MEMBERS.find((m) => dealerMatchesTeam(selected, m));
                           return member ? (
                             <span className="font-medium">{member.name}</span>

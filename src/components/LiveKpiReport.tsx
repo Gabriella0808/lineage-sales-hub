@@ -914,16 +914,16 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                       <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdB / r.b26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.b25)}</td>
-                      <td className="p-2 text-right">{fmtPct((ytdBCont + b25Cont) / Math.max(r.ytdB + r.b25, 1))}</td>
-                      <td className="p-2 text-right">{fmtPct((ytdBWh + b25Wh) / Math.max(r.ytdB + r.b25, 1))}</td>
+                      <td className="p-2 text-right">{fmtPct(ytdBCont / Math.max(r.ytdB, 1))}</td>
+                      <td className="p-2 text-right">{fmtPct(ytdBWh  / Math.max(r.ytdB, 1))}</td>
                     </>}
                     {showI && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.i26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.i25)}</td>
-                      <td className="p-2 text-right">{fmtPct((ytdICont + i25Cont) / Math.max(r.ytdI + r.i25, 1))}</td>
-                      <td className="p-2 text-right">{fmtPct((ytdIWh + i25Wh) / Math.max(r.ytdI + r.i25, 1))}</td>
+                      <td className="p-2 text-right">{fmtPct(ytdICont / Math.max(r.ytdI, 1))}</td>
+                      <td className="p-2 text-right">{fmtPct(ytdIWh  / Math.max(r.ytdI, 1))}</td>
                     </>}
                   </tr>
                 );
@@ -935,16 +935,16 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                   <td className="p-2 text-right">{formatCurrency(sumB26P)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdB / sumB26P)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumB25)}</td>
-                  <td className="p-2 text-right">{fmtPct((sumYtdBCont + sumB25Cont) / Math.max(sumYtdB + sumB25, 1))}</td>
-                  <td className="p-2 text-right">{fmtPct((sumYtdBWh + sumB25Wh) / Math.max(sumYtdB + sumB25, 1))}</td>
+                  <td className="p-2 text-right">{fmtPct(sumYtdBCont / Math.max(sumYtdB, 1))}</td>
+                  <td className="p-2 text-right">{fmtPct(sumYtdBWh  / Math.max(sumYtdB, 1))}</td>
                 </>}
                 {showI && <>
                   <td className="p-2 text-right border-l">{formatCurrency(sumYtdI)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumI26P)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdI / sumI26P)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumI25)}</td>
-                  <td className="p-2 text-right">{fmtPct((sumYtdICont + sumI25Cont) / Math.max(sumYtdI + sumI25, 1))}</td>
-                  <td className="p-2 text-right">{fmtPct((sumYtdIWh + sumI25Wh) / Math.max(sumYtdI + sumI25, 1))}</td>
+                  <td className="p-2 text-right">{fmtPct(sumYtdICont / Math.max(sumYtdI, 1))}</td>
+                  <td className="p-2 text-right">{fmtPct(sumYtdIWh  / Math.max(sumYtdI, 1))}</td>
                 </>}
               </tr>
               {monthFilter === "All" && (

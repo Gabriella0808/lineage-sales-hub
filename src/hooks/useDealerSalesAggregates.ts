@@ -204,35 +204,42 @@ async function fetchInvoiceAggregateViewRows(
   prevYear: number,
   dealerIds: string[] | null,
 ): Promise<ViewRow[] | null> {
-  // Company-wide: prefer portal_acctivate_invoices (posted_to_ar = true, no dealer filter needed).
+  // Company-wide: query v_portal_monthly_invoiced_actuals directly.
+  // Fields: year (int), month_number (1–12), invoiced_actual (numeric).
   if (dealerIds === null) {
-    const { data, error } = await (supabase as any).rpc("kpi_monthly_portal_invoice_rollup", {
-      p_years: [currentYear, prevYear],
-    });
-    if (!error && data) {
-      return ((data ?? []) as any[]).map((r) => ({
-        year: Number(r.year),
-        month: Number(r.month),
-        dealer_id: null,
-        invoiced: Number(r.invoiced) || 0,
-        invoiced_container: Number(r.invoiced_container) || 0,
-        invoiced_warehouse: Number(r.invoiced_warehouse) || 0,
+    const { data, error } = await (supabase as any)
+      .from("v_portal_monthly_invoiced_actuals")
+      .select("year, month_number, invoiced_actual")
+      .in("year", [currentYear, prevYear]);
+    if (error) {
+      console.error("[invoice] v_portal_monthly_invoiced_actuals fetch failed:", error.message);
+    } else if (data) {
+      return (data as any[]).map((r) => ({
+        year:               Number(r.year),
+        month:              Number(r.month_number),
+        dealer_id:          null,
+        invoiced:           Number(r.invoiced_actual) || 0,
+        invoiced_container: 0,
+        invoiced_warehouse: 0,
       }));
     }
-    // fall through to dbo_Invoice-based rollup if portal source unavailable
+    // fall through to dbo_Invoice rollup if view is unavailable
   }
 
-  // Dealer-scoped (or portal RPC failed): use the dbo_Invoice rollup which supports dealer filtering.
+  // Dealer-scoped (or view unavailable): use kpi_monthly_invoice_rollup which supports dealer filtering.
   const { data, error } = await (supabase as any).rpc("kpi_monthly_invoice_rollup", {
-    p_years: [currentYear, prevYear],
+    p_years:      [currentYear, prevYear],
     p_dealer_ids: dealerIds,
   });
-  if (error) return null;
+  if (error) {
+    console.error("[invoice] kpi_monthly_invoice_rollup failed:", error.message);
+    return null;
+  }
   return ((data ?? []) as any[]).map((r) => ({
-    year: Number(r.year),
-    month: Number(r.month),
-    dealer_id: null,
-    invoiced: Number(r.invoiced) || 0,
+    year:               Number(r.year),
+    month:              Number(r.month),
+    dealer_id:          null,
+    invoiced:           Number(r.invoiced)           || 0,
     invoiced_container: Number(r.invoiced_container) || 0,
     invoiced_warehouse: Number(r.invoiced_warehouse) || 0,
   }));

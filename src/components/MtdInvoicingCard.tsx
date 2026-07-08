@@ -5,19 +5,22 @@ import { formatCurrency } from "@/hooks/usePortalData";
 import { format } from "date-fns";
 
 /**
- * Live MTD Total Invoicing card. Reads from kpi_monthly_invoice_rollup which
- * pulls from dbo_Invoice + dbo_InvoiceDetail (synced nightly from Acctivate).
+ * Live MTD Total Invoicing card.
+ * Company-wide: reads from v_portal_monthly_invoiced_actuals (year + month_number filter).
+ * Dealer-scoped: falls back to kpi_monthly_invoice_rollup (supports dealer filtering).
  */
 export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string[] | null }) {
   const now = new Date();
-  const currentYear = now.getFullYear();
+  const currentYear  = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
-  const monthLabel = useMemo(() => format(now, "MMMM yyyy"), []);
+  const monthLabel   = useMemo(() => format(now, "MMMM yyyy"), []);
 
-  // Resolve dealer IDs for rep scope
+  const isCompanyWide = !allowedRepNames || allowedRepNames.length === 0;
+
+  // Resolve dealer IDs — only needed for dealer-scoped view.
   const { data: scopedDealerIds } = useQuery({
     queryKey: ["mtd_scoped_dealers", (allowedRepNames ?? []).join("|")],
-    enabled: !!allowedRepNames && allowedRepNames.length > 0,
+    enabled: !isCompanyWide,
     queryFn: async () => {
       const { data: repRows, error: repErr } = await supabase
         .from("sales_reps")
@@ -45,27 +48,48 @@ export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string
     },
   });
 
-  const scopeReady = !allowedRepNames || allowedRepNames.length === 0 || scopedDealerIds !== undefined;
-  const dealerIds = (allowedRepNames && allowedRepNames.length > 0) ? (scopedDealerIds ?? []) : null;
+  const scopeReady = isCompanyWide || scopedDealerIds !== undefined;
+  const dealerIds   = isCompanyWide ? null : (scopedDealerIds ?? []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["mtd_invoicing", currentYear, currentMonth, dealerIds?.length ?? -1],
+    queryKey: ["mtd_invoicing", currentYear, currentMonth, isCompanyWide ? "all" : (dealerIds?.length ?? -1)],
     enabled: scopeReady,
     queryFn: async () => {
+      // ── Company-wide: v_portal_monthly_invoiced_actuals ──────────────────
+      if (isCompanyWide) {
+        const { data: viewData, error } = await (supabase as any)
+          .from("v_portal_monthly_invoiced_actuals")
+          .select("year, month_number, invoice_count, invoiced_actual")
+          .eq("year", currentYear)
+          .eq("month_number", currentMonth)
+          .maybeSingle();
+        if (error) {
+          console.error("[mtd] v_portal_monthly_invoiced_actuals fetch failed:", error.message);
+          throw error;
+        }
+        return {
+          total: Number(viewData?.invoiced_actual ?? 0),
+          count: Number(viewData?.invoice_count   ?? 0),
+        };
+      }
+
+      // ── Dealer-scoped: kpi_monthly_invoice_rollup ────────────────────────
       if (dealerIds !== null && dealerIds.length === 0) return { total: 0, count: 0 };
 
       const { data: rpcData, error } = await (supabase as any).rpc(
         "kpi_monthly_invoice_rollup",
         { p_years: [currentYear], p_dealer_ids: dealerIds ?? null },
       );
-      if (error) throw error;
-
+      if (error) {
+        console.error("[mtd] kpi_monthly_invoice_rollup failed:", error.message);
+        throw error;
+      }
       const monthRow = ((rpcData ?? []) as any[]).find(
         (r) => Number(r.month) === currentMonth,
       );
       return {
-        total: Number(monthRow?.invoiced ?? 0),
-        count: Number(monthRow?.invoice_count ?? 0),
+        total: Number(monthRow?.invoiced       ?? 0),
+        count: Number(monthRow?.invoice_count  ?? 0),
       };
     },
   });
@@ -81,7 +105,7 @@ export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string
         </p>
         <p className="text-xs text-muted-foreground mt-1">
           {monthLabel} • {data?.count ?? 0} invoices
-          {allowedRepNames && allowedRepNames.length > 0 ? " (scoped)" : ""}
+          {!isCompanyWide ? " (scoped)" : ""}
         </p>
       </div>
     </div>

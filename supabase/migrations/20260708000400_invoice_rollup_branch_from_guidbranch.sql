@@ -39,13 +39,13 @@ AS $$
     EXTRACT(MONTH FROM i."InvoiceDate")::int AS month,
     COALESCE(SUM(pl.product_subtotal), 0)    AS invoiced,
     COALESCE(SUM(CASE
-      WHEN upper(i."GUIDBranch") = 'C96A46A5-7EDC-4B33-AF2E-A0BB16D91320'
+      WHEN i."GUIDBranch" = 'C96A46A5-7EDC-4B33-AF2E-A0BB16D91320'::uuid
       THEN pl.product_subtotal ELSE 0
     END), 0) AS invoiced_container,
     COALESCE(SUM(CASE
-      WHEN upper(i."GUIDBranch") IN (
-        'E38CF43B-F51F-45BB-B6F3-862ACFCF951F',  -- WHSALES current
-        '245DDE60-3911-48EA-9A77-C730843CD8E2'   -- WHSALES legacy
+      WHEN i."GUIDBranch" IN (
+        'E38CF43B-F51F-45BB-B6F3-862ACFCF951F'::uuid,  -- WHSALES current
+        '245DDE60-3911-48EA-9A77-C730843CD8E2'::uuid   -- WHSALES legacy
       )
       THEN pl.product_subtotal ELSE 0
     END), 0) AS invoiced_warehouse,

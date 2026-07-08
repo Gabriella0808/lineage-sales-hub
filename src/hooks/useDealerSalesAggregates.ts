@@ -204,8 +204,25 @@ async function fetchInvoiceAggregateViewRows(
   prevYear: number,
   dealerIds: string[] | null,
 ): Promise<ViewRow[] | null> {
-  // Server-side rollup: returns 24 rows max (year × month), regardless of
-  // dealer count. Much faster than paginating per-dealer rows.
+  // Company-wide: prefer portal_acctivate_invoices (posted_to_ar = true, no dealer filter needed).
+  if (dealerIds === null) {
+    const { data, error } = await (supabase as any).rpc("kpi_monthly_portal_invoice_rollup", {
+      p_years: [currentYear, prevYear],
+    });
+    if (!error && data) {
+      return ((data ?? []) as any[]).map((r) => ({
+        year: Number(r.year),
+        month: Number(r.month),
+        dealer_id: null,
+        invoiced: Number(r.invoiced) || 0,
+        invoiced_container: Number(r.invoiced_container) || 0,
+        invoiced_warehouse: Number(r.invoiced_warehouse) || 0,
+      }));
+    }
+    // fall through to dbo_Invoice-based rollup if portal source unavailable
+  }
+
+  // Dealer-scoped (or portal RPC failed): use the dbo_Invoice rollup which supports dealer filtering.
   const { data, error } = await (supabase as any).rpc("kpi_monthly_invoice_rollup", {
     p_years: [currentYear, prevYear],
     p_dealer_ids: dealerIds,

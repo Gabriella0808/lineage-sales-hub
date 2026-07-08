@@ -140,6 +140,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const isTest: boolean = !!body?.test;
     const testMissing: boolean = !!body?.testMissing;
+    const testEmail: string | undefined = body?.testEmail;
+    const onlyManagerEmail: string | undefined = body?.onlyManagerEmail;
 
     const weekStart = currentWeekStart(new Date());
     const weekLabel = fmtWeekLabel(weekStart);
@@ -152,7 +154,8 @@ Deno.serve(async (req) => {
     if (mErr) throw mErr;
 
     const expectedManagers = (managers ?? []).filter(
-      (m: any) => m.email && EXPECTED_MANAGER_EMAILS.includes(m.email.toLowerCase()),
+      (m: any) => m.email && EXPECTED_MANAGER_EMAILS.includes(m.email.toLowerCase()) &&
+        (!onlyManagerEmail || m.email.toLowerCase() === onlyManagerEmail.toLowerCase()),
     );
 
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -174,7 +177,9 @@ Deno.serve(async (req) => {
     }
 
     async function sendMissing(managerName: string, managerEmail: string, tagBase: string) {
-      const recipients = MISSING_RECIPIENTS[managerEmail.toLowerCase()] ?? [];
+      const recipients = testEmail
+        ? [testEmail]
+        : MISSING_RECIPIENTS[managerEmail.toLowerCase()] ?? [];
       let count = 0;
       for (const r of recipients) {
         const ok = await sendOne(
@@ -208,7 +213,9 @@ Deno.serve(async (req) => {
           value: responses[f.key] ?? undefined,
         })),
       }));
-      const recipients = REVIEW_RECIPIENTS[managerEmail.toLowerCase()] ?? [];
+      const recipients = testEmail
+        ? [testEmail]
+        : REVIEW_RECIPIENTS[managerEmail.toLowerCase()] ?? [];
       let count = 0;
       for (const r of recipients) {
         const ok = await sendOne(
@@ -245,9 +252,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Pull existing reviews for the week (or most recent per manager when testing)
+    // Pull existing reviews for the week (or most recent per manager when testing without preview)
     const reviewByManager = new Map<string, Record<string, string>>();
-    if (isTest) {
+    if (isTest && !testEmail) {
       const { data, error } = await supabase
         .from("manager_weekly_reviews")
         .select("manager_id, week_start, responses")
@@ -272,7 +279,11 @@ Deno.serve(async (req) => {
     let sentReview = 0;
     let sentMissing = 0;
     for (const m of expectedManagers) {
-      const tagBase = isTest ? `${m.id}-test-${Date.now()}` : `${m.id}-${weekStart}`;
+      const tagBase = testEmail
+        ? `${m.id}-preview-${Date.now()}`
+        : isTest
+        ? `${m.id}-test-${Date.now()}`
+        : `${m.id}-${weekStart}`;
       const responses = reviewByManager.get(m.id);
       if (responses && Object.keys(responses).length > 0) {
         sentReview += await sendReview(m.name, m.email, responses, tagBase);

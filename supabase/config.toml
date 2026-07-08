@@ -51,6 +51,27 @@ verify_jwt = false
 [functions.handle-email-suppression]
 verify_jwt = false
 
+[functions.notify-task-mention]
+verify_jwt = false
+
+[functions.notify-task-assigned]
+verify_jwt = false
+
+[functions.notify-tasks-due-today]
+verify_jwt = false
+
+[functions.notify-board-subscribed]
+verify_jwt = false
+
+[functions.send-weekly-review-digest]
+verify_jwt = false
+
+[functions.notify-weekly-checkins]
+verify_jwt = false
+
+[functions.notify-weekly-clearance]
+verify_jwt = false
+
 [functions.resurrect-failed-lead-emails]
 verify_jwt = false
 

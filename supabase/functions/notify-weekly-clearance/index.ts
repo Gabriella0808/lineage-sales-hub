@@ -17,8 +17,6 @@ const corsHeaders = {
 const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
 const TEST_EXCLUDED_REPS = new Set(["gillis", "damico"]);
 
-const ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzYnJ2cGd6YXdiYm11bG94bGt6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyNjUxNjIsImV4cCI6MjA5MTg0MTE2Mn0.TkFa_54_Lck4rpyFowbxjnYfGfeYS1ZTy7TWMBvtAQ0";
 
 async function fetchAll<T>(
   builder: (from: number, to: number) => Promise<{ data: T[] | null; error: unknown }>,
@@ -196,8 +194,8 @@ Deno.serve(async (req) => {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${ANON_KEY}`,
-            "apikey": ANON_KEY,
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+            "apikey": Deno.env.get("SUPABASE_ANON_KEY") ?? "",
           },
           body: JSON.stringify({
             templateName: "clearance-weekly-report",

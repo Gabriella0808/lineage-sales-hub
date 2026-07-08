@@ -329,12 +329,9 @@ export default function TaskBoardsView() {
       if (error || !data) return toast({ title: "Create failed", description: error?.message, variant: "destructive" });
       const newId = (data as any).id as string;
 
-      // seed default groups
+      // seed a single starter group — user can add more via "+ Add group"
       await supabase.from("task_board_groups" as any).insert([
         { board_id: newId, name: "To Do", color: "#6366f1", position: 0 },
-        { board_id: newId, name: "In Progress", color: "#f59e0b", position: 1 },
-        { board_id: newId, name: "Stuck", color: "#ef4444", position: 2 },
-        { board_id: newId, name: "Done", color: "#10b981", position: 3 },
       ]);
       setActiveBoardId(newId);
     }

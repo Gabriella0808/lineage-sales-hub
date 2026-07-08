@@ -26,6 +26,7 @@ type Metric = "bookings" | "invoices";
 
 interface SalesReportProps {
   metric: Metric;
+  embedded?: boolean;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

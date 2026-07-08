@@ -32,10 +32,13 @@ BATCH_SIZE = 500
 # updated_col: column used for incremental sync. None = truncate + full reload every night.
 # InvoiceDetail and OrderDetail have no UpdatedDate, so they reload nightly.
 TABLES = [
-    {"schema": "dbo", "table": "Invoice",       "pg_table": "dbo_Invoice",       "updated_col": "UpdatedDate"},
-    {"schema": "dbo", "table": "InvoiceDetail", "pg_table": "dbo_InvoiceDetail", "updated_col": None},
-    {"schema": "dbo", "table": "OrderDetail",   "pg_table": "dbo_OrderDetail",   "updated_col": None},
-    {"schema": "dbo", "table": "Orders",        "pg_table": "dbo_Orders",        "updated_col": "UpdatedDate"},
+    {"schema": "dbo", "table": "Invoice",               "pg_table": "dbo_Invoice",               "updated_col": "UpdatedDate"},
+    {"schema": "dbo", "table": "InvoiceDetail",         "pg_table": "dbo_InvoiceDetail",         "updated_col": None},
+    {"schema": "dbo", "table": "OrderDetail",           "pg_table": "dbo_OrderDetail",           "updated_col": None},
+    {"schema": "dbo", "table": "Orders",                "pg_table": "dbo_Orders",                "updated_col": "UpdatedDate"},
+    # OrderManagementSummary is a view (no PK) so the script does a full reload every run.
+    # This keeps dbo_OrderManagementSummary current with all open orders for the booking rollup.
+    {"schema": "dbo", "table": "OrderManagementSummary","pg_table": "dbo_OrderManagementSummary","updated_col": None},
 ]
 
 MSSQL_TO_PG = {

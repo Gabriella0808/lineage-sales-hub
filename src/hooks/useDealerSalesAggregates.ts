@@ -14,6 +14,12 @@ export type MonthlyAgg = {
   /** Current-year YTD invoice totals split by branch */
   ytdIContainer: number;
   ytdIWarehouse: number;
+  /** Prior-year booking totals split by branch (MIXED=container, WHSALES=warehouse) */
+  b25Container: number;
+  b25Warehouse: number;
+  /** Current-year YTD booking totals split by branch */
+  ytdBContainer: number;
+  ytdBWarehouse: number;
 };
 
 type ViewRow = {
@@ -91,6 +97,8 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
           m, b25: 0, i25: 0, ytdB: 0, ytdI: 0,
           i25Container: 0, i25Warehouse: 0,
           ytdIContainer: 0, ytdIWarehouse: 0,
+          b25Container: 0, b25Warehouse: 0,
+          ytdBContainer: 0, ytdBWarehouse: 0,
         }]),
       );
 
@@ -130,9 +138,18 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
           const monthIdx = (Number(r.month) || 0) - 1;
           if (monthIdx < 0 || monthIdx > 11) continue;
           const name = MONTH_NAMES[monthIdx];
-          const bk = Number(r.bookings) || 0;
-          if (Number(r.year) === currentYear) agg[name].ytdB += bk;
-          else if (Number(r.year) === prevYear) agg[name].b25 += bk;
+          const bk  = Number(r.bookings)           || 0;
+          const bkC = Number(r.bookings_container) || 0;
+          const bkW = Number(r.bookings_warehouse) || 0;
+          if (Number(r.year) === currentYear) {
+            agg[name].ytdB          += bk;
+            agg[name].ytdBContainer += bkC;
+            agg[name].ytdBWarehouse += bkW;
+          } else if (Number(r.year) === prevYear) {
+            agg[name].b25          += bk;
+            agg[name].b25Container += bkC;
+            agg[name].b25Warehouse += bkW;
+          }
         }
       }
 
@@ -315,5 +332,7 @@ function emptyYear(): MonthlyAgg[] {
     m, b25: 0, i25: 0, ytdB: 0, ytdI: 0,
     i25Container: 0, i25Warehouse: 0,
     ytdIContainer: 0, ytdIWarehouse: 0,
+    b25Container: 0, b25Warehouse: 0,
+    ytdBContainer: 0, ytdBWarehouse: 0,
   }));
 }

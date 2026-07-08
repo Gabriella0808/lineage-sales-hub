@@ -364,6 +364,11 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       i25Warehouse:  live?.i25Warehouse  ?? 0,
       ytdIContainer: live?.ytdIContainer ?? 0,
       ytdIWarehouse: live?.ytdIWarehouse ?? 0,
+      // Branch-split booking totals (MIXED=container, WHSALES=warehouse).
+      b25Container:  live?.b25Container  ?? 0,
+      b25Warehouse:  live?.b25Warehouse  ?? 0,
+      ytdBContainer: live?.ytdBContainer ?? 0,
+      ytdBWarehouse: live?.ytdBWarehouse ?? 0,
       // Apply overrides on top of seed (line-level only; monthly projections are no longer editable).
       b26p: overrides.monthly?.[seed.m]?.b26p ?? seed.b26p,
       i26p: overrides.monthly?.[seed.m]?.i26p ?? seed.i26p,
@@ -434,6 +439,10 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
           i25Warehouse:  live?.i25Warehouse  ?? 0,
           ytdIContainer: live?.ytdIContainer ?? 0,
           ytdIWarehouse: live?.ytdIWarehouse ?? 0,
+          b25Container:  live?.b25Container  ?? 0,
+          b25Warehouse:  live?.b25Warehouse  ?? 0,
+          ytdBContainer: live?.ytdBContainer ?? 0,
+          ytdBWarehouse: live?.ytdBWarehouse ?? 0,
         };
       };
       if (rows) return rows.map(overlay);
@@ -544,6 +553,10 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   const sumYtdIWh = monthly.reduce((s, r: any) => s + (r.ytdIWarehouse ?? 0), 0);
   const sumI25Cont = monthly.reduce((s, r: any) => s + (r.i25Container ?? 0), 0);
   const sumI25Wh = monthly.reduce((s, r: any) => s + (r.i25Warehouse ?? 0), 0);
+  const sumYtdBCont = monthly.reduce((s, r: any) => s + (r.ytdBContainer ?? 0), 0);
+  const sumYtdBWh = monthly.reduce((s, r: any) => s + (r.ytdBWarehouse ?? 0), 0);
+  const sumB25Cont = monthly.reduce((s, r: any) => s + (r.b25Container ?? 0), 0);
+  const sumB25Wh = monthly.reduce((s, r: any) => s + (r.b25Warehouse ?? 0), 0);
   const dayOfYear = Math.floor((TODAY.getTime() - new Date(TODAY.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
   const annualB = sumYtdB / dayOfYear * 365;
   const annualI = sumYtdI / dayOfYear * 365;
@@ -882,11 +895,17 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                 const rAny = r as typeof r & {
                   ytdIContainer?: number; ytdIWarehouse?: number;
                   i25Container?: number; i25Warehouse?: number;
+                  ytdBContainer?: number; ytdBWarehouse?: number;
+                  b25Container?: number; b25Warehouse?: number;
                 };
                 const ytdICont = rAny.ytdIContainer ?? 0;
                 const ytdIWh = rAny.ytdIWarehouse ?? 0;
                 const i25Cont = rAny.i25Container ?? 0;
                 const i25Wh = rAny.i25Warehouse ?? 0;
+                const ytdBCont = rAny.ytdBContainer ?? 0;
+                const ytdBWh = rAny.ytdBWarehouse ?? 0;
+                const b25Cont = rAny.b25Container ?? 0;
+                const b25Wh = rAny.b25Warehouse ?? 0;
                 return (
                   <tr key={r.m} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
@@ -895,8 +914,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                       <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdB / r.b26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.b25)}</td>
-                      <td className="p-2 text-right text-muted-foreground">-</td>
-                      <td className="p-2 text-right text-muted-foreground">-</td>
+                      <td className="p-2 text-right">{fmtPct((ytdBCont + b25Cont) / Math.max(r.ytdB + r.b25, 1))}</td>
+                      <td className="p-2 text-right">{fmtPct((ytdBWh + b25Wh) / Math.max(r.ytdB + r.b25, 1))}</td>
                     </>}
                     {showI && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
@@ -916,8 +935,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                   <td className="p-2 text-right">{formatCurrency(sumB26P)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdB / sumB26P)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumB25)}</td>
-                  <td className="p-2 text-right text-muted-foreground">-</td>
-                  <td className="p-2 text-right text-muted-foreground">-</td>
+                  <td className="p-2 text-right">{fmtPct((sumYtdBCont + sumB25Cont) / Math.max(sumYtdB + sumB25, 1))}</td>
+                  <td className="p-2 text-right">{fmtPct((sumYtdBWh + sumB25Wh) / Math.max(sumYtdB + sumB25, 1))}</td>
                 </>}
                 {showI && <>
                   <td className="p-2 text-right border-l">{formatCurrency(sumYtdI)}</td>

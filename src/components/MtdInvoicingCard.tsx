@@ -57,8 +57,8 @@ export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string
     queryFn: async () => {
       // ── Company-wide: v_portal_monthly_invoiced_actuals ──────────────────
       if (isCompanyWide) {
-        const { data: viewData, error } = await (supabase as any)
-          .from("v_portal_monthly_invoiced_actuals")
+        const { data: viewData, error } = await supabase
+          .from("v_portal_monthly_invoiced_actuals" as any)
           .select("year, month_number, invoice_count, invoiced_actual")
           .eq("year", currentYear)
           .eq("month_number", currentMonth)

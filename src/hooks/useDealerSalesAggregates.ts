@@ -205,11 +205,11 @@ async function fetchInvoiceAggregateViewRows(
   dealerIds: string[] | null,
 ): Promise<ViewRow[] | null> {
   // Company-wide: query v_portal_monthly_invoiced_actuals directly.
-  // Fields: year (int), month_number (1–12), invoiced_actual (numeric).
+  // Fields: year, month_number (1–12), invoice_count, invoiced_actual.
   if (dealerIds === null) {
-    const { data, error } = await (supabase as any)
-      .from("v_portal_monthly_invoiced_actuals")
-      .select("year, month_number, invoiced_actual")
+    const { data, error } = await supabase
+      .from("v_portal_monthly_invoiced_actuals" as any)
+      .select("year, month_number, invoice_count, invoiced_actual")
       .in("year", [currentYear, prevYear]);
     if (error) {
       console.error("[invoice] v_portal_monthly_invoiced_actuals fetch failed:", error.message);

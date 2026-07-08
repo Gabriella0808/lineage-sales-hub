@@ -347,17 +347,12 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
 
   const baseMonthly = useMemo(() => MONTHLY.map((seed) => {
     const live = liveAgg.find((r) => r.m === seed.m);
-    const openBookings = openByMonth[seed.m];
-    const openBookingsPrev = openByMonthPrev[seed.m];
-    const liveB25 = live ? live.b25 : seed.b25;
     return {
       ...seed,
-      // Override actuals with live DB values; fall back to seed if missing.
-      // 25 Act = dealer_sales bookings rollup + ALL 2025 open sales orders for that month.
-      b25:  liveB25 + (openBookingsPrev ?? 0),
+      // Override actuals with live DB values (rollup covers open + fulfilled orders).
+      b25:  live ? live.b25  : seed.b25,
       i25:  live ? live.i25  : seed.i25,
-      // 26 Act = sum of ALL open sales orders for that month (extended_value).
-      ytdB: openBookings ?? (live ? live.ytdB : seed.ytdB),
+      ytdB: live ? live.ytdB : seed.ytdB,
       ytdI: live ? live.ytdI : seed.ytdI,
       // Branch-split invoice totals (live only - no seed fallback).
       i25Container:  live?.i25Container  ?? 0,

@@ -20,6 +20,9 @@ export type MonthlyAgg = {
   /** Current-year YTD booking totals split by branch */
   ytdBContainer: number;
   ytdBWarehouse: number;
+  /** Pre-calculated % from mv_portal_monthly_invoiced_actuals (null when unavailable or dealer-scoped) */
+  ytdIContainerPct: number | null;
+  ytdIWarehousePct: number | null;
 };
 
 type ViewRow = {
@@ -29,6 +32,8 @@ type ViewRow = {
   invoiced: number | null;
   invoiced_container: number | null;
   invoiced_warehouse: number | null;
+  invoiced_container_pct?: number | null;
+  invoiced_warehouse_pct?: number | null;
 };
 
 type InvoiceLineFallbackRow = {
@@ -99,6 +104,8 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
           ytdIContainer: 0, ytdIWarehouse: 0,
           b25Container: 0, b25Warehouse: 0,
           ytdBContainer: 0, ytdBWarehouse: 0,
+          ytdIContainerPct: null,
+          ytdIWarehousePct: null,
         }]),
       );
 
@@ -155,6 +162,14 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
 
       // ---------- Invoicing (server-side view first, then client-side fallback) ----------
       const viewRows = await fetchInvoiceAggregateViewRows(currentYear, prevYear, dealerIds);
+      console.log("Invoice monthly view rows", viewRows);
+      if (viewRows && viewRows.length > 0) {
+        console.log("Invoice view row[0] pct fields:", JSON.stringify({
+          month: viewRows[0].month,
+          invoiced_container_pct: viewRows[0].invoiced_container_pct,
+          invoiced_warehouse_pct: viewRows[0].invoiced_warehouse_pct,
+        }));
+      }
       const invoiceRows = viewRows ?? await fetchInvoiceAggregateFallbackRows(currentYear, prevYear, dealerIds);
       if (!invoiceRows) {
         if (!cancelled) {
@@ -174,6 +189,8 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
           agg[name].ytdI += v;
           agg[name].ytdIContainer += vC;
           agg[name].ytdIWarehouse += vW;
+          agg[name].ytdIContainerPct = r.invoiced_container_pct != null ? Number(r.invoiced_container_pct) : null;
+          agg[name].ytdIWarehousePct = r.invoiced_warehouse_pct != null ? Number(r.invoiced_warehouse_pct) : null;
         } else if (Number(r.year) === prevYear) {
           agg[name].i25 += v;
           agg[name].i25Container += vC;
@@ -204,23 +221,25 @@ async function fetchInvoiceAggregateViewRows(
   prevYear: number,
   dealerIds: string[] | null,
 ): Promise<ViewRow[] | null> {
-  // Company-wide: query v_portal_monthly_invoiced_actuals directly.
+  // Company-wide: query mv_portal_monthly_invoiced_actuals directly.
   // Fields: year, month_number (1–12), invoice_count, invoiced_actual.
   if (dealerIds === null) {
     const { data, error } = await supabase
-      .from("v_portal_monthly_invoiced_actuals" as any)
-      .select("year, month_number, invoice_count, invoiced_actual")
+      .from("mv_portal_monthly_invoiced_actuals" as any)
+      .select("year, month_number, invoice_count, invoiced_actual, container_invoiced_actual, warehouse_invoiced_actual, unknown_invoiced_actual, container_percent, warehouse_percent")
       .in("year", [currentYear, prevYear]);
     if (error) {
-      console.error("[invoice] v_portal_monthly_invoiced_actuals fetch failed:", error.message);
+      console.error("[invoice] mv_portal_monthly_invoiced_actuals fetch failed:", error.message);
     } else if (data) {
       return (data as any[]).map((r) => ({
-        year:               Number(r.year),
-        month:              Number(r.month_number),
-        dealer_id:          null,
-        invoiced:           Number(r.invoiced_actual) || 0,
-        invoiced_container: 0,
-        invoiced_warehouse: 0,
+        year:                  Number(r.year),
+        month:                 Number(r.month_number),
+        dealer_id:             null,
+        invoiced:              Number(r.invoiced_actual)           || 0,
+        invoiced_container:    Number(r.container_invoiced_actual) || 0,
+        invoiced_warehouse:    Number(r.warehouse_invoiced_actual) || 0,
+        invoiced_container_pct: r.container_percent != null ? Number(r.container_percent) : null,
+        invoiced_warehouse_pct: r.warehouse_percent != null ? Number(r.warehouse_percent) : null,
       }));
     }
     // fall through to dbo_Invoice rollup if view is unavailable
@@ -358,5 +377,7 @@ function emptyYear(): MonthlyAgg[] {
     ytdIContainer: 0, ytdIWarehouse: 0,
     b25Container: 0, b25Warehouse: 0,
     ytdBContainer: 0, ytdBWarehouse: 0,
+    ytdIContainerPct: null,
+    ytdIWarehousePct: null,
   }));
 }

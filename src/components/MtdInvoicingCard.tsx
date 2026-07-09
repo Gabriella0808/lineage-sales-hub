@@ -6,7 +6,7 @@ import { format } from "date-fns";
 
 /**
  * Live MTD Total Invoicing card.
- * Company-wide: reads from v_portal_monthly_invoiced_actuals (year + month_number filter).
+ * Company-wide: reads from mv_portal_monthly_invoiced_actuals (year + month_number filter).
  * Dealer-scoped: falls back to kpi_monthly_invoice_rollup (supports dealer filtering).
  */
 export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string[] | null }) {
@@ -55,16 +55,16 @@ export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string
     queryKey: ["mtd_invoicing", currentYear, currentMonth, isCompanyWide ? "all" : (dealerIds?.length ?? -1)],
     enabled: scopeReady,
     queryFn: async () => {
-      // ── Company-wide: v_portal_monthly_invoiced_actuals ──────────────────
+      // ── Company-wide: mv_portal_monthly_invoiced_actuals ──────────────────
       if (isCompanyWide) {
         const { data: viewData, error } = await supabase
-          .from("v_portal_monthly_invoiced_actuals" as any)
+          .from("mv_portal_monthly_invoiced_actuals" as any)
           .select("year, month_number, invoice_count, invoiced_actual")
           .eq("year", currentYear)
           .eq("month_number", currentMonth)
           .maybeSingle();
         if (error) {
-          console.error("[mtd] v_portal_monthly_invoiced_actuals fetch failed:", error.message);
+          console.error("[mtd] mv_portal_monthly_invoiced_actuals fetch failed:", error.message);
           throw error;
         }
         return {

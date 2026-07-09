@@ -166,6 +166,7 @@ const END = new Date(TODAY.getFullYear(), 11, 31);
 const DAYS_REMAINING = Math.max(0, Math.ceil((END.getTime() - TODAY.getTime()) / 86400000));
 
 const fmtPct = (n: number) => n === 0 ? "-" : `${(n * 100).toFixed(1)}%`;
+const fmtViewPct = (n: number | null | undefined) => n == null ? "-" : `${Number(n).toFixed(1)}%`;
 const growth = (p: number, a: number) => a === 0 ? 0 : (p - a) / a;
 
 const MONTHS = ["All","January","February","March","April","May","June","July","August","September","October","November","December"] as const;
@@ -355,10 +356,12 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       ytdB: live ? live.ytdB : seed.ytdB,
       ytdI: live ? live.ytdI : seed.ytdI,
       // Branch-split invoice totals (live only - no seed fallback).
-      i25Container:  live?.i25Container  ?? 0,
-      i25Warehouse:  live?.i25Warehouse  ?? 0,
-      ytdIContainer: live?.ytdIContainer ?? 0,
-      ytdIWarehouse: live?.ytdIWarehouse ?? 0,
+      i25Container:     live?.i25Container     ?? 0,
+      i25Warehouse:     live?.i25Warehouse     ?? 0,
+      ytdIContainer:    live?.ytdIContainer    ?? 0,
+      ytdIWarehouse:    live?.ytdIWarehouse    ?? 0,
+      ytdIContainerPct: live?.ytdIContainerPct ?? null,
+      ytdIWarehousePct: live?.ytdIWarehousePct ?? null,
       // Branch-split booking totals (MIXED=container, WHSALES=warehouse).
       b25Container:  live?.b25Container  ?? 0,
       b25Warehouse:  live?.b25Warehouse  ?? 0,
@@ -889,6 +892,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                 const idx = MONTHLY.findIndex((m) => m.m === r.m);
                 const rAny = r as typeof r & {
                   ytdIContainer?: number; ytdIWarehouse?: number;
+                  ytdIContainerPct?: number | null; ytdIWarehousePct?: number | null;
                   i25Container?: number; i25Warehouse?: number;
                   ytdBContainer?: number; ytdBWarehouse?: number;
                   b25Container?: number; b25Warehouse?: number;
@@ -917,8 +921,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                       <td className="p-2 text-right">{formatCurrency(r.i26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.i25)}</td>
-                      <td className="p-2 text-right">{fmtPct(ytdICont / Math.max(r.ytdI, 1))}</td>
-                      <td className="p-2 text-right">{fmtPct(ytdIWh  / Math.max(r.ytdI, 1))}</td>
+                      <td className="p-2 text-right">{fmtViewPct(rAny.ytdIContainerPct)}</td>
+                      <td className="p-2 text-right">{fmtViewPct(rAny.ytdIWarehousePct)}</td>
                     </>}
                   </tr>
                 );

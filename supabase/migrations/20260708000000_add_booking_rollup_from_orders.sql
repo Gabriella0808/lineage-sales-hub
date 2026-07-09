@@ -1,6 +1,10 @@
 -- Replace dealer_sales bookings with a live rollup from dbo_Orders.
 -- dbo_Orders is synced nightly from Acctivate via the Python sync script.
 
+-- Drop first so we can change the return-type signature (CREATE OR REPLACE
+-- cannot alter return types in Postgres).
+DROP FUNCTION IF EXISTS public.kpi_monthly_booking_rollup(int[], uuid[]);
+
 CREATE OR REPLACE FUNCTION public.kpi_monthly_booking_rollup(
   p_years      int[],
   p_dealer_ids uuid[] DEFAULT NULL

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.booking_orders_sync (
 
 ALTER TABLE public.booking_orders_sync ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Authenticated read booking_orders_sync" ON public.booking_orders_sync;
 CREATE POLICY "Authenticated read booking_orders_sync"
   ON public.booking_orders_sync
   FOR SELECT TO authenticated USING (true);

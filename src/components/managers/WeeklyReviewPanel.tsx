@@ -286,6 +286,7 @@ export function WeeklyReviewPanel({
     mutationFn: async () => {
       const { data: u } = await supabase.auth.getUser();
       const userId = u.user?.id;
+      if (!userId) throw new Error("Session expired — please log in again before saving.");
       const mergedResponses = {
         ...responses,
         ...(visitStats

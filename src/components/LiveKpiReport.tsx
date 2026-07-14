@@ -1,5 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useMemo, useEffect } from "react";
 import { formatCurrency, useSalesReps } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChevronsUpDown, Check, X } from "lucide-react";
@@ -271,80 +270,6 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
   // user-editable via inline cells.
   const { data: liveAgg } = useDealerSalesAggregates(scopedDbRepNames);
 
-  // 25 Act / 26 Act bookings come from ALL open sales orders, summed by month of order_date
-  // for the previous and current calendar years respectively.
-  // open_sales_orders.rep is unreliable (often NULL), so when a rep/territory scope is
-  // active we resolve it to dealer_ids via dealers.rep_id and filter on dealer_id instead.
-  const [openByMonth, setOpenByMonth] = useState<Record<string, number>>({});
-  const [openByMonthPrev, setOpenByMonthPrev] = useState<Record<string, number>>({});
-  const repKey = scopedDbRepNames ? scopedDbRepNames.slice().sort().join("|") : "__all__";
-  useEffect(() => {
-    let cancelled = false;
-    const currentYear = new Date().getFullYear();
-    const prevYear = currentYear - 1;
-    (async () => {
-      // Resolve scoped rep names -  dealer_ids (only when a scope is active).
-      let scopedDealerIds: string[] | null = null;
-      if (scopedDbRepNames && scopedDbRepNames.length > 0) {
-        const scopedRepIds = dbReps
-          .filter((r) => scopedDbRepNames.includes(r.name))
-          .map((r) => r.id);
-        if (scopedRepIds.length === 0) { if (!cancelled) { setOpenByMonth({}); setOpenByMonthPrev({}); } return; }
-        const dealerIds: string[] = [];
-        const chunk = 200;
-        for (let i = 0; i < scopedRepIds.length; i += chunk) {
-          const { data, error } = await supabase
-            .from("dealers")
-            .select("id")
-            .in("rep_id", scopedRepIds.slice(i, i + chunk));
-          if (error || !data) break;
-          for (const d of data as { id: string }[]) dealerIds.push(d.id);
-        }
-        if (dealerIds.length === 0) { if (!cancelled) { setOpenByMonth({}); setOpenByMonthPrev({}); } return; }
-        scopedDealerIds = dealerIds;
-      }
-
-      const pageSize = 1000;
-      const totals: Record<string, number> = {};
-      const totalsPrev: Record<string, number> = {};
-
-      // Page through open_sales_orders, chunking dealer_id filter if necessary.
-      const dealerChunks: (string[] | null)[] = scopedDealerIds
-        ? Array.from({ length: Math.ceil(scopedDealerIds.length / 500) }, (_, i) =>
-            scopedDealerIds!.slice(i * 500, (i + 1) * 500))
-        : [null];
-
-      for (const dealerChunk of dealerChunks) {
-        let from = 0;
-        while (true) {
-          let q = supabase
-            .from("open_sales_orders")
-            .select("extended_value, order_date, dealer_id")
-            .gte("order_date", `${prevYear}-01-01`)
-            .lt("order_date", `${currentYear + 1}-01-01`)
-            .range(from, from + pageSize - 1);
-          if (dealerChunk) q = q.in("dealer_id", dealerChunk);
-          const { data, error } = await q;
-          if (error || !data) break;
-          for (const r of data as { extended_value: number | null; order_date: string | null }[]) {
-            if (!r.order_date) continue;
-            const d = new Date(`${r.order_date}T00:00:00`);
-            const yr = d.getFullYear();
-            const monthName = MONTHLY[d.getMonth()]?.m;
-            if (!monthName) continue;
-            const amt = Number(r.extended_value) || 0;
-            if (yr === currentYear) totals[monthName] = (totals[monthName] ?? 0) + amt;
-            else if (yr === prevYear) totalsPrev[monthName] = (totalsPrev[monthName] ?? 0) + amt;
-          }
-          if (data.length < pageSize) break;
-          from += pageSize;
-        }
-      }
-      if (!cancelled) { setOpenByMonth(totals); setOpenByMonthPrev(totalsPrev); }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repKey, dbReps]);
 
   const baseMonthly = useMemo(() => MONTHLY.map((seed) => {
     const live = liveAgg.find((r) => r.m === seed.m);
@@ -371,7 +296,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       b26p: overrides.monthly?.[seed.m]?.b26p ?? seed.b26p,
       i26p: overrides.monthly?.[seed.m]?.i26p ?? seed.i26p,
     };
-  }), [overrides, liveAgg, openByMonth, openByMonthPrev]);
+  }), [overrides, liveAgg]);
 
   const baseLine = useMemo(() => LINE_BOOK.map((r) => ({
     ...r,

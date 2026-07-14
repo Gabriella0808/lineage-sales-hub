@@ -4,6 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export type AppRole = "admin" | "manager" | "rep" | "dealer";
 
+// These accounts must always resolve to admin regardless of query state
+const ADMIN_EMAIL_OVERRIDES = new Set([
+  "justin@lineage-collections.com",
+  "scott@lineage-collections.com",
+  "andrew@lineage-collections.com",
+  "gabriella@lineage-collections.com",
+]);
+
 export interface UserRoleInfo {
   role: AppRole;
   managerId: string | null;
@@ -41,11 +49,12 @@ export function useUserRole() {
       const dealerId = dealerRes.data?.dealer_id ?? null;
 
       let role: AppRole;
-      if (roles.includes("admin")) role = "admin";
+      const emailOverride = ADMIN_EMAIL_OVERRIDES.has(user.email?.toLowerCase() ?? "");
+      if (roles.includes("admin") || emailOverride) role = "admin";
       else if (roles.includes("manager") || managerId) role = "manager";
       else if (roles.includes("rep") || repId) role = "rep";
       else if (roles.includes("dealer") || dealerId) role = "dealer";
-      else role = "rep"; // safest default - most restrictive
+      else role = "rep";
 
       return {
         role,

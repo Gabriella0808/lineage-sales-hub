@@ -47,6 +47,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun: boolean = !!body?.dryRun;
     const testEmail: string | undefined = body?.testEmail;
+    const hideUnits: boolean = !!body?.hideUnits;
+    const showAllReps: boolean = !!body?.showAllReps;
 
     const anchor = body?.weekStart ? parseISO(body.weekStart as string) : new Date();
     const weekStart = body?.weekStart
@@ -123,6 +125,21 @@ Deno.serve(async (req) => {
         collections: Object.values(d.collections).sort((a, b) => b.qty - a.qty),
       }))
       .sort((a, b) => b.totalRevenue - a.totalRevenue);
+
+    // If showAllReps, fetch every sales rep and append $0 rows for those without sales
+    if (showAllReps) {
+      const { data: allReps } = await supabase
+        .from("sales_reps")
+        .select("name")
+        .not("name", "is", null) as any;
+      const repNamesWithSales = new Set(rows.map((r) => r.rep.toLowerCase()));
+      for (const rep of (allReps ?? [])) {
+        const name: string = rep.name?.trim() ?? "";
+        if (!name || MANAGER_NAMES.has(name.toLowerCase())) continue;
+        if (repNamesWithSales.has(name.toLowerCase())) continue;
+        rows.push({ rep: name, totalQty: 0, totalRevenue: 0, collections: [] });
+      }
+    }
 
     const filteredRows = testEmail
       ? rows.filter((r) => !TEST_EXCLUDED_REPS.has(r.rep.toLowerCase()))
@@ -208,6 +225,7 @@ Deno.serve(async (req) => {
               totalUnits,
               totalRevenue,
               skusMoved,
+              hideUnits,
               portalUrl: "https://www.lineage-collections-portal.com/clearance/analytics",
             },
           }),

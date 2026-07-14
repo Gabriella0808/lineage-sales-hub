@@ -379,24 +379,6 @@ export default function TaskBoardsView() {
       related_id: activeBoardId,
     });
 
-    // Email notification
-    if (recipient?.email) {
-      supabase.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "board-subscribed",
-          recipientEmail: recipient.email,
-          idempotencyKey: `board-sub-${activeBoardId}-${addUserId}-${Date.now()}`,
-          templateData: {
-            recipientName: recipient.full_name || undefined,
-            inviterName,
-            boardName: activeBoard.name,
-            boardDescription: activeBoard.description || undefined,
-            link: `${window.location.origin}/tasks`,
-          },
-        },
-      }).catch(() => {});
-    }
-
     setAddUserId("");
     toast({ title: "Subscriber added", description: recipient?.email ? "Email invite sent." : undefined });
   };

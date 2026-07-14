@@ -134,14 +134,39 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
         }
       }
 
-      // ---------- Bookings (live rollup from dbo_Orders) ----------
-      {
+      // ---------- Bookings ----------
+      if (dealerIds === null) {
+        // Company-wide: source from mv_portal_monthly_net_bookings_actuals
+        const { data: bookingRows, error: bookingErr } = await (supabase as any)
+          .from("mv_portal_monthly_net_bookings_actuals")
+          .select("year, month_number, net_bookings_actual, container_bookings_actual, warehouse_bookings_actual")
+          .in("year", [currentYear, prevYear]);
+        if (bookingErr) { if (!cancelled) { setError(bookingErr.message); setLoading(false); } return; }
+        for (const r of (bookingRows ?? []) as any[]) {
+          const monthIdx = (Number(r.month_number) || 0) - 1;
+          if (monthIdx < 0 || monthIdx > 11) continue;
+          const name = MONTH_NAMES[monthIdx];
+          const bk  = Number(r.net_bookings_actual)       || 0;
+          const bkC = Number(r.container_bookings_actual) || 0;
+          const bkW = Number(r.warehouse_bookings_actual) || 0;
+          if (Number(r.year) === currentYear) {
+            agg[name].ytdB          = bk;
+            agg[name].ytdBContainer = bkC;
+            agg[name].ytdBWarehouse = bkW;
+          } else if (Number(r.year) === prevYear) {
+            agg[name].b25          = bk;
+            agg[name].b25Container = bkC;
+            agg[name].b25Warehouse = bkW;
+          }
+        }
+      } else {
+        // Rep-scoped: use RPC with dealer filter
         const { data: bookingRows, error: bookingErr } = await (supabase as any).rpc(
           "kpi_monthly_booking_rollup",
           { p_years: [currentYear, prevYear], p_dealer_ids: dealerIds },
         );
         if (bookingErr) { if (!cancelled) { setError(bookingErr.message); setLoading(false); } return; }
-        for (const r of bookingRows ?? []) {
+        for (const r of (bookingRows ?? []) as any[]) {
           const monthIdx = (Number(r.month) || 0) - 1;
           if (monthIdx < 0 || monthIdx > 11) continue;
           const name = MONTH_NAMES[monthIdx];
@@ -162,14 +187,6 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
 
       // ---------- Invoicing (server-side view first, then client-side fallback) ----------
       const viewRows = await fetchInvoiceAggregateViewRows(currentYear, prevYear, dealerIds);
-      console.log("Invoice monthly view rows", viewRows);
-      if (viewRows && viewRows.length > 0) {
-        console.log("Invoice view row[0] pct fields:", JSON.stringify({
-          month: viewRows[0].month,
-          invoiced_container_pct: viewRows[0].invoiced_container_pct,
-          invoiced_warehouse_pct: viewRows[0].invoiced_warehouse_pct,
-        }));
-      }
       const invoiceRows = viewRows ?? await fetchInvoiceAggregateFallbackRows(currentYear, prevYear, dealerIds);
       if (!invoiceRows) {
         if (!cancelled) {

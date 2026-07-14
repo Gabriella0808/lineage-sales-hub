@@ -40,6 +40,8 @@ import CaptureLeadsPage from "@/pages/CaptureLeadsPage";
 import OrgChartPage from "@/pages/OrgChartPage";
 import AuthPage from "@/pages/AuthPage";
 import UnsubscribePage from "@/pages/UnsubscribePage";
+import TermsPage from "@/pages/TermsPage";
+import PrivacyPage from "@/pages/PrivacyPage";
 import NotFound from "@/pages/NotFound";
 import CrmAccountsPage from "@/pages/crm/CrmAccountsPage";
 import CrmAccountsAnalyticsPage from "@/pages/crm/CrmAccountsAnalyticsPage";
@@ -62,6 +64,8 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/unsubscribe" element={<UnsubscribePage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/q/:token" element={<CustomerQuoteViewPage />} />
             <Route
               path="/*"

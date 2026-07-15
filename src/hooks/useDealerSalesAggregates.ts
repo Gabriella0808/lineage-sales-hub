@@ -244,7 +244,7 @@ async function fetchInvoiceAggregateViewRows(
     const { data, error } = await supabase
       .from("mv_portal_monthly_invoiced_actuals" as any)
       .select("year, month_number, invoiced_actual")
-      .eq("year", currentYear);
+      .in("year", [currentYear, prevYear]);
     if (error) {
       console.error(
         "[invoice] mv_portal_monthly_invoiced_actuals fetch failed:",

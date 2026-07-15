@@ -21,24 +21,46 @@ import {
 import { InvoiceDetailSheet } from "@/components/InvoiceDetailSheet";
 
 
-/** Day-precise fetch of dealer_invoices in a combined date window. */
-function useDealerInvoicesInRange(from: Date, to: Date) {
+/** Fetch invoices from portal_acctivate_invoices (Skyvia-synced from Acctivate).
+ *  Matches the same source as the Live KPI's invoiced view so dealer/rep totals
+ *  reconcile back to the company-wide totals. */
+function usePortalAcctivateInvoicesInRange(from: Date, to: Date) {
   const fromStr = format(from, "yyyy-MM-dd");
   const toStr = format(to, "yyyy-MM-dd");
   return useQuery({
-    queryKey: ["dealer_invoices_range_rpc_v2", fromStr, toStr],
+    queryKey: ["portal_acctivate_invoices_range_v1", fromStr, toStr],
     queryFn: async () => {
-      const out: Array<{ dealer_id: string | null; invoice_date: string | null; total: number }> = [];
+      const out: Array<{
+        dealer_id: null;
+        dealer_acctivate_id: string | null;
+        dealer_name: string | null;
+        invoice_date: string | null;
+        total: number;
+        rep_name: string | null;
+      }> = [];
       const pageSize = 1000;
       let start = 0;
       // eslint-disable-next-line no-constant-condition
       while (true) {
         const { data, error } = await (supabase as any)
-          .rpc("dealer_daily_invoice_net", { p_from: fromStr, p_to: toStr })
+          .from("portal_acctivate_invoices")
+          .select("customer_id, customer_name, invoice_date, total_amount, posted_to_ar, sales_rep_name, sales_rep_id")
+          .gte("invoice_date", fromStr)
+          .lte("invoice_date", toStr)
+          .eq("posted_to_ar", true)
           .range(start, start + pageSize - 1);
-        if (error) throw error;
-        const batch = ((data ?? []) as Array<{ dealer_id: string | null; invoice_date: string | null; net_total: number | null }>)
-          .map((r) => ({ dealer_id: r.dealer_id, invoice_date: r.invoice_date, total: Number(r.net_total ?? 0) }));
+        if (error) {
+          console.error("[invoices] portal_acctivate_invoices fetch failed:", error.message, error);
+          break;
+        }
+        const batch = ((data ?? []) as any[]).map((r) => ({
+          dealer_id: null as null,
+          dealer_acctivate_id: (r.customer_id as string | null) ?? null,
+          dealer_name: ((r.customer_name ?? r.customer_id) as string | null) ?? null,
+          invoice_date: r.invoice_date as string | null,
+          total: Number(r.total_amount) || 0,
+          rep_name: ((r.sales_rep_name ?? r.sales_rep_id) as string | null) ?? null,
+        }));
         out.push(...batch);
         if (batch.length < pageSize) break;
         start += pageSize;
@@ -91,26 +113,85 @@ function useDealerInvoiceLinesInRange(from: Date, to: Date, productIds: string[]
   });
 }
 
-/** Day-precise fetch of ALL sales order bookings (every status) in a date
- *  window, sourced from dbo_Orders via the bookings_all_in_range RPC. */
-function useOpenSalesOrdersInRange(from: Date, to: Date) {
+/** Fetch bookings from portal_acctivate_orders + portal_acctivate_order_lines
+ *  (Skyvia-synced from Acctivate). Same source as mv_portal_monthly_net_bookings_actuals
+ *  so dealer/rep totals reconcile back to the Live KPI company-wide totals. */
+function usePortalAcctivateBookingsInRange(from: Date, to: Date) {
   const fromStr = format(from, "yyyy-MM-dd");
   const toStr = format(to, "yyyy-MM-dd");
   return useQuery({
-    queryKey: ["bookings_all_in_range_v1", fromStr, toStr],
+    queryKey: ["portal_acctivate_bookings_range_v1", fromStr, toStr],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("bookings_all_in_range", {
-        p_from: fromStr,
-        p_to: toStr,
-      });
-      if (error) throw error;
-      return ((data ?? []) as { dealer_id: string | null; dealer_acctivate_id: string | null; order_date: string | null; extended_value: number | null }[])
-        .map((r) => ({
-          dealer_id: r.dealer_id,
-          dealer_acctivate_id: r.dealer_acctivate_id,
-          order_date: r.order_date,
-          extended_value: Number(r.extended_value ?? 0),
-        }));
+      // Step 1: fetch order headers in the date range (excluding cancelled).
+      const orders: Array<{
+        guid_order: string;
+        customer_id: string | null;
+        order_date: string | null;
+        sold_to_name: string | null;
+        ship_to_description: string | null;
+        rep1: string | null;
+        rep2: string | null;
+        order_status: string | null;
+      }> = [];
+      const pageSize = 1000;
+      let start = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await (supabase as any)
+          .from("portal_acctivate_orders")
+          .select("guid_order, customer_id, order_date, sold_to_name, ship_to_description, rep1, rep2, order_status")
+          .gte("order_date", fromStr)
+          .lte("order_date", toStr)
+          .range(start, start + pageSize - 1);
+        if (error) {
+          console.error("[bookings] portal_acctivate_orders fetch failed:", error.message, error);
+          return [];
+        }
+        const batch = ((data ?? []) as typeof orders);
+        // Filter cancelled orders client-side so a missing order_status column still works.
+        const nonCancelled = batch.filter((o) => !String(o.order_status ?? "").toLowerCase().includes("cancel"));
+        orders.push(...nonCancelled);
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      if (orders.length === 0) return [];
+
+      // Step 2: fetch order line amounts, chunked by guid_order.
+      const lineValueByOrder = new Map<string, number>();
+      const guids = orders.map((o) => o.guid_order);
+      const chunkSize = 200;
+      for (let i = 0; i < guids.length; i += chunkSize) {
+        const chunk = guids.slice(i, i + chunkSize);
+        let lStart = 0;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data: lData, error: lErr } = await (supabase as any)
+            .from("portal_acctivate_order_lines")
+            .select("guid_order, extended_value")
+            .in("guid_order", chunk)
+            .range(lStart, lStart + pageSize - 1);
+          if (lErr) {
+            console.error("[bookings] portal_acctivate_order_lines fetch failed:", lErr.message, lErr);
+            break;
+          }
+          for (const l of (lData ?? []) as { guid_order: string; extended_value: number | string | null }[]) {
+            const prev = lineValueByOrder.get(l.guid_order) ?? 0;
+            lineValueByOrder.set(l.guid_order, prev + (Number(l.extended_value) || 0));
+          }
+          if ((lData ?? []).length < pageSize) break;
+          lStart += pageSize;
+        }
+      }
+
+      // Step 3: combine.
+      return orders.map((o) => ({
+        dealer_id: null as null,
+        dealer_acctivate_id: o.customer_id ?? null,
+        dealer_name: (o.sold_to_name ?? o.ship_to_description ?? o.customer_id) ?? null,
+        order_date: o.order_date,
+        extended_value: lineValueByOrder.get(o.guid_order) ?? 0,
+        rep_name: (o.rep1 ?? o.rep2) ?? null,
+      }));
     },
   });
 }
@@ -349,10 +430,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       : (primary.to > comparative.to ? primary.to : comparative.to);
     return { from: lo, to: hi };
   }, [primary, comparative, compareMode]);
-  const { data: rangeInvoices = [] } = useDealerInvoicesInRange(invoiceWindow.from, invoiceWindow.to);
-  // Day-precise open sales orders for Bookings (replaces the monthly dealer_sales rollup
-  // when no product filter is active so we surface ALL open orders from Acctivate).
-  const { data: rangeOpenOrders = [] } = useOpenSalesOrdersInRange(invoiceWindow.from, invoiceWindow.to);
+  // portal_acctivate_invoices — same source as the Live KPI invoiced view.
+  const { data: rangeInvoices = [] } = usePortalAcctivateInvoicesInRange(invoiceWindow.from, invoiceWindow.to);
+  // portal_acctivate_orders + order_lines — same source as mv_portal_monthly_net_bookings_actuals.
+  const { data: rangeOpenOrders = [] } = usePortalAcctivateBookingsInRange(invoiceWindow.from, invoiceWindow.to);
 
   // Use aggregate dealer_sales when no product-level filter is active.
   // dealer_sales_lines is sparsely populated; aggregates have full totals.
@@ -463,7 +544,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
     const rowLabel = (key: Key): string => {
       if (key === "__unassigned") return "Unassigned";
-      if (key.startsWith("acctivate:")) return `Dealer ID ${key.replace("acctivate:", "")}`;
+      // Acctivate-sourced names for unresolved dealers or reps.
+      if (key.startsWith("acctivate:")) return key.slice("acctivate:".length) || "Unknown Dealer";
+      if (key.startsWith("rep:")) return key.slice("rep:".length) || "Unknown Rep";
       if (groupBy === "dealer") return dealers.find((d) => d.id === key)?.name ?? "-";
       if (groupBy === "rep") return reps.find((r) => r.id === key)?.name ?? "-";
       return territories.find((t) => t.id === key)?.name ?? "-";
@@ -482,15 +565,28 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const compToMs = startOfDay(comparative.to).getTime();
       for (const oo of rangeOpenOrders) {
         if (!oo.order_date) continue;
-        const acctivateDealerId = oo.dealer_acctivate_id?.trim() || "Unmatched";
         const resolvedDealerId = oo.dealer_id ?? (oo.dealer_acctivate_id ? dealerIdByAcctivateId.get(oo.dealer_acctivate_id.trim().toLowerCase()) : undefined);
         let k: Key | null = null;
         if (resolvedDealerId) {
           if (!dealerIdSet.has(resolvedDealerId)) continue;
-          k = rowKey({ dealer_id: resolvedDealerId });
+          if (groupBy === "dealer") {
+            k = resolvedDealerId;
+          } else if (groupBy === "rep") {
+            const dealer = dealers.find((d) => d.id === resolvedDealerId);
+            k = dealer?.rep_id ?? (oo.rep_name ? `rep:${oo.rep_name}` : "__unassigned");
+          } else {
+            const dealer = dealers.find((d) => d.id === resolvedDealerId);
+            k = dealer?.territory_id ?? "__unassigned";
+          }
         } else {
           if (!unscopedOpenOrderView) continue;
-          k = groupBy === "dealer" ? `acctivate:${acctivateDealerId}` : "__unassigned";
+          if (groupBy === "dealer") {
+            k = `acctivate:${(oo as any).dealer_name ?? oo.dealer_acctivate_id ?? "Unknown"}`;
+          } else if (groupBy === "rep") {
+            k = oo.rep_name ? `rep:${oo.rep_name}` : "__unassigned";
+          } else {
+            k = "__unassigned";
+          }
         }
         const d = new Date(oo.order_date + "T00:00:00");
         const ms = d.getTime();
@@ -516,16 +612,37 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const compFromMs = startOfDay(comparative.from).getTime();
       const compToMs = startOfDay(comparative.to).getTime();
       for (const inv of rangeInvoices) {
-        if (!inv.dealer_id || !inv.invoice_date) continue;
-        if (!dealerIdSet.has(inv.dealer_id)) continue;
+        if (!inv.invoice_date) continue;
+        const resolvedDealerId = inv.dealer_id ?? ((inv as any).dealer_acctivate_id ? dealerIdByAcctivateId.get(((inv as any).dealer_acctivate_id as string).trim().toLowerCase()) : undefined);
+        let k: Key | null = null;
+        if (resolvedDealerId) {
+          if (!dealerIdSet.has(resolvedDealerId)) continue;
+          if (groupBy === "dealer") {
+            k = resolvedDealerId;
+          } else if (groupBy === "rep") {
+            const dealer = dealers.find((d) => d.id === resolvedDealerId);
+            k = dealer?.rep_id ?? ((inv as any).rep_name ? `rep:${(inv as any).rep_name}` : "__unassigned");
+          } else {
+            const dealer = dealers.find((d) => d.id === resolvedDealerId);
+            k = dealer?.territory_id ?? "__unassigned";
+          }
+        } else {
+          if (!unscopedOpenOrderView) continue;
+          if (groupBy === "dealer") {
+            k = `acctivate:${(inv as any).dealer_name ?? (inv as any).dealer_acctivate_id ?? "Unknown"}`;
+          } else if (groupBy === "rep") {
+            k = (inv as any).rep_name ? `rep:${(inv as any).rep_name}` : "__unassigned";
+          } else {
+            k = "__unassigned";
+          }
+        }
+        if (!k) continue;
         const d = new Date(inv.invoice_date + "T00:00:00");
         const ms = d.getTime();
         if (Number.isNaN(ms)) continue;
         const inPrim = ms >= primFromMs && ms <= primToMs;
         const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
         if (!inPrim && !inComp) continue;
-        const k = rowKey({ dealer_id: inv.dealer_id });
-        if (!k) continue;
         const val = Number(inv.total ?? 0);
         if (val === 0) continue;
         const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
@@ -595,7 +712,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   }, [lines, aggregates, useAggregates, useInvoiceLines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealers, reps, territories, dealerIdSet, dealerIdByAcctivateId, unscopedOpenOrderView, filteredProductIds, primary, comparative, compareMode, metric, groupBy]);
 
   const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
-  const noData = useAggregates ? aggregates.length === 0 : (useInvoiceLines ? rangeInvoiceLines.length === 0 : lines.length === 0);
+  const noData = useAggregates
+    ? (rangeOpenOrders.length === 0 && rangeInvoices.length === 0)
+    : (useInvoiceLines ? rangeInvoiceLines.length === 0 : lines.length === 0);
 
   // Totals for BOTH metrics over the primary date range, so users always see
   // total Bookings and total Invoices regardless of the active metric.
@@ -634,8 +753,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
     if (useAggregates) {
       for (const inv of rangeInvoices) {
-        if (!inv.dealer_id || !inv.invoice_date) continue;
-        if (!dealerIdSet.has(inv.dealer_id)) continue;
+        if (!inv.invoice_date) continue;
+        const resolvedDealerId = inv.dealer_id ?? ((inv as any).dealer_acctivate_id ? dealerIdByAcctivateId.get(((inv as any).dealer_acctivate_id as string).trim().toLowerCase()) : undefined);
+        if (resolvedDealerId) {
+          if (!dealerIdSet.has(resolvedDealerId)) continue;
+        } else if (!unscopedOpenOrderView) {
+          continue;
+        }
         const ms = new Date(inv.invoice_date + "T00:00:00").getTime();
         if (Number.isNaN(ms) || ms < primFromMs || ms > primToMs) continue;
         invoices += Number(inv.total ?? 0);

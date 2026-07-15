@@ -275,9 +275,11 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     const live = liveAgg.find((r) => r.m === seed.m);
     return {
       ...seed,
-      // Override actuals with live DB values (rollup covers open + fulfilled orders).
+      // Override actuals with live DB values.
+      // i25: the view only covers the current year (QBO-synced), so fall back to
+      // the KPI spreadsheet seed when the live value is absent or zero.
       b25:  live ? live.b25  : seed.b25,
-      i25:  live ? live.i25  : seed.i25,
+      i25:  live && live.i25 > 0 ? live.i25 : seed.i25,
       ytdB: live ? live.ytdB : seed.ytdB,
       ytdI: live ? live.ytdI : seed.ytdI,
       // Branch-split invoice totals (live only - no seed fallback).

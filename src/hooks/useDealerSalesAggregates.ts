@@ -239,27 +239,31 @@ async function fetchInvoiceAggregateViewRows(
   dealerIds: string[] | null,
 ): Promise<ViewRow[] | null> {
   // Company-wide: query mv_portal_monthly_invoiced_actuals directly.
-  // Fields: year, month_number (1–12), invoice_count, invoiced_actual.
+  // Backed by QBO P&L sync — columns: year, month_number, invoiced_actual.
   if (dealerIds === null) {
     const { data, error } = await supabase
       .from("mv_portal_monthly_invoiced_actuals" as any)
-      .select("year, month_number, invoice_count, invoiced_actual, container_invoiced_actual, warehouse_invoiced_actual, unknown_invoiced_actual, container_percent, warehouse_percent")
-      .in("year", [currentYear, prevYear]);
+      .select("year, month_number, invoiced_actual")
+      .eq("year", currentYear);
     if (error) {
-      console.error("[invoice] mv_portal_monthly_invoiced_actuals fetch failed:", error.message);
-    } else if (data) {
-      return (data as any[]).map((r) => ({
-        year:                  Number(r.year),
-        month:                 Number(r.month_number),
-        dealer_id:             null,
-        invoiced:              Number(r.invoiced_actual)           || 0,
-        invoiced_container:    Number(r.container_invoiced_actual) || 0,
-        invoiced_warehouse:    Number(r.warehouse_invoiced_actual) || 0,
-        invoiced_container_pct: r.container_percent != null ? Number(r.container_percent) : null,
-        invoiced_warehouse_pct: r.warehouse_percent != null ? Number(r.warehouse_percent) : null,
-      }));
+      console.error(
+        "[invoice] mv_portal_monthly_invoiced_actuals fetch failed:",
+        error.message,
+        error,
+      );
+      // Return empty array (not null) so the invoice-header fallback is NOT triggered.
+      return [];
     }
-    // fall through to dbo_Invoice rollup if view is unavailable
+    return (data as any[]).map((r) => ({
+      year:                   Number(r.year),
+      month:                  Number(r.month_number),
+      dealer_id:              null,
+      invoiced:               Number(r.invoiced_actual) || 0,
+      invoiced_container:     0,
+      invoiced_warehouse:     0,
+      invoiced_container_pct: null,
+      invoiced_warehouse_pct: null,
+    }));
   }
 
   // Dealer-scoped (or view unavailable): use kpi_monthly_invoice_rollup which supports dealer filtering.

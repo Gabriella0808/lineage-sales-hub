@@ -11,198 +11,89 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, AlertCircle } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import {
   useDealers, useSalesReps, useTerritories, useRepTerritories,
-  useProducts, useDealerSalesLines, useDealerSales, formatCurrency,
+  formatCurrency,
 } from "@/hooks/usePortalData";
 import { InvoiceDetailSheet } from "@/components/InvoiceDetailSheet";
 
-
-/** Fetch invoices from portal_acctivate_invoices (Skyvia-synced from Acctivate).
- *  Matches the same source as the Live KPI's invoiced view so dealer/rep totals
- *  reconcile back to the company-wide totals. */
-function usePortalAcctivateInvoicesInRange(from: Date, to: Date) {
-  const fromStr = format(from, "yyyy-MM-dd");
-  const toStr = format(to, "yyyy-MM-dd");
-  return useQuery({
-    queryKey: ["portal_acctivate_invoices_range_v1", fromStr, toStr],
-    queryFn: async () => {
-      const out: Array<{
-        dealer_id: null;
-        dealer_acctivate_id: string | null;
-        dealer_name: string | null;
-        invoice_date: string | null;
-        total: number;
-        rep_name: string | null;
-      }> = [];
-      const pageSize = 1000;
-      let start = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await (supabase as any)
-          .from("portal_acctivate_invoices")
-          .select("customer_id, customer_name, invoice_date, total_amount, posted_to_ar, sales_rep_name, sales_rep_id")
-          .gte("invoice_date", fromStr)
-          .lte("invoice_date", toStr)
-          .eq("posted_to_ar", true)
-          .range(start, start + pageSize - 1);
-        if (error) {
-          console.error("[invoices] portal_acctivate_invoices fetch failed:", error.message, error);
-          break;
-        }
-        const batch = ((data ?? []) as any[]).map((r) => ({
-          dealer_id: null as null,
-          dealer_acctivate_id: (r.customer_id as string | null) ?? null,
-          dealer_name: ((r.customer_name ?? r.customer_id) as string | null) ?? null,
-          invoice_date: r.invoice_date as string | null,
-          total: Number(r.total_amount) || 0,
-          rep_name: ((r.sales_rep_name ?? r.sales_rep_id) as string | null) ?? null,
-        }));
-        out.push(...batch);
-        if (batch.length < pageSize) break;
-        start += pageSize;
-      }
-      return out;
-    },
-  });
-}
-
-/** Day-precise fetch of dealer_invoice_lines in a date window, used when a
- *  brand / collection / category / SKU filter is active with metric = invoices. */
-function useDealerInvoiceLinesInRange(from: Date, to: Date, productIds: string[], enabled: boolean) {
-  const fromStr = format(from, "yyyy-MM-dd");
-  const toStr = format(to, "yyyy-MM-dd");
-  return useQuery({
-    queryKey: ["dealer_invoice_lines_range", fromStr, toStr, productIds.join(",")],
-    enabled,
-    queryFn: async () => {
-      const out: {
-        dealer_id: string | null;
-        product_id: string | null;
-        invoice_date: string | null;
-        extended_price: number | null;
-      }[] = [];
-      if (productIds.length === 0) return out;
-      const pageSize = 1000;
-      const chunkSize = 75;
-      for (let i = 0; i < productIds.length; i += chunkSize) {
-        const chunk = productIds.slice(i, i + chunkSize);
-        let start = 0;
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { data, error } = await supabase
-            .from("dealer_invoice_lines")
-            .select("dealer_id, product_id, invoice_date, extended_price")
-            .not("dealer_id", "is", null)
-            .in("product_id", chunk)
-            .gte("invoice_date", fromStr)
-            .lte("invoice_date", toStr)
-            .range(start, start + pageSize - 1);
-          if (error) throw error;
-          const batch = (data ?? []) as typeof out;
-          out.push(...batch);
-          if (batch.length < pageSize) break;
-          start += pageSize;
-        }
-      }
-      return out;
-    },
-  });
-}
-
-/** Fetch bookings from portal_acctivate_orders + portal_acctivate_order_lines
- *  (Skyvia-synced from Acctivate). Same source as mv_portal_monthly_net_bookings_actuals
- *  so dealer/rep totals reconcile back to the Live KPI company-wide totals. */
-function usePortalAcctivateBookingsInRange(from: Date, to: Date) {
-  const fromStr = format(from, "yyyy-MM-dd");
-  const toStr = format(to, "yyyy-MM-dd");
-  return useQuery({
-    queryKey: ["portal_acctivate_bookings_range_v1", fromStr, toStr],
-    queryFn: async () => {
-      // Step 1: fetch order headers in the date range (excluding cancelled).
-      const orders: Array<{
-        guid_order: string;
-        customer_id: string | null;
-        order_date: string | null;
-        sold_to_name: string | null;
-        ship_to_description: string | null;
-        rep1: string | null;
-        rep2: string | null;
-        order_status: string | null;
-      }> = [];
-      const pageSize = 1000;
-      let start = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await (supabase as any)
-          .from("portal_acctivate_orders")
-          .select("guid_order, customer_id, order_date, sold_to_name, ship_to_description, rep1, rep2, order_status")
-          .gte("order_date", fromStr)
-          .lte("order_date", toStr)
-          .range(start, start + pageSize - 1);
-        if (error) {
-          console.error("[bookings] portal_acctivate_orders fetch failed:", error.message, error);
-          return [];
-        }
-        const batch = ((data ?? []) as typeof orders);
-        // Filter cancelled orders client-side so a missing order_status column still works.
-        const nonCancelled = batch.filter((o) => !String(o.order_status ?? "").toLowerCase().includes("cancel"));
-        orders.push(...nonCancelled);
-        if (batch.length < pageSize) break;
-        start += pageSize;
-      }
-      if (orders.length === 0) return [];
-
-      // Step 2: fetch order line amounts, chunked by guid_order.
-      const lineValueByOrder = new Map<string, number>();
-      const guids = orders.map((o) => o.guid_order);
-      const chunkSize = 200;
-      for (let i = 0; i < guids.length; i += chunkSize) {
-        const chunk = guids.slice(i, i + chunkSize);
-        let lStart = 0;
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { data: lData, error: lErr } = await (supabase as any)
-            .from("portal_acctivate_order_lines")
-            .select("guid_order, extended_value")
-            .in("guid_order", chunk)
-            .range(lStart, lStart + pageSize - 1);
-          if (lErr) {
-            console.error("[bookings] portal_acctivate_order_lines fetch failed:", lErr.message, lErr);
-            break;
-          }
-          for (const l of (lData ?? []) as { guid_order: string; extended_value: number | string | null }[]) {
-            const prev = lineValueByOrder.get(l.guid_order) ?? 0;
-            lineValueByOrder.set(l.guid_order, prev + (Number(l.extended_value) || 0));
-          }
-          if ((lData ?? []).length < pageSize) break;
-          lStart += pageSize;
-        }
-      }
-
-      // Step 3: combine.
-      return orders.map((o) => ({
-        dealer_id: null as null,
-        dealer_acctivate_id: o.customer_id ?? null,
-        dealer_name: (o.sold_to_name ?? o.ship_to_description ?? o.customer_id) ?? null,
-        order_date: o.order_date,
-        extended_value: lineValueByOrder.get(o.guid_order) ?? 0,
-        rep_name: (o.rep1 ?? o.rep2) ?? null,
-      }));
-    },
-  });
-}
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type GroupBy = "dealer" | "rep" | "territory";
-type Metric = "bookings" | "invoices";
+type Metric  = "bookings" | "invoices";
 type Display = "total" | "monthly";
 
 interface DateRange { from: Date; to: Date }
 
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+// ── View row type ─────────────────────────────────────────────────────────────
+
+type DealerRepLine = {
+  metric_type:      string;        // 'bookings' | 'invoiced'
+  transaction_date: string;
+  year:             number;
+  month_number:     number;
+  dealer_name:      string | null;
+  customer_id:      string | null;
+  rep_name:         string | null;
+  rep_id:           string | null;
+  sku:              string | null;
+  description:      string | null;
+  brand_category:   string | null;
+  amount:           number;
+};
+
+// ── Data hook ─────────────────────────────────────────────────────────────────
+
+/** Fetches rows from v_portal_dealer_rep_reporting_lines for the given date
+ *  window (paginated). Both 'bookings' and 'invoiced' metric_types are loaded
+ *  in one query so the summary cards can always show both totals. */
+function usePortalDealerRepLines(from: Date, to: Date) {
+  const fromStr = format(from, "yyyy-MM-dd");
+  const toStr   = format(to,   "yyyy-MM-dd");
+  return useQuery({
+    queryKey: ["v_portal_dealer_rep_lines_v1", fromStr, toStr],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const rows: DealerRepLine[] = [];
+      const pageSize = 2000;
+      let start = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await (supabase as any)
+          .from("v_portal_dealer_rep_reporting_lines")
+          .select("metric_type, transaction_date, year, month_number, dealer_name, customer_id, rep_name, rep_id, sku, description, brand_category, amount")
+          .gte("transaction_date", fromStr)
+          .lte("transaction_date", toStr)
+          .range(start, start + pageSize - 1);
+        if (error) {
+          console.error("[dealer-rep] v_portal_dealer_rep_reporting_lines fetch failed:", error.message, error);
+          break;
+        }
+        const batch = ((data ?? []) as any[]).map((r) => ({
+          ...r,
+          amount:       Number(r.amount) === 0 && r.amount !== 0 ? 0 : (Number(r.amount) || 0),
+          year:         Number(r.year),
+          month_number: Number(r.month_number),
+        })) as DealerRepLine[];
+        rows.push(...batch);
+        if (batch.length < pageSize) break;
+        start += pageSize;
+      }
+      const bookingCount  = rows.filter((r) => r.metric_type === "bookings").length;
+      const invoicedCount = rows.filter((r) => r.metric_type === "invoiced").length;
+      const distinctTypes = [...new Set(rows.map((r) => r.metric_type))];
+      console.log(`[dealer-rep] fetched ${rows.length} rows — bookings: ${bookingCount}, invoiced: ${invoicedCount}, distinct metric_types:`, distinctTypes);
+      return rows;
+    },
+  });
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
 
 function MultiSelect({
   label, options, selected, onChange, disabled, disabledReason, searchable, searchPlaceholder,
@@ -296,8 +187,6 @@ function MultiSelect({
 }
 
 function DateRangePicker({ label, value, onChange, onReset }: { label: string; value: DateRange; onChange: (v: DateRange) => void; onReset?: () => void }) {
-  // Track an in-progress range so users can pick fresh from/to without being
-  // anchored to the previously committed range.
   const [draft, setDraft] = useState<{ from?: Date; to?: Date } | undefined>(undefined);
   const [open, setOpen] = useState(false);
   const display = draft ?? { from: value.from, to: value.to };
@@ -362,65 +251,60 @@ function monthsInRange(range: DateRange): { year: number; monthIdx: number; key:
   return out;
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
+
 interface Props {
   groupBy: GroupBy;
-  managerScopeRepIds?: string[] | null; // null = all reps; array = limit to these
-  /** When provided, user can toggle the leftmost column among these. */
+  managerScopeRepIds?: string[] | null;
   groupByOptions?: GroupBy[];
 }
 
 export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions }: Props) {
-  const today = new Date();
-  const yearStart = startOfYear(today);
-  // Default primary window covers the full lifetime of synced sales orders
-  // (2024 -  today) so Dealer/Rep reporting shows all-time bookings by default.
-  // Only the Live KPI view is scoped to the current year.
+  const today       = new Date();
+  const yearStart   = startOfYear(today);
   const lifetimeStart = new Date(2024, 0, 1);
 
-  const [groupBy, setGroupBy] = useState<GroupBy>(initialGroupBy);
-  const [primary, setPrimary] = useState<DateRange>({ from: lifetimeStart, to: endOfMonth(today) });
+  const [groupBy, setGroupBy]       = useState<GroupBy>(initialGroupBy);
+  const [primary, setPrimary]       = useState<DateRange>({ from: lifetimeStart, to: endOfMonth(today) });
   const [comparative, setComparative] = useState<DateRange>({
     from: subYears(lifetimeStart, 1),
-    to: subYears(endOfMonth(today), 1),
+    to:   subYears(endOfMonth(today), 1),
   });
   type CompareMode = "prev-year" | "prev-period" | "custom" | "none";
   const [compareMode, setCompareMode] = useState<CompareMode>("prev-year");
-  const [metric, setMetric] = useState<Metric>("bookings");
+  const [metric,  setMetric]  = useState<Metric>("bookings");
   const [display, setDisplay] = useState<Display>("total");
   const [drillRow, setDrillRow] = useState<{ key: string; label: string } | null>(null);
 
-  // Apply a preset to primary range AND auto-sync comparative based on compareMode.
   const applyPrimary = (from: Date, to: Date, mode: CompareMode = compareMode) => {
     setPrimary({ from, to });
     if (mode === "prev-year") {
       setComparative({ from: subYears(from, 1), to: subYears(to, 1) });
     } else if (mode === "prev-period") {
-      const days = differenceInCalendarDays(to, from) + 1;
-      const prevTo = subDays(from, 1);
+      const days  = differenceInCalendarDays(to, from) + 1;
+      const prevTo   = subDays(from, 1);
       const prevFrom = subDays(prevTo, days - 1);
       setComparative({ from: prevFrom, to: prevTo });
     }
-    // "custom" / "none": leave comparative alone
   };
 
+  // ── Filter state ─────────────────────────────────────────────────────────
 
-  const [territoryIds, setTerritoryIds] = useState<string[]>([]);
-  const [repIds, setRepIds] = useState<string[]>([]);
-  const [dealerIds, setDealerIds] = useState<string[]>([]);
-  const [brands, setBrands] = useState<string[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [collections, setCollections] = useState<string[]>([]);
-  const [skus, setSkus] = useState<string[]>([]);
+  const [territoryIds,    setTerritoryIds]    = useState<string[]>([]);
+  const [repIds,          setRepIds]          = useState<string[]>([]);
+  const [dealerIds,       setDealerIds]       = useState<string[]>([]);
+  const [brandCategories, setBrandCategories] = useState<string[]>([]);
+  const [skus,            setSkus]            = useState<string[]>([]);
 
-  const { data: dealers = [] } = useDealers();
-  const { data: reps = [] } = useSalesReps();
+  // ── Portal reference data (for filter dropdowns and scoping) ──────────────
+
+  const { data: dealers     = [] } = useDealers();
+  const { data: reps        = [] } = useSalesReps();
   const { data: territories = [] } = useTerritories();
   const { data: repTerritories = [] } = useRepTerritories();
-  const { data: products = [] } = useProducts();
-  const { data: lines = [] } = useDealerSalesLines();
-  const { data: aggregates = [] } = useDealerSales();
 
-  // Day-precise invoices for the full window covered by primary + comparative.
+  // ── Fetch view data ───────────────────────────────────────────────────────
+
   const invoiceWindow = useMemo(() => {
     const lo = compareMode === "none"
       ? primary.from
@@ -430,40 +314,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       : (primary.to > comparative.to ? primary.to : comparative.to);
     return { from: lo, to: hi };
   }, [primary, comparative, compareMode]);
-  // portal_acctivate_invoices — same source as the Live KPI invoiced view.
-  const { data: rangeInvoices = [] } = usePortalAcctivateInvoicesInRange(invoiceWindow.from, invoiceWindow.to);
-  // portal_acctivate_orders + order_lines — same source as mv_portal_monthly_net_bookings_actuals.
-  const { data: rangeOpenOrders = [] } = usePortalAcctivateBookingsInRange(invoiceWindow.from, invoiceWindow.to);
 
-  // Use aggregate dealer_sales when no product-level filter is active.
-  // dealer_sales_lines is sparsely populated; aggregates have full totals.
-  const useAggregates = brands.length === 0 && categories.length === 0 && collections.length === 0 && skus.length === 0;
+  const { data: repLines = [] } = usePortalDealerRepLines(invoiceWindow.from, invoiceWindow.to);
 
-  // Filtered product set for product-level invoice line queries and value lookups.
-  const filteredProductIds = useMemo(() => {
-    let list = products;
-    if (brands.length > 0) list = list.filter((p) => p.brand && brands.includes(p.brand));
-    if (categories.length > 0) list = list.filter((p) => p.category && categories.includes(p.category));
-    if (collections.length > 0) list = list.filter((p) => p.collection && collections.includes(p.collection));
-    if (skus.length > 0) list = list.filter((p) => skus.includes(p.id));
-    return new Set(list.map((p) => p.id));
-  }, [products, brands, categories, collections, skus]);
+  // ── Hierarchical filter helpers (portal tables) ───────────────────────────
 
-  // When product filters are active we always pull from dealer_invoice_lines:
-  // it's the only product-linked source with real data (dealer_sales_lines is
-  // sparsely populated). For metric=bookings under a product filter, we surface
-  // invoice line revenue as a proxy (a banner explains this below).
-  const useInvoiceLines = !useAggregates;
-  const { data: rangeInvoiceLines = [] } = useDealerInvoiceLinesInRange(
-    invoiceWindow.from, invoiceWindow.to, Array.from(filteredProductIds), useInvoiceLines,
-  );
-
-  // Hierarchical filter dependencies
   const visibleReps = useMemo(() => {
     let list = reps;
     if (managerScopeRepIds) list = list.filter((r) => managerScopeRepIds.includes(r.id));
     if (territoryIds.length > 0) {
-      const allowedRepIds = new Set(repTerritories.filter((rt) => territoryIds.includes(rt.territory_id)).map((rt) => rt.rep_id));
+      const allowedRepIds = new Set(
+        repTerritories.filter((rt) => territoryIds.includes(rt.territory_id)).map((rt) => rt.rep_id),
+      );
       list = list.filter((r) => allowedRepIds.has(r.id));
     }
     return list;
@@ -473,323 +335,161 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     let list = dealers;
     if (managerScopeRepIds) list = list.filter((d) => d.rep_id && managerScopeRepIds.includes(d.rep_id));
     if (territoryIds.length > 0) list = list.filter((d) => d.territory_id && territoryIds.includes(d.territory_id));
-    if (repIds.length > 0) list = list.filter((d) => d.rep_id && repIds.includes(d.rep_id));
+    if (repIds.length > 0)       list = list.filter((d) => d.rep_id && repIds.includes(d.rep_id));
     return list;
   }, [dealers, managerScopeRepIds, territoryIds, repIds]);
 
-  const allBrands = useMemo(() => Array.from(new Set(products.map((p) => p.brand).filter(Boolean) as string[])).sort(), [products]);
-  const visibleCategories = useMemo(() => {
-    let list = products;
-    if (brands.length > 0) list = list.filter((p) => p.brand && brands.includes(p.brand));
-    return Array.from(new Set(list.map((p) => p.category).filter(Boolean) as string[])).sort();
-  }, [products, brands]);
-  const visibleCollections = useMemo(() => {
-    let list = products;
-    if (brands.length > 0) list = list.filter((p) => p.brand && brands.includes(p.brand));
-    if (categories.length > 0) list = list.filter((p) => p.category && categories.includes(p.category));
-    return Array.from(new Set(list.map((p) => p.collection).filter(Boolean) as string[])).sort();
-  }, [products, brands, categories]);
-  const visibleSkus = useMemo(() => {
-    let list = products;
-    if (brands.length > 0) list = list.filter((p) => p.brand && brands.includes(p.brand));
-    if (categories.length > 0) list = list.filter((p) => p.category && categories.includes(p.category));
-    if (collections.length > 0) list = list.filter((p) => p.collection && collections.includes(p.collection));
-    return list;
-  }, [products, brands, categories, collections]);
+  /** Set of Acctivate customer_ids to include, derived from portal dealer scoping.
+   *  null = no customer_id filter (company-wide, unscoped). */
+  const scopedCustomerIds = useMemo<Set<string> | null>(() => {
+    const noScope = !managerScopeRepIds
+      && territoryIds.length === 0
+      && repIds.length  === 0
+      && dealerIds.length === 0;
+    if (noScope) return null;
 
-  const dealerIdSet = useMemo(() => {
-    if (dealerIds.length > 0) return new Set(dealerIds);
-    return new Set(visibleDealers.map((d) => d.id));
-  }, [dealerIds, visibleDealers]);
+    const filtered = dealerIds.length > 0
+      ? visibleDealers.filter((d) => dealerIds.includes(d.id))
+      : visibleDealers;
 
-  const { data: acctivateUuidMappings } = useQuery({
-    queryKey: ["dealer_acctivate_uuids_v1"],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("dealer_acctivate_uuids")
-        .select("acctivate_uuid, dealer_id");
-      if (error) throw error;
-      return (data ?? []) as { acctivate_uuid: string; dealer_id: string }[];
-    },
-  });
-
-  const dealerIdByAcctivateId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const dealer of dealers) {
-      if (dealer.acctivate_id) map.set(dealer.acctivate_id.trim().toLowerCase(), dealer.id);
+    const ids = new Set<string>();
+    for (const d of filtered) {
+      if (d.acctivate_id) ids.add(d.acctivate_id.trim().toLowerCase());
     }
-    for (const m of acctivateUuidMappings ?? []) {
-      if (m.acctivate_uuid) map.set(m.acctivate_uuid.trim().toLowerCase(), m.dealer_id);
+    return ids;
+  }, [managerScopeRepIds, territoryIds, repIds, dealerIds, visibleDealers]);
+
+  /** Map of Acctivate customer_id → territory name (for territory groupBy). */
+  const customerIdToTerritoryName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const d of dealers) {
+      if (!d.acctivate_id || !d.territory_id) continue;
+      const t = territories.find((t) => t.id === d.territory_id);
+      if (t) map.set(d.acctivate_id.trim().toLowerCase(), t.name);
     }
     return map;
-  }, [dealers, acctivateUuidMappings]);
+  }, [dealers, territories]);
 
-  const unscopedOpenOrderView = !managerScopeRepIds && territoryIds.length === 0 && repIds.length === 0 && dealerIds.length === 0;
+  // ── Filter options from view data ─────────────────────────────────────────
 
-  // Build aggregation
+  const allBrandCategories = useMemo(() =>
+    Array.from(new Set(repLines.map((l) => l.brand_category).filter(Boolean) as string[])).sort(),
+  [repLines]);
+
+  const skuLabelMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const l of repLines) {
+      if (l.sku && !map.has(l.sku)) {
+        map.set(l.sku, l.description ? `${l.sku} – ${l.description}` : l.sku);
+      }
+    }
+    return map;
+  }, [repLines]);
+
+  // ── Active filter sets ────────────────────────────────────────────────────
+
+  const brandCategorySet = useMemo(() => new Set(brandCategories), [brandCategories]);
+  const skuSet           = useMemo(() => new Set(skus),            [skus]);
+
+  // ── Aggregation ───────────────────────────────────────────────────────────
+
   const aggregation = useMemo(() => {
-    const primMonths = monthsInRange(primary);
-    const compMonths = monthsInRange(comparative);
-    const primKeys = new Set(primMonths.map((m) => m.key));
-    const compKeys = new Set(compMonths.map((m) => m.key));
+    const primMonths  = monthsInRange(primary);
+    const compMonths  = monthsInRange(comparative);
+    const primFromMs  = startOfDay(primary.from).getTime();
+    const primToMs    = startOfDay(primary.to).getTime();
+    const compFromMs  = startOfDay(comparative.from).getTime();
+    const compToMs    = startOfDay(comparative.to).getTime();
+
+    // The metric toggle maps: UI "bookings" → view 'bookings', UI "invoices" → view 'invoiced'
+    const targetMetric = metric === "bookings" ? "bookings" : "invoiced";
 
     type Key = string;
-    const rowKey = (line: { dealer_id: string }) => {
-      const dealer = dealers.find((d) => d.id === line.dealer_id);
-      if (!dealer) return null;
-      if (groupBy === "dealer") return dealer.id;
-      if (groupBy === "rep") return dealer.rep_id ?? "__unassigned";
-      return dealer.territory_id ?? "__unassigned";
-    };
-
-    const rowLabel = (key: Key): string => {
-      if (key === "__unassigned") return "Unassigned";
-      // Acctivate-sourced names for unresolved dealers or reps.
-      if (key.startsWith("acctivate:")) return key.slice("acctivate:".length) || "Unknown Dealer";
-      if (key.startsWith("rep:")) return key.slice("rep:".length) || "Unknown Rep";
-      if (groupBy === "dealer") return dealers.find((d) => d.id === key)?.name ?? "-";
-      if (groupBy === "rep") return reps.find((r) => r.id === key)?.name ?? "-";
-      return territories.find((t) => t.id === key)?.name ?? "-";
-    };
-
     const rows = new Map<Key, { primary: number; comparative: number; byMonth: Map<string, number> }>();
 
-    // For invoices with no product filter, use day-precise dealer_invoices.
-    const useDayPreciseInvoices = metric === "invoices" && useAggregates;
-    const useDayPreciseBookings = metric === "bookings" && useAggregates;
+    for (const line of repLines) {
+      if (line.metric_type !== targetMetric) continue;
 
-    if (useDayPreciseBookings) {
-      const primFromMs = startOfDay(primary.from).getTime();
-      const primToMs = startOfDay(primary.to).getTime();
-      const compFromMs = startOfDay(comparative.from).getTime();
-      const compToMs = startOfDay(comparative.to).getTime();
-      for (const oo of rangeOpenOrders) {
-        if (!oo.order_date) continue;
-        const resolvedDealerId = oo.dealer_id ?? (oo.dealer_acctivate_id ? dealerIdByAcctivateId.get(oo.dealer_acctivate_id.trim().toLowerCase()) : undefined);
-        let k: Key | null = null;
-        if (resolvedDealerId) {
-          if (!dealerIdSet.has(resolvedDealerId)) continue;
-          if (groupBy === "dealer") {
-            k = resolvedDealerId;
-          } else if (groupBy === "rep") {
-            const dealer = dealers.find((d) => d.id === resolvedDealerId);
-            k = dealer?.rep_id ?? (oo.rep_name ? `rep:${oo.rep_name}` : "__unassigned");
-          } else {
-            const dealer = dealers.find((d) => d.id === resolvedDealerId);
-            k = dealer?.territory_id ?? "__unassigned";
-          }
-        } else {
-          if (!unscopedOpenOrderView) continue;
-          if (groupBy === "dealer") {
-            k = `acctivate:${(oo as any).dealer_name ?? oo.dealer_acctivate_id ?? "Unknown"}`;
-          } else if (groupBy === "rep") {
-            k = oo.rep_name ? `rep:${oo.rep_name}` : "__unassigned";
-          } else {
-            k = "__unassigned";
-          }
-        }
-        const d = new Date(oo.order_date + "T00:00:00");
-        const ms = d.getTime();
-        if (Number.isNaN(ms)) continue;
-        const inPrim = ms >= primFromMs && ms <= primToMs;
-        const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
-        if (!inPrim && !inComp) continue;
-        if (!k) continue;
-        const val = Number(oo.extended_value ?? 0);
-        if (val === 0) continue;
-        const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
-        let row = rows.get(k);
-        if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
-        if (inPrim) row.primary += val;
-        if (inComp) row.comparative += val;
-        row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
+      // Scope filter (manager/territory/rep/dealer selection via Acctivate customer_id)
+      if (scopedCustomerIds !== null) {
+        const cid = (line.customer_id ?? "").trim().toLowerCase();
+        if (!cid || !scopedCustomerIds.has(cid)) continue;
       }
-    } else
 
-    if (useDayPreciseInvoices) {
-      const primFromMs = startOfDay(primary.from).getTime();
-      const primToMs = startOfDay(primary.to).getTime();
-      const compFromMs = startOfDay(comparative.from).getTime();
-      const compToMs = startOfDay(comparative.to).getTime();
-      for (const inv of rangeInvoices) {
-        if (!inv.invoice_date) continue;
-        const resolvedDealerId = inv.dealer_id ?? ((inv as any).dealer_acctivate_id ? dealerIdByAcctivateId.get(((inv as any).dealer_acctivate_id as string).trim().toLowerCase()) : undefined);
-        let k: Key | null = null;
-        if (resolvedDealerId) {
-          if (!dealerIdSet.has(resolvedDealerId)) continue;
-          if (groupBy === "dealer") {
-            k = resolvedDealerId;
-          } else if (groupBy === "rep") {
-            const dealer = dealers.find((d) => d.id === resolvedDealerId);
-            k = dealer?.rep_id ?? ((inv as any).rep_name ? `rep:${(inv as any).rep_name}` : "__unassigned");
-          } else {
-            const dealer = dealers.find((d) => d.id === resolvedDealerId);
-            k = dealer?.territory_id ?? "__unassigned";
-          }
-        } else {
-          if (!unscopedOpenOrderView) continue;
-          if (groupBy === "dealer") {
-            k = `acctivate:${(inv as any).dealer_name ?? (inv as any).dealer_acctivate_id ?? "Unknown"}`;
-          } else if (groupBy === "rep") {
-            k = (inv as any).rep_name ? `rep:${(inv as any).rep_name}` : "__unassigned";
-          } else {
-            k = "__unassigned";
-          }
-        }
-        if (!k) continue;
-        const d = new Date(inv.invoice_date + "T00:00:00");
-        const ms = d.getTime();
-        if (Number.isNaN(ms)) continue;
-        const inPrim = ms >= primFromMs && ms <= primToMs;
-        const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
-        if (!inPrim && !inComp) continue;
-        const val = Number(inv.total ?? 0);
-        if (val === 0) continue;
-        const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
-        let row = rows.get(k);
-        if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
-        if (inPrim) row.primary += val;
-        if (inComp) row.comparative += val;
-        row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
-      }
-    } else if (useInvoiceLines) {
-      // Day-precise + product-filtered invoice line items
-      const primFromMs = startOfDay(primary.from).getTime();
-      const primToMs = startOfDay(primary.to).getTime();
-      const compFromMs = startOfDay(comparative.from).getTime();
-      const compToMs = startOfDay(comparative.to).getTime();
-      for (const il of rangeInvoiceLines) {
-        if (!il.dealer_id || !il.invoice_date) continue;
-        if (!dealerIdSet.has(il.dealer_id)) continue;
-        if (!il.product_id || !filteredProductIds.has(il.product_id)) continue;
-        const d = new Date(il.invoice_date + "T00:00:00");
-        const ms = d.getTime();
-        if (Number.isNaN(ms)) continue;
-        const inPrim = ms >= primFromMs && ms <= primToMs;
-        const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
-        if (!inPrim && !inComp) continue;
-        const k = rowKey({ dealer_id: il.dealer_id });
-        if (!k) continue;
-        const val = Number(il.extended_price ?? 0);
-        if (val === 0) continue;
-        const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
-        let row = rows.get(k);
-        if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
-        if (inPrim) row.primary += val;
-        if (inComp) row.comparative += val;
-        row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
-      }
-    } else {
-      const source = useAggregates ? aggregates : lines;
-      for (const line of source) {
-        if (!dealerIdSet.has(line.dealer_id)) continue;
-        if (!useAggregates && !filteredProductIds.has((line as { product_id: string }).product_id)) continue;
-        const mNum = parseInt(String(line.month), 10);
-        const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(line.month);
-        const monthKey = `${line.year}-${monthName}`;
-        const inPrim = primKeys.has(monthKey);
-        const inComp = compKeys.has(monthKey);
-        if (!inPrim && !inComp) continue;
+      // Brand/Category filter
+      if (brandCategorySet.size > 0 && !brandCategorySet.has(line.brand_category ?? "")) continue;
+      // SKU filter
+      if (skuSet.size > 0 && !skuSet.has(line.sku ?? "")) continue;
 
-        const k = rowKey(line);
-        if (!k) continue;
-        const val = (metric === "bookings" ? line.bookings : line.invoices) ?? 0;
-        if (val === 0) continue;
+      const d  = new Date(line.transaction_date + "T00:00:00");
+      const ms = d.getTime();
+      if (Number.isNaN(ms)) continue;
 
-        let row = rows.get(k);
-        if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
-        if (inPrim) row.primary += val;
-        if (inComp) row.comparative += val;
-        row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
+      const inPrim = ms >= primFromMs && ms <= primToMs;
+      const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
+      if (!inPrim && !inComp) continue;
+
+      // Row key
+      let k: Key;
+      if (groupBy === "dealer") {
+        k = line.dealer_name ?? line.customer_id ?? "Unknown";
+      } else if (groupBy === "rep") {
+        k = line.rep_name ?? "Unassigned";
+      } else {
+        // territory: resolve via customer_id → portal dealer → territory
+        const cid = (line.customer_id ?? "").trim().toLowerCase();
+        k = (cid ? customerIdToTerritoryName.get(cid) : undefined) ?? "Unassigned";
       }
+
+      const val = line.amount;
+      if (val === 0) continue;
+
+      const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
+      let row = rows.get(k);
+      if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
+      if (inPrim) row.primary += val;
+      if (inComp) row.comparative += val;
+      row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
     }
 
     const sorted = Array.from(rows.entries())
-      .map(([k, v]) => ({ key: k, label: rowLabel(k), ...v }))
+      .map(([k, v]) => ({ key: k, label: k === "Unassigned" ? "Unassigned" : k, ...v }))
       .sort((a, b) => b.primary - a.primary);
 
     return { rows: sorted, primMonths, compMonths };
-  }, [lines, aggregates, useAggregates, useInvoiceLines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealers, reps, territories, dealerIdSet, dealerIdByAcctivateId, unscopedOpenOrderView, filteredProductIds, primary, comparative, compareMode, metric, groupBy]);
+  }, [
+    repLines, metric, primary, comparative, compareMode, groupBy,
+    scopedCustomerIds, brandCategorySet, skuSet, customerIdToTerritoryName,
+  ]);
 
-  const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
-  const noData = useAggregates
-    ? (rangeOpenOrders.length === 0 && rangeInvoices.length === 0)
-    : (useInvoiceLines ? rangeInvoiceLines.length === 0 : lines.length === 0);
+  // ── Summary totals (both metrics over the primary range) ──────────────────
 
-  // Totals for BOTH metrics over the primary date range, so users always see
-  // total Bookings and total Invoices regardless of the active metric.
   const summaryTotals = useMemo(() => {
-    let bookings = 0; let invoices = 0;
     const primFromMs = startOfDay(primary.from).getTime();
-    const primToMs = startOfDay(primary.to).getTime();
+    const primToMs   = startOfDay(primary.to).getTime();
+    let bookings = 0; let invoices = 0;
 
-    // Bookings: when no product filter is active, source from open_sales_orders
-    // (live Acctivate open backlog). Otherwise fall back to dealer_sales_lines.
-    if (useAggregates) {
-      for (const oo of rangeOpenOrders) {
-        if (!oo.order_date) continue;
-        const resolvedDealerId = oo.dealer_id ?? (oo.dealer_acctivate_id ? dealerIdByAcctivateId.get(oo.dealer_acctivate_id.trim().toLowerCase()) : undefined);
-        if (resolvedDealerId) {
-          if (!dealerIdSet.has(resolvedDealerId)) continue;
-        } else if (!unscopedOpenOrderView) {
-          continue;
-        }
-        const ms = new Date(oo.order_date + "T00:00:00").getTime();
-        if (Number.isNaN(ms) || ms < primFromMs || ms > primToMs) continue;
-        bookings += Number(oo.extended_value ?? 0);
+    for (const line of repLines) {
+      if (scopedCustomerIds !== null) {
+        const cid = (line.customer_id ?? "").trim().toLowerCase();
+        if (!cid || !scopedCustomerIds.has(cid)) continue;
       }
-    } else {
-      const primKeys = new Set(monthsInRange(primary).map((m) => m.key));
-      for (const line of lines) {
-        if (!dealerIdSet.has(line.dealer_id)) continue;
-        if (!filteredProductIds.has((line as { product_id: string }).product_id)) continue;
-        const mNum = parseInt(String(line.month), 10);
-        const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(line.month);
-        if (!primKeys.has(`${line.year}-${monthName}`)) continue;
-        bookings += line.bookings ?? 0;
-        if (!useInvoiceLines) invoices += line.invoices ?? 0;
-      }
-    }
+      if (brandCategorySet.size > 0 && !brandCategorySet.has(line.brand_category ?? "")) continue;
+      if (skuSet.size > 0           && !skuSet.has(line.sku ?? ""))           continue;
 
-    if (useAggregates) {
-      for (const inv of rangeInvoices) {
-        if (!inv.invoice_date) continue;
-        const resolvedDealerId = inv.dealer_id ?? ((inv as any).dealer_acctivate_id ? dealerIdByAcctivateId.get(((inv as any).dealer_acctivate_id as string).trim().toLowerCase()) : undefined);
-        if (resolvedDealerId) {
-          if (!dealerIdSet.has(resolvedDealerId)) continue;
-        } else if (!unscopedOpenOrderView) {
-          continue;
-        }
-        const ms = new Date(inv.invoice_date + "T00:00:00").getTime();
-        if (Number.isNaN(ms) || ms < primFromMs || ms > primToMs) continue;
-        invoices += Number(inv.total ?? 0);
-      }
-    } else if (useInvoiceLines) {
-      for (const il of rangeInvoiceLines) {
-        if (!il.dealer_id || !il.invoice_date) continue;
-        if (!dealerIdSet.has(il.dealer_id)) continue;
-        if (!il.product_id || !filteredProductIds.has(il.product_id)) continue;
-        const ms = new Date(il.invoice_date + "T00:00:00").getTime();
-        if (Number.isNaN(ms) || ms < primFromMs || ms > primToMs) continue;
-        invoices += Number(il.extended_price ?? 0);
-      }
+      const ms = new Date(line.transaction_date + "T00:00:00").getTime();
+      if (Number.isNaN(ms) || ms < primFromMs || ms > primToMs) continue;
+
+      if      (line.metric_type === "bookings") bookings += line.amount;
+      else if (line.metric_type === "invoiced") invoices += line.amount;
     }
     return { bookings, invoices };
-  }, [primary, useAggregates, useInvoiceLines, lines, rangeInvoices, rangeInvoiceLines, rangeOpenOrders, dealerIdSet, dealerIdByAcctivateId, unscopedOpenOrderView, filteredProductIds]);
+  }, [repLines, primary, scopedCustomerIds, brandCategorySet, skuSet]);
 
-  // Warn when a product-level filter is active but dealer_sales_lines has no rows
-  // overlapping the primary date range - common right now since line sync is sparse.
-  const productFilterActive = !useAggregates;
-  const lineCoverageMissing = useMemo(() => {
-    if (!productFilterActive) return false;
-    if (useInvoiceLines) return rangeInvoiceLines.length === 0;
-    const primKeys = new Set(monthsInRange(primary).map((m) => m.key));
-    return !lines.some((l) => {
-      const mNum = parseInt(String(l.month), 10);
-      const monthName = !isNaN(mNum) && mNum >= 1 && mNum <= 12 ? MONTH_NAMES[mNum - 1] : String(l.month);
-      return primKeys.has(`${l.year}-${monthName}`);
-    });
-  }, [productFilterActive, useInvoiceLines, rangeInvoiceLines, lines, primary]);
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
+  const noData     = repLines.length === 0;
 
   return (
     <div className="space-y-4">
@@ -800,21 +500,20 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Quick range</span>
               <Select
-                
                 onValueChange={(v) => {
                   const todayEnd = startOfDay(today);
                   const monthEnd = endOfMonth(today);
                   let from: Date; let to: Date;
                   switch (v) {
-                    case "today":   from = todayEnd; to = todayEnd; break;
-                    case "mtd":     from = startOfMonth(today); to = todayEnd; break;
-                    case "qtd":     from = startOfQuarter(today); to = todayEnd; break;
-                    case "ytd":     from = startOfYear(today); to = todayEnd; break;
-                    case "last30":  from = subDays(todayEnd, 29); to = todayEnd; break;
-                    case "last90":  from = subDays(todayEnd, 89); to = todayEnd; break;
-                    case "3m":      from = startOfMonth(subMonths(monthEnd, 2)); to = monthEnd; break;
-                    case "6m":      from = startOfMonth(subMonths(monthEnd, 5)); to = monthEnd; break;
-                    case "12m":     from = startOfMonth(subMonths(monthEnd, 11)); to = monthEnd; break;
+                    case "today":    from = todayEnd; to = todayEnd; break;
+                    case "mtd":      from = startOfMonth(today); to = todayEnd; break;
+                    case "qtd":      from = startOfQuarter(today); to = todayEnd; break;
+                    case "ytd":      from = startOfYear(today); to = todayEnd; break;
+                    case "last30":   from = subDays(todayEnd, 29); to = todayEnd; break;
+                    case "last90":   from = subDays(todayEnd, 89); to = todayEnd; break;
+                    case "3m":       from = startOfMonth(subMonths(monthEnd, 2)); to = monthEnd; break;
+                    case "6m":       from = startOfMonth(subMonths(monthEnd, 5)); to = monthEnd; break;
+                    case "12m":      from = startOfMonth(subMonths(monthEnd, 11)); to = monthEnd; break;
                     case "lastYear": from = startOfYear(subYears(today, 1)); to = endOfMonth(subMonths(startOfYear(today), 1)); break;
                     default: return;
                   }
@@ -853,8 +552,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   if (v === "prev-year") {
                     setComparative({ from: subYears(primary.from, 1), to: subYears(primary.to, 1) });
                   } else if (v === "prev-period") {
-                    const days = differenceInCalendarDays(primary.to, primary.from) + 1;
-                    const prevTo = subDays(primary.from, 1);
+                    const days  = differenceInCalendarDays(primary.to, primary.from) + 1;
+                    const prevTo   = subDays(primary.from, 1);
                     setComparative({ from: subDays(prevTo, days - 1), to: prevTo });
                   }
                 }}
@@ -910,6 +609,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 </Select>
               </div>
             )}
+
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Metric</span>
               <Select value={metric} onValueChange={(v: Metric) => setMetric(v)}>
@@ -933,6 +633,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             </div>
           </div>
 
+          {/* Row 2: dimension filters */}
           <div className="flex flex-wrap items-end gap-3 pt-3 border-t">
             <MultiSelect
               label="Territory" selected={territoryIds} onChange={setTerritoryIds}
@@ -948,63 +649,27 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               searchable searchPlaceholder="Search dealers..."
             />
             <MultiSelect
-              label="Brand" selected={brands} onChange={setBrands}
-              options={allBrands.map((b) => ({ value: b, label: b }))}
-            />
-            <MultiSelect
-              label="Category" selected={categories} onChange={setCategories}
-              options={visibleCategories.map((c) => ({ value: c, label: c }))}
-            />
-            <MultiSelect
-              label="Collection" selected={collections} onChange={setCollections}
-              options={visibleCollections.map((c) => ({ value: c, label: c }))}
+              label="Brand / Category" selected={brandCategories} onChange={setBrandCategories}
+              options={allBrandCategories.map((bc) => ({ value: bc, label: bc }))}
+              searchable searchPlaceholder="Search brand/category..."
             />
             <MultiSelect
               label="SKU" selected={skus} onChange={setSkus}
-              options={visibleSkus.map((p) => ({ value: p.id, label: p.name ? `${p.sku} - ${p.name}` : p.sku }))}
-              searchable
-              searchPlaceholder="Search SKU or name..."
+              options={Array.from(skuLabelMap.entries()).map(([sku, label]) => ({ value: sku, label }))}
+              searchable searchPlaceholder="Search SKU..."
             />
           </div>
         </CardContent>
       </Card>
 
-
-      {!noData && lineCoverageMissing && (
-        <Card className="border-dashed border-amber-500/40 bg-amber-500/5">
-          <CardContent className="p-4 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">No invoice line items in this date range</p>
-              <p className="text-xs text-muted-foreground">
-                Brand, category, collection, and SKU filters use the per-SKU invoice line table. There are no matching rows in the selected window - try a wider date range or clear the product filters to see aggregate totals.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      {!noData && !lineCoverageMissing && useInvoiceLines && metric === "bookings" && (
-        <Card className="border-dashed border-amber-500/40 bg-amber-500/5">
-          <CardContent className="p-4 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="text-sm font-medium">Showing invoiced revenue as a proxy for bookings</p>
-              <p className="text-xs text-muted-foreground">
-                Per-SKU booking data isn't synced yet. With product filters active, the values below come from invoice line items. Switch the metric to Invoices for the equivalent label, or clear product filters to see true booking totals.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Totals summary */}
+      {/* Summary totals */}
       <div className="grid gap-3 sm:grid-cols-2">
         <Card>
           <CardContent className="p-4">
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Bookings</p>
             <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.bookings)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(primary.from, "MMM d, yyyy")} - {format(primary.to, "MMM d, yyyy")}
+              {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
             </p>
           </CardContent>
         </Card>
@@ -1013,7 +678,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Invoices</p>
             <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.invoices)}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              {format(primary.from, "MMM d, yyyy")} - {format(primary.to, "MMM d, yyyy")}
+              {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
             </p>
           </CardContent>
         </Card>
@@ -1027,15 +692,19 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           </CardTitle>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Badge variant="secondary">{aggregation.rows.length} rows</Badge>
-            <Badge variant="outline">{format(primary.from, "MMM d, yyyy")} - {format(primary.to, "MMM d, yyyy")}</Badge>
+            <Badge variant="outline">{format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}</Badge>
             {compareMode !== "none" && (
-              <Badge variant="outline">vs {format(comparative.from, "MMM d, yyyy")} - {format(comparative.to, "MMM d, yyyy")}</Badge>
+              <Badge variant="outline">vs {format(comparative.from, "MMM d, yyyy")} – {format(comparative.to, "MMM d, yyyy")}</Badge>
             )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-auto max-h-[55vh]">
-            {display === "monthly" ? (
+            {noData ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">
+                No data for the selected date range.
+              </div>
+            ) : display === "monthly" ? (
               <MonthlyTable
                 rows={aggregation.rows}
                 primMonths={aggregation.primMonths}
@@ -1066,14 +735,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         to={primary.to}
         compareFrom={compareMode !== "none" ? comparative.from : undefined}
         compareTo={compareMode !== "none" ? comparative.to : undefined}
-        dealers={dealers}
-        reps={reps}
-        territories={territories}
-        products={products}
+        viewLines={repLines}
       />
     </div>
   );
 }
+
+// ── Table sub-components ──────────────────────────────────────────────────────
 
 function TotalTable({
   rows, leftHeader, showComparison, onRowClick,
@@ -1093,14 +761,14 @@ function TotalTable({
           <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-card z-20">{leftHeader}</th>
           <th className="text-right p-3 font-medium text-muted-foreground">Primary</th>
           {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Comparative</th>}
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">-</th>}
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">% -</th>}
+          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Δ</th>}
+          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Δ %</th>}
         </tr>
       </thead>
       <tbody>
         {rows.map((r) => {
           const delta = r.primary - r.comparative;
-          const pct = r.comparative === 0 ? 0 : (delta / r.comparative) * 100;
+          const pct   = r.comparative === 0 ? 0 : (delta / r.comparative) * 100;
           return (
             <tr
               key={r.key}
@@ -1158,14 +826,12 @@ function MonthlyTable({
   showComparison?: boolean;
   onRowClick?: (key: string, label: string) => void;
 }) {
-  // Interleave primary then comparative pairs by month index
   const interleaved: { key: string; label: string }[] = [];
   const max = Math.max(primMonths.length, showComparison ? compMonths.length : 0);
   for (let i = 0; i < max; i++) {
     if (primMonths[i]) interleaved.push(primMonths[i]);
     if (showComparison && compMonths[i]) interleaved.push(compMonths[i]);
   }
-
   const totalCols = interleaved.length + 2;
 
   return (

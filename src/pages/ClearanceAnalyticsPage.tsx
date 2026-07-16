@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   startOfWeek, endOfWeek, subWeeks, addWeeks, format, parseISO,
 } from "date-fns";
@@ -14,27 +14,33 @@ import { cn } from "@/lib/utils";
 // --------- Types ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 interface SalesRow {
-  sku: string;
-  product_name: string | null;
-  qty_sold: number;
-  revenue: number;
-  rep_name: string | null;
-  import_filename: string | null;
-  import_id: string;
+  guid_invoice_detail: string;
+  invoice_number:      string | null;
+  sale_date:           string;
+  week_start:          string | null;
+  week_end:            string | null;
+  rep_name:            string | null;
+  rep_id:              string | null;
+  sku:                 string;
+  product:             string | null;
+  product_class:       string | null;
+  quantity_sold:       number;
+  sales_amount:        number;
 }
 
 interface RepSkuRow {
-  sku: string;
-  product: string;
-  qty: number;
-  revenue: number;
+  sku:           string;
+  product:       string | null;
+  product_class: string | null;
+  qty:           number;
+  revenue:       number;
 }
 
 interface RepRow {
-  rep: string;
-  totalQty: number;
+  rep:          string;
+  totalQty:     number;
   totalRevenue: number;
-  skus: RepSkuRow[];
+  skus:         RepSkuRow[];
 }
 
 // --------- Helpers ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -52,48 +58,82 @@ function fmtCurrency(n: number) {
 export default function ClearanceAnalyticsPage() {
   const [viewMode, setViewMode] = useState<"weekly" | "daily">("daily");
 
-  // ── Weekly mode state ───────────────────────────────────────────────────────
-  const [anchor, setAnchor] = useState<Date>(() => new Date());
-  const weekStart = startOfWeek(anchor, { weekStartsOn: 1 });
-  const weekEnd   = endOfWeek(anchor, { weekStartsOn: 1 });
-  const weekLabel = useMemo(() => {
-    const fmt = fmtWeekLabel(weekStart, weekEnd);
-    if (fmt === "Jun 15 - Jun 21, 2026") return "June 12 - June 20, 2026";
-    if (fmt === "Jun 22 - Jun 28, 2026") return "June 20 - June 27, 2026";
-    return fmt;
-  }, [weekStart, weekEnd]);
-
   // ── Daily mode state ────────────────────────────────────────────────────────
-  const [selectedDate, setSelectedDate] = useState("2026-06-28");
+  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
+
+  // ── Weekly mode state — anchor defaults to today (Sunday-start weeks) ───────
+  const [anchor, setAnchor] = useState<Date>(() => new Date());
+  const weekStart = startOfWeek(anchor, { weekStartsOn: 0 });
+  const weekEnd   = endOfWeek(anchor,   { weekStartsOn: 0 });
+  const weekLabel = useMemo(() => fmtWeekLabel(weekStart, weekEnd), [weekStart, weekEnd]);
 
   // ── Shared data state ───────────────────────────────────────────────────────
-  const [salesRows, setSalesRows]     = useState<SalesRow[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const [salesRows, setSalesRows]       = useState<SalesRow[]>([]);
+  const [loadingData, setLoadingData]   = useState(true);
   const [expandedReps, setExpandedReps] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    const weekStartStr = format(weekStart, "yyyy-MM-dd");
+    const weekEndStr   = format(weekEnd,   "yyyy-MM-dd");
+
+    console.log("[clearance-analytics]", {
+      mode:        viewMode,
+      selectedDate,
+      weekStart:   weekStartStr,
+      weekEnd:     weekEndStr,
+    });
+
     async function load() {
       setLoadingData(true);
       setExpandedReps(new Set());
+
       let query = (supabase as any)
-        .from("clearance_weekly_sales")
-        .select("sku, product_name, qty_sold, revenue, rep_name, import_filename, import_id");
+        .from("v_portal_clearance_sales_analytics")
+        .select("guid_invoice_detail, invoice_number, sale_date, week_start, week_end, rep_name, rep_id, sku, product, product_class, quantity_sold, sales_amount");
 
       if (viewMode === "daily") {
-        query = query.eq("week_start", selectedDate);
+        query = query.eq("sale_date", selectedDate);
       } else {
         query = query
-          .gte("week_start", format(weekStart, "yyyy-MM-dd"))
-          .lte("week_start", format(weekEnd, "yyyy-MM-dd"));
+          .gte("sale_date", weekStartStr)
+          .lte("sale_date", weekEndStr);
       }
 
-      const { data } = await query;
-      setSalesRows((data as SalesRow[]) ?? []);
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("[clearance-analytics] v_portal_clearance_sales_analytics fetch failed:", error.message, error);
+        setSalesRows([]);
+        setLoadingData(false);
+        return;
+      }
+
+      const rows = ((data ?? []) as any[]).map((r: any) => ({
+        ...r,
+        quantity_sold: Number(r.quantity_sold) || 0,
+        sales_amount:  Number(r.sales_amount)  || 0,
+      })) as SalesRow[];
+
+      const totalUnits   = rows.reduce((s, r) => s + r.quantity_sold, 0);
+      const totalRevenue = rows.reduce((s, r) => s + r.sales_amount,  0);
+
+      console.log("[clearance-analytics] rows fetched:", rows.length);
+      console.log("[clearance-analytics] total units:", totalUnits, "· total revenue:", totalRevenue);
+
+      if (rows.length > 0) {
+        const dates = rows.map((r) => r.sale_date).sort();
+        console.log("[clearance-analytics] sale_date range in result:", {
+          min: dates[0],
+          max: dates[dates.length - 1],
+        });
+      }
+
+      setSalesRows(rows);
       setLoadingData(false);
     }
     void load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, selectedDate, format(weekStart, "yyyy-MM-dd")]);
+  }, [viewMode, selectedDate, format(weekStart, "yyyy-MM-dd"), format(weekEnd, "yyyy-MM-dd")]);
 
   const repRows = useMemo<RepRow[]>(() => {
     const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
@@ -104,28 +144,34 @@ export default function ClearanceAnalyticsPage() {
       const rep = rawRep;
       const sku = row.sku;
       if (!agg[rep]) agg[rep] = { totalQty: 0, totalRevenue: 0, skus: {} };
-      agg[rep].totalQty += row.qty_sold;
-      agg[rep].totalRevenue += row.revenue;
+      agg[rep].totalQty     += Number(row.quantity_sold) || 0;
+      agg[rep].totalRevenue += Number(row.sales_amount)  || 0;
       if (!agg[rep].skus[sku]) {
-        agg[rep].skus[sku] = { sku, product: row.product_name ?? sku, qty: 0, revenue: 0 };
+        agg[rep].skus[sku] = {
+          sku,
+          product:       row.product       ?? null,
+          product_class: row.product_class ?? null,
+          qty:     0,
+          revenue: 0,
+        };
       }
-      agg[rep].skus[sku].qty += row.qty_sold;
-      agg[rep].skus[sku].revenue += row.revenue;
+      agg[rep].skus[sku].qty     += Number(row.quantity_sold) || 0;
+      agg[rep].skus[sku].revenue += Number(row.sales_amount)  || 0;
     }
     return Object.entries(agg)
       .sort(([, a], [, b]) => b.totalRevenue - a.totalRevenue)
       .map(([rep, d]) => ({
         rep,
-        totalQty: d.totalQty,
+        totalQty:     d.totalQty,
         totalRevenue: d.totalRevenue,
         skus: Object.values(d.skus).sort((a, b) => b.revenue - a.revenue),
       }));
-  }, [salesRows, expandedReps]);
+  }, [salesRows]);
 
   const summary = useMemo(() => ({
-    totalUnits:   repRows.reduce((s, r) => s + r.totalQty, 0),
-    totalRevenue: repRows.reduce((s, r) => s + r.totalRevenue, 0),
-    skusMoved:    new Set(salesRows.map((r) => r.sku)).size,
+    totalUnits:    repRows.reduce((s, r) => s + r.totalQty,     0),
+    totalRevenue:  repRows.reduce((s, r) => s + r.totalRevenue, 0),
+    skusMoved:     new Set(salesRows.map((r) => r.sku)).size,
     repsWithSales: repRows.length,
   }), [repRows, salesRows]);
 
@@ -150,20 +196,24 @@ export default function ClearanceAnalyticsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Clearance Analytics</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Summer Specials / clearance sales broken down by rep and SKU.
+          Discontinued product sales broken down by rep and SKU.
         </p>
       </div>
 
       {/* View mode toggle + date/week navigation */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* Weekly / Daily toggle */}
         <div className="flex rounded-md border border-border overflow-hidden text-sm">
           <button
             className={cn(
               "px-3 py-1.5 font-medium transition-colors",
               viewMode === "weekly" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50",
             )}
-            onClick={() => setViewMode("weekly")}
+            onClick={() => {
+              if (viewMode === "daily") {
+                try { setAnchor(parseISO(selectedDate)); } catch { setAnchor(new Date()); }
+              }
+              setViewMode("weekly");
+            }}
           >
             Weekly
           </button>
@@ -172,7 +222,12 @@ export default function ClearanceAnalyticsPage() {
               "px-3 py-1.5 font-medium transition-colors border-l border-border",
               viewMode === "daily" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50",
             )}
-            onClick={() => setViewMode("daily")}
+            onClick={() => {
+              if (viewMode === "weekly") {
+                setSelectedDate(format(weekStart, "yyyy-MM-dd"));
+              }
+              setViewMode("daily");
+            }}
           >
             Daily
           </button>
@@ -215,13 +270,13 @@ export default function ClearanceAnalyticsPage() {
           <>
             <Card className="p-4 space-y-1">
               <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-                <DollarSign className="h-3 w-3" /> Total Bookings
+                <DollarSign className="h-3 w-3" /> Total Sales
               </div>
               <p className="text-2xl font-semibold tabular-nums">{fmtCurrency(summary.totalRevenue)}</p>
             </Card>
             <Card className="p-4 space-y-1">
               <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-                <TrendingDown className="h-3 w-3" /> Active SKUs
+                <TrendingDown className="h-3 w-3" /> SKUs Sold
               </div>
               <p className="text-2xl font-semibold tabular-nums">{summary.skusMoved}</p>
             </Card>
@@ -270,16 +325,11 @@ export default function ClearanceAnalyticsPage() {
 
       {loadingData ? (
         <div className="text-center py-16 text-muted-foreground text-sm">Loading sales data...</div>
-      ) : repRows.length === 0 ? (
-        <div className="text-center py-16 space-y-2">
+      ) : salesRows.length === 0 ? (
+        <div className="text-center py-16">
           <p className="text-muted-foreground text-sm">
-            No clearance sales data for {viewMode === "daily" ? dateDisplayLabel : "this week"}.
+            No discontinued product sales found for {viewMode === "daily" ? dateDisplayLabel : "this week"}.
           </p>
-          {viewMode === "weekly" && (
-            <p className="text-xs text-muted-foreground">
-              Go to <strong>Clearance Products</strong> and import a CSV to see data here.
-            </p>
-          )}
         </div>
       ) : (
         <div className="space-y-5">
@@ -300,16 +350,15 @@ export default function ClearanceAnalyticsPage() {
                       </th>
                     )}
                     <th className="text-right px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-                      {viewMode === "daily" ? "Total Bookings" : "Gross Revenue"}
+                      {viewMode === "daily" ? "Total Sales" : "Gross Revenue"}
                     </th>
                     <th className="w-8" />
                   </tr>
                 </thead>
                 <tbody>
                   {repRows.map((row) => (
-                    <>
+                    <Fragment key={row.rep}>
                       <tr
-                        key={row.rep}
                         className="border-b border-border/40 hover:bg-muted/20 transition-colors cursor-pointer"
                         onClick={() => toggleRep(row.rep)}
                       >
@@ -339,12 +388,15 @@ export default function ClearanceAnalyticsPage() {
                             key={`${row.rep}-${sku.sku}`}
                             className={cn("bg-muted/10 border-b border-border/20")}
                           >
-                            <td className="pl-10 pr-4 py-2" colSpan={viewMode === "weekly" ? 2 : 2}>
+                            <td className="pl-10 pr-4 py-2" colSpan={2}>
                               <div className="font-mono text-xs text-muted-foreground">{sku.sku}</div>
-                              {sku.product !== sku.sku && (
+                              {sku.product && (
                                 <div className="text-xs text-foreground mt-0.5 truncate max-w-[240px]">
                                   {sku.product}
                                 </div>
+                              )}
+                              {sku.product_class && (
+                                <div className="text-[11px] text-muted-foreground mt-0.5">{sku.product_class}</div>
                               )}
                             </td>
                             {viewMode === "weekly" && (
@@ -358,7 +410,7 @@ export default function ClearanceAnalyticsPage() {
                             <td />
                           </tr>
                         ))}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
                 <tfoot>

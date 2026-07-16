@@ -9,17 +9,18 @@ import { cn } from "@/lib/utils";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ClearanceItem {
-  id:              string | null;
-  sku:             string;
-  product:         string | null;
-  warehouse:       string | null;
-  collection:      string | null;
-  available:       number;
-  on_hand:         number;
-  list_price:      number | null;
-  retail_value:    number | null;
-  inventory_value: number | null;
-  status:          string | null;
+  id:                         string | null;
+  sku:                        string;
+  product:                    string | null;
+  warehouse:                  string | null;
+  collection:                 string | null;
+  available:                  number;
+  on_hand:                    number;
+  list_price:                 number | null;
+  retail_value:               number | null;
+  inventory_value:            number | null;
+  status:                     string | null;
+  retail_value_price_source:  string | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ export default function ClearanceProductsPage() {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("v_portal_clearance_products")
-      .select("id, sku, product, warehouse, collection, available, on_hand, list_price, retail_value, inventory_value, status")
+      .select("id, sku, product, warehouse, collection, available, on_hand, list_price, retail_value, inventory_value, status, retail_value_price_source")
       .order("collection", { nullsFirst: false })
       .order("sku");
 
@@ -71,10 +72,11 @@ export default function ClearanceProductsPage() {
       collection:      r.collection ?? null,
       available:       Number(r.available)      || 0,
       on_hand:         Number(r.on_hand)        || 0,
-      list_price:      r.list_price      != null ? Number(r.list_price)      : null,
-      retail_value:    r.retail_value    != null ? Number(r.retail_value)    : null,
-      inventory_value: r.inventory_value != null ? Number(r.inventory_value) : null,
-      status:          r.status ?? null,
+      list_price:                r.list_price      != null ? Number(r.list_price)      : null,
+      retail_value:              r.retail_value    != null ? Number(r.retail_value)    : null,
+      inventory_value:           r.inventory_value != null ? Number(r.inventory_value) : null,
+      status:                    r.status ?? null,
+      retail_value_price_source: r.retail_value_price_source ?? null,
     })) as ClearanceItem[];
 
     setItems(rows);
@@ -192,12 +194,12 @@ export default function ClearanceProductsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/30">
-                  {(["SKU", "Product", "Warehouse", "Collection", "On Hand", "Available", "List Price", "Retail Value", "Inv. Value", "Status"] as const).map((h) => (
+                  {(["SKU", "Product", "Warehouse", "Collection", "On Hand", "Available", "SD Price", "Retail Value", "Inv. Value", "Status"] as const).map((h) => (
                     <th
                       key={h}
                       className={cn(
                         "px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium whitespace-nowrap",
-                        ["On Hand", "Available", "List Price", "Retail Value", "Inv. Value"].includes(h) ? "text-right" : "text-left",
+                        ["On Hand", "Available", "SD Price", "Retail Value", "Inv. Value"].includes(h) ? "text-right" : "text-left",
                       )}
                     >
                       {h}
@@ -223,10 +225,14 @@ export default function ClearanceProductsPage() {
                       {item.available.toLocaleString()}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
-                      {item.list_price != null ? `$${item.list_price.toFixed(2)}` : "-"}
+                      {item.retail_value_price_source === "Missing SD"
+                        ? <span className="text-muted-foreground text-[11px]">Missing SD</span>
+                        : item.list_price != null ? `$${item.list_price.toFixed(2)}` : "-"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
-                      {item.retail_value != null ? formatUSD(item.retail_value) : "-"}
+                      {item.retail_value_price_source === "Missing SD"
+                        ? <span className="text-muted-foreground">$0</span>
+                        : item.retail_value != null ? formatUSD(item.retail_value) : "-"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
                       {item.inventory_value != null ? formatUSD(item.inventory_value) : "-"}

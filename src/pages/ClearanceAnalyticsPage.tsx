@@ -1,10 +1,10 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
-  startOfWeek, endOfWeek, subWeeks, addWeeks, format, parseISO,
+  startOfWeek, endOfWeek, subWeeks, addWeeks, format,
 } from "date-fns";
 import {
   ChevronLeft, ChevronRight, Package, Users,
-  TrendingDown, DollarSign, ChevronDown, ChevronUp, Calendar,
+  TrendingDown, DollarSign, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -56,18 +56,11 @@ function fmtCurrency(n: number) {
 // --------- Page -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export default function ClearanceAnalyticsPage() {
-  const [viewMode, setViewMode] = useState<"weekly" | "daily">("daily");
-
-  // ── Daily mode state ────────────────────────────────────────────────────────
-  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
-
-  // ── Weekly mode state — anchor defaults to today (Sunday-start weeks) ───────
   const [anchor, setAnchor] = useState<Date>(() => new Date());
   const weekStart = startOfWeek(anchor, { weekStartsOn: 0 });
   const weekEnd   = endOfWeek(anchor,   { weekStartsOn: 0 });
   const weekLabel = useMemo(() => fmtWeekLabel(weekStart, weekEnd), [weekStart, weekEnd]);
 
-  // ── Shared data state ───────────────────────────────────────────────────────
   const [salesRows, setSalesRows]       = useState<SalesRow[]>([]);
   const [loadingData, setLoadingData]   = useState(true);
   const [expandedReps, setExpandedReps] = useState<Set<string>>(new Set());
@@ -76,30 +69,17 @@ export default function ClearanceAnalyticsPage() {
     const weekStartStr = format(weekStart, "yyyy-MM-dd");
     const weekEndStr   = format(weekEnd,   "yyyy-MM-dd");
 
-    console.log("[clearance-analytics]", {
-      mode:        viewMode,
-      selectedDate,
-      weekStart:   weekStartStr,
-      weekEnd:     weekEndStr,
-    });
+    console.log("[clearance-analytics]", { weekStart: weekStartStr, weekEnd: weekEndStr });
 
     async function load() {
       setLoadingData(true);
       setExpandedReps(new Set());
 
-      let query = (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("v_portal_clearance_sales_analytics")
-        .select("guid_invoice_detail, invoice_number, sale_date, week_start, week_end, rep_name, rep_id, sku, product, product_class, quantity_sold, sales_amount");
-
-      if (viewMode === "daily") {
-        query = query.eq("sale_date", selectedDate);
-      } else {
-        query = query
-          .gte("sale_date", weekStartStr)
-          .lte("sale_date", weekEndStr);
-      }
-
-      const { data, error } = await query;
+        .select("guid_invoice_detail, invoice_number, sale_date, week_start, week_end, rep_name, rep_id, sku, product, product_class, quantity_sold, sales_amount")
+        .gte("sale_date", weekStartStr)
+        .lte("sale_date", weekEndStr);
 
       if (error) {
         console.error("[clearance-analytics] v_portal_clearance_sales_analytics fetch failed:", error.message, error);
@@ -117,15 +97,11 @@ export default function ClearanceAnalyticsPage() {
       const totalUnits   = rows.reduce((s, r) => s + r.quantity_sold, 0);
       const totalRevenue = rows.reduce((s, r) => s + r.sales_amount,  0);
 
-      console.log("[clearance-analytics] rows fetched:", rows.length);
-      console.log("[clearance-analytics] total units:", totalUnits, "· total revenue:", totalRevenue);
+      console.log("[clearance-analytics] rows fetched:", rows.length, "· units:", totalUnits, "· revenue:", totalRevenue);
 
       if (rows.length > 0) {
         const dates = rows.map((r) => r.sale_date).sort();
-        console.log("[clearance-analytics] sale_date range in result:", {
-          min: dates[0],
-          max: dates[dates.length - 1],
-        });
+        console.log("[clearance-analytics] sale_date range:", { min: dates[0], max: dates[dates.length - 1] });
       }
 
       setSalesRows(rows);
@@ -133,7 +109,7 @@ export default function ClearanceAnalyticsPage() {
     }
     void load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewMode, selectedDate, format(weekStart, "yyyy-MM-dd"), format(weekEnd, "yyyy-MM-dd")]);
+  }, [format(weekStart, "yyyy-MM-dd"), format(weekEnd, "yyyy-MM-dd")]);
 
   const repRows = useMemo<RepRow[]>(() => {
     const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
@@ -183,13 +159,6 @@ export default function ClearanceAnalyticsPage() {
     });
   }
 
-  const dateDisplayLabel = useMemo(() => {
-    if (viewMode === "daily") {
-      try { return format(parseISO(selectedDate), "MMMM d, yyyy"); } catch { return selectedDate; }
-    }
-    return weekLabel;
-  }, [viewMode, selectedDate, weekLabel]);
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -200,127 +169,50 @@ export default function ClearanceAnalyticsPage() {
         </p>
       </div>
 
-      {/* View mode toggle + date/week navigation */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex rounded-md border border-border overflow-hidden text-sm">
-          <button
-            className={cn(
-              "px-3 py-1.5 font-medium transition-colors",
-              viewMode === "weekly" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50",
-            )}
-            onClick={() => {
-              if (viewMode === "daily") {
-                try { setAnchor(parseISO(selectedDate)); } catch { setAnchor(new Date()); }
-              }
-              setViewMode("weekly");
-            }}
-          >
-            Weekly
-          </button>
-          <button
-            className={cn(
-              "px-3 py-1.5 font-medium transition-colors border-l border-border",
-              viewMode === "daily" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50",
-            )}
-            onClick={() => {
-              if (viewMode === "weekly") {
-                setSelectedDate(format(weekStart, "yyyy-MM-dd"));
-              }
-              setViewMode("daily");
-            }}
-          >
-            Daily
-          </button>
-        </div>
-
-        {viewMode === "weekly" ? (
-          <>
-            <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setAnchor((d) => subWeeks(d, 1))}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-medium tabular-nums min-w-[230px] text-center">{weekLabel}</span>
-            <Button
-              variant="outline" size="sm" className="h-8 w-8 p-0"
-              onClick={() => setAnchor((d) => addWeeks(d, 1))}
-              disabled={weekEnd >= new Date()}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setAnchor(new Date())}>
-              This Week
-            </Button>
-          </>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <input
-              type="date"
-              className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-              value={selectedDate}
-              max={format(new Date(), "yyyy-MM-dd")}
-              onChange={(e) => { if (e.target.value) setSelectedDate(e.target.value); }}
-            />
-          </div>
-        )}
+      {/* Week navigation */}
+      <div className="flex items-center gap-3">
+        <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setAnchor((d) => subWeeks(d, 1))}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm font-medium tabular-nums min-w-[230px] text-center">{weekLabel}</span>
+        <Button
+          variant="outline" size="sm" className="h-8 w-8 p-0"
+          onClick={() => setAnchor((d) => addWeeks(d, 1))}
+          disabled={weekEnd >= new Date()}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setAnchor(new Date())}>
+          This Week
+        </Button>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {viewMode === "daily" ? (
-          <>
-            <Card className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-                <DollarSign className="h-3 w-3" /> Total Sales
-              </div>
-              <p className="text-2xl font-semibold tabular-nums">{fmtCurrency(summary.totalRevenue)}</p>
-            </Card>
-            <Card className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-                <TrendingDown className="h-3 w-3" /> SKUs Sold
-              </div>
-              <p className="text-2xl font-semibold tabular-nums">{summary.skusMoved}</p>
-            </Card>
-            <Card className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-                <Users className="h-3 w-3" /> Reps with Sales
-              </div>
-              <p className="text-2xl font-semibold tabular-nums">{summary.repsWithSales}</p>
-            </Card>
-            <Card className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-                <Package className="h-3 w-3" /> Sales Date
-              </div>
-              <p className="text-base font-semibold">{dateDisplayLabel}</p>
-            </Card>
-          </>
-        ) : (
-          <>
-            <Card className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-                <Package className="h-3 w-3" /> Units Sold
-              </div>
-              <p className="text-2xl font-semibold tabular-nums">{summary.totalUnits.toLocaleString()}</p>
-            </Card>
-            <Card className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-                <DollarSign className="h-3 w-3" /> Gross Revenue
-              </div>
-              <p className="text-2xl font-semibold tabular-nums">{fmtCurrency(summary.totalRevenue)}</p>
-            </Card>
-            <Card className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-                <TrendingDown className="h-3 w-3" /> SKUs Moved
-              </div>
-              <p className="text-2xl font-semibold tabular-nums">{summary.skusMoved}</p>
-            </Card>
-            <Card className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-                <Users className="h-3 w-3" /> Reps with Sales
-              </div>
-              <p className="text-2xl font-semibold tabular-nums">{summary.repsWithSales}</p>
-            </Card>
-          </>
-        )}
+        <Card className="p-4 space-y-1">
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
+            <Package className="h-3 w-3" /> Units Sold
+          </div>
+          <p className="text-2xl font-semibold tabular-nums">{summary.totalUnits.toLocaleString()}</p>
+        </Card>
+        <Card className="p-4 space-y-1">
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
+            <DollarSign className="h-3 w-3" /> Gross Revenue
+          </div>
+          <p className="text-2xl font-semibold tabular-nums">{fmtCurrency(summary.totalRevenue)}</p>
+        </Card>
+        <Card className="p-4 space-y-1">
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
+            <TrendingDown className="h-3 w-3" /> SKUs Moved
+          </div>
+          <p className="text-2xl font-semibold tabular-nums">{summary.skusMoved}</p>
+        </Card>
+        <Card className="p-4 space-y-1">
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-widest text-muted-foreground">
+            <Users className="h-3 w-3" /> Reps with Sales
+          </div>
+          <p className="text-2xl font-semibold tabular-nums">{summary.repsWithSales}</p>
+        </Card>
       </div>
 
       {loadingData ? (
@@ -328,7 +220,7 @@ export default function ClearanceAnalyticsPage() {
       ) : salesRows.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-muted-foreground text-sm">
-            No discontinued product sales found for {viewMode === "daily" ? dateDisplayLabel : "this week"}.
+            No discontinued product sales found for this week.
           </p>
         </div>
       ) : (
@@ -338,20 +230,10 @@ export default function ClearanceAnalyticsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/60 bg-muted/30">
-                    <th className="text-left px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-                      Rep
-                    </th>
-                    <th className="text-right px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-                      SKUs
-                    </th>
-                    {viewMode === "weekly" && (
-                      <th className="text-right px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-                        Total Units
-                      </th>
-                    )}
-                    <th className="text-right px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
-                      {viewMode === "daily" ? "Total Sales" : "Gross Revenue"}
-                    </th>
+                    <th className="text-left px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Rep</th>
+                    <th className="text-right px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">SKUs</th>
+                    <th className="text-right px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Total Units</th>
+                    <th className="text-right px-4 py-2.5 text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Gross Revenue</th>
                     <th className="w-8" />
                   </tr>
                 </thead>
@@ -363,50 +245,27 @@ export default function ClearanceAnalyticsPage() {
                         onClick={() => toggleRep(row.rep)}
                       >
                         <td className="px-4 py-3 font-medium text-foreground">{row.rep}</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                          {row.skus.length}
-                        </td>
-                        {viewMode === "weekly" && (
-                          <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                            {row.totalQty.toLocaleString()}
-                          </td>
-                        )}
-                        <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                          {fmtCurrency(row.totalRevenue)}
-                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{row.skus.length}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-semibold">{row.totalQty.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-semibold">{fmtCurrency(row.totalRevenue)}</td>
                         <td className="px-2 py-3 text-muted-foreground">
-                          {expandedReps.has(row.rep) ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
+                          {expandedReps.has(row.rep) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </td>
                       </tr>
                       {expandedReps.has(row.rep) &&
                         row.skus.map((sku) => (
-                          <tr
-                            key={`${row.rep}-${sku.sku}`}
-                            className={cn("bg-muted/10 border-b border-border/20")}
-                          >
+                          <tr key={`${row.rep}-${sku.sku}`} className={cn("bg-muted/10 border-b border-border/20")}>
                             <td className="pl-10 pr-4 py-2" colSpan={2}>
                               <div className="font-mono text-xs text-muted-foreground">{sku.sku}</div>
                               {sku.product && (
-                                <div className="text-xs text-foreground mt-0.5 truncate max-w-[240px]">
-                                  {sku.product}
-                                </div>
+                                <div className="text-xs text-foreground mt-0.5 truncate max-w-[240px]">{sku.product}</div>
                               )}
                               {sku.product_class && (
                                 <div className="text-[11px] text-muted-foreground mt-0.5">{sku.product_class}</div>
                               )}
                             </td>
-                            {viewMode === "weekly" && (
-                              <td className="px-4 py-2 text-right tabular-nums text-sm">
-                                {sku.qty.toLocaleString()}
-                              </td>
-                            )}
-                            <td className="px-4 py-2 text-right tabular-nums text-sm text-muted-foreground">
-                              {fmtCurrency(sku.revenue)}
-                            </td>
+                            <td className="px-4 py-2 text-right tabular-nums text-sm">{sku.qty.toLocaleString()}</td>
+                            <td className="px-4 py-2 text-right tabular-nums text-sm text-muted-foreground">{fmtCurrency(sku.revenue)}</td>
                             <td />
                           </tr>
                         ))}
@@ -415,12 +274,8 @@ export default function ClearanceAnalyticsPage() {
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-border/60 bg-muted/20">
-                    <td className="px-4 py-3 font-semibold text-foreground" colSpan={viewMode === "weekly" ? 3 : 2}>
-                      Total
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums font-bold text-foreground">
-                      {fmtCurrency(summary.totalRevenue)}
-                    </td>
+                    <td className="px-4 py-3 font-semibold text-foreground" colSpan={3}>Total</td>
+                    <td className="px-4 py-3 text-right tabular-nums font-bold text-foreground">{fmtCurrency(summary.totalRevenue)}</td>
                     <td />
                   </tr>
                 </tfoot>

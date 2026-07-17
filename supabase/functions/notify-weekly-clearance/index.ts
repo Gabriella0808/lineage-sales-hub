@@ -1,5 +1,7 @@
-// Sends the weekly clearance sales report. Pulls per-rep / per-SKU data from
-// the public.clearance_weekly_sales table (populated via the Clearance import).
+// Sends the weekly clearance sales report every Friday.
+// Reads from public.v_portal_clearance_sales_analytics (discontinued Acctivate SKUs
+// with Lineage invoice data). Triggered by pg_cron at 5 pm ET each Friday,
+// but can also be invoked manually with optional dryRun / testEmail / weekStart / weekEnd.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   startOfWeek,
@@ -16,7 +18,6 @@ const corsHeaders = {
 
 const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
 const TEST_EXCLUDED_REPS = new Set(["gillis", "damico"]);
-
 
 async function fetchAll<T>(
   builder: (from: number, to: number) => Promise<{ data: T[] | null; error: unknown }>,
@@ -45,88 +46,77 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const dryRun: boolean = !!body?.dryRun;
+    const dryRun: boolean      = !!body?.dryRun;
     const testEmail: string | undefined = body?.testEmail;
-    const hideUnits: boolean = !!body?.hideUnits;
+    const hideUnits: boolean   = !!body?.hideUnits;
     const showAllReps: boolean = !!body?.showAllReps;
 
+    // Week boundaries — Sunday-start to match the portal's weekly view.
     const anchor = body?.weekStart ? parseISO(body.weekStart as string) : new Date();
     const weekStart = body?.weekStart
       ? parseISO(body.weekStart as string)
-      : startOfWeek(anchor, { weekStartsOn: 1 });
+      : startOfWeek(anchor, { weekStartsOn: 0 });
     const weekEnd = body?.weekEnd
       ? parseISO(body.weekEnd as string)
-      : endOfWeek(anchor, { weekStartsOn: 1 });
-    const startStr = format(weekStart, "yyyy-MM-dd");
-    const endStr = format(weekEnd, "yyyy-MM-dd");
+      : endOfWeek(anchor, { weekStartsOn: 0 });
+    const startStr  = format(weekStart, "yyyy-MM-dd");
+    const endStr    = format(weekEnd,   "yyyy-MM-dd");
     const weekLabel = `${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d, yyyy")}`;
 
-    // 1. Pull this week's clearance sales rows
+    // 1. Pull this week's clearance sales from the analytics view.
+    //    The view already scopes to discontinued Acctivate SKUs — no extra join needed.
     const salesRows = await fetchAll<{
-      sku: string;
-      product_name: string | null;
-      qty_sold: number;
-      revenue: number;
-      rep_name: string | null;
+      sku:           string;
+      product:       string | null;
+      product_class: string | null;
+      quantity_sold: number;
+      sales_amount:  number;
+      rep_name:      string | null;
     }>((f, t) =>
       supabase
-        .from("clearance_weekly_sales")
-        .select("sku, product_name, qty_sold, revenue, rep_name")
-        .gte("week_start", startStr)
-        .lte("week_start", endStr)
+        .from("v_portal_clearance_sales_analytics")
+        .select("sku, product, product_class, quantity_sold, sales_amount, rep_name")
+        .gte("sale_date", startStr)
+        .lte("sale_date", endStr)
         .range(f, t) as any,
     );
 
-    // 2. Look up collection names for the SKUs so we can group per-rep rows
-    const skuList = [...new Set(salesRows.map((r) => r.sku))];
-    const invRows = skuList.length
-      ? await fetchAll<{ sku: string; collection: string | null; product: string | null }>((f, t) =>
-          supabase
-            .from("inventory")
-            .select("sku, collection, product")
-            .in("sku", skuList)
-            .range(f, t) as any,
-        )
-      : [];
-    const skuCollection: Record<string, string> = {};
-    const skuProductName: Record<string, string> = {};
-    invRows.forEach((r) => {
-      skuCollection[r.sku] = r.collection ?? "Uncategorized";
-      if (r.product) skuProductName[r.sku] = r.product;
-    });
-
-    // 3. Aggregate by rep -  collection
+    // 2. Aggregate by rep → product_class (shown as "Collection" in the email template).
     type CollAgg = { collection: string; qty: number; revenue: number };
     const repAgg: Record<string, {
-      totalQty: number;
+      totalQty:     number;
       totalRevenue: number;
-      collections: Record<string, CollAgg>;
+      collections:  Record<string, CollAgg>;
     }> = {};
 
     for (const r of salesRows) {
       const rep = (r.rep_name ?? "Unattributed").trim() || "Unattributed";
       if (MANAGER_NAMES.has(rep.toLowerCase())) continue;
-      const coll = skuCollection[r.sku] ?? "Uncategorized";
+      const qty  = Number(r.quantity_sold) || 0;
+      const rev  = Number(r.sales_amount)  || 0;
+      const coll = r.product_class ?? "Uncategorized";
+
       if (!repAgg[rep]) repAgg[rep] = { totalQty: 0, totalRevenue: 0, collections: {} };
-      repAgg[rep].totalQty += r.qty_sold;
-      repAgg[rep].totalRevenue += Number(r.revenue ?? 0);
+      repAgg[rep].totalQty     += qty;
+      repAgg[rep].totalRevenue += rev;
+
       if (!repAgg[rep].collections[coll]) {
         repAgg[rep].collections[coll] = { collection: coll, qty: 0, revenue: 0 };
       }
-      repAgg[rep].collections[coll].qty += r.qty_sold;
-      repAgg[rep].collections[coll].revenue += Number(r.revenue ?? 0);
+      repAgg[rep].collections[coll].qty     += qty;
+      repAgg[rep].collections[coll].revenue += rev;
     }
 
     const rows = Object.entries(repAgg)
       .map(([rep, d]) => ({
         rep,
-        totalQty: d.totalQty,
+        totalQty:    d.totalQty,
         totalRevenue: d.totalRevenue,
         collections: Object.values(d.collections).sort((a, b) => b.qty - a.qty),
       }))
       .sort((a, b) => b.totalRevenue - a.totalRevenue);
 
-    // If showAllReps, fetch every sales rep and append $0 rows for those without sales
+    // Optionally append $0 rows for reps without any sales this week.
     if (showAllReps) {
       const { data: allReps } = await supabase
         .from("sales_reps")
@@ -141,13 +131,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    const filteredRows = testEmail
+    const filteredRows  = testEmail
       ? rows.filter((r) => !TEST_EXCLUDED_REPS.has(r.rep.toLowerCase()))
       : rows;
 
-    const totalUnits = filteredRows.reduce((s, r) => s + r.totalQty, 0);
+    const totalUnits   = filteredRows.reduce((s, r) => s + r.totalQty,     0);
     const totalRevenue = filteredRows.reduce((s, r) => s + r.totalRevenue, 0);
-    const skusMoved = new Set(salesRows.map((r) => r.sku)).size;
+    const skusMoved    = new Set(salesRows.map((r) => r.sku)).size;
+
+    console.log(`[notify-weekly-clearance] ${weekLabel} — ${salesRows.length} rows, ${filteredRows.length} reps, totalRevenue=${totalRevenue}`);
 
     if (dryRun) {
       return new Response(
@@ -156,45 +148,42 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Recipient list
+    // 3. Build recipient list: all sales reps + managers + admins.
     let recipients: { name: string; email: string }[];
+
     if (testEmail) {
       recipients = [{ name: testEmail.split("@")[0], email: testEmail }];
     } else {
-      const emailMap = new Map<string, string>(); // lowerEmail -> name
+      const emailMap = new Map<string, string>(); // lowerEmail → display name
+
       const addRecipient = (email?: string | null, name?: string | null) => {
         if (!email) return;
-        // Split comma/semicolon-separated addresses into individual recipients
-        const parts = String(email).split(/[,;]/);
-        for (const part of parts) {
+        for (const part of String(email).split(/[,;]/)) {
           const e = part.trim().toLowerCase();
           if (!e || !e.includes("@")) continue;
           if (!emailMap.has(e)) emailMap.set(e, name?.trim() || e.split("@")[0]);
         }
       };
 
-      // Sales reps
       const { data: reps } = await supabase
         .from("sales_reps")
         .select("name, email")
         .not("email", "is", null);
       (reps ?? []).forEach((r: any) => addRecipient(r.email, r.name));
 
-      // Managers
       const { data: mgrs } = await supabase
         .from("managers")
         .select("name, email")
         .not("email", "is", null);
       (mgrs ?? []).forEach((m: any) => addRecipient(m.email, m.name));
 
-      // Admins (auth.users via admin API, joined with user_roles)
       const { data: adminRoles } = await supabase
         .from("user_roles")
         .select("user_id")
         .eq("role", "admin");
       for (const ar of adminRoles ?? []) {
         const { data: u } = await (supabase.auth.admin as any).getUserById((ar as any).user_id);
-        const email = u?.user?.email;
+        const email    = u?.user?.email;
         const fullName = u?.user?.user_metadata?.full_name;
         if (email) addRecipient(email, fullName ?? email.split("@")[0]);
       }
@@ -202,6 +191,7 @@ Deno.serve(async (req) => {
       recipients = Array.from(emailMap.entries()).map(([email, name]) => ({ email, name }));
     }
 
+    // 4. Send via the transactional email queue.
     const supaUrl = Deno.env.get("SUPABASE_URL")!;
     let emailed = 0;
 
@@ -210,18 +200,18 @@ Deno.serve(async (req) => {
         const resp = await fetch(`${supaUrl}/functions/v1/send-transactional-email`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type":  "application/json",
             "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-            "apikey": Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+            "apikey":         Deno.env.get("SUPABASE_ANON_KEY") ?? "",
           },
           body: JSON.stringify({
-            templateName: "clearance-weekly-report",
+            templateName:   "clearance-weekly-report",
             recipientEmail: r.email,
             idempotencyKey: `clearance-weekly-${startStr}-${r.email}-${Date.now()}`,
             templateData: {
               recipientName: r.name,
               weekLabel,
-              rows: filteredRows,
+              rows:          filteredRows,
               totalUnits,
               totalRevenue,
               skusMoved,
@@ -231,9 +221,9 @@ Deno.serve(async (req) => {
           }),
         });
         if (resp.ok) emailed++;
-        else console.error("send failed", r.email, resp.status, await resp.text());
+        else console.error("[notify-weekly-clearance] send failed", r.email, resp.status, await resp.text());
       } catch (e) {
-        console.error("send error", r.email, String(e));
+        console.error("[notify-weekly-clearance] send error", r.email, String(e));
       }
     }
 
@@ -241,7 +231,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         weekLabel,
-        recipients: recipients.length,
+        recipients:   recipients.length,
         emailed,
         totalUnits,
         totalRevenue,
@@ -251,7 +241,7 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
-    console.error(e);
+    console.error("[notify-weekly-clearance]", e);
     return new Response(JSON.stringify({ error: String(e) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

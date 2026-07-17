@@ -187,12 +187,10 @@ export function WeeklyReviewPanel({
 
       const [
         { data: mgr },
-        { data: mgrUserId },
         { data: dealers },
         { data: checkIns },
       ] = await Promise.all([
         supabase.from("managers").select("name,email").eq("id", managerId).maybeSingle(),
-        supabase.rpc("user_id_for_manager", { _manager_id: managerId }),
         supabase.from("dealers").select("id,rep_id,rep_owner"),
         supabase
           .from("dealer_check_ins")
@@ -219,24 +217,12 @@ export function WeeklyReviewPanel({
         supabase.from("sales_reps").select("id").in("manager_id", allManagerIds),
       ]);
 
-      // Users belonging to this manager
+      // Users belonging to this manager — match Visit Analytics: only user_managers chain.
+      // (Broader lookups like user_reps and email-fallback RPCs inflate the count beyond
+      // what Check-In Analytics shows, causing the two views to disagree.)
       const userIds = new Set<string>();
       (ums ?? []).forEach((r: any) => r.user_id && userIds.add(r.user_id));
-      if (typeof mgrUserId === "string" && mgrUserId) userIds.add(mgrUserId);
       const repIds = (reps ?? []).map((r: any) => r.id);
-      if (repIds.length) {
-        const repUserResults = await Promise.all(
-          repIds.map((rid) =>
-            supabase.rpc("user_id_for_rep_with_email_fallback", { _rep_id: rid }),
-          ),
-        );
-        repUserResults.forEach((r) => {
-          if (typeof r.data === "string" && r.data) userIds.add(r.data);
-        });
-        const { data: urs } = await supabase
-          .from("user_reps").select("user_id").in("rep_id", repIds);
-        (urs ?? []).forEach((r: any) => r.user_id && userIds.add(r.user_id));
-      }
 
       // Dealers owned by this manager's team
       const repIdSet = new Set(repIds);

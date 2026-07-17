@@ -103,7 +103,7 @@ const App = () => (
                       <Route path="/trade-show-leads/capture" element={<ProtectedRoute allow={["admin", "manager"]}><CaptureLeadsPage /></ProtectedRoute>} />
                       <Route path="/clearance" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceProductsPage /></ProtectedRoute>} />
                       <Route path="/clearance/analytics" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceAnalyticsPage /></ProtectedRoute>} />
-                      <Route path="/meeting-intelligence" element={<ProtectedRoute allow={["admin","manager"]}><MeetingIntelligencePage /></ProtectedRoute>} />
+                      <Route path="/meeting-intelligence" element={<ProtectedRoute allowEmails={["gmaccioni0808@gmail.com"]}><MeetingIntelligencePage /></ProtectedRoute>} />
                       <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]} denyEmails={["andrew@lineage-collections.com"]}><OrgChartPage /></ProtectedRoute>} />
                       <Route path="/crm/accounts" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsPage /></CrmGuard></ProtectedRoute>} />
                       <Route path="/crm/accounts/analytics" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsAnalyticsPage /></CrmGuard></ProtectedRoute>} />

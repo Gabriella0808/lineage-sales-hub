@@ -8,9 +8,11 @@ interface Props {
   allow?: AppRole[];
   /** If provided, users with these emails are denied (case-insensitive). */
   denyEmails?: string[];
+  /** If provided, only these emails (case-insensitive) can access, regardless of role. */
+  allowEmails?: string[];
 }
 
-export default function ProtectedRoute({ children, allow, denyEmails }: Props) {
+export default function ProtectedRoute({ children, allow, denyEmails, allowEmails }: Props) {
   const { session, loading, user } = useAuth();
   const { data: roleInfo, isLoading: roleLoading } = useUserRole();
 
@@ -27,6 +29,9 @@ export default function ProtectedRoute({ children, allow, denyEmails }: Props) {
     return <Navigate to="/" replace />;
   }
   if (denyEmails && user?.email && denyEmails.map(e => e.toLowerCase()).includes(user.email.toLowerCase())) {
+    return <Navigate to="/" replace />;
+  }
+  if (allowEmails && (!user?.email || !allowEmails.map(e => e.toLowerCase()).includes(user.email.toLowerCase()))) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;

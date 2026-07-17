@@ -24,6 +24,7 @@ type NavItem = {
   url: string;
   icon: typeof LayoutDashboard;
   roles: AppRole[];
+  allowEmails?: string[];
   children?: { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] }[];
 };
 
@@ -45,7 +46,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Overview",  url: "/",      icon: Compass,     roles: ["admin", "manager", "rep"] },
       { title: "My Tasks", url: "/tasks", icon: ListChecks, roles: ["admin", "manager", "rep"] },
-      { title: "Meeting Intelligence", url: "/meeting-intelligence", icon: AudioLines, roles: ["admin", "manager"] },
+      { title: "Meeting Intelligence", url: "/meeting-intelligence", icon: AudioLines, roles: ["admin", "manager"], allowEmails: ["gmaccioni0808@gmail.com"] },
     ],
   },
   {
@@ -213,6 +214,7 @@ function SidebarNav() {
       items: s.items
         .filter((i) => (cs ? CS_ALLOWED.has(i.url) : i.roles.includes(role)))
         .filter((i) => !(i.url === "/org-chart" && user?.email?.toLowerCase() === "andrew@lineage-collections.com"))
+        .filter((i) => !i.allowEmails || (!!user?.email && i.allowEmails.map(e => e.toLowerCase()).includes(user.email.toLowerCase())))
         .map((i) => (cs ? { ...i, children: undefined } : i)),
     }))
     .filter((s) => s.items.length > 0);

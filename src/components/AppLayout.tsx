@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
-  FileText, Send, FolderOpen, Tag, Database, ChevronLeft, ChevronRight,
+  FileText, Send, FolderOpen, Tag, Database, ChevronLeft, ChevronRight, AudioLines,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Overview",  url: "/",      icon: Compass,     roles: ["admin", "manager", "rep"] },
       { title: "My Tasks", url: "/tasks", icon: ListChecks, roles: ["admin", "manager", "rep"] },
+      { title: "Meeting Intelligence", url: "/meeting-intelligence", icon: AudioLines, roles: ["admin", "manager"] },
     ],
   },
   {

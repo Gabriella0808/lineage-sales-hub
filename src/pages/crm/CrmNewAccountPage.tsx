@@ -45,6 +45,7 @@ export default function CrmNewAccountPage() {
     { id: "mateo", name: "Mateo" },
     { id: "chris", name: "Chris" },
     { id: "justin", name: "Justin" },
+    { id: "kate", name: "Kate" },
   ] as const;
 
   const submit = (e: React.FormEvent) => {

@@ -212,16 +212,21 @@ export function WeeklyReviewPanel({
         });
       }
 
-      const [{ data: ums }, { data: reps }] = await Promise.all([
+      const [{ data: ums }, { data: allUms }, { data: reps }] = await Promise.all([
         supabase.from("user_managers").select("user_id").in("manager_id", allManagerIds),
+        // All user_managers rows — used to detect users belonging to OTHER managers so
+        // we don't count their check-ins via dealer attribution (matches Visit Analytics logic).
+        supabase.from("user_managers").select("user_id"),
         supabase.from("sales_reps").select("id").in("manager_id", allManagerIds),
       ]);
 
       // Users belonging to this manager — match Visit Analytics: only user_managers chain.
-      // (Broader lookups like user_reps and email-fallback RPCs inflate the count beyond
-      // what Check-In Analytics shows, causing the two views to disagree.)
       const userIds = new Set<string>();
       (ums ?? []).forEach((r: any) => r.user_id && userIds.add(r.user_id));
+      // All users with any manager link — dealer attribution is only a fallback for
+      // check-ins whose user_id is not mapped to ANY manager (matches Visit Analytics OR logic).
+      const allManagedUserIds = new Set<string>();
+      (allUms ?? []).forEach((r: any) => r.user_id && allManagedUserIds.add(r.user_id));
       const repIds = (reps ?? []).map((r: any) => r.id);
 
       // Dealers owned by this manager's team
@@ -237,11 +242,13 @@ export function WeeklyReviewPanel({
         }
       });
 
-      const rows = (checkIns ?? []).filter(
-        (c: any) =>
-          (c.user_id && userIds.has(c.user_id)) ||
-          (c.dealer_id && dealerIds.has(c.dealer_id)),
-      );
+      const rows = (checkIns ?? []).filter((c: any) => {
+        if (c.user_id && userIds.has(c.user_id)) return true;
+        // If the user belongs to any other manager, don't override via dealer — same as
+        // Visit Analytics where user attribution always takes priority over dealer.
+        if (c.user_id && allManagedUserIds.has(c.user_id)) return false;
+        return c.dealer_id && dealerIds.has(c.dealer_id);
+      });
 
       return {
         checkIns: rows.length,

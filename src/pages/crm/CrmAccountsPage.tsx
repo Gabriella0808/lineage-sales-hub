@@ -366,7 +366,7 @@ export default function CrmAccountsPage() {
             <SelectContent>
               <SelectItem value="all">All managers</SelectItem>
               {managers
-                .filter((m) => ["Will", "Mateo", "Kate", "Chris De Lisa", "Kate Jones"].includes(m.name))
+                .filter((m) => ["will", "mateo", "kate", "kate jones", "chris de lisa"].includes((m.name ?? "").toLowerCase()))
                 .map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -644,7 +644,7 @@ export default function CrmAccountsPage() {
                         <SelectContent>
                           <SelectItem value="unassigned">Unassigned</SelectItem>
                           {managers
-                            .filter((m) => ["Will", "Mateo", "Kate", "Chris De Lisa"].includes(m.name))
+                            .filter((m) => ["will", "mateo", "kate", "kate jones", "chris de lisa"].includes((m.name ?? "").toLowerCase()))
                             .map((m) => (
                               <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                             ))}

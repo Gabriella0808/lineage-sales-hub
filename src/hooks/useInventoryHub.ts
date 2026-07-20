@@ -37,6 +37,41 @@ export interface PurchaseOrderLine {
   eta: string | null;
 }
 
+export interface OpenPO {
+  po_number: string;
+  po_status: string | null;
+  vendor_id: string | null;
+  due_date: string | null;
+  estimated_arrival: string | null;
+  warehouse: string | null;
+  percent_received: number | null;
+  percent_invoiced: number | null;
+  total_amount: number;
+  outstanding_qty: number;
+  outstanding_amount: number;
+  ship_via: string | null;
+  container_num: string | null;
+  vessel: string | null;
+  forwarder: string | null;
+  shipment_status: string | null;
+  days_late: number | null;
+}
+
+export interface OpenPOLine {
+  sku: string;
+  description: string | null;
+  po_number: string;
+  vendor_id: string | null;
+  warehouse: string | null;
+  quantity_ordered: number;
+  quantity_received: number;
+  quantity_outstanding: number;
+  amount_open: number;
+  estimated_arrival: string | null;
+  shipment_status: string | null;
+  days_late: number | null;
+}
+
 export interface SkuSalesHistory {
   id: string;
   sku: string;
@@ -71,6 +106,8 @@ export function useInventoryHub() {
   const [openOrders, setOpenOrders] = useState<OpenSalesOrder[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [poLines, setPoLines] = useState<PurchaseOrderLine[]>([]);
+  const [openPOs, setOpenPOs] = useState<OpenPO[]>([]);
+  const [openPOLines, setOpenPOLines] = useState<OpenPOLine[]>([]);
   const [salesHistory, setSalesHistory] = useState<SkuSalesHistory[]>([]);
   const [lostSales, setLostSales] = useState<LostSaleEvent[]>([]);
   const [demandSignals, setDemandSignals] = useState<DealerDemandSignal[]>([]);
@@ -80,13 +117,19 @@ export function useInventoryHub() {
     let active = true;
 
     const loadPOs = async () => {
-      const [po, pol] = await Promise.all([
+      const [po, pol, vpo, vpol] = await Promise.all([
         supabase.from("purchase_orders").select("id, po_number, factory, status, production_stage, order_date, eta, total_value, prepaid_amount, is_prepaid, container_type").limit(1000),
         supabase.from("purchase_order_lines").select("id, po_id, sku, qty_ordered, qty_received, unit_cost, eta").limit(1000),
+        supabase.from("v_portal_open_pos").select("po_number, po_status, vendor_id, due_date, estimated_arrival, warehouse, percent_received, percent_invoiced, total_amount, outstanding_qty, outstanding_amount, ship_via, container_num, vessel, forwarder, shipment_status, days_late").limit(2000),
+        supabase.from("v_portal_open_po_lines").select("sku, description, po_number, vendor_id, warehouse, quantity_ordered, quantity_received, quantity_outstanding, amount_open, estimated_arrival, shipment_status, days_late").limit(5000),
       ]);
       if (!active) return;
       setPurchaseOrders((po.data ?? []) as PurchaseOrder[]);
       setPoLines((pol.data ?? []) as PurchaseOrderLine[]);
+      if (vpo.error) console.error("[useInventoryHub] v_portal_open_pos:", vpo.error);
+      else setOpenPOs((vpo.data ?? []).map((r: any) => ({ ...r, total_amount: Number(r.total_amount), outstanding_qty: Number(r.outstanding_qty), outstanding_amount: Number(r.outstanding_amount), percent_received: r.percent_received != null ? Number(r.percent_received) : null, percent_invoiced: r.percent_invoiced != null ? Number(r.percent_invoiced) : null, days_late: r.days_late != null ? Number(r.days_late) : null })) as OpenPO[]);
+      if (vpol.error) console.error("[useInventoryHub] v_portal_open_po_lines:", vpol.error);
+      else setOpenPOLines((vpol.data ?? []).map((r: any) => ({ ...r, quantity_ordered: Number(r.quantity_ordered), quantity_received: Number(r.quantity_received), quantity_outstanding: Number(r.quantity_outstanding), amount_open: Number(r.amount_open), days_late: r.days_late != null ? Number(r.days_late) : null })) as OpenPOLine[]);
     };
 
     const fetchAllOpenOrders = async () => {
@@ -146,5 +189,5 @@ export function useInventoryHub() {
     };
   }, []);
 
-  return { openOrders, purchaseOrders, poLines, salesHistory, lostSales, demandSignals, loading };
+  return { openOrders, purchaseOrders, poLines, openPOs, openPOLines, salesHistory, lostSales, demandSignals, loading };
 }

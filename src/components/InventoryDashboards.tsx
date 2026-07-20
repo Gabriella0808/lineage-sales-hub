@@ -14,7 +14,7 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import type { InventoryItem } from "@/data/inventoryMock";
-import { useInventoryHub, type PurchaseOrder } from "@/hooks/useInventoryHub";
+import { useInventoryHub, type PurchaseOrder, type OpenPO, type OpenPOLine } from "@/hooks/useInventoryHub";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -139,166 +139,113 @@ function ReportSkuValue({ items, total }: { items: InventoryItem[]; total: numbe
   );
 }
 
-function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
-  const rows = useMemo(() => {
-    const hash = (s: string) => {
-      let h = 2166136261;
-      for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 16777619) >>> 0; }
-      return h;
-    };
-    const BRANDS = ["SW", "F&L", "LL"];
-    const VENDORS = ["THINHVIET", "PACIFIC MILL", "VIETNAM ATELIER", "HANOI WOODWORKS", "MEKONG CRAFT", "SAIGON FORGE"];
-    const FORWARDERS = ["Ceva Logistics", "Expeditors", "Kuehne+Nagel", "DSV", "DHL Global"];
-    const CUSTOMS = ["RTG Internal", "Livingston", "Expeditors Brokerage", "Kuehne Brokerage"];
-    const VESSELS = ["CMA CGM ORFEO", "MAERSK HONAM", "EVER GIVEN", "MSC OSCAR", "ONE STORK", "COSCO SHIPPING"];
-    const PORTS = ["TAMPA", "SAVANNAH", "LONG BEACH", "CHARLESTON", "NORFOLK", "HOUSTON"];
-    const DESCRIPTIONS = ["RTG DC", "Isla Occ", "Coastal Sofa", "Veranda Set", "Bayview Bed", "Harbor Dining", "Tradewinds Lounge"];
-    const COLLECTIONS = ["Coastal", "Veranda", "Harbor", "Bayview", "Tradewinds", "Isla", "Heritage"];
-    const SKU_PREFIX = ["SW", "FL", "LL", "RTG"];
+function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
+  const [fVendor, setFVendor] = useState("all");
+  const [fStatus, setFStatus] = useState("all");
+  const [fWarehouse, setFWarehouse] = useState("all");
+  const [fSku, setFSku] = useState("");
+  const [skuSheetPO, setSkuSheetPO] = useState<string | null>(null);
 
-    return [...pos]
-      .sort((a, b) => Number(b.total_value) - Number(a.total_value))
-      .map((p, idx) => {
-        const seed = hash((p.po_number ?? p.id ?? `po-${idx}`) + "|openpo");
-        const orderDate = p.order_date ? new Date(p.order_date) : new Date(Date.now() - ((seed % 180) + 30) * 86400000);
-        const proForma = new Date(orderDate.getTime() + 60 * 86400000);
-        const actualShip = new Date(proForma.getTime() + ((seed % 14) - 3) * 86400000);
-        const eta = p.eta ? new Date(p.eta) : new Date(actualShip.getTime() + 49 * 86400000);
-        const dueInPort = new Date(eta.getTime() + 2 * 86400000);
-        const invoiceEntered = new Date(actualShip.getTime() + 1 * 86400000);
-        const oceanEntered = new Date(actualShip.getTime() + 3 * 86400000);
-        const drayageEntered = new Date(eta.getTime() + 1 * 86400000);
-        const value = Number(p.total_value) || (18000 + (seed % 42000));
-        const oceanFreight = 8 + ((seed >> 3) % 18) / 10; // 0.8-2.6 (k)
-        const drayage = (seed >> 5) % 4 === 0 ? "N/A" : `$${(900 + ((seed >> 7) % 1800)).toFixed(0)}`;
-        const tariffDisc = (seed >> 9) % 3 === 0 ? "Yes" : "No";
-        return {
-          id: p.id,
-          orderDate,
-          brand: BRANDS[seed % BRANDS.length],
-          vendor: (p.factory ?? VENDORS[(seed >> 1) % VENDORS.length]).toUpperCase(),
-          collection: COLLECTIONS[(seed >> 13) % COLLECTIONS.length],
-          sku: `${SKU_PREFIX[(seed >> 15) % SKU_PREFIX.length]}-${1000 + (seed % 8999)}`,
-          description: `${DESCRIPTIONS[(seed >> 2) % DESCRIPTIONS.length]} (${(1500000 + (seed % 500000))}YPA)`,
-          dcInvRec: (seed >> 4) % 5 === 0 ? "NO" : "YES",
-          proForma,
-          poNumber: p.po_number ?? `PO-${(seed % 9000) + 1000}`,
-          actualShip,
-          eta,
-          forwarder: FORWARDERS[(seed >> 6) % FORWARDERS.length],
-          customs: CUSTOMS[(seed >> 8) % CUSTOMS.length],
-          vessel: VESSELS[(seed >> 10) % VESSELS.length],
-          container: `${["CMAU", "MSKU", "TCLU", "GESU"][(seed >> 12) % 4]}${1000000 + (seed % 8999999)}`,
-          dueInPort,
-          port: PORTS[(seed >> 14) % PORTS.length],
-          whereToTrack: ["Carrier site", "Forwarder portal", "N/A"][(seed >> 16) % 3],
-          drayage,
-          notes: (seed >> 18) % 7 === 0 ? "Customer responsible" : "-",
-          tariffDisc,
-          invoiceValue: value,
-          invoiceEntered,
-          invoiceNo: `INV-${(seed % 90000) + 10000}`,
-          oceanFreight,
-          oceanEntered,
-          drayageRate: drayage === "N/A" ? "N/A" : drayage,
-          drayageEntered,
-          tariff: tariffDisc === "Yes" ? `$${(((seed >> 11) % 4000) + 500).toFixed(0)}` : "N/A",
-        };
-      });
-  }, [pos]);
+  const uniq = (arr: (string | null)[]) =>
+    Array.from(new Set(arr.filter(Boolean) as string[])).sort();
 
-  const [detail, setDetail] = useState<{ title: string; subset: typeof rows } | null>(null);
+  const vendorOpts = useMemo(() => uniq(pos.map((r) => r.vendor_id)), [pos]);
+  const statusOpts = useMemo(() => uniq(pos.map((r) => r.shipment_status)), [pos]);
+  const warehouseOpts = useMemo(() => uniq(pos.map((r) => r.warehouse)), [pos]);
 
-  const [fVendor, setFVendor] = useState<string>("all");
-  const [fBrand, setFBrand] = useState<string>("all");
-  const [fCollection, setFCollection] = useState<string>("all");
-  const [fItem, setFItem] = useState<string>("all");
-  const [fSku, setFSku] = useState<string>("");
-
-  const uniq = (arr: string[]) => Array.from(new Set(arr)).sort();
-  const vendorOpts = useMemo(() => uniq(rows.map((r) => r.vendor)), [rows]);
-  const brandOpts = useMemo(() => uniq(rows.map((r) => r.brand)), [rows]);
-  const collectionOpts = useMemo(() => uniq(rows.map((r) => r.collection)), [rows]);
-  const itemOpts = useMemo(() => uniq(rows.map((r) => r.description)), [rows]);
-
-  const filteredRows = useMemo(() => {
-    const skuQ = fSku.trim().toLowerCase();
-    return rows.filter((r) =>
-      (fVendor === "all" || r.vendor === fVendor) &&
-      (fBrand === "all" || r.brand === fBrand) &&
-      (fCollection === "all" || r.collection === fCollection) &&
-      (fItem === "all" || r.description === fItem) &&
-      (skuQ === "" || r.sku.toLowerCase().includes(skuQ) || r.poNumber.toLowerCase().includes(skuQ))
+  const filtered = useMemo(() => {
+    const q = fSku.trim().toLowerCase();
+    return pos.filter(
+      (r) =>
+        (fVendor === "all" || r.vendor_id === fVendor) &&
+        (fStatus === "all" || r.shipment_status === fStatus) &&
+        (fWarehouse === "all" || r.warehouse === fWarehouse) &&
+        (q === "" || r.po_number.toLowerCase().includes(q) ||
+          (r.vendor_id ?? "").toLowerCase().includes(q) ||
+          (r.container_num ?? "").toLowerCase().includes(q)),
     );
-  }, [rows, fVendor, fBrand, fCollection, fItem, fSku]);
+  }, [pos, fVendor, fStatus, fWarehouse, fSku]);
 
-  const filtersActive = fVendor !== "all" || fBrand !== "all" || fCollection !== "all" || fItem !== "all" || fSku.trim() !== "";
-  const resetFilters = () => { setFVendor("all"); setFBrand("all"); setFCollection("all"); setFItem("all"); setFSku(""); };
+  const filtersActive = fVendor !== "all" || fStatus !== "all" || fWarehouse !== "all" || fSku.trim() !== "";
+  const resetFilters = () => { setFVendor("all"); setFStatus("all"); setFWarehouse("all"); setFSku(""); };
 
-  if (rows.length === 0) return <EmptyState message="No POs to show." />;
-  const fd = (d: Date) => d.toLocaleDateString();
-
-  // Vendor lateness: avg days late = actualShip - proForma
-  const vendorLateness = (() => {
-    const m = new Map<string, { sum: number; n: number; late: number }>();
-    for (const r of filteredRows) {
-      const days = Math.round((r.actualShip.getTime() - r.proForma.getTime()) / 86400000);
-      const e = m.get(r.vendor) ?? { sum: 0, n: 0, late: 0 };
-      e.sum += days; e.n += 1; if (days > 0) e.late += 1;
-      m.set(r.vendor, e);
+  // Chart 1 — Avg days late by vendor (Delayed only)
+  const vendorLateness = useMemo(() => {
+    const m = new Map<string, { sum: number; n: number }>();
+    for (const r of filtered) {
+      if (r.shipment_status !== "Delayed" || r.days_late == null) continue;
+      const v = r.vendor_id ?? "Unknown";
+      const e = m.get(v) ?? { sum: 0, n: 0 };
+      e.sum += Number(r.days_late); e.n += 1;
+      m.set(v, e);
     }
     return Array.from(m.entries())
-      .map(([vendor, v]) => ({ vendor, avgDaysLate: Math.round(v.sum / v.n), pos: v.n, lateCount: v.late }))
+      .map(([vendor, v]) => ({ vendor, avgDaysLate: Math.round(v.sum / v.n) }))
       .sort((a, b) => b.avgDaysLate - a.avgDaysLate);
-  })();
+  }, [filtered]);
 
-  // ETA by month
-  const etaByMonth = (() => {
+  // Chart 2 — Estimated arrivals by month
+  const arrivalsByMonth = useMemo(() => {
     const m = new Map<string, number>();
-    for (const r of filteredRows) {
-      const key = `${r.eta.getFullYear()}-${String(r.eta.getMonth() + 1).padStart(2, "0")}`;
+    for (const r of filtered) {
+      if (!r.estimated_arrival) continue;
+      const d = new Date(r.estimated_arrival);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       m.set(key, (m.get(key) ?? 0) + 1);
     }
     return Array.from(m.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, count]) => {
-        const [y, mo] = month.split("-");
-        const label = new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString(undefined, { month: "short", year: "2-digit" });
-        return { month: label, count };
+      .map(([k, count]) => {
+        const [y, mo] = k.split("-");
+        return {
+          month: new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString(undefined, { month: "short", year: "2-digit" }),
+          count,
+        };
       });
-  })();
+  }, [filtered]);
 
-  // On-time vs late
-  const now = Date.now();
-  const statusSplit = (() => {
-    let onTime = 0, late = 0, arrived = 0;
-    for (const r of filteredRows) {
-      if (r.eta.getTime() < now) arrived += 1;
-      else if (r.actualShip.getTime() > r.proForma.getTime()) late += 1;
-      else onTime += 1;
+  // Chart 3 — Shipment status breakdown
+  const statusBreakdown = useMemo(() => {
+    const STATUS_COLORS: Record<string, string> = {
+      "On Time": "hsl(var(--success))",
+      "Delayed": "hsl(var(--destructive))",
+      "At Risk": "hsl(var(--warning))",
+      "Arrived": "hsl(var(--muted-foreground))",
+    };
+    const m = new Map<string, number>();
+    for (const r of filtered) {
+      const s = r.shipment_status ?? "Unknown";
+      m.set(s, (m.get(s) ?? 0) + 1);
     }
-    return [
-      { name: "On Time", value: onTime, fill: "hsl(var(--success))" },
-      { name: "Delayed", value: late, fill: "hsl(var(--destructive))" },
-      { name: "Arrived", value: arrived, fill: "hsl(var(--muted-foreground))" },
-    ].filter((d) => d.value > 0);
-  })();
+    return Array.from(m.entries())
+      .map(([name, value]) => ({ name, value, fill: STATUS_COLORS[name] ?? "hsl(var(--accent))" }))
+      .sort((a, b) => b.value - a.value);
+  }, [filtered]);
 
-  const totalLate = vendorLateness.reduce((s, v) => s + v.lateCount, 0);
+  const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "-");
+  const fmtPct = (n: number | null) => (n != null ? `${Number(n).toFixed(0)}%` : "-");
+
+  const skuLines = useMemo(
+    () => (skuSheetPO ? lines.filter((l) => l.po_number === skuSheetPO) : []),
+    [lines, skuSheetPO],
+  );
+
+  if (pos.length === 0) return <EmptyState message="No open POs found." />;
 
   return (
     <div className="space-y-4">
+      {/* Filters */}
       <Card className="p-3">
         <div className="flex items-center justify-between mb-2">
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filters</div>
           <div className="text-[10px] text-muted-foreground">
-            Showing {filteredRows.length} of {rows.length} POs
+            Showing {filtered.length} of {pos.length} POs
             {filtersActive && (
               <Button size="sm" variant="ghost" className="h-6 px-2 ml-2 text-[10px]" onClick={resetFilters}>Reset</Button>
             )}
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <Select value={fVendor} onValueChange={setFVendor}>
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Vendor" /></SelectTrigger>
             <SelectContent>
@@ -306,219 +253,186 @@ function ReportOpenPOsFull({ pos }: { pos: PurchaseOrder[] }) {
               {vendorOpts.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={fItem} onValueChange={setFItem}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Item" /></SelectTrigger>
+          <Select value={fStatus} onValueChange={setFStatus}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Items</SelectItem>
-              {itemOpts.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+              <SelectItem value="all">All Statuses</SelectItem>
+              {statusOpts.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={fCollection} onValueChange={setFCollection}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Collection" /></SelectTrigger>
+          <Select value={fWarehouse} onValueChange={setFWarehouse}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Warehouse" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Collections</SelectItem>
-              {collectionOpts.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+              <SelectItem value="all">All Warehouses</SelectItem>
+              {warehouseOpts.map((w) => <SelectItem key={w} value={w}>{w}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={fBrand} onValueChange={setFBrand}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Brand" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Brands</SelectItem>
-              {brandOpts.map((v) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Input
-            value={fSku}
-            onChange={(e) => setFSku(e.target.value)}
-            placeholder="SKU or PO #"
-            className="h-8 text-xs"
-          />
+          <Input value={fSku} onChange={(e) => setFSku(e.target.value)} placeholder="PO #, vendor, container…" className="h-8 text-xs" />
         </div>
       </Card>
 
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card className="p-3">
           <div className="text-xs font-semibold mb-1">Avg Days Late by Vendor</div>
-          <div className="text-[10px] text-muted-foreground mb-2">Click a bar to view POs · {totalLate} late POs</div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={vendorLateness} layout="vertical" margin={{ left: 10, right: 10, top: 4, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis type="number" tick={{ fontSize: 10 }} />
-              <YAxis type="category" dataKey="vendor" tick={{ fontSize: 10 }} width={110} />
-              <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
-              <Bar
-                dataKey="avgDaysLate"
-                name="Avg days late"
-                radius={[0, 4, 4, 0]}
-                cursor="pointer"
-                onClick={((d: { vendor?: string }) => {
-                  if (!d?.vendor) return;
-                  setDetail({ title: `Vendor: ${d.vendor}`, subset: rows.filter((r) => r.vendor === d.vendor) });
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                }) as any}
-              >
-                {vendorLateness.map((v, i) => (
-                  <Cell key={i} fill={v.avgDaysLate > 7 ? "hsl(var(--destructive))" : v.avgDaysLate > 0 ? "hsl(var(--warning))" : "hsl(var(--success))"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="text-[10px] text-muted-foreground mb-2">Delayed shipments only</div>
+          {vendorLateness.length === 0 ? (
+            <div className="text-xs text-muted-foreground py-8 text-center">No delayed POs</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={vendorLateness} layout="vertical" margin={{ left: 10, right: 10, top: 4, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis type="number" tick={{ fontSize: 10 }} />
+                <YAxis type="category" dataKey="vendor" tick={{ fontSize: 10 }} width={110} />
+                <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} formatter={(v: number) => [`${v} days`, "Avg Late"]} />
+                <Bar dataKey="avgDaysLate" name="Avg days late" radius={[0, 4, 4, 0]}>
+                  {vendorLateness.map((v, i) => (
+                    <Cell key={i} fill={v.avgDaysLate > 14 ? "hsl(var(--destructive))" : "hsl(var(--warning))"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </Card>
 
         <Card className="p-3">
           <div className="text-xs font-semibold mb-1">Estimated Arrivals by Month</div>
-          <div className="text-[10px] text-muted-foreground mb-2">Click a bar to view POs arriving</div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={etaByMonth} margin={{ left: 0, right: 10, top: 4, bottom: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-              <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
-              <Bar
-                dataKey="count"
-                name="POs arriving"
-                fill="hsl(var(--primary))"
-                radius={[4, 4, 0, 0]}
-                cursor="pointer"
-                onClick={((d: { month?: string }) => {
-                  if (!d?.month) return;
-                  const subset = rows.filter((r) => {
-                    const label = new Date(r.eta.getFullYear(), r.eta.getMonth(), 1).toLocaleDateString(undefined, { month: "short", year: "2-digit" });
-                    return label === d.month;
-                  });
-                  setDetail({ title: `Arrivals: ${d.month}`, subset });
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                }) as any}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="text-[10px] text-muted-foreground mb-2">PO count by estimated arrival month</div>
+          {arrivalsByMonth.length === 0 ? (
+            <div className="text-xs text-muted-foreground py-8 text-center">No arrival data</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={arrivalsByMonth} margin={{ left: 0, right: 10, top: 4, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
+                <Bar dataKey="count" name="POs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </Card>
 
         <Card className="p-3">
           <div className="text-xs font-semibold mb-1">Shipment Status</div>
-          <div className="text-[10px] text-muted-foreground mb-2">Click a segment to view POs</div>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={statusSplit}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={70}
-                innerRadius={40}
-                label={{ fontSize: 10 }}
-                cursor="pointer"
-                onClick={(d: { name?: string }) => {
-                  if (!d?.name) return;
-                  const subset = rows.filter((r) => {
-                    if (r.eta.getTime() < now) return d.name === "Arrived";
-                    if (r.actualShip.getTime() > r.proForma.getTime()) return d.name === "Delayed";
-                    return d.name === "On Time";
-                  });
-                  setDetail({ title: `Status: ${d.name}`, subset });
-                }}
-              >
-                {statusSplit.map((d, i) => <Cell key={i} fill={d.fill} />)}
-              </Pie>
-              <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="text-[10px] text-muted-foreground mb-2">All filtered POs</div>
+          {statusBreakdown.length === 0 ? (
+            <div className="text-xs text-muted-foreground py-8 text-center">No data</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={statusBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={40} label={{ fontSize: 10 }}>
+                  {statusBreakdown.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                </Pie>
+                <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
+                <Legend wrapperStyle={{ fontSize: 10 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </Card>
       </div>
 
-      <Dialog open={!!detail} onOpenChange={(o) => { if (!o) setDetail(null); }}>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{detail?.title}</DialogTitle>
-            <DialogDescription>
-              {detail?.subset.length ?? 0} PO{(detail?.subset.length ?? 0) === 1 ? "" : "s"} · total {fmtMoney((detail?.subset ?? []).reduce((s, r) => s + r.invoiceValue, 0))}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="overflow-auto flex-1">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground sticky top-0">
-                <tr>
-                  {["PO #","Vendor","Brand","Description","Pro Forma","Actual Ship","ETA","Port","Vessel","Container","Invoice $","Days Late"].map((h) => (
-                    <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(detail?.subset ?? []).map((r) => {
-                  const daysLate = Math.round((r.actualShip.getTime() - r.proForma.getTime()) / 86400000);
-                  return (
-                    <tr key={r.id} className="border-t border-border hover:bg-muted/30">
-                      <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.poNumber}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor}</td>
-                      <td className="px-2 py-1.5">{r.brand}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.description}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.proForma)}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.actualShip)}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.eta)}</td>
-                      <td className="px-2 py-1.5">{r.port}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap">{r.vessel}</td>
-                      <td className="px-2 py-1.5 font-mono">{r.container}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums">{fmtMoney(r.invoiceValue)}</td>
-                      <td className={cn("px-2 py-1.5 text-right tabular-nums font-semibold", daysLate > 7 ? "text-destructive" : daysLate > 0 ? "text-warning" : "text-success")}>{daysLate > 0 ? `+${daysLate}` : daysLate}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </DialogContent>
-      </Dialog>
-
+      {/* PO table */}
       <div className="overflow-auto">
-      <table className="w-full text-xs">
-        <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground sticky top-0">
-          <tr>
-            {[
-              "Order Date","Brand","Vendor","SKU","Collection","Description","DC Inv/Rec","Pro Forma Ship","PO #","Actual Ship","Est Arrival","Freight Forwarder",
-              "Customs Provider","Vessel","Container #","Due in Port","Port","Where to Track","Drayage","Notes","Tariff Disc?",
-              "Invoice $","Inv Entered","Invoice No","Ocean Freight","Ocean Entered","Drayage Rate","Dray Entered","Tariff",
-            ].map((h) => <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {filteredRows.map((r) => (
-            <tr key={r.id} className="border-t border-border hover:bg-muted/30">
-              <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.orderDate)}</td>
-              <td className="px-2 py-1.5">{r.brand}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor}</td>
-              <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.sku}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{r.collection}</td>
-              <td className="px-2 py-1.5 max-w-[200px] truncate" title={r.description}>{r.description}</td>
-              <td className="px-2 py-1.5">{r.dcInvRec}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.proForma)}</td>
-              <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.poNumber}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.actualShip)}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.eta)}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{r.forwarder}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{r.customs}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{r.vessel}</td>
-              <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.container}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.dueInPort)}</td>
-              <td className="px-2 py-1.5">{r.port}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{r.whereToTrack}</td>
-              <td className="px-2 py-1.5">{r.drayage}</td>
-              <td className="px-2 py-1.5 max-w-[160px] truncate" title={r.notes}>{r.notes}</td>
-              <td className="px-2 py-1.5">{r.tariffDisc}</td>
-              <td className="px-2 py-1.5 text-right tabular-nums font-semibold whitespace-nowrap">{fmtMoney(r.invoiceValue)}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.invoiceEntered)}</td>
-              <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.invoiceNo}</td>
-              <td className="px-2 py-1.5 text-right tabular-nums">{r.oceanFreight.toFixed(1)}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.oceanEntered)}</td>
-              <td className="px-2 py-1.5">{r.drayageRate}</td>
-              <td className="px-2 py-1.5 whitespace-nowrap">{fd(r.drayageEntered)}</td>
-              <td className="px-2 py-1.5">{r.tariff}</td>
+        <table className="w-full text-xs">
+          <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground sticky top-0">
+            <tr>
+              {["PO #","Status","Vendor","Warehouse","Due Date","Est. Arrival","Ship Via","Container","Vessel","Forwarder","Shipment Status","Days Late","Total Amt","Outstanding Qty","Outstanding Amt","% Recv","% Inv","SKUs"].map((h) => (
+                <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtered.map((r) => {
+              const late = r.days_late != null ? Number(r.days_late) : null;
+              return (
+                <tr key={r.po_number} className="border-t border-border hover:bg-muted/30">
+                  <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.po_number}</td>
+                  <td className="px-2 py-1.5">{r.po_status ?? "-"}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor_id ?? "-"}</td>
+                  <td className="px-2 py-1.5">{r.warehouse ?? "-"}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.due_date)}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.estimated_arrival)}</td>
+                  <td className="px-2 py-1.5">{r.ship_via ?? "-"}</td>
+                  <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.container_num ?? "-"}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{r.vessel ?? "-"}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{r.forwarder ?? "-"}</td>
+                  <td className="px-2 py-1.5">
+                    {r.shipment_status ? (
+                      <span className={cn("inline-block px-1.5 py-0.5 rounded text-[10px] font-medium",
+                        r.shipment_status === "Delayed" ? "bg-destructive/10 text-destructive" :
+                        r.shipment_status === "At Risk" ? "bg-warning/15 text-warning-foreground" :
+                        r.shipment_status === "On Time" ? "bg-success/10 text-success" :
+                        "bg-muted text-muted-foreground"
+                      )}>{r.shipment_status}</span>
+                    ) : "-"}
+                  </td>
+                  <td className={cn("px-2 py-1.5 text-right tabular-nums font-semibold",
+                    late != null && late > 0 ? "text-destructive" : "text-muted-foreground"
+                  )}>{late != null ? (late > 0 ? `+${late}` : late) : "-"}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtMoney(Number(r.total_amount))}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(r.outstanding_qty))}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtMoney(Number(r.outstanding_amount))}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(r.percent_received)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(r.percent_invoiced)}</td>
+                  <td className="px-2 py-1.5">
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => setSkuSheetPO(r.po_number)}>
+                      View SKUs
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
+
+      {/* SKU-level drilldown sheet */}
+      <Sheet open={!!skuSheetPO} onOpenChange={(o) => { if (!o) setSkuSheetPO(null); }}>
+        <SheetContent side="right" className="w-full max-w-4xl overflow-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle>SKU Lines — {skuSheetPO}</SheetTitle>
+            <SheetDescription>{skuLines.length} line{skuLines.length !== 1 ? "s" : ""}</SheetDescription>
+          </SheetHeader>
+          {skuLines.length === 0 ? (
+            <EmptyState message="No SKU lines found for this PO." />
+          ) : (
+            <div className="overflow-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground sticky top-0">
+                  <tr>
+                    {["SKU","Description","Vendor","Warehouse","Ordered","Received","Outstanding","Amount Open","Est. Arrival","Status","Days Late"].map((h) => (
+                      <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {skuLines.map((l, i) => {
+                    const late = l.days_late != null ? Number(l.days_late) : null;
+                    return (
+                      <tr key={`${l.po_number}-${l.sku}-${i}`} className="border-t border-border hover:bg-muted/30">
+                        <td className="px-2 py-1.5 font-mono whitespace-nowrap">{l.sku}</td>
+                        <td className="px-2 py-1.5 max-w-[200px] truncate" title={l.description ?? ""}>{l.description ?? "-"}</td>
+                        <td className="px-2 py-1.5 whitespace-nowrap">{l.vendor_id ?? "-"}</td>
+                        <td className="px-2 py-1.5">{l.warehouse ?? "-"}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(l.quantity_ordered))}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(l.quantity_received))}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtNum(Number(l.quantity_outstanding))}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums">{fmtMoney(Number(l.amount_open))}</td>
+                        <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(l.estimated_arrival)}</td>
+                        <td className="px-2 py-1.5">{l.shipment_status ?? "-"}</td>
+                        <td className={cn("px-2 py-1.5 text-right tabular-nums font-semibold",
+                          late != null && late > 0 ? "text-destructive" : "text-muted-foreground"
+                        )}>{late != null ? (late > 0 ? `+${late}` : late) : "-"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -753,16 +667,16 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     }
     const backlogValue = hub.openOrders.reduce((s, o) => s + Number(o.extended_value ?? 0), 0);
     const backlogUnits = hub.openOrders.reduce((s, o) => s + Number(o.qty_open ?? 0), 0);
-    const openPoValue = hub.purchaseOrders
-      .filter((p) => p.production_stage !== "closed" && p.production_stage !== "arrived")
-      .reduce((s, p) => s + Number(p.total_value ?? 0), 0);
+    const openPoValue = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_amount), 0);
+    const openPoCount = new Set(hub.openPOs.map((p) => p.po_number)).size;
+    const openPoUnits = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_qty), 0);
     const prepaidValue = hub.purchaseOrders
       .filter((p) => p.is_prepaid)
       .reduce((s, p) => s + Number(p.prepaid_amount ?? 0), 0);
     const salesToInv = value > 0 ? monthlySales / value : 0;
     const turnover = value > 0 ? (monthlySales * 12) / value : 0;
-    return { value, units, monthlySales, backlogValue, backlogUnits, openPoValue, prepaidValue, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
-  }, [items, hub.openOrders, hub.purchaseOrders]);
+    return { value, units, monthlySales, backlogValue, backlogUnits, openPoValue, openPoCount, openPoUnits, prepaidValue, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
+  }, [items, hub.openOrders, hub.purchaseOrders, hub.openPOs]);
 
 
   // Value by collection / brand for drilldown
@@ -1724,7 +1638,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
         <KPI label="Total Inventory Value" value={fmtMoney(summary.value)} hint={`${fmtNum(summary.units)} units`} icon={DollarSign} onClick={() => toggleDrill("value")} active={drilldown === "value"} />
-        <KPI label="Total Open POs" value={fmtMoney(summary.openPoValue)} hint="not yet arrived" icon={Truck} onClick={() => toggleDrill("openpo")} active={drilldown === "openpo"} />
+        <KPI label="Total Open POs" value={fmtMoney(summary.openPoValue)} hint={`${summary.openPoCount} POs · ${fmtNum(summary.openPoUnits)} units`} icon={Truck} onClick={() => toggleDrill("openpo")} active={drilldown === "openpo"} />
         <KPI label="Prepaid Inventory" value={fmtMoney(summary.prepaidValue)} icon={DollarSign} onClick={() => toggleDrill("prepaid")} active={drilldown === "prepaid"} />
         <KPI label="Backlog (Open Orders)" value={hub.loading ? "-" : fmtMoney(summary.backlogValue)} hint={hub.loading ? "loading..." : `${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} onClick={() => toggleDrill("backlog")} active={drilldown === "backlog"} />
         <KPI label="Closeout Inventory" value={fmtMoney(summary.closeoutValue)} hint="clearance + closeout" icon={Tag} onClick={() => toggleDrill("closeout")} active={drilldown === "closeout"} />
@@ -1745,23 +1659,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
           <div className={cn("overflow-auto", drilldown === "openpo" ? "max-h-[88vh]" : drilldown === "closeout" ? "max-h-[80vh]" : "max-h-[60vh]")}>
             {drilldown === "value" && <ReportSkuValue items={items} total={summary.value} />}
             {drilldown === "closeout" && <ReportCloseout />}
-            {drilldown === "openpo" && <ReportOpenPOsFull pos={(() => {
-              const real = hub.purchaseOrders.filter((p) => p.production_stage !== "closed" && p.production_stage !== "arrived");
-              if (real.length > 0) return real;
-              return Array.from({ length: 24 }).map((_, i) => ({
-                id: `mock-po-${i}`,
-                po_number: `THV${500 + i}-DS`,
-                factory: ["THINHVIET", "Pacific Mill", "Vietnam Atelier", "Hanoi Woodworks"][i % 4],
-                status: "open",
-                production_stage: ["in_manufacturing", "loaded", "in_transit", "at_port"][i % 4],
-                order_date: null,
-                eta: null,
-                total_value: 18000 + i * 1750,
-                prepaid_amount: 0,
-                is_prepaid: false,
-                container_type: "40HC",
-              })) as PurchaseOrder[];
-            })()} />}
+            {drilldown === "openpo" && <ReportOpenPOs pos={hub.openPOs} lines={hub.openPOLines} />}
             {drilldown === "prepaid" && <ReportPOs pos={hub.purchaseOrders.filter((p) => p.is_prepaid)} prepaidMode />}
             {drilldown === "backlog" && <BacklogSummary />}
             {drilldown === "lost" && <ReportLost allItems={items} items={items.filter((it) => {

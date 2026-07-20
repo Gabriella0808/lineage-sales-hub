@@ -139,12 +139,46 @@ function ReportSkuValue({ items, total }: { items: InventoryItem[]; total: numbe
   );
 }
 
+const OPEN_PO_STATUS_COLORS: Record<string, string> = {
+  "On Time": "hsl(var(--success))",
+  "Delayed": "hsl(var(--destructive))",
+  "At Risk": "hsl(var(--warning))",
+  "Arrived": "hsl(var(--muted-foreground))",
+};
+
+function OpenPOStatusBadge({ status }: { status: string | null }) {
+  if (!status) return <span className="text-muted-foreground">-</span>;
+  return (
+    <span className={cn(
+      "inline-block px-1.5 py-0.5 rounded text-[10px] font-medium",
+      status === "Delayed" ? "bg-destructive/10 text-destructive" :
+      status === "At Risk" ? "bg-warning/15 text-warning-foreground" :
+      status === "On Time" ? "bg-success/10 text-success" :
+      "bg-muted text-muted-foreground",
+    )}>{status}</span>
+  );
+}
+
+function OpenPOLateBadge({ daysLate }: { daysLate: number | null }) {
+  const v = daysLate != null ? Number(daysLate) : null;
+  return (
+    <span className={cn("tabular-nums font-semibold", v != null && v > 0 ? "text-destructive" : "text-muted-foreground")}>
+      {v != null ? (v > 0 ? `+${v}d` : `${v}d`) : "-"}
+    </span>
+  );
+}
+
 function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
   const [fVendor, setFVendor] = useState("all");
   const [fStatus, setFStatus] = useState("all");
   const [fWarehouse, setFWarehouse] = useState("all");
-  const [fSku, setFSku] = useState("");
-  const [skuSheetPO, setSkuSheetPO] = useState<string | null>(null);
+  const [fSearch, setFSearch] = useState("");
+  const [selectedPO, setSelectedPO] = useState<OpenPO | null>(null);
+  const [chartDrill, setChartDrill] = useState<{
+    title: string;
+    rows: OpenPO[];
+    type: "vendor" | "month" | "status";
+  } | null>(null);
 
   const uniq = (arr: (string | null)[]) =>
     Array.from(new Set(arr.filter(Boolean) as string[])).sort();
@@ -154,20 +188,21 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
   const warehouseOpts = useMemo(() => uniq(pos.map((r) => r.warehouse)), [pos]);
 
   const filtered = useMemo(() => {
-    const q = fSku.trim().toLowerCase();
+    const q = fSearch.trim().toLowerCase();
     return pos.filter(
       (r) =>
         (fVendor === "all" || r.vendor_id === fVendor) &&
         (fStatus === "all" || r.shipment_status === fStatus) &&
         (fWarehouse === "all" || r.warehouse === fWarehouse) &&
-        (q === "" || r.po_number.toLowerCase().includes(q) ||
+        (q === "" ||
+          r.po_number.toLowerCase().includes(q) ||
           (r.vendor_id ?? "").toLowerCase().includes(q) ||
           (r.container_num ?? "").toLowerCase().includes(q)),
     );
-  }, [pos, fVendor, fStatus, fWarehouse, fSku]);
+  }, [pos, fVendor, fStatus, fWarehouse, fSearch]);
 
-  const filtersActive = fVendor !== "all" || fStatus !== "all" || fWarehouse !== "all" || fSku.trim() !== "";
-  const resetFilters = () => { setFVendor("all"); setFStatus("all"); setFWarehouse("all"); setFSku(""); };
+  const filtersActive = fVendor !== "all" || fStatus !== "all" || fWarehouse !== "all" || fSearch.trim() !== "";
+  const resetFilters = () => { setFVendor("all"); setFStatus("all"); setFWarehouse("all"); setFSearch(""); };
 
   // Chart 1 — Avg days late by vendor (Delayed only)
   const vendorLateness = useMemo(() => {
@@ -184,7 +219,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
       .sort((a, b) => b.avgDaysLate - a.avgDaysLate);
   }, [filtered]);
 
-  // Chart 2 — Estimated arrivals by month
+  // Chart 2 — Estimated arrivals by month (stores raw key for click filtering)
   const arrivalsByMonth = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of filtered) {
@@ -195,9 +230,10 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
     }
     return Array.from(m.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, count]) => {
-        const [y, mo] = k.split("-");
+      .map(([key, count]) => {
+        const [y, mo] = key.split("-");
         return {
+          key,
           month: new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString(undefined, { month: "short", year: "2-digit" }),
           count,
         };
@@ -206,28 +242,60 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
 
   // Chart 3 — Shipment status breakdown
   const statusBreakdown = useMemo(() => {
-    const STATUS_COLORS: Record<string, string> = {
-      "On Time": "hsl(var(--success))",
-      "Delayed": "hsl(var(--destructive))",
-      "At Risk": "hsl(var(--warning))",
-      "Arrived": "hsl(var(--muted-foreground))",
-    };
     const m = new Map<string, number>();
     for (const r of filtered) {
       const s = r.shipment_status ?? "Unknown";
       m.set(s, (m.get(s) ?? 0) + 1);
     }
     return Array.from(m.entries())
-      .map(([name, value]) => ({ name, value, fill: STATUS_COLORS[name] ?? "hsl(var(--accent))" }))
+      .map(([name, value]) => ({ name, value, fill: OPEN_PO_STATUS_COLORS[name] ?? "hsl(var(--accent))" }))
       .sort((a, b) => b.value - a.value);
   }, [filtered]);
+
+  // Chart click handlers
+  const handleVendorBarClick = (data: any) => {
+    if (!data?.vendor) return;
+    const rows = filtered
+      .filter((r) => r.vendor_id === data.vendor && r.shipment_status === "Delayed")
+      .sort((a, b) => Number(b.days_late ?? 0) - Number(a.days_late ?? 0));
+    setChartDrill({ title: `Delayed POs — ${data.vendor}`, rows, type: "vendor" });
+  };
+
+  const handleMonthBarClick = (data: any) => {
+    if (!data?.key) return;
+    const rows = filtered
+      .filter((r) => {
+        if (!r.estimated_arrival) return false;
+        const d = new Date(r.estimated_arrival);
+        const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        return k === data.key;
+      })
+      .sort((a, b) => (a.estimated_arrival ?? "").localeCompare(b.estimated_arrival ?? ""));
+    setChartDrill({ title: `Estimated Arrivals — ${data.month}`, rows, type: "month" });
+  };
+
+  const handleStatusPieClick = (data: any) => {
+    if (!data?.name) return;
+    const rows = filtered
+      .filter((r) => (r.shipment_status ?? "Unknown") === data.name)
+      .sort(data.name === "Delayed"
+        ? (a, b) => Number(b.days_late ?? 0) - Number(a.days_late ?? 0)
+        : (a, b) => (a.estimated_arrival ?? "").localeCompare(b.estimated_arrival ?? ""),
+      );
+    setChartDrill({ title: `${data.name} Open POs`, rows, type: "status" });
+  };
+
+  const openPODetail = (r: OpenPO) => {
+    setChartDrill(null);
+    setSelectedPO(r);
+  };
 
   const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "-");
   const fmtPct = (n: number | null) => (n != null ? `${Number(n).toFixed(0)}%` : "-");
 
-  const skuLines = useMemo(
-    () => (skuSheetPO ? lines.filter((l) => l.po_number === skuSheetPO) : []),
-    [lines, skuSheetPO],
+  const selectedLines = useMemo(
+    () => (selectedPO ? lines.filter((l) => l.po_number === selectedPO.po_number) : []),
+    [lines, selectedPO],
   );
 
   if (pos.length === 0) return <EmptyState message="No open POs found." />;
@@ -267,7 +335,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
               {warehouseOpts.map((w) => <SelectItem key={w} value={w}>{w}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Input value={fSku} onChange={(e) => setFSku(e.target.value)} placeholder="PO #, vendor, container…" className="h-8 text-xs" />
+          <Input value={fSearch} onChange={(e) => setFSearch(e.target.value)} placeholder="PO #, vendor, container…" className="h-8 text-xs" />
         </div>
       </Card>
 
@@ -275,7 +343,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card className="p-3">
           <div className="text-xs font-semibold mb-1">Avg Days Late by Vendor</div>
-          <div className="text-[10px] text-muted-foreground mb-2">Delayed shipments only</div>
+          <div className="text-[10px] text-muted-foreground mb-2">Delayed shipments only · click bar to drill down</div>
           {vendorLateness.length === 0 ? (
             <div className="text-xs text-muted-foreground py-8 text-center">No delayed POs</div>
           ) : (
@@ -285,7 +353,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
                 <XAxis type="number" tick={{ fontSize: 10 }} />
                 <YAxis type="category" dataKey="vendor" tick={{ fontSize: 10 }} width={110} />
                 <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} formatter={(v: number) => [`${v} days`, "Avg Late"]} />
-                <Bar dataKey="avgDaysLate" name="Avg days late" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="avgDaysLate" name="Avg days late" radius={[0, 4, 4, 0]} cursor="pointer" onClick={handleVendorBarClick}>
                   {vendorLateness.map((v, i) => (
                     <Cell key={i} fill={v.avgDaysLate > 14 ? "hsl(var(--destructive))" : "hsl(var(--warning))"} />
                   ))}
@@ -297,7 +365,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
 
         <Card className="p-3">
           <div className="text-xs font-semibold mb-1">Estimated Arrivals by Month</div>
-          <div className="text-[10px] text-muted-foreground mb-2">PO count by estimated arrival month</div>
+          <div className="text-[10px] text-muted-foreground mb-2">PO count · click bar to drill down</div>
           {arrivalsByMonth.length === 0 ? (
             <div className="text-xs text-muted-foreground py-8 text-center">No arrival data</div>
           ) : (
@@ -307,7 +375,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
                 <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                 <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
-                <Bar dataKey="count" name="POs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name="POs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} cursor="pointer" onClick={handleMonthBarClick} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -315,13 +383,24 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
 
         <Card className="p-3">
           <div className="text-xs font-semibold mb-1">Shipment Status</div>
-          <div className="text-[10px] text-muted-foreground mb-2">All filtered POs</div>
+          <div className="text-[10px] text-muted-foreground mb-2">All filtered POs · click segment to drill down</div>
           {statusBreakdown.length === 0 ? (
             <div className="text-xs text-muted-foreground py-8 text-center">No data</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={statusBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={40} label={{ fontSize: 10 }}>
+                <Pie
+                  data={statusBreakdown}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={70}
+                  innerRadius={40}
+                  label={{ fontSize: 10 }}
+                  cursor="pointer"
+                  onClick={handleStatusPieClick}
+                >
                   {statusBreakdown.map((d, i) => <Cell key={i} fill={d.fill} />)}
                 </Pie>
                 <RTooltip contentStyle={{ background: "hsl(var(--background))", border: "1px solid hsl(var(--border))", fontSize: 11 }} />
@@ -332,104 +411,210 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
         </Card>
       </div>
 
-      {/* PO table */}
+      {/* PO table — each row opens the detail sidebar */}
       <div className="overflow-auto">
         <table className="w-full text-xs">
           <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground sticky top-0">
             <tr>
-              {["PO #","Status","Vendor","Warehouse","Due Date","Est. Arrival","Ship Via","Container","Vessel","Forwarder","Shipment Status","Days Late","Total Amt","Outstanding Qty","Outstanding Amt","% Recv","% Inv","SKUs"].map((h) => (
+              {["PO #","Status","Vendor","Warehouse","Due Date","Est. Arrival","Ship Via","Container","Vessel","Forwarder","Shipment Status","Days Late","Total Amt","Outstanding Qty","Outstanding Amt","% Recv","% Inv"].map((h) => (
                 <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => {
-              const late = r.days_late != null ? Number(r.days_late) : null;
-              return (
-                <tr key={r.po_number} className="border-t border-border hover:bg-muted/30">
-                  <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.po_number}</td>
-                  <td className="px-2 py-1.5">{r.po_status ?? "-"}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor_id ?? "-"}</td>
-                  <td className="px-2 py-1.5">{r.warehouse ?? "-"}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.due_date)}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.estimated_arrival)}</td>
-                  <td className="px-2 py-1.5">{r.ship_via ?? "-"}</td>
-                  <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.container_num ?? "-"}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap">{r.vessel ?? "-"}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap">{r.forwarder ?? "-"}</td>
-                  <td className="px-2 py-1.5">
-                    {r.shipment_status ? (
-                      <span className={cn("inline-block px-1.5 py-0.5 rounded text-[10px] font-medium",
-                        r.shipment_status === "Delayed" ? "bg-destructive/10 text-destructive" :
-                        r.shipment_status === "At Risk" ? "bg-warning/15 text-warning-foreground" :
-                        r.shipment_status === "On Time" ? "bg-success/10 text-success" :
-                        "bg-muted text-muted-foreground"
-                      )}>{r.shipment_status}</span>
-                    ) : "-"}
-                  </td>
-                  <td className={cn("px-2 py-1.5 text-right tabular-nums font-semibold",
-                    late != null && late > 0 ? "text-destructive" : "text-muted-foreground"
-                  )}>{late != null ? (late > 0 ? `+${late}` : late) : "-"}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtMoney(Number(r.total_amount))}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(r.outstanding_qty))}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtMoney(Number(r.outstanding_amount))}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(r.percent_received)}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(r.percent_invoiced)}</td>
-                  <td className="px-2 py-1.5">
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => setSkuSheetPO(r.po_number)}>
-                      View SKUs
-                    </Button>
-                  </td>
-                </tr>
-              );
-            })}
+            {filtered.map((r) => (
+              <tr
+                key={r.po_number}
+                className="border-t border-border hover:bg-muted/30 cursor-pointer"
+                onClick={() => openPODetail(r)}
+              >
+                <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.po_number}</td>
+                <td className="px-2 py-1.5">{r.po_status ?? "-"}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor_id ?? "-"}</td>
+                <td className="px-2 py-1.5">{r.warehouse ?? "-"}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.due_date)}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.estimated_arrival)}</td>
+                <td className="px-2 py-1.5">{r.ship_via ?? "-"}</td>
+                <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.container_num ?? "-"}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{r.vessel ?? "-"}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{r.forwarder ?? "-"}</td>
+                <td className="px-2 py-1.5"><OpenPOStatusBadge status={r.shipment_status} /></td>
+                <td className="px-2 py-1.5 text-right"><OpenPOLateBadge daysLate={r.days_late} /></td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{fmtMoney(Number(r.total_amount))}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(r.outstanding_qty))}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtMoney(Number(r.outstanding_amount))}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(r.percent_received)}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(r.percent_invoiced)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
-      {/* SKU-level drilldown sheet */}
-      <Sheet open={!!skuSheetPO} onOpenChange={(o) => { if (!o) setSkuSheetPO(null); }}>
-        <SheetContent side="right" className="w-full max-w-4xl overflow-auto">
-          <SheetHeader className="mb-4">
-            <SheetTitle>SKU Lines — {skuSheetPO}</SheetTitle>
-            <SheetDescription>{skuLines.length} line{skuLines.length !== 1 ? "s" : ""}</SheetDescription>
-          </SheetHeader>
-          {skuLines.length === 0 ? (
-            <EmptyState message="No SKU lines found for this PO." />
-          ) : (
-            <div className="overflow-auto">
+      {/* Chart drilldown dialog — rows are clickable to open the PO sidebar */}
+      <Dialog open={!!chartDrill} onOpenChange={(o) => { if (!o) setChartDrill(null); }}>
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{chartDrill?.title}</DialogTitle>
+            <DialogDescription>
+              {chartDrill?.rows.length ?? 0} PO{(chartDrill?.rows.length ?? 0) !== 1 ? "s" : ""} · click a row to view details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-auto flex-1">
+            {chartDrill && (
               <table className="w-full text-xs">
                 <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground sticky top-0">
                   <tr>
-                    {["SKU","Description","Vendor","Warehouse","Ordered","Received","Outstanding","Amount Open","Est. Arrival","Status","Days Late"].map((h) => (
+                    {chartDrill.type === "vendor" && ["PO #","Vendor","Warehouse","Due Date","Est. Arrival","Days Late","Outstanding Qty","Outstanding Amt","Ship Via","Container","Vessel","Forwarder"].map((h) => (
+                      <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>
+                    ))}
+                    {chartDrill.type === "month" && ["PO #","Vendor","Warehouse","Due Date","Est. Arrival","Outstanding Qty","Outstanding Amt","Shipment Status","Container","Vessel"].map((h) => (
+                      <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>
+                    ))}
+                    {chartDrill.type === "status" && ["PO #","Vendor","Warehouse","Due Date","Est. Arrival","Outstanding Qty","Outstanding Amt","Days Late","Container","Vessel"].map((h) => (
                       <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {skuLines.map((l, i) => {
-                    const late = l.days_late != null ? Number(l.days_late) : null;
-                    return (
-                      <tr key={`${l.po_number}-${l.sku}-${i}`} className="border-t border-border hover:bg-muted/30">
-                        <td className="px-2 py-1.5 font-mono whitespace-nowrap">{l.sku}</td>
-                        <td className="px-2 py-1.5 max-w-[200px] truncate" title={l.description ?? ""}>{l.description ?? "-"}</td>
-                        <td className="px-2 py-1.5 whitespace-nowrap">{l.vendor_id ?? "-"}</td>
-                        <td className="px-2 py-1.5">{l.warehouse ?? "-"}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(l.quantity_ordered))}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(l.quantity_received))}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtNum(Number(l.quantity_outstanding))}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums">{fmtMoney(Number(l.amount_open))}</td>
-                        <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(l.estimated_arrival)}</td>
-                        <td className="px-2 py-1.5">{l.shipment_status ?? "-"}</td>
-                        <td className={cn("px-2 py-1.5 text-right tabular-nums font-semibold",
-                          late != null && late > 0 ? "text-destructive" : "text-muted-foreground"
-                        )}>{late != null ? (late > 0 ? `+${late}` : late) : "-"}</td>
-                      </tr>
-                    );
-                  })}
+                  {chartDrill.rows.map((r) => (
+                    <tr
+                      key={r.po_number}
+                      className="border-t border-border hover:bg-muted/30 cursor-pointer"
+                      onClick={() => openPODetail(r)}
+                    >
+                      {chartDrill.type === "vendor" && (
+                        <>
+                          <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.po_number}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor_id ?? "-"}</td>
+                          <td className="px-2 py-1.5">{r.warehouse ?? "-"}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.due_date)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.estimated_arrival)}</td>
+                          <td className="px-2 py-1.5 text-right"><OpenPOLateBadge daysLate={r.days_late} /></td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(r.outstanding_qty))}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtMoney(Number(r.outstanding_amount))}</td>
+                          <td className="px-2 py-1.5">{r.ship_via ?? "-"}</td>
+                          <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.container_num ?? "-"}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{r.vessel ?? "-"}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{r.forwarder ?? "-"}</td>
+                        </>
+                      )}
+                      {chartDrill.type === "month" && (
+                        <>
+                          <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.po_number}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor_id ?? "-"}</td>
+                          <td className="px-2 py-1.5">{r.warehouse ?? "-"}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.due_date)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.estimated_arrival)}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(r.outstanding_qty))}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtMoney(Number(r.outstanding_amount))}</td>
+                          <td className="px-2 py-1.5"><OpenPOStatusBadge status={r.shipment_status} /></td>
+                          <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.container_num ?? "-"}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{r.vessel ?? "-"}</td>
+                        </>
+                      )}
+                      {chartDrill.type === "status" && (
+                        <>
+                          <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.po_number}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor_id ?? "-"}</td>
+                          <td className="px-2 py-1.5">{r.warehouse ?? "-"}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.due_date)}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.estimated_arrival)}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(r.outstanding_qty))}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtMoney(Number(r.outstanding_amount))}</td>
+                          <td className="px-2 py-1.5 text-right"><OpenPOLateBadge daysLate={r.days_late} /></td>
+                          <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.container_num ?? "-"}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{r.vessel ?? "-"}</td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
                 </tbody>
               </table>
-            </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* PO detail sidebar */}
+      <Sheet open={!!selectedPO} onOpenChange={(o) => { if (!o) setSelectedPO(null); }}>
+        <SheetContent side="right" className="w-full max-w-2xl flex flex-col overflow-hidden">
+          {selectedPO && (
+            <>
+              <SheetHeader className="mb-4 flex-none">
+                <SheetTitle>PO #{selectedPO.po_number}</SheetTitle>
+                <SheetDescription>
+                  {[selectedPO.vendor_id, selectedPO.warehouse].filter(Boolean).join(" · ")}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="overflow-auto flex-1 space-y-6">
+                {/* Header fields grid */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
+                  {([
+                    ["PO Number", selectedPO.po_number],
+                    ["Status", selectedPO.po_status ?? "-"],
+                    ["Vendor", selectedPO.vendor_id ?? "-"],
+                    ["Warehouse", selectedPO.warehouse ?? "-"],
+                    ["Ship Via", selectedPO.ship_via ?? "-"],
+                    ["Due Date", fmtDate(selectedPO.due_date)],
+                    ["Estimated Arrival", fmtDate(selectedPO.estimated_arrival)],
+                    ["Days Late", selectedPO.days_late != null ? (Number(selectedPO.days_late) > 0 ? `+${selectedPO.days_late}d` : `${selectedPO.days_late}d`) : "-"],
+                    ["Shipment Status", selectedPO.shipment_status ?? "-"],
+                    ["% Received", fmtPct(selectedPO.percent_received)],
+                    ["% Invoiced", fmtPct(selectedPO.percent_invoiced)],
+                    ["Outstanding Qty", fmtNum(Number(selectedPO.outstanding_qty))],
+                    ["Outstanding Amount", fmtMoney(Number(selectedPO.outstanding_amount))],
+                    ["Total Amount", fmtMoney(Number(selectedPO.total_amount))],
+                    ["Container Number", selectedPO.container_num ?? "-"],
+                    ["Vessel", selectedPO.vessel ?? "-"],
+                    ["Forwarder", selectedPO.forwarder ?? "-"],
+                  ] as [string, string][]).map(([label, value]) => (
+                    <div key={label}>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{label}</div>
+                      <div className="font-medium">{value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* SKU lines */}
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                    SKU Lines ({selectedLines.length})
+                  </div>
+                  {selectedLines.length === 0 ? (
+                    <EmptyState message="No SKU lines found for this PO." />
+                  ) : (
+                    <div className="overflow-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground sticky top-0">
+                          <tr>
+                            {["SKU","Description","Ordered","Received","Outstanding","Amount Open","Warehouse","Est. Arrival","Status"].map((h) => (
+                              <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {selectedLines.map((l, i) => (
+                            <tr key={`${l.po_number}-${l.sku}-${i}`} className="border-t border-border hover:bg-muted/30">
+                              <td className="px-2 py-1.5 font-mono whitespace-nowrap">{l.sku}</td>
+                              <td className="px-2 py-1.5 max-w-[200px] truncate" title={l.description ?? ""}>{l.description ?? "-"}</td>
+                              <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(l.quantity_ordered))}</td>
+                              <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(l.quantity_received))}</td>
+                              <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtNum(Number(l.quantity_outstanding))}</td>
+                              <td className="px-2 py-1.5 text-right tabular-nums">{fmtMoney(Number(l.amount_open))}</td>
+                              <td className="px-2 py-1.5">{l.warehouse ?? "-"}</td>
+                              <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(l.estimated_arrival)}</td>
+                              <td className="px-2 py-1.5"><OpenPOStatusBadge status={l.shipment_status} /></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           )}
         </SheetContent>
       </Sheet>

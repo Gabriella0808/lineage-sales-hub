@@ -242,11 +242,11 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
       });
   }, [filtered]);
 
-  // Chart 3 — Shipment status breakdown
+  // Chart 3 — Factory status breakdown
   const statusBreakdown = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of filtered) {
-      const s = r.shipment_status ?? "Unknown";
+      const s = r.factory_late_status ?? "Missing Dates";
       m.set(s, (m.get(s) ?? 0) + 1);
     }
     return Array.from(m.entries())
@@ -279,12 +279,9 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
   const handleStatusPieClick = (data: any) => {
     if (!data?.name) return;
     const rows = filtered
-      .filter((r) => (r.shipment_status ?? "Unknown") === data.name)
-      .sort(data.name === "Delayed"
-        ? (a, b) => Number(b.days_late ?? 0) - Number(a.days_late ?? 0)
-        : (a, b) => (a.estimated_arrival ?? "").localeCompare(b.estimated_arrival ?? ""),
-      );
-    setChartDrill({ title: `${data.name} Open POs`, rows, type: "status" });
+      .filter((r) => (r.factory_late_status ?? "Missing Dates") === data.name)
+      .sort((a, b) => Number(b.factory_days_late ?? 0) - Number(a.factory_days_late ?? 0));
+    setChartDrill({ title: `${data.name} — Factory Status`, rows, type: "status" });
   };
 
   const openPODetail = (r: OpenPO) => {
@@ -384,8 +381,8 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
         </Card>
 
         <Card className="p-3">
-          <div className="text-xs font-semibold mb-1">Shipment Status</div>
-          <div className="text-[10px] text-muted-foreground mb-2">All filtered POs · click segment to drill down</div>
+          <div className="text-xs font-semibold mb-1">Factory Status</div>
+          <div className="text-[10px] text-muted-foreground mb-2">All filtered POs by factory_late_status · click segment to drill down</div>
           {statusBreakdown.length === 0 ? (
             <div className="text-xs text-muted-foreground py-8 text-center">No data</div>
           ) : (

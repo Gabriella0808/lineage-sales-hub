@@ -418,37 +418,38 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
         <table className="w-full text-xs">
           <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground sticky top-0">
             <tr>
-              {["PO #","Status","Vendor","Warehouse","Due Date","Est. Arrival","Ship Via","Container","Vessel","Forwarder","Shipment Status","Days Late","Total Amt","Outstanding Qty","Outstanding Amt","% Recv","% Inv"].map((h) => (
+              {["PO #","Status","Vendor","Warehouse","Due Date","Est. Arrival","PI Factory Date","Cargo Ready Date","Factory Days Late","Factory Status","Total Amt","Outstanding Qty","Outstanding Amt","% Recv","% Inv"].map((h) => (
                 <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((r) => (
-              <tr
-                key={r.po_number}
-                className="border-t border-border hover:bg-muted/30 cursor-pointer"
-                onClick={() => openPODetail(r)}
-              >
-                <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.po_number}</td>
-                <td className="px-2 py-1.5">{r.po_status ?? "-"}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor_id ?? "-"}</td>
-                <td className="px-2 py-1.5">{r.warehouse ?? "-"}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.due_date)}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.estimated_arrival)}</td>
-                <td className="px-2 py-1.5">{r.ship_via ?? "-"}</td>
-                <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.container_num ?? "-"}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{r.vessel ?? "-"}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{r.forwarder ?? "-"}</td>
-                <td className="px-2 py-1.5"><OpenPOStatusBadge status={r.shipment_status} /></td>
-                <td className="px-2 py-1.5 text-right"><OpenPOLateBadge daysLate={r.days_late} /></td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtMoney(Number(r.total_amount))}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(r.outstanding_qty))}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtMoney(Number(r.outstanding_amount))}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(r.percent_received)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(r.percent_invoiced)}</td>
-              </tr>
-            ))}
+            {filtered.map((r) => {
+              const hasDates = !!(r.pi_factory_date && r.cargo_ready_date);
+              return (
+                <tr
+                  key={r.po_number}
+                  className="border-t border-border hover:bg-muted/30 cursor-pointer"
+                  onClick={() => openPODetail(r)}
+                >
+                  <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.po_number}</td>
+                  <td className="px-2 py-1.5">{r.po_status ?? "-"}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor_id ?? "-"}</td>
+                  <td className="px-2 py-1.5">{r.warehouse ?? "-"}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.due_date)}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.estimated_arrival)}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{hasDates ? fmtDate(r.pi_factory_date) : <span className="text-muted-foreground italic">Missing Dates</span>}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{hasDates ? fmtDate(r.cargo_ready_date) : <span className="text-muted-foreground italic">Missing Dates</span>}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{hasDates && r.factory_days_late != null && Number(r.factory_days_late) > 0 ? <span className="font-semibold text-destructive">+{Number(r.factory_days_late)}d</span> : <span className="text-muted-foreground">-</span>}</td>
+                  <td className="px-2 py-1.5">{hasDates ? (r.factory_late_status ?? "-") : <span className="text-muted-foreground italic">Missing Dates</span>}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtMoney(Number(r.total_amount))}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(r.outstanding_qty))}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtMoney(Number(r.outstanding_amount))}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(r.percent_received)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtPct(r.percent_invoiced)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -550,37 +551,78 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
                 </SheetDescription>
               </SheetHeader>
 
-              <div className="overflow-auto flex-1 space-y-6">
-                {/* Header fields grid */}
+              <div className="overflow-auto flex-1 space-y-5">
+                {/* PO summary */}
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
                   {([
                     ["PO Number", selectedPO.po_number],
                     ["Status", selectedPO.po_status ?? "-"],
                     ["Vendor", selectedPO.vendor_id ?? "-"],
                     ["Warehouse", selectedPO.warehouse ?? "-"],
-                    ["Ship Via", selectedPO.ship_via ?? "-"],
-                    ["Due Date", fmtDate(selectedPO.due_date)],
-                    ["Estimated Arrival", fmtDate(selectedPO.estimated_arrival)],
-                    ["Days Late", selectedPO.days_late != null ? (Number(selectedPO.days_late) > 0 ? `+${selectedPO.days_late}d` : `${selectedPO.days_late}d`) : "-"],
-                    ["Shipment Status", selectedPO.shipment_status ?? "-"],
-                    ["% Received", fmtPct(selectedPO.percent_received)],
-                    ["% Invoiced", fmtPct(selectedPO.percent_invoiced)],
                     ["Outstanding Qty", fmtNum(Number(selectedPO.outstanding_qty))],
                     ["Outstanding Amount", fmtMoney(Number(selectedPO.outstanding_amount))],
                     ["Total Amount", fmtMoney(Number(selectedPO.total_amount))],
-                    ["Container Number", selectedPO.container_num ?? "-"],
-                    ["Vessel", selectedPO.vessel ?? "-"],
-                    ["Forwarder", selectedPO.forwarder ?? "-"],
-                    ["PI Factory Date", selectedPO.pi_factory_date ? fmtDate(selectedPO.pi_factory_date) : "Missing Dates"],
-                    ["Cargo Ready Date", selectedPO.cargo_ready_date ? fmtDate(selectedPO.cargo_ready_date) : "Missing Dates"],
-                    ["Factory Days Late", selectedPO.factory_days_late != null ? `+${Number(selectedPO.factory_days_late)}d` : "-"],
-                    ["Factory Late Status", selectedPO.factory_late_status ?? "-"],
+                    ["% Received", fmtPct(selectedPO.percent_received)],
+                    ["% Invoiced", fmtPct(selectedPO.percent_invoiced)],
                   ] as [string, string][]).map(([label, value]) => (
                     <div key={label}>
                       <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{label}</div>
                       <div className="font-medium">{value}</div>
                     </div>
                   ))}
+                </div>
+
+                {/* Factory readiness */}
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Factory Readiness</div>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">PI Factory Date</div>
+                      <div className="font-medium">{selectedPO.pi_factory_date ? fmtDate(selectedPO.pi_factory_date) : <span className="text-muted-foreground italic">Missing Dates</span>}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Cargo Ready Date</div>
+                      <div className="font-medium">{selectedPO.cargo_ready_date ? fmtDate(selectedPO.cargo_ready_date) : <span className="text-muted-foreground italic">Missing Dates</span>}</div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Factory Days Late</div>
+                      <div className="font-medium">
+                        {selectedPO.pi_factory_date && selectedPO.cargo_ready_date
+                          ? (selectedPO.factory_days_late != null && Number(selectedPO.factory_days_late) > 0
+                              ? <span className="text-destructive">+{Number(selectedPO.factory_days_late)}d</span>
+                              : "-")
+                          : <span className="text-muted-foreground italic">Missing Dates</span>}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Factory Status</div>
+                      <div className="font-medium">
+                        {selectedPO.pi_factory_date && selectedPO.cargo_ready_date
+                          ? (selectedPO.factory_late_status ?? "-")
+                          : <span className="text-muted-foreground italic">Missing Dates</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logistics */}
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Logistics</div>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-xs">
+                    {([
+                      ["Ship Via", selectedPO.ship_via ?? "-"],
+                      ["Due Date", fmtDate(selectedPO.due_date)],
+                      ["Estimated Arrival", fmtDate(selectedPO.estimated_arrival)],
+                      ["Container Number", selectedPO.container_num ?? "-"],
+                      ["Vessel", selectedPO.vessel ?? "-"],
+                      ["Forwarder", selectedPO.forwarder ?? "-"],
+                    ] as [string, string][]).map(([label, value]) => (
+                      <div key={label}>
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{label}</div>
+                        <div className="font-medium">{value}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* SKU lines */}

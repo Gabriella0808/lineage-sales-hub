@@ -204,14 +204,16 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
   const filtersActive = fVendor !== "all" || fStatus !== "all" || fWarehouse !== "all" || fSearch.trim() !== "";
   const resetFilters = () => { setFVendor("all"); setFStatus("all"); setFWarehouse("all"); setFSearch(""); };
 
-  // Chart 1 — Avg days late by vendor (Delayed only)
+  // Chart 1 — Avg factory days late by vendor (factory_days_late > 0, both dates present)
   const vendorLateness = useMemo(() => {
     const m = new Map<string, { sum: number; n: number }>();
     for (const r of filtered) {
-      if (r.shipment_status !== "Delayed" || r.days_late == null) continue;
+      if (!r.pi_factory_date || !r.cargo_ready_date) continue;
+      const fdl = Number(r.factory_days_late ?? 0);
+      if (fdl <= 0) continue;
       const v = r.vendor_id ?? "Unknown";
       const e = m.get(v) ?? { sum: 0, n: 0 };
-      e.sum += Number(r.days_late); e.n += 1;
+      e.sum += fdl; e.n += 1;
       m.set(v, e);
     }
     return Array.from(m.entries())
@@ -256,9 +258,9 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
   const handleVendorBarClick = (data: any) => {
     if (!data?.vendor) return;
     const rows = filtered
-      .filter((r) => r.vendor_id === data.vendor && r.shipment_status === "Delayed")
-      .sort((a, b) => Number(b.days_late ?? 0) - Number(a.days_late ?? 0));
-    setChartDrill({ title: `Delayed POs — ${data.vendor}`, rows, type: "vendor" });
+      .filter((r) => r.vendor_id === data.vendor && Number(r.factory_days_late ?? 0) > 0)
+      .sort((a, b) => Number(b.factory_days_late ?? 0) - Number(a.factory_days_late ?? 0));
+    setChartDrill({ title: `Factory Late POs — ${data.vendor}`, rows, type: "vendor" });
   };
 
   const handleMonthBarClick = (data: any) => {
@@ -342,10 +344,10 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <Card className="p-3">
-          <div className="text-xs font-semibold mb-1">Avg Days Late by Vendor</div>
-          <div className="text-[10px] text-muted-foreground mb-2">Delayed shipments only · click bar to drill down</div>
+          <div className="text-xs font-semibold mb-1">Avg Factory Days Late by Vendor</div>
+          <div className="text-[10px] text-muted-foreground mb-2">Factory readiness delay: Cargo Ready Date vs PI Factory Date · click bar to drill down</div>
           {vendorLateness.length === 0 ? (
-            <div className="text-xs text-muted-foreground py-8 text-center">No delayed POs</div>
+            <div className="text-xs text-muted-foreground py-8 text-center">No factory-late POs</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={vendorLateness} layout="vertical" margin={{ left: 10, right: 10, top: 4, bottom: 4 }}>
@@ -465,7 +467,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
               <table className="w-full text-xs">
                 <thead className="bg-muted/50 text-[10px] uppercase tracking-wide text-muted-foreground sticky top-0">
                   <tr>
-                    {chartDrill.type === "vendor" && ["PO #","Vendor","Warehouse","Due Date","Est. Arrival","Days Late","Outstanding Qty","Outstanding Amt","Ship Via","Container","Vessel","Forwarder"].map((h) => (
+                    {chartDrill.type === "vendor" && ["PO #","Vendor","PI Factory Date","Cargo Ready Date","Factory Days Late","Factory Late Status","Warehouse","Outstanding Qty","Outstanding Amt","Est. Arrival","Container","Vessel"].map((h) => (
                       <th key={h} className="text-left px-2 py-2 whitespace-nowrap">{h}</th>
                     ))}
                     {chartDrill.type === "month" && ["PO #","Vendor","Warehouse","Due Date","Est. Arrival","Outstanding Qty","Outstanding Amt","Shipment Status","Container","Vessel"].map((h) => (
@@ -487,16 +489,16 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
                         <>
                           <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.po_number}</td>
                           <td className="px-2 py-1.5 whitespace-nowrap">{r.vendor_id ?? "-"}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{r.pi_factory_date ? fmtDate(r.pi_factory_date) : <span className="text-muted-foreground">Missing Dates</span>}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{r.cargo_ready_date ? fmtDate(r.cargo_ready_date) : <span className="text-muted-foreground">Missing Dates</span>}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-destructive">{r.factory_days_late != null ? `+${Number(r.factory_days_late)}d` : "-"}</td>
+                          <td className="px-2 py-1.5">{r.factory_late_status ?? "-"}</td>
                           <td className="px-2 py-1.5">{r.warehouse ?? "-"}</td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.due_date)}</td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.estimated_arrival)}</td>
-                          <td className="px-2 py-1.5 text-right"><OpenPOLateBadge daysLate={r.days_late} /></td>
                           <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(Number(r.outstanding_qty))}</td>
                           <td className="px-2 py-1.5 text-right tabular-nums font-semibold">{fmtMoney(Number(r.outstanding_amount))}</td>
-                          <td className="px-2 py-1.5">{r.ship_via ?? "-"}</td>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{fmtDate(r.estimated_arrival)}</td>
                           <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.container_num ?? "-"}</td>
                           <td className="px-2 py-1.5 whitespace-nowrap">{r.vessel ?? "-"}</td>
-                          <td className="px-2 py-1.5 whitespace-nowrap">{r.forwarder ?? "-"}</td>
                         </>
                       )}
                       {chartDrill.type === "month" && (
@@ -569,6 +571,10 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
                     ["Container Number", selectedPO.container_num ?? "-"],
                     ["Vessel", selectedPO.vessel ?? "-"],
                     ["Forwarder", selectedPO.forwarder ?? "-"],
+                    ["PI Factory Date", selectedPO.pi_factory_date ? fmtDate(selectedPO.pi_factory_date) : "Missing Dates"],
+                    ["Cargo Ready Date", selectedPO.cargo_ready_date ? fmtDate(selectedPO.cargo_ready_date) : "Missing Dates"],
+                    ["Factory Days Late", selectedPO.factory_days_late != null ? `+${Number(selectedPO.factory_days_late)}d` : "-"],
+                    ["Factory Late Status", selectedPO.factory_late_status ?? "-"],
                   ] as [string, string][]).map(([label, value]) => (
                     <div key={label}>
                       <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{label}</div>

@@ -14,7 +14,7 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import type { InventoryItem } from "@/data/inventoryMock";
-import { useInventoryHub, type PurchaseOrder, type OpenPO, type OpenPOLine, type InventorySummaryRow } from "@/hooks/useInventoryHub";
+import { useInventoryHub, type PurchaseOrder, type OpenPO, type OpenPOLine, type InventorySummaryRow, type CloseoutRow } from "@/hooks/useInventoryHub";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -907,20 +907,21 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         lostSales += it.avgMonthlySales * price;
         outOfStockValue += it.avgMonthlySales * price;
       }
-      if (isCloseoutSku(it) || it.isClearance) closeoutValue += lineValue;
+      void lineValue; // closeoutValue now comes from the Supabase view
     }
     const backlogValue = hub.openOrders.reduce((s, o) => s + Number(o.extended_value ?? 0), 0);
     const backlogUnits = hub.openOrders.reduce((s, o) => s + Number(o.qty_open ?? 0), 0);
     const openPoValue = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_amount), 0);
     const openPoCount = new Set(hub.openPOs.map((p) => p.po_number)).size;
     const openPoUnits = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_qty), 0);
+    const closeoutValue = hub.closeoutInventory.reduce((s, r) => s + Number(r.inventory_value), 0);
     const prepaidValue = hub.purchaseOrders
       .filter((p) => p.is_prepaid)
       .reduce((s, p) => s + Number(p.prepaid_amount ?? 0), 0);
     const salesToInv = value > 0 ? monthlySales / value : 0;
     const turnover = value > 0 ? (monthlySales * 12) / value : 0;
     return { value, units, monthlySales, backlogValue, backlogUnits, openPoValue, openPoCount, openPoUnits, prepaidValue, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
-  }, [items, hub.openOrders, hub.purchaseOrders, hub.openPOs, hub.inventorySummary]);
+  }, [items, hub.openOrders, hub.purchaseOrders, hub.openPOs, hub.inventorySummary, hub.closeoutInventory]);
 
 
   // Value by collection / brand for drilldown
@@ -1368,17 +1369,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     }).sort((x, y) => Math.abs(y.diff) - Math.abs(x.diff)).slice(0, 25);
   }, [hub.salesHistory, periodA, periodB]);
 
-  // ============ SECTION 4: CLOSEOUT ============
-  const closeoutRows = useMemo(() =>
-    items.filter((it) => isCloseoutSku(it)).map((it) => {
-      const initial = (it as any).closeout_initial_qty as number | undefined;
-      const sold = (it as any).closeout_units_sold as number | undefined;
-      const pctSold = initial && initial > 0 ? ((sold ?? 0) / initial) * 100 : null;
-      const burnDownMonths = it.avgMonthlySales > 0 ? it.onHand / it.avgMonthlySales : null;
-      return { ...it, initial, sold, pctSold, burnDownMonths };
-    }), [items]);
-
-  const closeoutTotal = closeoutRows.reduce((s, it) => s + (it.onHandValue ?? (it.unitCost ?? 0) * it.onHand), 0);
+  // (closeout data now comes from hub.closeoutInventory)
 
   // ============ SECTION 3: REORDER ============
   // Per Justin: weekly unit-sales windows L12M / L6M / L3M / Override.
@@ -1654,45 +1645,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     })).sort((a, b) => b.sales - a.sales);
   }, [items]);
 
-  // Closeout by brand
-  const closeoutByCollection = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const it of items) {
-      if (!(isCloseoutSku(it) || it.isClearance)) continue;
-      const k = (it as any).brand || "-";
-      m.set(k, (m.get(k) ?? 0) + (it.onHandValue ?? (it.unitCost ?? 0) * it.onHand));
-    }
-    return Array.from(m, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [items]);
-
-  const [closeoutSkuFilter, setCloseoutSkuFilter] = useState<string>("all");
-  const closeoutSkuValue = useCallback(
-    (it: InventoryItem) => Number(it.onHandValue ?? (it.unitCost ?? 0) * it.onHand) || 0,
-    [],
-  );
-  const closeoutSkuOptions = useMemo(() => {
-    const s = new Set<string>();
-    for (const it of items) {
-      if ((isCloseoutSku(it) || it.isClearance) && Math.round(closeoutSkuValue(it)) > 0) s.add(it.sku);
-    }
-    return Array.from(s).sort();
-  }, [items, closeoutSkuValue]);
-
-  // Closeout by SKU (only values that display above $0, filtered)
-  const closeoutBySku = useMemo(() => {
-    const arr = items
-      .filter((it) => {
-        if (!(isCloseoutSku(it) || it.isClearance)) return false;
-        const value = closeoutSkuValue(it);
-        return Math.round(value) > 0 && (closeoutSkuFilter === "all" || it.sku === closeoutSkuFilter);
-      })
-      .map((it) => ({
-        name: it.sku,
-        value: closeoutSkuValue(it),
-      }))
-      .sort((a, b) => b.value - a.value);
-    return arr;
-  }, [items, closeoutSkuFilter, closeoutSkuValue]);
+  // (closeout data now comes from hub.closeoutInventory)
 
   // SKU detail drawer
   const [drawerSku, setDrawerSku] = useState<string | null>(null);
@@ -1765,24 +1718,50 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // Closeout report (shown when Closeout Inventory tile is clicked)
   function ReportCloseout() {
+    const co = hub.closeoutInventory;
+    const coTotal = co.reduce((s, r) => s + Number(r.inventory_value), 0);
+    const coSkuCount = new Set(co.map((r) => r.sku)).size;
+    const coUnits = co.reduce((s, r) => s + Number(r.on_hand), 0);
+
+    const [selectedRow, setSelectedRow] = useState<CloseoutRow | null>(null);
+
+    const byCollection = useMemo(() => {
+      const m = new Map<string, number>();
+      for (const r of co) {
+        const k = r.collection || "-";
+        m.set(k, (m.get(k) ?? 0) + Number(r.inventory_value));
+      }
+      return Array.from(m, ([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    }, [co]);
+
+    const bySku = useMemo(() => {
+      const m = new Map<string, number>();
+      for (const r of co) {
+        m.set(r.sku, (m.get(r.sku) ?? 0) + Number(r.inventory_value));
+      }
+      return Array.from(m, ([name, value]) => ({ name, value }))
+        .filter((r) => r.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 30);
+    }, [co]);
+
+    const fmtBool = (v: boolean | null) => v == null ? "-" : v ? "Yes" : "No";
+
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <KPI label="Closeout SKUs" value={closeoutRows.length} icon={Tag} />
-          <KPI label="Total Closeout Value" value={fmtMoney(closeoutTotal)} icon={DollarSign} />
-          <KPI
-            label="Avg Burn-Down"
-            value={`${(closeoutRows.reduce((s, r) => s + (r.burnDownMonths ?? 0), 0) / Math.max(1, closeoutRows.filter(r => r.burnDownMonths != null).length) || 0).toFixed(1)} mo`}
-            icon={TrendingDown}
-          />
+        <div className="grid grid-cols-3 gap-4">
+          <KPI label="Closeout SKUs" value={coSkuCount} icon={Tag} />
+          <KPI label="Total Closeout Value" value={fmtMoney(coTotal)} icon={DollarSign} />
+          <KPI label="Total Units" value={fmtNum(coUnits)} icon={PackageOpen} />
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {closeoutByCollection.length > 0 && (
+          {byCollection.length > 0 && (
             <Card className="p-5">
-              <h3 className="text-base font-semibold mb-3">Closeout Value by Brand</h3>
+              <h3 className="text-base font-semibold mb-3">Closeout Value by Collection</h3>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={closeoutByCollection} layout="vertical" margin={{ left: 4, right: 12 }}>
+                  <BarChart data={byCollection} layout="vertical" margin={{ left: 4, right: 12 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
@@ -1793,32 +1772,12 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
               </div>
             </Card>
           )}
-          {closeoutBySku.length > 0 && (
+          {bySku.length > 0 && (
             <Card className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold">Closeout Value by SKU</h3>
-                <div className="flex items-center gap-2">
-                  <Select value={closeoutSkuFilter} onValueChange={setCloseoutSkuFilter}>
-                    <SelectTrigger className="w-48 h-8 text-xs">
-                      <SelectValue placeholder="Filter by SKU" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All SKUs</SelectItem>
-                      {closeoutSkuOptions.map((sku) => (
-                        <SelectItem key={sku} value={sku}>{sku}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {closeoutSkuFilter !== "all" && (
-                    <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setCloseoutSkuFilter("all")}>
-                      Clear
-                    </Button>
-                  )}
-                </div>
-              </div>
+              <h3 className="text-base font-semibold mb-3">Closeout Value by SKU <span className="text-xs font-normal text-muted-foreground">(top {bySku.length})</span></h3>
               <div className="h-56 overflow-y-auto">
-                <ResponsiveContainer width="100%" height={Math.max(224, closeoutBySku.length * 28 + 60)}>
-                  <BarChart data={closeoutBySku} layout="vertical" margin={{ left: 4, right: 12 }}>
+                <ResponsiveContainer width="100%" height={Math.max(224, bySku.length * 24 + 40)}>
+                  <BarChart data={bySku} layout="vertical" margin={{ left: 4, right: 12 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
@@ -1830,34 +1789,41 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             </Card>
           )}
         </div>
+
         <Card className="p-5">
           <h3 className="text-base font-semibold mb-3">Closeout Inventory</h3>
-          {closeoutRows.length === 0 ? <EmptyState message="No closeout SKUs found. Closeout items are identified by SKUs starting with C:." /> : (
+          {co.length === 0 ? (
+            <EmptyState message="No closeout inventory found." />
+          ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
+                <thead className="bg-card text-xs uppercase tracking-wide text-muted-foreground sticky top-0 z-10 border-b border-border">
                   <tr>
                     <th className="text-left px-3 py-2">SKU</th>
                     <th className="text-left px-3 py-2">Product</th>
                     <th className="text-left px-3 py-2">Collection</th>
-                    <th className="text-right px-3 py-2">Units</th>
-                    <th className="text-right px-3 py-2">% Sold</th>
-                    <th className="text-right px-3 py-2">Burn-Down (mo)</th>
+                    <th className="text-left px-3 py-2">Warehouse</th>
+                    <th className="text-right px-3 py-2">On Hand</th>
+                    <th className="text-right px-3 py-2">Available</th>
+                    <th className="text-right px-3 py-2">Unit Cost</th>
                     <th className="text-right px-3 py-2">Value</th>
-                    <th className="text-center px-3 py-2">Clr</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {closeoutRows.map((it) => (
-                    <tr key={it.sku} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => setDrawerSku(it.sku)}>
-                      <td className="px-3 py-2 font-mono">{it.sku}</td>
-                      <td className="px-3 py-2">{it.product}</td>
-                      <td className="px-3 py-2">{it.collection}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{it.onHand}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{it.pctSold == null ? "-" : `${it.pctSold.toFixed(0)}%`}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{it.burnDownMonths == null ? "-" : it.burnDownMonths.toFixed(1)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(it.onHandValue ?? (it.unitCost ?? 0) * it.onHand)}</td>
-                      <td className="px-3 py-2 text-center">{it.isClearance ? <Badge variant="secondary" className="text-[10px]">Yes</Badge> : <span className="text-muted-foreground text-xs">-</span>}</td>
+                  {co.map((r) => (
+                    <tr
+                      key={r.guid_product_warehouse}
+                      className="border-t border-border hover:bg-muted/30 cursor-pointer"
+                      onClick={() => setSelectedRow(r)}
+                    >
+                      <td className="px-3 py-2 font-mono text-xs">{r.sku}</td>
+                      <td className="px-3 py-2 max-w-[240px] truncate">{r.product ?? "-"}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{r.collection ?? "-"}</td>
+                      <td className="px-3 py-2 text-xs">{r.warehouse ?? "-"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(Number(r.on_hand))}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(Number(r.available))}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{r.unit_cost != null ? `$${Number(r.unit_cost).toFixed(2)}` : "-"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(Number(r.inventory_value))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1865,6 +1831,40 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             </div>
           )}
         </Card>
+
+        {/* Row detail sidebar */}
+        <Sheet open={!!selectedRow} onOpenChange={(o) => { if (!o) setSelectedRow(null); }}>
+          <SheetContent side="right" className="w-full max-w-sm overflow-auto">
+            {selectedRow && (
+              <>
+                <SheetHeader className="mb-4">
+                  <SheetTitle>{selectedRow.sku}</SheetTitle>
+                  <SheetDescription>{selectedRow.product ?? ""}</SheetDescription>
+                </SheetHeader>
+                <div className="grid grid-cols-1 gap-y-4 text-sm">
+                  {([
+                    ["SKU", selectedRow.sku],
+                    ["Product", selectedRow.product ?? "-"],
+                    ["Collection", selectedRow.collection ?? "-"],
+                    ["Warehouse", selectedRow.warehouse ?? "-"],
+                    ["On Hand", fmtNum(Number(selectedRow.on_hand))],
+                    ["Available", fmtNum(Number(selectedRow.available))],
+                    ["Unit Cost", selectedRow.unit_cost != null ? `$${Number(selectedRow.unit_cost).toFixed(2)}` : "-"],
+                    ["Inventory Value", fmtMoney(Number(selectedRow.inventory_value))],
+                    ["Discontinued", fmtBool(selectedRow.discontinued)],
+                    ["Active Product", fmtBool(selectedRow.active_product)],
+                    ["Available on Web", fmtBool(selectedRow.avail_on_web)],
+                  ] as [string, string][]).map(([label, value]) => (
+                    <div key={label}>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{label}</div>
+                      <div className="font-medium">{value}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </SheetContent>
+        </Sheet>
       </div>
     );
   }
@@ -1885,7 +1885,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         <KPI label="Total Open POs" value={fmtMoney(summary.openPoValue)} hint={`${summary.openPoCount} POs · ${fmtNum(summary.openPoUnits)} units`} icon={Truck} onClick={() => toggleDrill("openpo")} active={drilldown === "openpo"} />
         <KPI label="Prepaid Inventory" value={fmtMoney(summary.prepaidValue)} icon={DollarSign} onClick={() => toggleDrill("prepaid")} active={drilldown === "prepaid"} />
         <KPI label="Backlog (Open Orders)" value={hub.loading ? "-" : fmtMoney(summary.backlogValue)} hint={hub.loading ? "loading..." : `${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} onClick={() => toggleDrill("backlog")} active={drilldown === "backlog"} />
-        <KPI label="Closeout Inventory" value={fmtMoney(summary.closeoutValue)} hint="clearance + closeout" icon={Tag} onClick={() => toggleDrill("closeout")} active={drilldown === "closeout"} />
+        <KPI label="Closeout Inventory" value={fmtMoney(summary.closeoutValue)} hint={`${new Set(hub.closeoutInventory.map((r) => r.sku)).size} SKUs · ${fmtNum(hub.closeoutInventory.reduce((s, r) => s + Number(r.on_hand), 0))} units`} icon={Tag} onClick={() => toggleDrill("closeout")} active={drilldown === "closeout"} />
         <KPI label="OUT OF STOCK - LOST SALES" value={fmtMoney(summary.lostSales)} hint="per month" icon={AlertCircle} accent="text-destructive" onClick={() => toggleDrill("lost")} active={drilldown === "lost"} />
         <KPI label="Sales / Inv Ratio" value={summary.salesToInv.toFixed(2)} hint={summary.salesToInv > 0.5 ? "healthy" : summary.salesToInv > 0.2 ? "OK" : "carrying too much"} icon={Activity} accent={summary.salesToInv < 0.2 ? "text-warning-foreground" : undefined} />
         <KPI label="Annual Turnover" value={`${summary.turnover.toFixed(1)}×`} hint="sales ÷ inventory" icon={Activity} />

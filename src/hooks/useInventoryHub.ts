@@ -118,6 +118,22 @@ export interface InventorySummaryRow {
   unit_cost: number | null;
 }
 
+export interface CloseoutRow {
+  guid_product_warehouse: string;
+  sku: string;
+  product: string | null;
+  warehouse: string | null;
+  collection: string | null;
+  on_hand: number;
+  available: number;
+  unit_cost: number | null;
+  inventory_value: number;
+  discontinued: boolean | null;
+  active_product: boolean | null;
+  avail_on_web: boolean | null;
+  is_closeout: boolean | null;
+}
+
 export function useInventoryHub() {
   const [openOrders, setOpenOrders] = useState<OpenSalesOrder[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
@@ -125,6 +141,7 @@ export function useInventoryHub() {
   const [openPOs, setOpenPOs] = useState<OpenPO[]>([]);
   const [openPOLines, setOpenPOLines] = useState<OpenPOLine[]>([]);
   const [inventorySummary, setInventorySummary] = useState<InventorySummaryRow[]>([]);
+  const [closeoutInventory, setCloseoutInventory] = useState<CloseoutRow[]>([]);
   const [salesHistory, setSalesHistory] = useState<SkuSalesHistory[]>([]);
   const [lostSales, setLostSales] = useState<LostSaleEvent[]>([]);
   const [demandSignals, setDemandSignals] = useState<DealerDemandSignal[]>([]);
@@ -191,13 +208,39 @@ export function useInventoryHub() {
       })) as InventorySummaryRow[];
     };
 
+    const fetchCloseoutInventory = async () => {
+      const pageSize = 2000;
+      const all: any[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("v_portal_closeout_inventory")
+          .select("guid_product_warehouse, sku, product, warehouse, collection, on_hand, available, unit_cost, inventory_value, discontinued, active_product, avail_on_web, is_closeout")
+          .order("inventory_value", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) { console.error("[useInventoryHub] v_portal_closeout_inventory:", error); break; }
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all.map((r: any) => ({
+        ...r,
+        on_hand: Number(r.on_hand),
+        available: Number(r.available),
+        unit_cost: r.unit_cost != null ? Number(r.unit_cost) : null,
+        inventory_value: Number(r.inventory_value),
+      })) as CloseoutRow[];
+    };
+
     (async () => {
-      const [oso, ssh, ls, ds, inv] = await Promise.all([
+      const [oso, ssh, ls, ds, inv, co] = await Promise.all([
         fetchAllOpenOrders(),
         supabase.from("sku_sales_history").select("id, sku, year, month, units_sold, revenue, forecast_units").limit(1000),
         supabase.from("lost_sales_events").select("id, sku, event_date, qty_requested, estimated_value, reason, dealer_name").limit(1000),
         supabase.from("dealer_demand_signals").select("id, sku, dealer_name, signal_type, signal_strength, signal_date, notes").limit(1000),
         fetchInventorySummary(),
+        fetchCloseoutInventory(),
       ]);
       if (!active) return;
       setOpenOrders(oso as OpenSalesOrder[]);
@@ -205,6 +248,7 @@ export function useInventoryHub() {
       setLostSales((ls.data ?? []) as LostSaleEvent[]);
       setDemandSignals((ds.data ?? []) as DealerDemandSignal[]);
       setInventorySummary(inv);
+      setCloseoutInventory(co);
       await loadPOs();
       setLoading(false);
     })();
@@ -233,5 +277,5 @@ export function useInventoryHub() {
     };
   }, []);
 
-  return { openOrders, purchaseOrders, poLines, openPOs, openPOLines, inventorySummary, salesHistory, lostSales, demandSignals, loading };
+  return { openOrders, purchaseOrders, poLines, openPOs, openPOLines, inventorySummary, closeoutInventory, salesHistory, lostSales, demandSignals, loading };
 }

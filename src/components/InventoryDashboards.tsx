@@ -893,7 +893,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     const value = hub.inventorySummary.reduce((s, r) => s + Number(r.inventory_value), 0);
     const units = hub.inventorySummary.reduce((s, r) => s + Number(r.on_hand), 0);
     let monthlySales = 0, lostSales = 0;
-    let outOfStockValue = 0, closeoutValue = 0, annualUnits = 0;
+    let outOfStockValue = 0, annualUnits = 0;
     for (const it of items) {
       const cost = it.unitCost ?? 0;
       const lineValue = it.onHandValue ?? cost * it.onHand;
@@ -914,7 +914,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     const openPoValue = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_amount), 0);
     const openPoCount = new Set(hub.openPOs.map((p) => p.po_number)).size;
     const openPoUnits = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_qty), 0);
-    const closeoutValue = hub.closeoutInventory.reduce((s, r) => s + Number(r.inventory_value), 0);
+    const closeoutValue = hub.closeoutInventory.reduce((s, r) => s + Number(r.inventory_value || 0), 0);
     const prepaidValue = hub.purchaseOrders
       .filter((p) => p.is_prepaid)
       .reduce((s, p) => s + Number(p.prepaid_amount ?? 0), 0);

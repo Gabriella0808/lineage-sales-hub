@@ -106,12 +106,25 @@ export interface DealerDemandSignal {
   notes: string | null;
 }
 
+export interface InventorySummaryRow {
+  guid_product_warehouse: string;
+  sku: string;
+  product: string | null;
+  warehouse: string | null;
+  collection: string | null;
+  on_hand: number;
+  available: number;
+  inventory_value: number;
+  unit_cost: number | null;
+}
+
 export function useInventoryHub() {
   const [openOrders, setOpenOrders] = useState<OpenSalesOrder[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [poLines, setPoLines] = useState<PurchaseOrderLine[]>([]);
   const [openPOs, setOpenPOs] = useState<OpenPO[]>([]);
   const [openPOLines, setOpenPOLines] = useState<OpenPOLine[]>([]);
+  const [inventorySummary, setInventorySummary] = useState<InventorySummaryRow[]>([]);
   const [salesHistory, setSalesHistory] = useState<SkuSalesHistory[]>([]);
   const [lostSales, setLostSales] = useState<LostSaleEvent[]>([]);
   const [demandSignals, setDemandSignals] = useState<DealerDemandSignal[]>([]);
@@ -153,18 +166,45 @@ export function useInventoryHub() {
       return all;
     };
 
+    const fetchInventorySummary = async () => {
+      const pageSize = 2000;
+      const all: any[] = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("v_portal_inventory_summary")
+          .select("guid_product_warehouse, sku, product, warehouse, collection, on_hand, available, inventory_value, unit_cost")
+          .order("inventory_value", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) { console.error("[useInventoryHub] v_portal_inventory_summary:", error); break; }
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all.map((r: any) => ({
+        ...r,
+        on_hand: Number(r.on_hand),
+        available: Number(r.available),
+        inventory_value: Number(r.inventory_value),
+        unit_cost: r.unit_cost != null ? Number(r.unit_cost) : null,
+      })) as InventorySummaryRow[];
+    };
+
     (async () => {
-      const [oso, ssh, ls, ds] = await Promise.all([
+      const [oso, ssh, ls, ds, inv] = await Promise.all([
         fetchAllOpenOrders(),
         supabase.from("sku_sales_history").select("id, sku, year, month, units_sold, revenue, forecast_units").limit(1000),
         supabase.from("lost_sales_events").select("id, sku, event_date, qty_requested, estimated_value, reason, dealer_name").limit(1000),
         supabase.from("dealer_demand_signals").select("id, sku, dealer_name, signal_type, signal_strength, signal_date, notes").limit(1000),
+        fetchInventorySummary(),
       ]);
       if (!active) return;
       setOpenOrders(oso as OpenSalesOrder[]);
       setSalesHistory((ssh.data ?? []) as SkuSalesHistory[]);
       setLostSales((ls.data ?? []) as LostSaleEvent[]);
       setDemandSignals((ds.data ?? []) as DealerDemandSignal[]);
+      setInventorySummary(inv);
       await loadPOs();
       setLoading(false);
     })();
@@ -193,5 +233,5 @@ export function useInventoryHub() {
     };
   }, []);
 
-  return { openOrders, purchaseOrders, poLines, openPOs, openPOLines, salesHistory, lostSales, demandSignals, loading };
+  return { openOrders, purchaseOrders, poLines, openPOs, openPOLines, inventorySummary, salesHistory, lostSales, demandSignals, loading };
 }

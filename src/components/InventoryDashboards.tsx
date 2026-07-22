@@ -14,7 +14,7 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import type { InventoryItem } from "@/data/inventoryMock";
-import { useInventoryHub, type PurchaseOrder, type OpenPO, type OpenPOLine } from "@/hooks/useInventoryHub";
+import { useInventoryHub, type PurchaseOrder, type OpenPO, type OpenPOLine, type InventorySummaryRow } from "@/hooks/useInventoryHub";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -103,12 +103,12 @@ function EmptyState({ message }: { message: string }) {
 }
 
 
-function ReportSkuValue({ items, total }: { items: InventoryItem[]; total: number }) {
-  const rows = useMemo(() => items
-    .map((it) => ({ it, value: it.onHandValue ?? (it.unitCost ?? 0) * it.onHand }))
-    .filter((r) => r.value > 0)
-    .sort((a, b) => b.value - a.value), [items]);
-  if (rows.length === 0) return <EmptyState message="No SKUs to show." />;
+function ReportInventoryValue({ rows, total }: { rows: InventorySummaryRow[]; total: number }) {
+  const sorted = useMemo(
+    () => [...rows].sort((a, b) => Number(b.inventory_value) - Number(a.inventory_value)),
+    [rows],
+  );
+  if (sorted.length === 0) return <EmptyState message="No inventory data found." />;
   return (
     <table className="w-full text-sm">
       <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
@@ -116,24 +116,37 @@ function ReportSkuValue({ items, total }: { items: InventoryItem[]; total: numbe
           <th className="text-left px-3 py-2">SKU</th>
           <th className="text-left px-3 py-2">Product</th>
           <th className="text-left px-3 py-2">Collection</th>
+          <th className="text-left px-3 py-2">Warehouse</th>
           <th className="text-right px-3 py-2">On Hand</th>
+          <th className="text-right px-3 py-2">Available</th>
           <th className="text-right px-3 py-2">Unit Cost</th>
-          <th className="text-right px-3 py-2">Value</th>
+          <th className="text-right px-3 py-2">Inventory Value</th>
           <th className="text-right px-3 py-2">% of Total</th>
         </tr>
       </thead>
       <tbody>
-        {rows.map(({ it, value }) => (
-          <tr key={it.sku} className="border-t border-border hover:bg-muted/30">
-            <td className="px-3 py-2 font-mono text-xs">{it.sku}</td>
-            <td className="px-3 py-2 max-w-[260px] truncate">{it.product}</td>
-            <td className="px-3 py-2 text-xs text-muted-foreground">{it.collection}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{fmtNum(it.onHand)}</td>
-            <td className="px-3 py-2 text-right tabular-nums">{it.unitCost ? `$${it.unitCost.toFixed(2)}` : "-"}</td>
-            <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(value)}</td>
-            <td className="px-3 py-2 text-right tabular-nums text-xs text-muted-foreground">{total > 0 ? `${((value / total) * 100).toFixed(1)}%` : "-"}</td>
-          </tr>
-        ))}
+        {sorted.map((r) => {
+          const invValue = Number(r.inventory_value);
+          const onHand = Number(r.on_hand);
+          const unitCost = r.unit_cost != null
+            ? Number(r.unit_cost)
+            : (onHand > 0 ? invValue / onHand : null);
+          return (
+            <tr key={r.guid_product_warehouse} className="border-t border-border hover:bg-muted/30">
+              <td className="px-3 py-2 font-mono text-xs">{r.sku}</td>
+              <td className="px-3 py-2 max-w-[260px] truncate">{r.product ?? "-"}</td>
+              <td className="px-3 py-2 text-xs text-muted-foreground">{r.collection ?? "-"}</td>
+              <td className="px-3 py-2 text-xs">{r.warehouse ?? "-"}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{fmtNum(onHand)}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{fmtNum(Number(r.available))}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{unitCost != null ? `$${unitCost.toFixed(2)}` : "-"}</td>
+              <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(invValue)}</td>
+              <td className="px-3 py-2 text-right tabular-nums text-xs text-muted-foreground">
+                {total > 0 ? `${((invValue / total) * 100).toFixed(1)}%` : "-"}
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
@@ -876,13 +889,14 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // ============ SECTION 1: HIGH LEVEL SUMMARY ============
   const summary = useMemo(() => {
-    let value = 0, units = 0, monthlySales = 0, lostSales = 0;
+    // Total inventory value and units come from the Supabase view
+    const value = hub.inventorySummary.reduce((s, r) => s + Number(r.inventory_value), 0);
+    const units = hub.inventorySummary.reduce((s, r) => s + Number(r.on_hand), 0);
+    let monthlySales = 0, lostSales = 0;
     let outOfStockValue = 0, closeoutValue = 0, annualUnits = 0;
     for (const it of items) {
       const cost = it.unitCost ?? 0;
       const lineValue = it.onHandValue ?? cost * it.onHand;
-      value += lineValue;
-      units += it.onHand;
       monthlySales += it.avgMonthlySales * (it.listPrice ?? cost);
       annualUnits += it.avgMonthlySales * 12;
       const oos = isOutOfStockSku(it);
@@ -906,7 +920,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     const salesToInv = value > 0 ? monthlySales / value : 0;
     const turnover = value > 0 ? (monthlySales * 12) / value : 0;
     return { value, units, monthlySales, backlogValue, backlogUnits, openPoValue, openPoCount, openPoUnits, prepaidValue, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
-  }, [items, hub.openOrders, hub.purchaseOrders, hub.openPOs]);
+  }, [items, hub.openOrders, hub.purchaseOrders, hub.openPOs, hub.inventorySummary]);
 
 
   // Value by collection / brand for drilldown
@@ -1887,7 +1901,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             <Button size="sm" variant="ghost" className="h-8" onClick={() => setDrilldown(null)}>Close</Button>
           </div>
           <div className={cn("overflow-auto", drilldown === "openpo" ? "max-h-[88vh]" : drilldown === "closeout" ? "max-h-[80vh]" : "max-h-[60vh]")}>
-            {drilldown === "value" && <ReportSkuValue items={items} total={summary.value} />}
+            {drilldown === "value" && <ReportInventoryValue rows={hub.inventorySummary} total={summary.value} />}
             {drilldown === "closeout" && <ReportCloseout />}
             {drilldown === "openpo" && <ReportOpenPOs pos={hub.openPOs} lines={hub.openPOLines} />}
             {drilldown === "prepaid" && <ReportPOs pos={hub.purchaseOrders.filter((p) => p.is_prepaid)} prepaidMode />}

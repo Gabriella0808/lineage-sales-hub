@@ -111,7 +111,7 @@ function ReportInventoryValue({ rows, total }: { rows: InventorySummaryRow[]; to
   if (sorted.length === 0) return <EmptyState message="No inventory data found." />;
   return (
     <table className="w-full text-sm">
-      <thead className="text-xs uppercase tracking-wide text-muted-foreground border-b border-border">
+      <thead className="bg-card text-xs uppercase tracking-wide text-muted-foreground sticky top-0 z-10 border-b border-border">
         <tr>
           <th className="text-left px-3 py-2">SKU</th>
           <th className="text-left px-3 py-2">Product</th>

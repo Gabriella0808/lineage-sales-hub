@@ -142,6 +142,7 @@ export function useInventoryHub() {
   const [openPOLines, setOpenPOLines] = useState<OpenPOLine[]>([]);
   const [inventorySummary, setInventorySummary] = useState<InventorySummaryRow[]>([]);
   const [closeoutInventory, setCloseoutInventory] = useState<CloseoutRow[]>([]);
+  const [clearanceInventoryValue, setClearanceInventoryValue] = useState<number>(0);
   const [salesHistory, setSalesHistory] = useState<SkuSalesHistory[]>([]);
   const [lostSales, setLostSales] = useState<LostSaleEvent[]>([]);
   const [demandSignals, setDemandSignals] = useState<DealerDemandSignal[]>([]);
@@ -233,14 +234,33 @@ export function useInventoryHub() {
       })) as CloseoutRow[];
     };
 
+    const fetchClearanceInventoryValue = async () => {
+      const pageSize = 2000;
+      let total = 0;
+      let from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("v_portal_clearance_products")
+          .select("inventory_value")
+          .range(from, from + pageSize - 1);
+        if (error) { console.error("[useInventoryHub] v_portal_clearance_products (value):", error); break; }
+        if (!data || data.length === 0) break;
+        total += (data as any[]).reduce((s, r) => s + (r.inventory_value != null ? Number(r.inventory_value) : 0), 0);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return total;
+    };
+
     (async () => {
-      const [oso, ssh, ls, ds, inv, co] = await Promise.all([
+      const [oso, ssh, ls, ds, inv, co, clv] = await Promise.all([
         fetchAllOpenOrders(),
         supabase.from("sku_sales_history").select("id, sku, year, month, units_sold, revenue, forecast_units").limit(1000),
         supabase.from("lost_sales_events").select("id, sku, event_date, qty_requested, estimated_value, reason, dealer_name").limit(1000),
         supabase.from("dealer_demand_signals").select("id, sku, dealer_name, signal_type, signal_strength, signal_date, notes").limit(1000),
         fetchInventorySummary(),
         fetchCloseoutInventory(),
+        fetchClearanceInventoryValue(),
       ]);
       if (!active) return;
       setOpenOrders(oso as OpenSalesOrder[]);
@@ -249,6 +269,7 @@ export function useInventoryHub() {
       setDemandSignals((ds.data ?? []) as DealerDemandSignal[]);
       setInventorySummary(inv);
       setCloseoutInventory(co);
+      setClearanceInventoryValue(clv);
       await loadPOs();
       setLoading(false);
     })();
@@ -277,5 +298,5 @@ export function useInventoryHub() {
     };
   }, []);
 
-  return { openOrders, purchaseOrders, poLines, openPOs, openPOLines, inventorySummary, closeoutInventory, salesHistory, lostSales, demandSignals, loading };
+  return { openOrders, purchaseOrders, poLines, openPOs, openPOLines, inventorySummary, closeoutInventory, clearanceInventoryValue, salesHistory, lostSales, demandSignals, loading };
 }

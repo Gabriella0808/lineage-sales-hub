@@ -914,14 +914,14 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     const openPoValue = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_amount), 0);
     const openPoCount = new Set(hub.openPOs.map((p) => p.po_number)).size;
     const openPoUnits = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_qty), 0);
-    const closeoutValue = hub.closeoutInventory.reduce((s, r) => s + (r.unit_cost != null ? Number(r.on_hand) * Number(r.unit_cost) : 0), 0);
+    const closeoutValue = hub.clearanceInventoryValue;
     const prepaidValue = hub.purchaseOrders
       .filter((p) => p.is_prepaid)
       .reduce((s, p) => s + Number(p.prepaid_amount ?? 0), 0);
     const salesToInv = value > 0 ? monthlySales / value : 0;
     const turnover = value > 0 ? (monthlySales * 12) / value : 0;
     return { value, units, monthlySales, backlogValue, backlogUnits, openPoValue, openPoCount, openPoUnits, prepaidValue, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
-  }, [items, hub.openOrders, hub.purchaseOrders, hub.openPOs, hub.inventorySummary, hub.closeoutInventory]);
+  }, [items, hub.openOrders, hub.purchaseOrders, hub.openPOs, hub.inventorySummary, hub.closeoutInventory, hub.clearanceInventoryValue]);
 
 
   // Value by collection / brand for drilldown

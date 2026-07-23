@@ -163,7 +163,7 @@ export default function ClearanceAnalyticsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Clearance Analytics</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Discontinued Analytics</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Discontinued product sales broken down by rep and SKU.
         </p>

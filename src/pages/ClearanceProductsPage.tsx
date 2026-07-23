@@ -110,7 +110,7 @@ export default function ClearanceProductsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Clearance Products</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Discontinued Products</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Discontinued Acctivate lines with current inventory levels.
         </p>
@@ -182,11 +182,11 @@ export default function ClearanceProductsPage() {
       {loading ? (
         <div className="text-center py-16 text-muted-foreground text-sm">
           <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3 text-primary" />
-          Loading clearance products...
+          Loading discontinued products...
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">
-          No clearance products found.
+          No discontinued products found.
         </div>
       ) : (
         <Card>

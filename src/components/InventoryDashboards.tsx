@@ -1750,15 +1750,15 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-3 gap-4">
-          <KPI label="Closeout SKUs" value={coSkuCount} icon={Tag} />
-          <KPI label="Total Closeout Value" value={fmtMoney(coTotal)} icon={DollarSign} />
+          <KPI label="Discontinued SKUs" value={coSkuCount} icon={Tag} />
+          <KPI label="Total Discontinued Value" value={fmtMoney(coTotal)} icon={DollarSign} />
           <KPI label="Total Units" value={fmtNum(coUnits)} icon={PackageOpen} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {byCollection.length > 0 && (
             <Card className="p-5">
-              <h3 className="text-base font-semibold mb-3">Closeout Value by Collection</h3>
+              <h3 className="text-base font-semibold mb-3">Discontinued Value by Collection</h3>
               <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={byCollection} layout="vertical" margin={{ left: 4, right: 12 }}>
@@ -1774,7 +1774,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
           )}
           {bySku.length > 0 && (
             <Card className="p-5">
-              <h3 className="text-base font-semibold mb-3">Closeout Value by SKU <span className="text-xs font-normal text-muted-foreground">(top {bySku.length})</span></h3>
+              <h3 className="text-base font-semibold mb-3">Discontinued Value by SKU <span className="text-xs font-normal text-muted-foreground">(top {bySku.length})</span></h3>
               <div className="h-56 overflow-y-auto">
                 <ResponsiveContainer width="100%" height={Math.max(224, bySku.length * 24 + 40)}>
                   <BarChart data={bySku} layout="vertical" margin={{ left: 4, right: 12 }}>
@@ -1791,9 +1791,9 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         </div>
 
         <Card className="p-5">
-          <h3 className="text-base font-semibold mb-3">Closeout Inventory</h3>
+          <h3 className="text-base font-semibold mb-3">Discontinued Inventory</h3>
           {co.length === 0 ? (
-            <EmptyState message="No closeout inventory found." />
+            <EmptyState message="No discontinued inventory found." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -1874,7 +1874,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     openpo: { title: "Total Open POs - not yet arrived", desc: "Purchase orders still in production or transit." },
     prepaid: { title: "Prepaid Inventory - POs with deposits", desc: "Cash already paid out to factories." },
     backlog: { title: "Backlog - Open Sales Orders", desc: "Customer orders placed but not yet shipped." },
-    closeout: { title: "Closeout Inventory - clearance & closeout", desc: "SKUs flagged closeout or clearance." },
+    closeout: { title: "Discontinued Inventory", desc: "Products marked as discontinued in Acctivate." },
     lost: { title: "Lost Sales - out-of-stock SKUs", desc: "Estimated monthly $ lost from stockouts." },
   };
 
@@ -1885,7 +1885,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         <KPI label="Total Open POs" value={fmtMoney(summary.openPoValue)} hint={`${summary.openPoCount} POs · ${fmtNum(summary.openPoUnits)} units`} icon={Truck} onClick={() => toggleDrill("openpo")} active={drilldown === "openpo"} />
         <KPI label="Prepaid Inventory" value={fmtMoney(summary.prepaidValue)} icon={DollarSign} onClick={() => toggleDrill("prepaid")} active={drilldown === "prepaid"} />
         <KPI label="Backlog (Open Orders)" value={hub.loading ? "-" : fmtMoney(summary.backlogValue)} hint={hub.loading ? "loading..." : `${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} onClick={() => toggleDrill("backlog")} active={drilldown === "backlog"} />
-        <KPI label="Closeout Inventory" value={fmtMoney(summary.closeoutValue)} hint={`${new Set(hub.closeoutInventory.map((r) => r.sku)).size} SKUs · ${fmtNum(hub.closeoutInventory.reduce((s, r) => s + Number(r.on_hand), 0))} units`} icon={Tag} onClick={() => toggleDrill("closeout")} active={drilldown === "closeout"} />
+        <KPI label="Discontinued Inventory" value={fmtMoney(summary.closeoutValue)} hint={`${new Set(hub.closeoutInventory.map((r) => r.sku)).size} SKUs · ${fmtNum(hub.closeoutInventory.reduce((s, r) => s + Number(r.on_hand), 0))} units`} icon={Tag} onClick={() => toggleDrill("closeout")} active={drilldown === "closeout"} />
         <KPI label="OUT OF STOCK - LOST SALES" value={fmtMoney(summary.lostSales)} hint="per month" icon={AlertCircle} accent="text-destructive" onClick={() => toggleDrill("lost")} active={drilldown === "lost"} />
         <KPI label="Sales / Inv Ratio" value={summary.salesToInv.toFixed(2)} hint={summary.salesToInv > 0.5 ? "healthy" : summary.salesToInv > 0.2 ? "OK" : "carrying too much"} icon={Activity} accent={summary.salesToInv < 0.2 ? "text-warning-foreground" : undefined} />
         <KPI label="Annual Turnover" value={`${summary.turnover.toFixed(1)}×`} hint="sales ÷ inventory" icon={Activity} />
@@ -2122,7 +2122,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                       <th className="text-right px-3 py-2">% Sales</th>
                       <th className="text-right px-3 py-2">Vel/mo</th>
                       <th className="text-right px-3 py-2">Inv/Sales</th>
-                      <th className="text-center px-3 py-2">Clr</th>
+                      <th className="text-center px-3 py-2">Disc</th>
 
                     </tr>
                   </thead>
@@ -2910,9 +2910,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                   <div><div className="text-xs text-muted-foreground">Forecast/mo</div><div className="tabular-nums">{drawerItem.forecastMonthly ?? "-"}</div></div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  {drawerItem.isClearance && <Badge variant="secondary">Clearance</Badge>}
-                  {isCloseoutSku(drawerItem) && <Badge variant="secondary">Closeout</Badge>}
-                  {drawerItem.isDiscontinued && <Badge variant="secondary">Discontinued</Badge>}
+                  {(drawerItem.isClearance || drawerItem.isDiscontinued) && <Badge variant="secondary">Discontinued</Badge>}
                 </div>
               </div>
             </>

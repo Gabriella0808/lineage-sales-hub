@@ -88,9 +88,9 @@ const NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
-        title: "Clearance Products", url: "/clearance", icon: Tag, roles: ["admin", "manager"],
+        title: "Discontinued Products", url: "/clearance", icon: Tag, roles: ["admin", "manager"],
         children: [
-          { title: "Clearance Analytics", url: "/clearance/analytics", icon: BarChart3, roles: ["admin", "manager"] },
+          { title: "Discontinued Analytics", url: "/clearance/analytics", icon: BarChart3, roles: ["admin", "manager"] },
         ],
       },
     ],

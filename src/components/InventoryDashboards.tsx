@@ -1751,7 +1751,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       <div className="space-y-6">
         <div className="grid grid-cols-3 gap-4">
           <KPI label="Discontinued SKUs" value={coSkuCount} icon={Tag} />
-          <KPI label="Total Discontinued Value" value={fmtMoney(coTotal)} icon={DollarSign} />
+          <KPI label="Total Discontinued Retail Value" value={fmtMoney(coTotal)} icon={DollarSign} />
           <KPI label="Total Units" value={fmtNum(coUnits)} icon={PackageOpen} />
         </div>
 

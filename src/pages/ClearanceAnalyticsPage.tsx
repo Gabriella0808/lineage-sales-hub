@@ -270,7 +270,9 @@ export default function ClearanceAnalyticsPage() {
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-border/60 bg-muted/20">
-                    <td className="px-4 py-3 font-semibold text-foreground" colSpan={3}>Total</td>
+                    <td className="px-4 py-3 font-semibold text-foreground">Total</td>
+                    <td className="px-4 py-3 text-right tabular-nums font-bold text-foreground">{summary.skusMoved}</td>
+                    <td className="px-4 py-3 text-right tabular-nums font-bold text-foreground">{summary.totalUnits.toLocaleString()}</td>
                     <td className="px-4 py-3 text-right tabular-nums font-bold text-foreground">{fmtCurrency(summary.totalRevenue)}</td>
                     <td />
                   </tr>

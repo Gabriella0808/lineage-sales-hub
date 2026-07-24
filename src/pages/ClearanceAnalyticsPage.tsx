@@ -1,7 +1,5 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
-import {
-  startOfWeek, endOfWeek, subWeeks, addWeeks, format,
-} from "date-fns";
+import { addDays, format } from "date-fns";
 import {
   ChevronLeft, ChevronRight, Package, Users,
   TrendingDown, DollarSign, ChevronDown, ChevronUp,
@@ -14,18 +12,16 @@ import { cn } from "@/lib/utils";
 // --------- Types ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 interface SalesRow {
-  guid_invoice_detail: string;
-  invoice_number:      string | null;
-  sale_date:           string;
-  week_start:          string | null;
-  week_end:            string | null;
-  rep_name:            string | null;
-  rep_id:              string | null;
-  sku:                 string;
-  product:             string | null;
-  product_class:       string | null;
-  quantity_sold:       number;
-  sales_amount:        number;
+  sale_date:     string;
+  week_start:    string | null;
+  week_end:      string | null;
+  rep_name:      string | null;
+  rep_id:        string | null;
+  sku:           string;
+  product:       string | null;
+  product_class: string | null;
+  quantity_sold: number;
+  sales_amount:  number;
 }
 
 interface RepSkuRow {
@@ -45,8 +41,19 @@ interface RepRow {
 
 // --------- Helpers ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-function fmtWeekLabel(start: Date, end: Date) {
-  return `${format(start, "MMM d")} - ${format(end, "MMM d, yyyy")}`;
+/** Returns the most recent Friday on or before `date` (time zeroed). */
+function lastFriday(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  // getDay(): 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
+  // days since last Friday: (day + 2) % 7
+  const daysBack = (d.getDay() + 2) % 7;
+  d.setDate(d.getDate() - daysBack);
+  return d;
+}
+
+function fmtWeekLabel(periodStart: Date, periodEnd: Date) {
+  return `${format(periodStart, "MMM d")} – ${format(periodEnd, "MMM d, yyyy")}`;
 }
 
 function fmtCurrency(n: number) {
@@ -56,20 +63,26 @@ function fmtCurrency(n: number) {
 // --------- Page -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 export default function ClearanceAnalyticsPage() {
-  const [anchor, setAnchor] = useState<Date>(() => new Date());
-  const weekStart = startOfWeek(anchor, { weekStartsOn: 0 });
-  const weekEnd   = endOfWeek(anchor,   { weekStartsOn: 0 });
-  const weekLabel = useMemo(() => fmtWeekLabel(weekStart, weekEnd), [weekStart, weekEnd]);
+  // anchor = the "end Friday" of the displayed period
+  const [anchor, setAnchor] = useState<Date>(() => lastFriday(new Date()));
+
+  const periodEnd   = anchor;               // inclusive end Friday
+  const periodStart = addDays(anchor, -7);  // inclusive start (previous Friday)
+  const filterEnd   = addDays(anchor, 1);   // exclusive upper bound: sale_date < filterEnd
+
+  const periodStartStr = format(periodStart, "yyyy-MM-dd");
+  const filterEndStr   = format(filterEnd,   "yyyy-MM-dd");
+  const weekLabel      = fmtWeekLabel(periodStart, periodEnd);
+
+  const todayFriday    = lastFriday(new Date());
+  const isCurrentWeek  = format(anchor, "yyyy-MM-dd") === format(todayFriday, "yyyy-MM-dd");
 
   const [salesRows, setSalesRows]       = useState<SalesRow[]>([]);
   const [loadingData, setLoadingData]   = useState(true);
   const [expandedReps, setExpandedReps] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const weekStartStr = format(weekStart, "yyyy-MM-dd");
-    const weekEndStr   = format(weekEnd,   "yyyy-MM-dd");
-
-    console.log("[clearance-analytics]", { weekStart: weekStartStr, weekEnd: weekEndStr });
+    console.log("[clearance-analytics]", { periodStart: periodStartStr, filterEnd: filterEndStr });
 
     async function load() {
       setLoadingData(true);
@@ -77,9 +90,9 @@ export default function ClearanceAnalyticsPage() {
 
       const { data, error } = await (supabase as any)
         .from("v_portal_clearance_sales_analytics")
-        .select("guid_invoice_detail, invoice_number, sale_date, week_start, week_end, rep_name, rep_id, sku, product, product_class, quantity_sold, sales_amount")
-        .gte("sale_date", weekStartStr)
-        .lte("sale_date", weekEndStr);
+        .select("sale_date, week_start, week_end, rep_name, rep_id, sku, product, product_class, quantity_sold, sales_amount")
+        .gte("sale_date", periodStartStr)
+        .lt("sale_date", filterEndStr);
 
       if (error) {
         console.error("[clearance-analytics] v_portal_clearance_sales_analytics fetch failed:", error.message, error);
@@ -89,16 +102,21 @@ export default function ClearanceAnalyticsPage() {
       }
 
       const rows = ((data ?? []) as any[]).map((r: any) => ({
-        ...r,
-        quantity_sold: Number(r.quantity_sold) || 0,
-        sales_amount:  Number(r.sales_amount)  || 0,
+        sale_date:     String(r.sale_date    ?? ""),
+        week_start:    r.week_start          ?? null,
+        week_end:      r.week_end            ?? null,
+        rep_name:      r.rep_name            ?? null,
+        rep_id:        r.rep_id              ?? null,
+        sku:           String(r.sku          ?? ""),
+        product:       r.product             ?? null,
+        product_class: r.product_class       ?? null,
+        quantity_sold: Number(r.quantity_sold || 0),
+        sales_amount:  Number(r.sales_amount  || 0),
       })) as SalesRow[];
 
       const totalUnits   = rows.reduce((s, r) => s + r.quantity_sold, 0);
       const totalRevenue = rows.reduce((s, r) => s + r.sales_amount,  0);
-
       console.log("[clearance-analytics] rows fetched:", rows.length, "· units:", totalUnits, "· revenue:", totalRevenue);
-
       if (rows.length > 0) {
         const dates = rows.map((r) => r.sale_date).sort();
         console.log("[clearance-analytics] sale_date range:", { min: dates[0], max: dates[dates.length - 1] });
@@ -108,8 +126,7 @@ export default function ClearanceAnalyticsPage() {
       setLoadingData(false);
     }
     void load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [format(weekStart, "yyyy-MM-dd"), format(weekEnd, "yyyy-MM-dd")]);
+  }, [periodStartStr, filterEndStr]);
 
   const repRows = useMemo<RepRow[]>(() => {
     const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
@@ -120,19 +137,13 @@ export default function ClearanceAnalyticsPage() {
       const rep = rawRep;
       const sku = row.sku;
       if (!agg[rep]) agg[rep] = { totalQty: 0, totalRevenue: 0, skus: {} };
-      agg[rep].totalQty     += Number(row.quantity_sold) || 0;
-      agg[rep].totalRevenue += Number(row.sales_amount)  || 0;
+      agg[rep].totalQty     += Number(row.quantity_sold || 0);
+      agg[rep].totalRevenue += Number(row.sales_amount  || 0);
       if (!agg[rep].skus[sku]) {
-        agg[rep].skus[sku] = {
-          sku,
-          product:       row.product       ?? null,
-          product_class: row.product_class ?? null,
-          qty:     0,
-          revenue: 0,
-        };
+        agg[rep].skus[sku] = { sku, product: row.product ?? null, product_class: row.product_class ?? null, qty: 0, revenue: 0 };
       }
-      agg[rep].skus[sku].qty     += Number(row.quantity_sold) || 0;
-      agg[rep].skus[sku].revenue += Number(row.sales_amount)  || 0;
+      agg[rep].skus[sku].qty     += Number(row.quantity_sold || 0);
+      agg[rep].skus[sku].revenue += Number(row.sales_amount  || 0);
     }
     return Object.entries(agg)
       .sort(([, a], [, b]) => b.totalRevenue - a.totalRevenue)
@@ -171,18 +182,18 @@ export default function ClearanceAnalyticsPage() {
 
       {/* Week navigation */}
       <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setAnchor((d) => subWeeks(d, 1))}>
+        <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={() => setAnchor((d) => addDays(d, -7))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-sm font-medium tabular-nums min-w-[230px] text-center">{weekLabel}</span>
         <Button
           variant="outline" size="sm" className="h-8 w-8 p-0"
-          onClick={() => setAnchor((d) => addWeeks(d, 1))}
-          disabled={weekEnd >= new Date()}
+          onClick={() => setAnchor((d) => addDays(d, 7))}
+          disabled={isCurrentWeek}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setAnchor(new Date())}>
+        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setAnchor(lastFriday(new Date()))}>
           This Week
         </Button>
       </div>

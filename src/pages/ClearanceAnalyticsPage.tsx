@@ -13,27 +13,23 @@ import { cn } from "@/lib/utils";
 
 interface SalesRow {
   sale_date:     string;
-  week_start:    string | null;
-  week_end:      string | null;
   rep_name:      string | null;
-  rep_id:        string | null;
   sku:           string;
   product:       string | null;
-  product_class: string | null;
   quantity_sold: number;
   sales_amount:  number;
 }
 
 interface RepSkuRow {
-  sku:           string;
-  product:       string | null;
-  product_class: string | null;
-  qty:           number;
-  revenue:       number;
+  sku:     string;
+  product: string | null;
+  qty:     number;
+  revenue: number;
 }
 
 interface RepRow {
   rep:          string;
+  skuCount:     number;
   totalQty:     number;
   totalRevenue: number;
   skus:         RepSkuRow[];
@@ -62,27 +58,28 @@ function fmtCurrency(n: number) {
 
 // --------- Page -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
+
 export default function ClearanceAnalyticsPage() {
   // anchor = the "end Friday" of the displayed period
   const [anchor, setAnchor] = useState<Date>(() => lastFriday(new Date()));
 
-  const periodEnd   = anchor;               // inclusive end Friday
-  const periodStart = addDays(anchor, -7);  // inclusive start (previous Friday)
-  const filterEnd   = addDays(anchor, 1);   // exclusive upper bound: sale_date < filterEnd
+  const periodEnd   = anchor;               // inclusive end Friday (displayed)
+  const periodStart = addDays(anchor, -7);  // previous Friday (inclusive start)
+  const filterEnd   = addDays(anchor, 1);   // exclusive: sale_date < filterEnd
 
   const periodStartStr = format(periodStart, "yyyy-MM-dd");
   const filterEndStr   = format(filterEnd,   "yyyy-MM-dd");
   const weekLabel      = fmtWeekLabel(periodStart, periodEnd);
 
-  const todayFriday    = lastFriday(new Date());
-  const isCurrentWeek  = format(anchor, "yyyy-MM-dd") === format(todayFriday, "yyyy-MM-dd");
+  const isCurrentWeek = format(anchor, "yyyy-MM-dd") === format(lastFriday(new Date()), "yyyy-MM-dd");
 
   const [salesRows, setSalesRows]       = useState<SalesRow[]>([]);
   const [loadingData, setLoadingData]   = useState(true);
   const [expandedReps, setExpandedReps] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    console.log("[clearance-analytics]", { periodStart: periodStartStr, filterEnd: filterEndStr });
+    console.log("[clearance-analytics] period:", periodStartStr, "to <", filterEndStr);
 
     async function load() {
       setLoadingData(true);
@@ -90,37 +87,29 @@ export default function ClearanceAnalyticsPage() {
 
       const { data, error } = await (supabase as any)
         .from("v_portal_clearance_sales_analytics")
-        .select("sale_date, week_start, week_end, rep_name, rep_id, sku, product, product_class, quantity_sold, sales_amount")
+        .select("sale_date, rep_name, sku, product, quantity_sold, sales_amount")
         .gte("sale_date", periodStartStr)
         .lt("sale_date", filterEndStr);
 
       if (error) {
-        console.error("[clearance-analytics] v_portal_clearance_sales_analytics fetch failed:", error.message, error);
+        console.error("[clearance-analytics] fetch failed:", error.message, error);
         setSalesRows([]);
         setLoadingData(false);
         return;
       }
 
       const rows = ((data ?? []) as any[]).map((r: any) => ({
-        sale_date:     String(r.sale_date    ?? ""),
-        week_start:    r.week_start          ?? null,
-        week_end:      r.week_end            ?? null,
-        rep_name:      r.rep_name            ?? null,
-        rep_id:        r.rep_id              ?? null,
-        sku:           String(r.sku          ?? ""),
-        product:       r.product             ?? null,
-        product_class: r.product_class       ?? null,
+        sale_date:     String(r.sale_date ?? ""),
+        rep_name:      r.rep_name ?? null,
+        sku:           String(r.sku ?? ""),
+        product:       r.product  ?? null,
         quantity_sold: Number(r.quantity_sold || 0),
         sales_amount:  Number(r.sales_amount  || 0),
       })) as SalesRow[];
 
-      const totalUnits   = rows.reduce((s, r) => s + r.quantity_sold, 0);
-      const totalRevenue = rows.reduce((s, r) => s + r.sales_amount,  0);
-      console.log("[clearance-analytics] rows fetched:", rows.length, "· units:", totalUnits, "· revenue:", totalRevenue);
-      if (rows.length > 0) {
-        const dates = rows.map((r) => r.sale_date).sort();
-        console.log("[clearance-analytics] sale_date range:", { min: dates[0], max: dates[dates.length - 1] });
-      }
+      console.log("[clearance-analytics] rows:", rows.length,
+        "· units:", rows.reduce((s, r) => s + r.quantity_sold, 0),
+        "· revenue:", rows.reduce((s, r) => s + r.sales_amount, 0));
 
       setSalesRows(rows);
       setLoadingData(false);
@@ -128,19 +117,18 @@ export default function ClearanceAnalyticsPage() {
     void load();
   }, [periodStartStr, filterEndStr]);
 
+  // Rep breakdown — managers excluded from the rep table only
   const repRows = useMemo<RepRow[]>(() => {
-    const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
-    const agg: Record<string, { totalQty: number; totalRevenue: number; skus: Record<string, RepSkuRow> }> = {};
+    const agg: Record<string, { skus: Record<string, RepSkuRow>; totalQty: number; totalRevenue: number }> = {};
     for (const row of salesRows) {
-      const rawRep = row.rep_name?.trim() || "Unattributed";
-      if (MANAGER_NAMES.has(rawRep.toLowerCase())) continue;
-      const rep = rawRep;
-      const sku = row.sku;
-      if (!agg[rep]) agg[rep] = { totalQty: 0, totalRevenue: 0, skus: {} };
+      const rep = row.rep_name?.trim() || "Unattributed";
+      if (MANAGER_NAMES.has(rep.toLowerCase())) continue;
+      if (!agg[rep]) agg[rep] = { skus: {}, totalQty: 0, totalRevenue: 0 };
       agg[rep].totalQty     += Number(row.quantity_sold || 0);
       agg[rep].totalRevenue += Number(row.sales_amount  || 0);
+      const sku = row.sku;
       if (!agg[rep].skus[sku]) {
-        agg[rep].skus[sku] = { sku, product: row.product ?? null, product_class: row.product_class ?? null, qty: 0, revenue: 0 };
+        agg[rep].skus[sku] = { sku, product: row.product ?? null, qty: 0, revenue: 0 };
       }
       agg[rep].skus[sku].qty     += Number(row.quantity_sold || 0);
       agg[rep].skus[sku].revenue += Number(row.sales_amount  || 0);
@@ -149,18 +137,20 @@ export default function ClearanceAnalyticsPage() {
       .sort(([, a], [, b]) => b.totalRevenue - a.totalRevenue)
       .map(([rep, d]) => ({
         rep,
+        skuCount:     Object.keys(d.skus).length,
         totalQty:     d.totalQty,
         totalRevenue: d.totalRevenue,
-        skus: Object.values(d.skus).sort((a, b) => b.revenue - a.revenue),
+        skus:         Object.values(d.skus).sort((a, b) => b.revenue - a.revenue),
       }));
   }, [salesRows]);
 
+  // Summary KPIs use all rows (including managers), matching Supabase totals
   const summary = useMemo(() => ({
-    totalUnits:    repRows.reduce((s, r) => s + r.totalQty,     0),
-    totalRevenue:  repRows.reduce((s, r) => s + r.totalRevenue, 0),
+    totalUnits:    salesRows.reduce((s, r) => s + Number(r.quantity_sold || 0), 0),
+    totalRevenue:  salesRows.reduce((s, r) => s + Number(r.sales_amount  || 0), 0),
     skusMoved:     new Set(salesRows.map((r) => r.sku)).size,
     repsWithSales: repRows.length,
-  }), [repRows, salesRows]);
+  }), [salesRows, repRows]);
 
   function toggleRep(rep: string) {
     setExpandedReps((prev) => {
@@ -230,9 +220,7 @@ export default function ClearanceAnalyticsPage() {
         <div className="text-center py-16 text-muted-foreground text-sm">Loading sales data...</div>
       ) : salesRows.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-muted-foreground text-sm">
-            No discontinued product sales found for this week.
-          </p>
+          <p className="text-muted-foreground text-sm">No discontinued product sales found for this week.</p>
         </div>
       ) : (
         <div className="space-y-5">
@@ -256,7 +244,7 @@ export default function ClearanceAnalyticsPage() {
                         onClick={() => toggleRep(row.rep)}
                       >
                         <td className="px-4 py-3 font-medium text-foreground">{row.rep}</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{row.skus.length}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{row.skuCount}</td>
                         <td className="px-4 py-3 text-right tabular-nums font-semibold">{row.totalQty.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right tabular-nums font-semibold">{fmtCurrency(row.totalRevenue)}</td>
                         <td className="px-2 py-3 text-muted-foreground">
@@ -270,9 +258,6 @@ export default function ClearanceAnalyticsPage() {
                               <div className="font-mono text-xs text-muted-foreground">{sku.sku}</div>
                               {sku.product && (
                                 <div className="text-xs text-foreground mt-0.5 truncate max-w-[240px]">{sku.product}</div>
-                              )}
-                              {sku.product_class && (
-                                <div className="text-[11px] text-muted-foreground mt-0.5">{sku.product_class}</div>
                               )}
                             </td>
                             <td className="px-4 py-2 text-right tabular-nums text-sm">{sku.qty.toLocaleString()}</td>

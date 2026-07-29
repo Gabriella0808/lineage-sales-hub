@@ -61,12 +61,12 @@ function fmtCurrency(n: number) {
 const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
 
 export default function ClearanceAnalyticsPage() {
-  // anchor = the "end Friday" of the displayed period
+  // anchor = the START Friday of the displayed week (last Friday)
   const [anchor, setAnchor] = useState<Date>(() => lastFriday(new Date()));
 
-  const periodEnd   = anchor;               // inclusive end Friday (displayed)
-  const periodStart = addDays(anchor, -7);  // previous Friday (inclusive start)
-  const filterEnd   = addDays(anchor, 1);   // exclusive: sale_date < filterEnd
+  const periodStart = anchor;               // last Friday (inclusive start, displayed)
+  const periodEnd   = addDays(anchor, 7);   // this Friday (inclusive end, displayed)
+  const filterEnd   = addDays(anchor, 8);   // exclusive: sale_date < (this Friday + 1 day)
 
   const periodStartStr = format(periodStart, "yyyy-MM-dd");
   const filterEndStr   = format(filterEnd,   "yyyy-MM-dd");

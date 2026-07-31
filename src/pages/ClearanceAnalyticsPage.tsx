@@ -69,7 +69,7 @@ export default function ClearanceAnalyticsPage() {
   const [anchor, setAnchor] = useState<Date>(() => currentOrNextFriday(new Date()));
 
   const periodEnd   = anchor;               // end Friday (inclusive, displayed)
-  const periodStart = addDays(anchor, -7);  // 7 days before (inclusive start, displayed)
+  const periodStart = addDays(anchor, -6);  // Saturday 6 days before (Sat–Fri, no overlap)
   const filterEnd   = addDays(anchor, 1);   // exclusive: sale_date < (end Friday + 1 day)
 
   const periodStartStr = format(periodStart, "yyyy-MM-dd");

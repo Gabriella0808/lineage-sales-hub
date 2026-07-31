@@ -37,14 +37,18 @@ interface RepRow {
 
 // --------- Helpers ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-/** Returns the most recent Friday on or before `date` (time zeroed). */
-function lastFriday(date: Date): Date {
+/**
+ * Returns the current Friday if today is Friday, otherwise the NEXT upcoming Friday.
+ * This gives the END date of the current reporting period on every day of the week:
+ *   Mon Jul 27 → Jul 31   Tue Jul 28 → Jul 31   Fri Jul 31 → Jul 31 (not Aug 7)
+ */
+function currentOrNextFriday(date: Date): Date {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   // getDay(): 0=Sun,1=Mon,2=Tue,3=Wed,4=Thu,5=Fri,6=Sat
-  // days since last Friday: (day + 2) % 7
-  const daysBack = (d.getDay() + 2) % 7;
-  d.setDate(d.getDate() - daysBack);
+  // days until Friday: Friday=0, Sat=6, Sun=5, Mon=4, Tue=3, Wed=2, Thu=1
+  const daysUntil = (5 - d.getDay() + 7) % 7;
+  d.setDate(d.getDate() + daysUntil);
   return d;
 }
 
@@ -61,18 +65,18 @@ function fmtCurrency(n: number) {
 const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
 
 export default function ClearanceAnalyticsPage() {
-  // anchor = the START Friday of the displayed week (last Friday)
-  const [anchor, setAnchor] = useState<Date>(() => lastFriday(new Date()));
+  // anchor = the END Friday of the displayed period
+  const [anchor, setAnchor] = useState<Date>(() => currentOrNextFriday(new Date()));
 
-  const periodStart = anchor;               // last Friday (inclusive start, displayed)
-  const periodEnd   = addDays(anchor, 7);   // this Friday (inclusive end, displayed)
-  const filterEnd   = addDays(anchor, 8);   // exclusive: sale_date < (this Friday + 1 day)
+  const periodEnd   = anchor;               // end Friday (inclusive, displayed)
+  const periodStart = addDays(anchor, -7);  // 7 days before (inclusive start, displayed)
+  const filterEnd   = addDays(anchor, 1);   // exclusive: sale_date < (end Friday + 1 day)
 
   const periodStartStr = format(periodStart, "yyyy-MM-dd");
   const filterEndStr   = format(filterEnd,   "yyyy-MM-dd");
   const weekLabel      = fmtWeekLabel(periodStart, periodEnd);
 
-  const isCurrentWeek = format(anchor, "yyyy-MM-dd") === format(lastFriday(new Date()), "yyyy-MM-dd");
+  const isCurrentWeek = format(anchor, "yyyy-MM-dd") === format(currentOrNextFriday(new Date()), "yyyy-MM-dd");
 
   const [salesRows, setSalesRows]       = useState<SalesRow[]>([]);
   const [loadingData, setLoadingData]   = useState(true);
@@ -183,7 +187,7 @@ export default function ClearanceAnalyticsPage() {
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setAnchor(lastFriday(new Date()))}>
+        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setAnchor(currentOrNextFriday(new Date()))}>
           This Week
         </Button>
       </div>

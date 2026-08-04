@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   format, startOfYear, endOfMonth, subYears, subMonths, startOfMonth, startOfDay,
-  startOfQuarter, subDays, differenceInCalendarDays,
+  startOfQuarter, subDays, addDays, differenceInCalendarDays,
 } from "date-fns";
 import { RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,13 +51,17 @@ type DealerRepLine = {
 
 /** Fetches rows from v_portal_dealer_rep_reporting_lines for the given date
  *  window (paginated). Both 'bookings' and 'invoiced' metric_types are loaded
- *  in one query so the summary cards can always show both totals. */
-function usePortalDealerRepLines(from: Date, to: Date) {
-  const fromStr = format(from, "yyyy-MM-dd");
-  const toStr   = format(to,   "yyyy-MM-dd");
+ *  so the summary cards can always show both totals.
+ *
+ *  Upper bound is exclusive: the query uses transaction_date < toExcl
+ *  so that selecting Aug 1–4 fetches exactly Aug 1, 2, 3, 4. */
+function usePortalDealerRepLines(from: Date, to: Date, enabled = true) {
+  const fromStr = format(from,           "yyyy-MM-dd");
+  const toExcl  = format(addDays(to, 1), "yyyy-MM-dd");  // exclusive upper bound
   return useQuery({
-    queryKey: ["v_portal_dealer_rep_lines_v1", fromStr, toStr],
-    staleTime: 5 * 60 * 1000,
+    queryKey: ["v_portal_dealer_rep_lines_v2", fromStr, toExcl],
+    enabled,
+    staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       const rows: DealerRepLine[] = [];
       const pageSize = 2000;
@@ -68,7 +72,7 @@ function usePortalDealerRepLines(from: Date, to: Date) {
           .from("v_portal_dealer_rep_reporting_lines")
           .select("metric_type, transaction_date, year, month_number, dealer_name, customer_id, rep_name, rep_id, sku, description, brand_category, amount")
           .gte("transaction_date", fromStr)
-          .lte("transaction_date", toStr)
+          .lt("transaction_date", toExcl)
           .range(start, start + pageSize - 1);
         if (error) {
           console.error("[dealer-rep] v_portal_dealer_rep_reporting_lines fetch failed:", error.message, error);
@@ -76,7 +80,7 @@ function usePortalDealerRepLines(from: Date, to: Date) {
         }
         const batch = ((data ?? []) as any[]).map((r) => ({
           ...r,
-          amount:       Number(r.amount) === 0 && r.amount !== 0 ? 0 : (Number(r.amount) || 0),
+          amount:       Number(r.amount) || 0,
           year:         Number(r.year),
           month_number: Number(r.month_number),
         })) as DealerRepLine[];
@@ -86,8 +90,7 @@ function usePortalDealerRepLines(from: Date, to: Date) {
       }
       const bookingCount  = rows.filter((r) => r.metric_type === "bookings").length;
       const invoicedCount = rows.filter((r) => r.metric_type === "invoiced").length;
-      const distinctTypes = [...new Set(rows.map((r) => r.metric_type))];
-      console.log(`[dealer-rep] fetched ${rows.length} rows — bookings: ${bookingCount}, invoiced: ${invoicedCount}, distinct metric_types:`, distinctTypes);
+      console.log(`[dealer-rep] fetched ${rows.length} rows (${fromStr}→${toExcl}) — bookings: ${bookingCount}, invoiced: ${invoicedCount}`);
       return rows;
     },
   });
@@ -304,18 +307,20 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const { data: repTerritories = [] } = useRepTerritories();
 
   // ── Fetch view data ───────────────────────────────────────────────────────
+  // Two separate queries keep each request small and let the primary data
+  // render immediately while the comparative range loads in parallel.
 
-  const invoiceWindow = useMemo(() => {
-    const lo = compareMode === "none"
-      ? primary.from
-      : (primary.from < comparative.from ? primary.from : comparative.from);
-    const hi = compareMode === "none"
-      ? primary.to
-      : (primary.to > comparative.to ? primary.to : comparative.to);
-    return { from: lo, to: hi };
-  }, [primary, comparative, compareMode]);
+  const { data: primaryLines     = [] } = usePortalDealerRepLines(primary.from, primary.to);
+  const { data: comparativeLines = [] } = usePortalDealerRepLines(
+    comparative.from, comparative.to, compareMode !== "none",
+  );
 
-  const { data: repLines = [] } = usePortalDealerRepLines(invoiceWindow.from, invoiceWindow.to);
+  // Merge for aggregation; date-based filtering inside `aggregation` assigns
+  // each row to the correct period (ranges are typically non-overlapping).
+  const repLines = useMemo(
+    () => compareMode === "none" ? primaryLines : [...primaryLines, ...comparativeLines],
+    [primaryLines, comparativeLines, compareMode],
+  );
 
   // ── Hierarchical filter helpers (portal tables) ───────────────────────────
 
@@ -463,28 +468,22 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   ]);
 
   // ── Summary totals (both metrics over the primary range) ──────────────────
+  // primaryLines is already scoped to the primary date range — no date filter needed.
 
   const summaryTotals = useMemo(() => {
-    const primFromMs = startOfDay(primary.from).getTime();
-    const primToMs   = startOfDay(primary.to).getTime();
     let bookings = 0; let invoices = 0;
-
-    for (const line of repLines) {
+    for (const line of primaryLines) {
       if (scopedCustomerIds !== null) {
         const cid = (line.customer_id ?? "").trim().toLowerCase();
         if (!cid || !scopedCustomerIds.has(cid)) continue;
       }
       if (brandCategorySet.size > 0 && !brandCategorySet.has(line.brand_category ?? "")) continue;
       if (skuSet.size > 0           && !skuSet.has(line.sku ?? ""))           continue;
-
-      const ms = new Date(line.transaction_date + "T00:00:00").getTime();
-      if (Number.isNaN(ms) || ms < primFromMs || ms > primToMs) continue;
-
       if      (line.metric_type === "bookings") bookings += line.amount;
       else if (line.metric_type === "invoiced") invoices += line.amount;
     }
     return { bookings, invoices };
-  }, [repLines, primary, scopedCustomerIds, brandCategorySet, skuSet]);
+  }, [primaryLines, scopedCustomerIds, brandCategorySet, skuSet]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 

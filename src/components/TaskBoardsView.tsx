@@ -112,6 +112,7 @@ interface BoardTask {
   assigned_user_id: string | null;
   is_sop?: boolean;
   created_at?: string;
+  position: number | null;
 }
 
 export default function TaskBoardsView() {
@@ -145,6 +146,8 @@ export default function TaskBoardsView() {
   const [inlineEditName, setInlineEditName] = useState("");
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
 
   const [taskDlgOpen, setTaskDlgOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<BoardTask | null>(null);
@@ -177,8 +180,9 @@ export default function TaskBoardsView() {
       supabase.from("task_board_groups" as any).select("*").order("position", { ascending: true }),
       supabase
         .from("manager_tasks")
-        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id,is_sop,created_at")
+        .select("id,title,description,status,due_date,board_id,group_id,user_id,assigned_user_id,is_sop,created_at,position")
         .not("board_id", "is", null)
+        .order("position", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false }),
       supabase.rpc("assignable_users"),
     ]);
@@ -285,7 +289,15 @@ export default function TaskBoardsView() {
     [groups, activeBoardId],
   );
   const boardTasks = useMemo(
-    () => tasks.filter((t) => t.board_id === activeBoardId),
+    () =>
+      tasks
+        .filter((t) => t.board_id === activeBoardId)
+        .sort((a, b) => {
+          const pa = a.position ?? Infinity;
+          const pb = b.position ?? Infinity;
+          if (pa !== pb) return pa - pb;
+          return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+        }),
     [tasks, activeBoardId],
   );
 
@@ -732,15 +744,66 @@ export default function TaskBoardsView() {
     const task = tasks.find((t) => t.id === id);
     const newStatus = inferred && task && task.status !== inferred ? inferred : null;
 
+    const tasksInTarget = tasks.filter((t) => t.group_id === group_id);
+    const maxPos = tasksInTarget.length > 0
+      ? Math.max(...tasksInTarget.map((t) => t.position ?? 0))
+      : 0;
+    const newPosition = maxPos + 1000;
+
     setTasks((ts) =>
-      ts.map((t) => (t.id === id ? { ...t, group_id, ...(newStatus ? { status: newStatus } : {}) } : t)),
+      ts.map((t) =>
+        t.id === id
+          ? { ...t, group_id, position: newPosition, ...(newStatus ? { status: newStatus } : {}) }
+          : t,
+      ),
     );
-    const payload: any = { group_id };
+    const payload: any = { group_id, position: newPosition };
     if (newStatus) payload.status = newStatus;
     const { error } = await supabase.from("manager_tasks").update(payload).eq("id", id);
     if (error) {
       setTasks(prev);
       toast({ title: "Move failed", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const reorderWithinGroup = async (draggedId: string, targetId: string) => {
+    const dragged = tasks.find((t) => t.id === draggedId);
+    if (!dragged) return;
+
+    const groupTasks = tasks
+      .filter((t) => t.group_id === dragged.group_id)
+      .sort((a, b) => {
+        const pa = a.position ?? Infinity;
+        const pb = b.position ?? Infinity;
+        if (pa !== pb) return pa - pb;
+        return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+      });
+
+    const targetIdx = groupTasks.findIndex((t) => t.id === targetId);
+    if (targetIdx === -1) return;
+
+    const without = groupTasks.filter((t) => t.id !== draggedId);
+    without.splice(targetIdx, 0, dragged);
+
+    const updates = without.map((t, i) => ({ id: t.id, position: (i + 1) * 1000 }));
+
+    const prev = tasks;
+    setTasks((ts) =>
+      ts.map((t) => {
+        const u = updates.find((u) => u.id === t.id);
+        return u ? { ...t, position: u.position } : t;
+      }),
+    );
+
+    const results = await Promise.all(
+      updates.map((u) =>
+        supabase.from("manager_tasks").update({ position: u.position }).eq("id", u.id),
+      ),
+    );
+    const failed = results.find((r) => r.error);
+    if (failed) {
+      setTasks(prev);
+      toast({ title: "Reorder failed", description: failed.error!.message, variant: "destructive" });
     }
   };
 
@@ -1138,13 +1201,48 @@ export default function TaskBoardsView() {
             const renderTaskRow = (t: BoardTask) => {
               const meta = STATUS_META[t.status];
               const isMine = !!user && t.user_id === user.id;
+              const isDropTarget = dragOverTaskId === t.id;
+              const isDragging = draggingTaskId === t.id;
               return (
                 <li
                   key={t.id}
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("text/task-id", t.id);
+                    setDraggingTaskId(t.id);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingTaskId(null);
+                    setDragOverTaskId(null);
+                  }}
+                  onDragOver={(e) => {
+                    if (draggingTaskId && draggingTaskId !== t.id) {
+                      const dt = tasks.find((x) => x.id === draggingTaskId);
+                      if (dt?.group_id === t.group_id) {
+                        e.preventDefault();
+                        setDragOverTaskId(t.id);
+                      }
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node)) {
+                      setDragOverTaskId((id) => (id === t.id ? null : id));
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (draggingTaskId && draggingTaskId !== t.id) {
+                      const dt = tasks.find((x) => x.id === draggingTaskId);
+                      if (dt?.group_id === t.group_id) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDragOverTaskId(null);
+                        reorderWithinGroup(draggingTaskId, t.id);
+                        setDraggingTaskId(null);
+                      }
+                    }
+                  }}
                   onClick={() => openEditTask(t)}
-                  className="grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card"
+                  className={`grid grid-cols-[28px_minmax(0,1fr)_44px] md:grid-cols-[28px_minmax(0,1fr)_44px_140px_140px_120px_60px] items-stretch hover:bg-muted/30 cursor-pointer min-h-[40px] border-b border-border last:border-b-0 bg-card${isDropTarget ? " border-t-2 border-primary" : ""}${isDragging ? " opacity-40" : ""}`}
                 >
                   <div
                     draggable

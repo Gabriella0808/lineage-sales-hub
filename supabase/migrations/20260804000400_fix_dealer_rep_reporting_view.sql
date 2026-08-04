@@ -21,6 +21,20 @@
 
 CREATE OR REPLACE VIEW public.v_portal_dealer_rep_reporting_lines AS
 
+-- ── Salesperson lookup (deduped by GUIDSalesperson from dbo_Orders) ───────────
+-- Joining directly to dbo_Orders for rep name via GUIDSalesperson would produce
+-- one row per order for each GUID, causing duplicates. This CTE produces a single
+-- (salesperson_id, salesperson_name) row per GUID to use as a point lookup.
+WITH order_salesperson_lookup AS (
+  SELECT
+    "GUIDSalesperson"::text                                   AS guid_salesperson,
+    MAX(NULLIF(TRIM("SalespersonID"::text),   ''))            AS salesperson_id,
+    MAX(NULLIF(TRIM("SalespersonName"::text), ''))            AS salesperson_name
+  FROM public."dbo_Orders"
+  WHERE "GUIDSalesperson" IS NOT NULL
+  GROUP BY "GUIDSalesperson"::text
+)
+
 -- ── Bookings ──────────────────────────────────────────────────────────────────
 -- All text columns are explicitly cast to ::text so this branch's output types
 -- match the invoiced branch exactly and never conflict with character varying
@@ -33,12 +47,13 @@ SELECT
   COALESCE(f.dealer_name::text, o."CustomerID"::text)                          AS dealer_name,
   o."CustomerID"::text                                                          AS customer_id,
   COALESCE(
+    osl.salesperson_name,
     NULLIF(o."SalespersonName"::text, ''),
     NULLIF(o."_Rep1"::text,           ''),
     NULLIF(o."_Rep2"::text,           ''),
     f.guid_salesperson::text
-  )                                                                             AS rep_name,
-  o."GUIDSalesperson"::text                                                     AS rep_id,
+  )::text                                                                       AS rep_name,
+  COALESCE(NULLIF(osl.salesperson_id, ''), f.guid_salesperson::text)::text     AS rep_id,
   f.sku::text                                                                   AS sku,
   f.description::text                                                           AS description,
   f.brand_category::text                                                        AS brand_category,
@@ -46,6 +61,8 @@ SELECT
 FROM public.v_portal_bookings_line_facts f
 LEFT JOIN public."dbo_Orders" o
   ON o."GUIDOrder"::text = f.guid_order::text
+LEFT JOIN order_salesperson_lookup osl
+  ON osl.guid_salesperson = f.guid_salesperson::text
 WHERE f.booking_date IS NOT NULL
 
 UNION ALL

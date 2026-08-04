@@ -22,24 +22,27 @@
 CREATE OR REPLACE VIEW public.v_portal_dealer_rep_reporting_lines AS
 
 -- ── Bookings ──────────────────────────────────────────────────────────────────
+-- All text columns are explicitly cast to ::text so this branch's output types
+-- match the invoiced branch exactly and never conflict with character varying
+-- columns from Acctivate tables (CustomerID, SalespersonName, etc. are varchar).
 SELECT
   'bookings'::text                                                              AS metric_type,
   f.booking_date::date                                                          AS transaction_date,
   EXTRACT(YEAR  FROM f.booking_date)::int                                       AS year,
   EXTRACT(MONTH FROM f.booking_date)::int                                       AS month_number,
-  COALESCE(f.dealer_name, o."CustomerID")                                       AS dealer_name,
-  o."CustomerID"                                                                AS customer_id,
+  COALESCE(f.dealer_name::text, o."CustomerID"::text)                          AS dealer_name,
+  o."CustomerID"::text                                                          AS customer_id,
   COALESCE(
-    NULLIF(o."SalespersonName", ''),
-    NULLIF(o."_Rep1", ''),
-    NULLIF(o."_Rep2", ''),
+    NULLIF(o."SalespersonName"::text, ''),
+    NULLIF(o."_Rep1"::text,           ''),
+    NULLIF(o."_Rep2"::text,           ''),
     f.guid_salesperson::text
   )                                                                             AS rep_name,
   o."GUIDSalesperson"::text                                                     AS rep_id,
-  f.sku,
-  f.description,
-  f.brand_category,
-  f.net_booking_amount                                                          AS amount
+  f.sku::text                                                                   AS sku,
+  f.description::text                                                           AS description,
+  f.brand_category::text                                                        AS brand_category,
+  f.net_booking_amount::numeric                                                 AS amount
 FROM public.v_portal_bookings_line_facts f
 LEFT JOIN public."dbo_Orders" o
   ON o."GUIDOrder"::text = f.guid_order::text
@@ -53,13 +56,13 @@ SELECT
   i."InvoiceDate"::date                                                         AS transaction_date,
   EXTRACT(YEAR  FROM i."InvoiceDate")::int                                      AS year,
   EXTRACT(MONTH FROM i."InvoiceDate")::int                                      AS month_number,
-  COALESCE(i."BillToName", i."CustomerID")                                      AS dealer_name,
-  i."CustomerID"                                                                AS customer_id,
-  COALESCE(NULLIF(i."SalespersonName", ''), i."SalespersonID")                  AS rep_name,
+  COALESCE(i."BillToName"::text, i."CustomerID"::text)                         AS dealer_name,
+  i."CustomerID"::text                                                          AS customer_id,
+  COALESCE(NULLIF(i."SalespersonName"::text, ''), i."SalespersonID"::text)     AS rep_name,
   i."GUIDSalesperson"::text                                                     AS rep_id,
-  d."ProductID"                                                                 AS sku,
-  d."Description"                                                               AS description,
-  d."ProductClass"                                                              AS brand_category,
+  d."ProductID"::text                                                           AS sku,
+  d."Description"::text                                                         AS description,
+  d."ProductClass"::text                                                        AS brand_category,
   d."Amount"::numeric                                                           AS amount
 FROM public."dbo_Invoice" i
 JOIN public."dbo_InvoiceDetail" d

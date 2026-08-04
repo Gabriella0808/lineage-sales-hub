@@ -73,12 +73,10 @@ UNION ALL
 -- This is the same Skyvia-synced source used by mv_portal_monthly_invoiced_actuals
 -- and the Live KPI, so it includes August invoices that dbo_Invoice lacks.
 --
--- Join key: pail.invoice_id = pai.id  (portal_acctivate_invoice_lines FK → header PK)
--- If the join key is named differently in your schema, adjust the ON clause below.
+-- Join key: guid_invoice (present on both tables as text / uuid — cast to text for safety).
 --
 -- Exclusion: NULLIF(TRIM(pail.product_id), '') IS NOT NULL keeps only real SKU lines.
--- Freight, tariff surcharges, shipping charges, and QC lines have product_id = NULL
--- or empty string, so they are excluded automatically.
+-- Freight, tariff surcharges, shipping charges, and QC lines carry no product_id.
 SELECT
   'invoiced'::text                                                              AS metric_type,
   pai.invoice_date::date                                                        AS transaction_date,
@@ -91,12 +89,11 @@ SELECT
   pail.product_id::text                                                         AS sku,
   pail.description::text                                                        AS description,
   pail.product_class::text                                                      AS brand_category,
-  COALESCE(pail.line_amount, pail.invoice_detail_amount)::numeric              AS amount
+  COALESCE(pail.line_amount::numeric, pail.invoice_detail_amount::numeric, 0)  AS amount
 FROM public.portal_acctivate_invoices pai
 JOIN public.portal_acctivate_invoice_lines pail
-  ON pail.invoice_id = pai.id
+  ON pail.guid_invoice::text = pai.guid_invoice::text
 WHERE pai.invoice_date IS NOT NULL
-  AND pai.posted_to_ar = true
   AND NULLIF(TRIM(pail.product_id::text), '') IS NOT NULL;
 
 GRANT SELECT ON public.v_portal_dealer_rep_reporting_lines TO anon, authenticated;

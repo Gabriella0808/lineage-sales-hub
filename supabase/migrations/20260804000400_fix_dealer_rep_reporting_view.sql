@@ -1,19 +1,20 @@
--- Recreate v_portal_dealer_rep_reporting_lines to fix August bookings ($0 bug).
+-- Recreate v_portal_dealer_rep_reporting_lines.
 --
--- Root cause: bookings previously used qty_ordered × original_price × (1 - pct),
--- which returned $0 when original_price is NULL (August orders).
+-- BOOKINGS side (unchanged):
+--   Uses v_portal_bookings_line_facts.net_booking_amount — already has the
+--   corrected NULL-safe formula for August orders.
+--   Rep name is resolved via a deduped CTE from dbo_Orders (GUIDSalesperson).
 --
--- Fix: bookings side now reads from v_portal_bookings_line_facts.net_booking_amount,
--- which applies COALESCE to fall back to amount - tariff - freight when
--- original_price is NULL.
+-- INVOICED side (replaced):
+--   The old dbo_Invoice + dbo_InvoiceDetail source does not include August
+--   invoices. Replaced with portal_acctivate_invoices + portal_acctivate_invoice_lines,
+--   the same Skyvia-synced source that backs mv_portal_monthly_invoiced_actuals
+--   and the Live KPI.
 --
--- Rep name: dbo_Orders.SalespersonName is used directly (denormalized by Acctivate).
--- Fallback chain: SalespersonName → _Rep1 → _Rep2 → guid_salesperson (never a raw UUID).
--- dbo_SalespersonInfo does not exist in this schema — do not reference it.
+--   Exclusion rule: only rows where product_id is a real SKU (NOT NULL / non-empty).
+--   Freight, tariff surcharges, shipping, and QC charge lines have no product_id.
 --
--- Invoiced side is unchanged (dbo_Invoice + dbo_InvoiceDetail with existing
--- freight / cancelled / misc-charge exclusions). dbo_Invoice.SalespersonName
--- is used directly; no secondary join required.
+--   posted_to_ar = true mirrors the filter used in kpi_monthly_portal_invoice_rollup.
 --
 -- ── Apply in Supabase SQL Editor ─────────────────────────────────────────────
 --   Paste and run this file directly (view was created outside of migrations).
@@ -68,25 +69,34 @@ WHERE f.booking_date IS NOT NULL
 UNION ALL
 
 -- ── Invoiced ──────────────────────────────────────────────────────────────────
+-- Source: portal_acctivate_invoices (header) + portal_acctivate_invoice_lines (lines).
+-- This is the same Skyvia-synced source used by mv_portal_monthly_invoiced_actuals
+-- and the Live KPI, so it includes August invoices that dbo_Invoice lacks.
+--
+-- Join key: pail.invoice_id = pai.id  (portal_acctivate_invoice_lines FK → header PK)
+-- If the join key is named differently in your schema, adjust the ON clause below.
+--
+-- Exclusion: NULLIF(TRIM(pail.product_id), '') IS NOT NULL keeps only real SKU lines.
+-- Freight, tariff surcharges, shipping charges, and QC lines have product_id = NULL
+-- or empty string, so they are excluded automatically.
 SELECT
   'invoiced'::text                                                              AS metric_type,
-  i."InvoiceDate"::date                                                         AS transaction_date,
-  EXTRACT(YEAR  FROM i."InvoiceDate")::int                                      AS year,
-  EXTRACT(MONTH FROM i."InvoiceDate")::int                                      AS month_number,
-  COALESCE(i."BillToName"::text, i."CustomerID"::text)                         AS dealer_name,
-  i."CustomerID"::text                                                          AS customer_id,
-  COALESCE(NULLIF(i."SalespersonName"::text, ''), i."SalespersonID"::text)     AS rep_name,
-  i."GUIDSalesperson"::text                                                     AS rep_id,
-  d."ProductID"::text                                                           AS sku,
-  d."Description"::text                                                         AS description,
-  d."ProductClass"::text                                                        AS brand_category,
-  d."Amount"::numeric                                                           AS amount
-FROM public."dbo_Invoice" i
-JOIN public."dbo_InvoiceDetail" d
-  ON d."GUIDInvoice" = i."GUIDInvoice"
-WHERE i."InvoiceDate" IS NOT NULL
-  AND COALESCE(d."Freight",       false) IS NOT TRUE
-  AND COALESCE(d."LineCancelled", false) IS NOT TRUE
-  AND (d."MiscChargeType" IS NULL OR trim(d."MiscChargeType") = '');
+  pai.invoice_date::date                                                        AS transaction_date,
+  EXTRACT(YEAR  FROM pai.invoice_date)::int                                     AS year,
+  EXTRACT(MONTH FROM pai.invoice_date)::int                                     AS month_number,
+  COALESCE(NULLIF(pai.customer_name::text, ''), pai.customer_id::text)         AS dealer_name,
+  pai.customer_id::text                                                         AS customer_id,
+  COALESCE(NULLIF(pai.sales_rep_name::text, ''), pai.sales_rep_id::text)       AS rep_name,
+  pai.sales_rep_id::text                                                        AS rep_id,
+  pail.product_id::text                                                         AS sku,
+  pail.description::text                                                        AS description,
+  pail.product_class::text                                                      AS brand_category,
+  COALESCE(pail.line_amount, pail.invoice_detail_amount)::numeric              AS amount
+FROM public.portal_acctivate_invoices pai
+JOIN public.portal_acctivate_invoice_lines pail
+  ON pail.invoice_id = pai.id
+WHERE pai.invoice_date IS NOT NULL
+  AND pai.posted_to_ar = true
+  AND NULLIF(TRIM(pail.product_id::text), '') IS NOT NULL;
 
 GRANT SELECT ON public.v_portal_dealer_rep_reporting_lines TO anon, authenticated;

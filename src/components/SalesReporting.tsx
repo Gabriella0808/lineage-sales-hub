@@ -265,13 +265,12 @@ interface Props {
 export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions }: Props) {
   const today       = new Date();
   const yearStart   = startOfYear(today);
-  const lifetimeStart = new Date(2024, 0, 1);
 
   const [groupBy, setGroupBy]       = useState<GroupBy>(initialGroupBy);
-  const [primary, setPrimary]       = useState<DateRange>({ from: lifetimeStart, to: endOfMonth(today) });
+  const [primary, setPrimary]       = useState<DateRange>({ from: startOfMonth(today), to: today });
   const [comparative, setComparative] = useState<DateRange>({
-    from: subYears(lifetimeStart, 1),
-    to:   subYears(endOfMonth(today), 1),
+    from: subYears(startOfMonth(today), 1),
+    to:   subYears(today, 1),
   });
   type CompareMode = "prev-year" | "prev-period" | "custom" | "none";
   const [compareMode, setCompareMode] = useState<CompareMode>("prev-year");
@@ -482,8 +481,15 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       if      (line.metric_type === "bookings") bookings += line.amount;
       else if (line.metric_type === "invoiced") invoices += line.amount;
     }
+    const bCount = primaryLines.filter(l => l.metric_type === "bookings").length;
+    const iCount = primaryLines.filter(l => l.metric_type === "invoiced").length;
+    console.log(
+      `[dealer-rep] ${format(primary.from, "MMM d, yyyy")} – ${format(primary.to, "MMM d, yyyy")}` +
+      ` | rows=${primaryLines.length} (bookings=${bCount}, invoiced=${iCount})` +
+      ` | Total Bookings=$${bookings.toFixed(2)} Total Invoiced=$${invoices.toFixed(2)}`,
+    );
     return { bookings, invoices };
-  }, [primaryLines, scopedCustomerIds, brandCategorySet, skuSet]);
+  }, [primaryLines, scopedCustomerIds, brandCategorySet, skuSet, primary]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -586,8 +592,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               className="h-9 text-muted-foreground"
               onClick={() => {
                 setCompareMode("prev-year");
-                setPrimary({ from: yearStart, to: endOfMonth(today) });
-                setComparative({ from: subYears(yearStart, 1), to: subYears(endOfMonth(today), 1) });
+                setPrimary({ from: startOfMonth(today), to: today });
+                setComparative({ from: subYears(startOfMonth(today), 1), to: subYears(today, 1) });
+                setTerritoryIds([]);
+                setRepIds([]);
+                setDealerIds([]);
+                setBrandCategories([]);
+                setSkus([]);
               }}
             >
               <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset

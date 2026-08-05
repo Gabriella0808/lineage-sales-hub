@@ -746,6 +746,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         compareFrom={compareMode !== "none" ? comparative.from : undefined}
         compareTo={compareMode !== "none" ? comparative.to : undefined}
         viewLines={repLines}
+        metric={metric}
       />
     </div>
   );

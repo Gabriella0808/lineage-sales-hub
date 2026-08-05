@@ -31,6 +31,7 @@ interface Props {
   compareFrom?: Date;
   compareTo?: Date;
   viewLines: ViewLine[];
+  metric: "bookings" | "invoices";
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,7 +94,7 @@ function pctDelta(cur: number, prev: number): number | null {
 
 export function InvoiceDetailSheet({
   open, onOpenChange, groupBy, rowKey, rowLabel,
-  from, to, compareFrom, compareTo, viewLines,
+  from, to, compareFrom, compareTo, viewLines, metric,
 }: Props) {
   const primFromMs = useMemo(() => startOfDay(from).getTime(), [from]);
   const primToMs   = useMemo(() => startOfDay(to).getTime(),   [to]);
@@ -126,18 +127,23 @@ export function InvoiceDetailSheet({
   const compInvoicedTotal  = useMemo(() => sumAmount(compInvoiced),  [compInvoiced]);
   const compBookingsTotal  = useMemo(() => sumAmount(compBookings),   [compBookings]);
 
-  const bySku     = useMemo(() => groupBySku(primInvoiced),      [primInvoiced]);
-  const byBrandCat = useMemo(() => groupByBrandCat(primInvoiced), [primInvoiced]);
+  // Breakdowns and Lines count follow whichever metric the user is viewing.
+  const activeMetricType = metric === "bookings" ? "bookings" : "invoiced";
+  const primActive = activeMetricType === "bookings" ? primBookings : primInvoiced;
+  const compActive = activeMetricType === "bookings" ? compBookings : compInvoiced;
+
+  const bySku     = useMemo(() => groupBySku(primActive),      [primActive]);
+  const byBrandCat = useMemo(() => groupByBrandCat(primActive), [primActive]);
   const compBySkuMap = useMemo(() => {
     const m = new Map<string, number>();
-    for (const r of groupBySku(compInvoiced)) m.set(r.sku, r.total);
+    for (const r of groupBySku(compActive)) m.set(r.sku, r.total);
     return m;
-  }, [compInvoiced]);
+  }, [compActive]);
   const compByBrandCatMap = useMemo(() => {
     const m = new Map<string, number>();
-    for (const r of groupByBrandCat(compInvoiced)) m.set(r.label, r.total);
+    for (const r of groupByBrandCat(compActive)) m.set(r.label, r.total);
     return m;
-  }, [compInvoiced]);
+  }, [compActive]);
 
   const noData = primInvoiced.length === 0 && primBookings.length === 0;
 
@@ -173,10 +179,10 @@ export function InvoiceDetailSheet({
           />
           <StatCard
             label="Lines"
-            value={primInvoiced.length.toLocaleString()}
-            compValue={hasCompare ? compInvoiced.length.toLocaleString() : undefined}
+            value={primActive.length.toLocaleString()}
+            compValue={hasCompare ? compActive.length.toLocaleString() : undefined}
             compLabel={compLabel ?? undefined}
-            delta={hasCompare ? pctDelta(primInvoiced.length, compInvoiced.length) : undefined}
+            delta={hasCompare ? pctDelta(primActive.length, compActive.length) : undefined}
           />
         </div>
 

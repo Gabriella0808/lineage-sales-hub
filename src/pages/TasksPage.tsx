@@ -134,6 +134,7 @@ const ROLE_LABEL: Record<AssignableUser["role"], string> = {
 export default function TasksPage() {
   const { user } = useAuth();
   const { data: roleInfo } = useUserRole();
+  const isAdmin = roleInfo?.role === "admin";
   const { toast } = useToast();
   const PRIVATE_TASK_EMAILS = [
     "justin@lineage-collections.com",
@@ -1421,7 +1422,7 @@ export default function TasksPage() {
                             .slice(0, 2)
                             .join("")
                             .toUpperCase();
-                        const isMine = !!user && t.user_id === user.id;
+                        const isMine = isAdmin || (!!user && t.user_id === user.id);
                         const assignedToMe =
                           !!user && t.user_id !== user.id && ownerIds.includes(user.id);
                         return (

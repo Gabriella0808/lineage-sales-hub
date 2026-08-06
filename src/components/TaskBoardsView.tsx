@@ -118,7 +118,8 @@ interface BoardTask {
 
 export default function TaskBoardsView() {
   const { user } = useAuth();
-  const { isAdmin } = useUserRole();
+  const { data: roleData } = useUserRole();
+  const isAdmin = roleData?.isAdmin ?? false;
   const { toast } = useToast();
   const [boards, setBoards] = useState<Board[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -166,6 +167,7 @@ export default function TaskBoardsView() {
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [detailsTask, setDetailsTask] = useState<BoardTask | null>(null);
+  const [deletingTask, setDeletingTask] = useState<BoardTask | null>(null);
 
   // members / subscribers
   const [subscribeDlgOpen, setSubscribeDlgOpen] = useState(false);
@@ -603,9 +605,16 @@ export default function TaskBoardsView() {
     load();
   };
   const deleteTask = async (t: BoardTask) => {
+    setDeletingTask(null);
+    setTasks((prev) => prev.filter((x) => x.id !== t.id));
+    if (detailsTask?.id === t.id) setDetailsTask(null);
     const { error } = await supabase.from("manager_tasks").delete().eq("id", t.id);
-    if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    load();
+    if (error) {
+      setTasks((prev) => [t, ...prev]);
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Task deleted" });
+    }
   };
   const saveInlineTaskTitle = async (taskId: string, title: string) => {
     if (!title.trim()) {
@@ -1387,7 +1396,7 @@ export default function TaskBoardsView() {
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     {isMine && (
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteTask(t)}>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeletingTask(t)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
@@ -2386,10 +2395,7 @@ export default function TaskBoardsView() {
                     <Button
                       variant="ghost"
                       className="text-destructive"
-                      onClick={async () => {
-                        await deleteTask(live);
-                        setDetailsTask(null);
-                      }}
+                      onClick={() => setDeletingTask(live)}
                     >
                       <Trash2 className="h-3.5 w-3.5" /> Delete
                     </Button>
@@ -2409,6 +2415,29 @@ export default function TaskBoardsView() {
           })()}
         </SheetContent>
       </Sheet>
+
+      {/* Delete task confirmation */}
+      <Dialog open={!!deletingTask} onOpenChange={(o) => { if (!o) setDeletingTask(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete task?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete{" "}
+            <span className="font-medium text-foreground">"{deletingTask?.title}"</span>
+            ? This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeletingTask(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => deletingTask && deleteTask(deletingTask)}
+            >
+              Delete task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <TaskUpdatesDialog
         taskId={updatesTaskId}

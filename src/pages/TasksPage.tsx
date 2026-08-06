@@ -185,6 +185,7 @@ export default function TasksPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [detailTask, setDetailTask] = useState<Task | null>(null);
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [form, setForm] = useState<{
     title: string;
     description: string;
@@ -666,12 +667,16 @@ export default function TasksPage() {
     }
   };
 
-  const remove = async (id: string) => {
-    const { error } = await supabase.from("manager_tasks").delete().eq("id", id);
+  const remove = async (task: Task) => {
+    setDeletingTask(null);
+    if (detailTask?.id === task.id) setDetailTask(null);
+    setTasks((ts) => ts.filter((t) => t.id !== task.id));
+    const { error } = await supabase.from("manager_tasks").delete().eq("id", task.id);
     if (error) {
+      setTasks((ts) => [task, ...ts]);
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     } else {
-      setTasks((ts) => ts.filter((t) => t.id !== id));
+      toast({ title: "Task deleted" });
     }
   };
 
@@ -722,7 +727,7 @@ export default function TasksPage() {
   const bulkDelete = async () => {
     if (!user || selectedIds.size === 0) return;
     const ids = [...selectedIds];
-    const deletable = tasks.filter((t) => ids.includes(t.id) && t.user_id === user.id).map((t) => t.id);
+    const deletable = tasks.filter((t) => ids.includes(t.id) && (isAdmin || t.user_id === user.id)).map((t) => t.id);
     if (deletable.length === 0) {
       toast({ title: "Nothing to delete", description: "You can only delete tasks you created.", variant: "destructive" });
       return;
@@ -1649,7 +1654,7 @@ export default function TasksPage() {
                                 </Button>
                               )}
                               {isMine && (
-                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(t.id)}>
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeletingTask(t)}>
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               )}
@@ -1837,10 +1842,7 @@ export default function TasksPage() {
                           size="sm"
                           variant="ghost"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => {
-                            remove(t.id);
-                            setDetailTask(null);
-                          }}
+                          onClick={() => setDeletingTask(t)}
                         >
                           <Trash2 className="h-3.5 w-3.5" /> Delete
                         </Button>
@@ -1853,6 +1855,29 @@ export default function TasksPage() {
           })()}
         </SheetContent>
       </Sheet>
+
+      {/* Delete task confirmation */}
+      <Dialog open={!!deletingTask} onOpenChange={(o) => { if (!o) setDeletingTask(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete task?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete{" "}
+            <span className="font-medium text-foreground">"{deletingTask?.title}"</span>
+            ? This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeletingTask(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => deletingTask && remove(deletingTask)}
+            >
+              Delete task
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <TaskUpdatesDialog
         taskId={updatesTaskId}

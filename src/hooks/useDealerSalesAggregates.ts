@@ -80,14 +80,18 @@ export function classifyBranch(raw: string | null | undefined): "container" | "w
  * month + dealer + branch - so the browser fetches a few hundred summary rows
  * instead of paginating tens of thousands of invoice lines.
  */
-export function useDealerSalesAggregates(repNames?: string[] | null) {
+export function useDealerSalesAggregates(
+  repNames?: string[] | null,
+  repResolution?: { repIds: string[]; repNames: string[] } | null,
+) {
   const [data, setData] = useState<MonthlyAgg[]>(() => emptyYear());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const repKey = !repNames
     ? "__all__"
-    : [...repNames].map((s) => s.toLowerCase()).sort().join("|");
+    : [...repNames].sort().join("|") +
+      (repResolution?.repIds?.length ? "|ids:" + [...repResolution.repIds].sort().join(",") : "");
 
   useEffect(() => {
     let cancelled = false;
@@ -186,7 +190,7 @@ export function useDealerSalesAggregates(repNames?: string[] | null) {
       }
 
       // ---------- Invoicing (server-side view first, then client-side fallback) ----------
-      const viewRows = await fetchInvoiceAggregateViewRows(currentYear, prevYear, dealerIds);
+      const viewRows = await fetchInvoiceAggregateViewRows(currentYear, prevYear, dealerIds, repNames ?? null, repResolution ?? null);
       const invoiceRows = viewRows ?? await fetchInvoiceAggregateFallbackRows(currentYear, prevYear, dealerIds);
       if (!invoiceRows) {
         if (!cancelled) {
@@ -237,6 +241,8 @@ async function fetchInvoiceAggregateViewRows(
   currentYear: number,
   prevYear: number,
   dealerIds: string[] | null,
+  repNames: string[] | null,
+  repResolution: { repIds: string[]; repNames: string[] } | null,
 ): Promise<ViewRow[] | null> {
   // Company-wide: query mv_portal_monthly_invoiced_actuals directly.
   // Backed by QBO P&L sync — columns: year, month_number, invoiced_actual.
@@ -266,22 +272,88 @@ async function fetchInvoiceAggregateViewRows(
     }));
   }
 
-  // Dealer-scoped (or view unavailable): use kpi_monthly_invoice_rollup which supports dealer filtering.
-  const { data, error } = await (supabase as any).rpc("kpi_monthly_invoice_rollup", {
-    p_years:      [currentYear, prevYear],
-    p_dealer_ids: dealerIds,
-  });
-  if (error) {
-    console.error("[invoice] kpi_monthly_invoice_rollup failed:", error.message);
-    return null;
+  // Rep-scoped: kpi_monthly_invoice_rollup reads dbo_Invoice which has null InvoiceDates
+  // (Skyvia sync gap). Instead, query v_portal_dealer_rep_reporting_lines — its invoiced
+  // branch reads portal_acctivate_invoices via SECURITY DEFINER and has current data.
+  //
+  // Filter order (most to least stable):
+  //   1. rep_id IN (repResolution.repIds)   — Acctivate rep code, stable
+  //   2. rep_name IN (repResolution.repNames) — exact view names, resolved by fuzzy match
+  //   3. rep_name IN (repNames)              — raw display names, last resort
+  const resolvedRepIds   = repResolution?.repIds   ?? [];
+  const resolvedRepNames = repResolution?.repNames ?? repNames ?? [];
+
+  if (resolvedRepIds.length === 0 && resolvedRepNames.length === 0) {
+    console.warn("[invoice] rep-scoped but no identifiers to filter by — returning empty");
+    return [];
   }
-  return ((data ?? []) as any[]).map((r) => ({
-    year:               Number(r.year),
-    month:              Number(r.month),
+
+  const filterMethod = resolvedRepIds.length > 0 ? "rep_id" : "rep_name";
+  const monthAgg = new Map<string, { year: number; month: number; invoiced: number; lines: number }>();
+  const PAGE = 2000;
+  let offset = 0;
+  let totalLines = 0;
+
+  while (true) {
+    let q = (supabase as any)
+      .from("v_portal_dealer_rep_reporting_lines")
+      .select("transaction_date, amount")
+      .eq("metric_type", "invoiced")
+      .gte("transaction_date", `${prevYear}-01-01`)
+      .lt("transaction_date", `${currentYear + 1}-01-01`)
+      .range(offset, offset + PAGE - 1);
+
+    if (resolvedRepIds.length > 0) {
+      q = q.in("rep_id", resolvedRepIds);
+    } else {
+      q = q.in("rep_name", resolvedRepNames);
+    }
+
+    const { data, error } = await q;
+
+    if (error) {
+      console.error("[invoice] v_portal_dealer_rep_reporting_lines (rep-scoped) failed:", error.message);
+      return null;
+    }
+
+    const batch = (data ?? []) as any[];
+    totalLines += batch.length;
+
+    for (const r of batch) {
+      const d = new Date(r.transaction_date + "T00:00:00");
+      if (isNaN(d.getTime())) continue;
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const key = `${year}-${month}`;
+      const cur = monthAgg.get(key) ?? { year, month, invoiced: 0, lines: 0 };
+      cur.invoiced += Number(r.amount) || 0;
+      cur.lines += 1;
+      monthAgg.set(key, cur);
+    }
+
+    if (batch.length < PAGE) break;
+    offset += PAGE;
+  }
+
+  const rows = Array.from(monthAgg.values());
+  console.log("[invoice] rep-scoped invoice fetch:", {
+    filterMethod,
+    resolvedRepIds,
+    resolvedRepNames,
+    totalLines,
+    months: rows
+      .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
+      .map((r) => `${r.year}-${String(r.month).padStart(2, "0")}: $${r.invoiced.toFixed(0)} (${r.lines} lines)`)
+      .join(", "),
+  });
+
+  return rows.map((r) => ({
+    year:               r.year,
+    month:              r.month,
     dealer_id:          null,
-    invoiced:           Number(r.invoiced)           || 0,
-    invoiced_container: Number(r.invoiced_container) || 0,
-    invoiced_warehouse: Number(r.invoiced_warehouse) || 0,
+    invoiced:           r.invoiced,
+    invoiced_container: 0,
+    invoiced_warehouse: 0,
   }));
 }
 

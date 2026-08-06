@@ -12,6 +12,8 @@ DROP POLICY IF EXISTS "Creator can add assignees" ON public.manager_task_assigne
 DROP POLICY IF EXISTS "Creator or self can remove assignees" ON public.manager_task_assignees;
 DROP POLICY IF EXISTS "Task editors can add assignees" ON public.manager_task_assignees;
 DROP POLICY IF EXISTS "Task editors or self can remove assignees" ON public.manager_task_assignees;
+DROP POLICY IF EXISTS "Task viewers can add assignees" ON public.manager_task_assignees;
+DROP POLICY IF EXISTS "Task viewers or self can remove assignees" ON public.manager_task_assignees;
 
 -- INSERT: any user who can view the task (board member, assignee, creator, admin)
 CREATE POLICY "Task viewers can add assignees"

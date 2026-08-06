@@ -62,7 +62,7 @@ const parseDateOnly = (s: string | null | undefined): Date => {
   if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0);
   return new Date(s);
 };
-import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Users, Navigation } from "lucide-react";
+import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Users, Navigation, Pencil } from "lucide-react";
 import { STATE_TO_TERRITORY, STATE_NAME_TO_CODE, colorForTerritory } from "@/lib/territoryMap";
 
 // Team member -  match config. We match dealers by rep_owner (authoritative
@@ -152,6 +152,7 @@ interface Dealer {
   notes?: string | null;
   buying_group?: string | null;
   source?: string | null;
+  crm_account_id?: string | null;
   lat: number | null;
   lng: number | null;
 }
@@ -294,6 +295,13 @@ export default function CheckInsPage() {
   const [colorFilter, setColorFilter] = useState<string | "all">("all");
   const [salesReps, setSalesReps] = useState<{ id: string; name: string }[]>([]);
   const [managersMap, setManagersMap] = useState<Record<string, string>>({});
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: "", phone: "", email: "", website: "", notes: "",
+    buying_group: "", street_address: "", city: "", state: "",
+    manager_id: "", rep_id: "",
+  });
+  const [savingDetails, setSavingDetails] = useState(false);
   const [newDealer, setNewDealer] = useState<{
     first_name: string;
     last_name: string;
@@ -439,6 +447,7 @@ export default function CheckInsPage() {
         email: string | null;
         website: string | null;
         notes: string | null;
+        buying_group: string | null;
         assigned_rep_id: string | null;
         assigned_manager_id: string | null;
       };
@@ -448,7 +457,7 @@ export default function CheckInsPage() {
         const { data, error } = await supabase
           .from("crm_accounts")
           .select(
-            "id, company_name, account_type, street_1, city, state, zip, main_phone, email, website, notes, assigned_rep_id, assigned_manager_id",
+            "id, company_name, account_type, street_1, city, state, zip, main_phone, email, website, notes, buying_group, assigned_rep_id, assigned_manager_id",
           )
           .range(from, from + PAGE - 1);
         if (error) break;
@@ -550,7 +559,8 @@ export default function CheckInsPage() {
           email: r.email,
           website: r.website,
           notes: r.notes,
-          buying_group: null,
+          buying_group: r.buying_group,
+          crm_account_id: r.id,
           source: r.account_type === "dealer" ? "crm" : "crm_prospect",
           lat: coords.lat,
           lng: coords.lng,
@@ -580,7 +590,7 @@ export default function CheckInsPage() {
       while (true) {
         const { data, error } = await supabase
           .from("dealers")
-          .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, source, lat, lng")
+          .select("id, name, first_name, last_name, street_address, city, state, status, rep_id, rep_owner, manager_id, phone, email, website, notes, buying_group, crm_account_id, source, lat, lng")
           .order("name")
           .range(from, from + PAGE - 1);
         if (error) return { data: null, error };
@@ -1116,6 +1126,106 @@ export default function CheckInsPage() {
 
   const placedCount = dealersWithMeta.filter((d) => d.lat != null && d.lng != null).length;
 
+  const openEdit = () => {
+    if (!selected) return;
+    setEditForm({
+      name: selected.name ?? "",
+      phone: selected.phone ?? "",
+      email: selected.email ?? "",
+      website: selected.website ?? "",
+      notes: selected.notes ?? "",
+      buying_group: selected.buying_group ?? "",
+      street_address: selected.street_address ?? "",
+      city: selected.city ?? "",
+      state: selected.state ?? "",
+      manager_id: selected.manager_id ?? "",
+      rep_id: selected.rep_id ?? "",
+    });
+    setEditingDetails(true);
+  };
+
+  const saveDetails = async () => {
+    if (!selected) return;
+    setSavingDetails(true);
+
+    const inDealers = dealers.some((d) => d.id === selected.id);
+    const crmId = selected.crm_account_id ?? (isCrmInjected(selected) ? selected.id : null);
+
+    const promises: Promise<{ error: any }>[] = [];
+
+    if (inDealers) {
+      promises.push(
+        supabase.from("dealers").update({
+          name: editForm.name.trim() || selected.name,
+          phone: editForm.phone.trim() || null,
+          email: editForm.email.trim() || null,
+          website: editForm.website.trim() || null,
+          notes: editForm.notes.trim() || null,
+          buying_group: editForm.buying_group || null,
+          street_address: editForm.street_address.trim() || null,
+          city: editForm.city.trim() || null,
+          state: editForm.state.trim().toUpperCase() || null,
+          manager_id: editForm.manager_id || null,
+          rep_id: editForm.rep_id || null,
+        }).eq("id", selected.id)
+      );
+    }
+
+    if (crmId) {
+      promises.push(
+        supabase.from("crm_accounts").update({
+          company_name: editForm.name.trim() || selected.name,
+          main_phone: editForm.phone.trim() || null,
+          email: editForm.email.trim() || null,
+          website: editForm.website.trim() || null,
+          notes: editForm.notes.trim() || null,
+          buying_group: editForm.buying_group || null,
+          street_1: editForm.street_address.trim() || null,
+          city: editForm.city.trim() || null,
+          state: editForm.state.trim().toUpperCase() || null,
+          assigned_manager_id: editForm.manager_id || null,
+          assigned_rep_id: editForm.rep_id || null,
+        }).eq("id", crmId)
+      );
+    }
+
+    if (!promises.length) {
+      setSavingDetails(false);
+      setEditingDetails(false);
+      return;
+    }
+
+    const results = await Promise.all(promises);
+    const firstError = results.find((r) => r.error)?.error;
+    setSavingDetails(false);
+
+    if (firstError) {
+      toast({ title: "Failed to save", description: firstError.message, variant: "destructive" });
+      return;
+    }
+
+    const updated: Dealer = {
+      ...selected,
+      name: editForm.name.trim() || selected.name,
+      phone: editForm.phone.trim() || null,
+      email: editForm.email.trim() || null,
+      website: editForm.website.trim() || null,
+      notes: editForm.notes.trim() || null,
+      buying_group: editForm.buying_group || null,
+      street_address: editForm.street_address.trim() || null,
+      city: editForm.city.trim() || null,
+      state: editForm.state.trim().toUpperCase() || null,
+      manager_id: editForm.manager_id || null,
+      rep_id: editForm.rep_id || null,
+    };
+
+    setDealers((prev) => prev.map((d) => d.id === selected.id ? updated : d));
+    setProspectDealers((prev) => prev.map((d) => d.id === selected.id ? updated : d));
+    setSelected(updated);
+    setEditingDetails(false);
+    toast({ title: "Details saved" });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -1393,7 +1503,7 @@ export default function CheckInsPage() {
       </Card>
 
       {/* Dealer detail / log check-in sheet */}
-      <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
+      <Sheet open={!!selected} onOpenChange={(v) => { if (!v) { setSelected(null); setEditingDetails(false); } }}>
         <SheetContent className="w-full sm:max-w-md overflow-y-auto">
           {selected && (
             <>
@@ -1411,12 +1521,53 @@ export default function CheckInsPage() {
 
               <div className="mt-4 space-y-4">
                 <div className="rounded-lg border bg-card">
-                  <div className="px-3 py-2 border-b bg-muted/40">
+                  <div className="px-3 py-2 border-b bg-muted/40 flex items-center justify-between">
                     <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Account Details
                     </h3>
+                    {!editingDetails ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                        onClick={openEdit}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-xs px-2"
+                          onClick={() => setEditingDetails(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-6 text-xs px-3"
+                          onClick={saveDetails}
+                          disabled={savingDetails}
+                        >
+                          {savingDetails ? "Saving…" : "Save"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <dl className="divide-y text-sm">
+                    {editingDetails && (
+                      <div className="px-3 py-2">
+                        <dt className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Store Name</dt>
+                        <dd>
+                          <Input
+                            value={editForm.name}
+                            onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                            className="h-8 text-sm"
+                          />
+                        </dd>
+                      </div>
+                    )}
                     {(selected.first_name || selected.last_name) && (
                       <div className="px-3 py-2">
                         <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Contact</dt>
@@ -1426,9 +1577,16 @@ export default function CheckInsPage() {
                       </div>
                     )}
                     <div className="px-3 py-2">
-                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Phone</dt>
-                      <dd className="mt-0.5">
-                        {selected.phone ? (
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Phone</dt>
+                      <dd>
+                        {editingDetails ? (
+                          <Input
+                            value={editForm.phone}
+                            onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                            placeholder="—"
+                            className="h-8 text-sm"
+                          />
+                        ) : selected.phone ? (
                           <a href={`tel:${selected.phone}`} className="text-primary hover:underline">
                             {selected.phone}
                           </a>
@@ -1438,9 +1596,16 @@ export default function CheckInsPage() {
                       </dd>
                     </div>
                     <div className="px-3 py-2">
-                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Email</dt>
-                      <dd className="mt-0.5 break-all">
-                        {selected.email ? (
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Email</dt>
+                      <dd className="break-all">
+                        {editingDetails ? (
+                          <Input
+                            value={editForm.email}
+                            onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                            placeholder="—"
+                            className="h-8 text-sm"
+                          />
+                        ) : selected.email ? (
                           <a href={`mailto:${selected.email}`} className="text-primary hover:underline">
                             {selected.email}
                           </a>
@@ -1450,9 +1615,16 @@ export default function CheckInsPage() {
                       </dd>
                     </div>
                     <div className="px-3 py-2">
-                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Website</dt>
-                      <dd className="mt-0.5 break-all">
-                        {selected.website ? (
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Website</dt>
+                      <dd className="break-all">
+                        {editingDetails ? (
+                          <Input
+                            value={editForm.website}
+                            onChange={(e) => setEditForm((f) => ({ ...f, website: e.target.value }))}
+                            placeholder="—"
+                            className="h-8 text-sm"
+                          />
+                        ) : selected.website ? (
                           <a
                             href={selected.website.startsWith("http") ? selected.website : `https://${selected.website}`}
                             target="_blank"
@@ -1467,14 +1639,27 @@ export default function CheckInsPage() {
                       </dd>
                     </div>
                     <div className="px-3 py-2">
-                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Account Owner</dt>
-                      <dd className="mt-0.5">
-                        {(() => {
-                          // Prefer the actual manager name from the managers table
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Account Owner</dt>
+                      <dd>
+                        {editingDetails ? (
+                          <Select
+                            value={editForm.manager_id || "__none__"}
+                            onValueChange={(v) => setEditForm((f) => ({ ...f, manager_id: v === "__none__" ? "" : v }))}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Select owner" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">Unassigned</SelectItem>
+                              {Object.entries(managersMap).map(([id, name]) => (
+                                <SelectItem key={id} value={id}>{name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (() => {
                           if (selected.manager_id && managersMap[selected.manager_id]) {
                             return <span className="font-medium">{managersMap[selected.manager_id]}</span>;
                           }
-                          // Fallback: match by legacy rep_owner string
                           const member = TEAM_MEMBERS.find((m) => dealerMatchesTeam(selected, m));
                           return member ? (
                             <span className="font-medium">{member.name}</span>
@@ -1485,33 +1670,88 @@ export default function CheckInsPage() {
                       </dd>
                     </div>
                     <div className="px-3 py-2">
-                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Rep</dt>
-                      <dd className="mt-0.5">
-                        {(() => {
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Rep</dt>
+                      <dd>
+                        {editingDetails ? (
+                          <Select
+                            value={editForm.rep_id || "__none__"}
+                            onValueChange={(v) => setEditForm((f) => ({ ...f, rep_id: v === "__none__" ? "" : v }))}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Select rep" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">—</SelectItem>
+                              {salesReps.map((r) => (
+                                <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (() => {
                           const rep = salesReps.find((r) => r.id === selected.rep_id);
                           return rep ? rep.name : <span className="text-muted-foreground italic">-</span>;
                         })()}
                       </dd>
                     </div>
                     <div className="px-3 py-2">
-                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Buying Group</dt>
-                      <dd className="mt-0.5">
-                        {(() => {
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Buying Group</dt>
+                      <dd>
+                        {editingDetails ? (
+                          <Select
+                            value={editForm.buying_group || "__none__"}
+                            onValueChange={(v) => setEditForm((f) => ({ ...f, buying_group: v === "__none__" ? "" : v }))}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">—</SelectItem>
+                              <SelectItem value="none">Nothing</SelectItem>
+                              <SelectItem value="fmg">FMG</SelectItem>
+                              <SelectItem value="furniture_first">Furniture First</SelectItem>
+                              <SelectItem value="nationwide">Nationwide</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (() => {
                           const bg = selected.buying_group;
-                          const map: Record<string, string> = {
+                          const bgMap: Record<string, string> = {
                             none: "Nothing",
                             fmg: "FMG",
                             furniture_first: "Furniture First",
                             nationwide: "Nationwide",
                           };
-                          return bg ? (map[bg] ?? bg) : <span className="text-muted-foreground italic">-</span>;
+                          return bg ? (bgMap[bg] ?? bg) : <span className="text-muted-foreground italic">-</span>;
                         })()}
                       </dd>
                     </div>
                     <div className="px-3 py-2">
-                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Address</dt>
-                      <dd className="mt-0.5">
-                        {(() => {
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Address</dt>
+                      <dd>
+                        {editingDetails ? (
+                          <div className="space-y-1.5">
+                            <Input
+                              placeholder="Street address"
+                              value={editForm.street_address}
+                              onChange={(e) => setEditForm((f) => ({ ...f, street_address: e.target.value }))}
+                              className="h-8 text-sm"
+                            />
+                            <div className="flex gap-1.5">
+                              <Input
+                                placeholder="City"
+                                value={editForm.city}
+                                onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+                                className="h-8 text-sm flex-1"
+                              />
+                              <Input
+                                placeholder="ST"
+                                value={editForm.state}
+                                onChange={(e) => setEditForm((f) => ({ ...f, state: e.target.value }))}
+                                className="h-8 text-sm w-16 uppercase"
+                                maxLength={2}
+                              />
+                            </div>
+                          </div>
+                        ) : (() => {
                           const addr = [selected.street_address, selected.city, selected.state]
                             .filter(Boolean)
                             .join(", ");
@@ -1524,7 +1764,6 @@ export default function CheckInsPage() {
                               : addr
                           )}`;
                           const linkTarget = window.self === window.top ? "_blank" : "_top";
-
                           return (
                             <div className="flex items-start justify-between gap-2">
                               <span className="flex-1">{addr || "-"}</span>
@@ -1533,9 +1772,7 @@ export default function CheckInsPage() {
                                 target={linkTarget}
                                 rel="noopener noreferrer external"
                                 referrerPolicy="no-referrer"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                }}
+                                onClick={(event) => { event.stopPropagation(); }}
                                 title="Open directions in Google Maps"
                                 className="shrink-0 inline-flex items-center gap-1 text-primary hover:underline text-xs font-medium"
                               >
@@ -1566,9 +1803,21 @@ export default function CheckInsPage() {
                       </dd>
                     </div>
                     <div className="px-3 py-2">
-                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">Notes</dt>
-                      <dd className="mt-0.5 whitespace-pre-wrap text-sm">
-                        {selected.notes || <span className="text-muted-foreground italic">-</span>}
+                      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">Notes</dt>
+                      <dd>
+                        {editingDetails ? (
+                          <Textarea
+                            value={editForm.notes}
+                            onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                            rows={3}
+                            className="text-sm"
+                            placeholder="Notes…"
+                          />
+                        ) : (
+                          <span className="whitespace-pre-wrap text-sm">
+                            {selected.notes || <span className="text-muted-foreground italic">-</span>}
+                          </span>
+                        )}
                       </dd>
                     </div>
                   </dl>

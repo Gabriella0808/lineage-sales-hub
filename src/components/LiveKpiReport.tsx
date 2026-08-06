@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { REP_MONTHLY, type RepMonthRow } from "@/data/repMonthly";
 import { useDealerSalesAggregates } from "@/hooks/useDealerSalesAggregates";
+import { useRepIdentifiers } from "@/hooks/useRepIdentifiers";
+import { resolveRepIdentifiers } from "@/utils/repResolver";
 import { MtdInvoicingCard } from "@/components/MtdInvoicingCard";
 import { useRepTargets, MONTH_LABEL_TO_KEY, type RepTarget } from "@/hooks/useRepTargets";
 
@@ -265,10 +267,36 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     return Array.from(new Set(scoped.flatMap((n) => REP_NAME_TO_DB_NAMES[n] ?? [n])));
   }, [repFilter, territoryFilter, visibleReps, allowedRepNames]);
 
+  // Resolve dropdown display names → exact Acctivate rep_id / rep_name identifiers
+  // stored in v_portal_dealer_rep_reporting_lines. Falls back gracefully if the
+  // DB function hasn't been applied yet (returns empty mapping → name fallback).
+  const { data: repIdentifiers = [] } = useRepIdentifiers();
+  const repResolution = useMemo(() => {
+    if (!scopedDbRepNames || scopedDbRepNames.length === 0) return null;
+    const resolved = resolveRepIdentifiers(scopedDbRepNames, repIdentifiers);
+    console.log("[live-kpi] rep resolution:", {
+      input: scopedDbRepNames,
+      resolvedRepIds:   resolved.repIds,
+      resolvedRepNames: resolved.repNames,
+    });
+    return resolved;
+  }, [scopedDbRepNames, repIdentifiers]);
+
   // Live actuals from dealer_sales (current year YTD + prior year). Projections
   // (b26p / i26p) remain seeded from the spreadsheet defaults below and are
   // user-editable via inline cells.
-  const { data: liveAgg } = useDealerSalesAggregates(scopedDbRepNames);
+  const { data: liveAgg } = useDealerSalesAggregates(scopedDbRepNames, repResolution);
+
+  useEffect(() => {
+    if (!scopedDbRepNames) return;
+    const nonZeroMonths = liveAgg.filter((r) => r.ytdB > 0 || r.ytdI > 0);
+    console.log("[live-kpi] actuals loaded:", {
+      repFilter,
+      scopedDbRepNames,
+      repResolution,
+      months: nonZeroMonths.map((r) => `${r.m}: bookings=$${r.ytdB.toFixed(0)} invoiced=$${r.ytdI.toFixed(0)}`),
+    });
+  }, [scopedDbRepNames, liveAgg, repResolution]);
 
 
   const baseMonthly = useMemo(() => MONTHLY.map((seed) => {

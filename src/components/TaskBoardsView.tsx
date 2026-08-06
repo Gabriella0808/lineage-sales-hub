@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +118,7 @@ interface BoardTask {
 
 export default function TaskBoardsView() {
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
   const { toast } = useToast();
   const [boards, setBoards] = useState<Board[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -1200,7 +1202,7 @@ export default function TaskBoardsView() {
 
             const renderTaskRow = (t: BoardTask) => {
               const meta = STATUS_META[t.status];
-              const isMine = !!user && t.user_id === user.id;
+              const isMine = isAdmin || (!!user && t.user_id === user.id);
               const isDropTarget = dragOverTaskId === t.id;
               const isDragging = draggingTaskId === t.id;
               return (
@@ -2254,7 +2256,7 @@ export default function TaskBoardsView() {
               .map((id) => assignableUsers.find((u) => u.user_id === id))
               .filter(Boolean) as { user_id: string; full_name: string | null; email: string | null }[];
             const creator = assignableUsers.find((u) => u.user_id === live.user_id);
-            const isMine = !!user && live.user_id === user.id;
+            const isMine = isAdmin || (!!user && live.user_id === user.id);
             return (
               <>
                 <SheetHeader>

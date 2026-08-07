@@ -18,6 +18,7 @@ import {
   useDealers, useSalesReps, useTerritories, useRepTerritories,
   formatCurrency,
 } from "@/hooks/usePortalData";
+import { isBookingVisibleDate, BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
 import { InvoiceDetailSheet } from "@/components/InvoiceDetailSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -413,6 +414,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
     for (const line of repLines) {
       if (line.metric_type !== targetMetric) continue;
+      // Booking actuals before the cutoff are hidden portal-wide.
+      if (targetMetric === "bookings" && !isBookingVisibleDate(line.transaction_date)) continue;
 
       // Scope filter (manager/territory/rep/dealer selection via Acctivate customer_id)
       if (scopedCustomerIds !== null) {
@@ -478,8 +481,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       }
       if (brandCategorySet.size > 0 && !brandCategorySet.has(line.brand_category ?? "")) continue;
       if (skuSet.size > 0           && !skuSet.has(line.sku ?? ""))           continue;
-      if      (line.metric_type === "bookings") bookings += line.amount;
-      else if (line.metric_type === "invoiced") invoices += line.amount;
+      if (line.metric_type === "bookings") {
+        if (isBookingVisibleDate(line.transaction_date)) bookings += line.amount;
+      } else if (line.metric_type === "invoiced") {
+        invoices += line.amount;
+      }
     }
     const bCount = primaryLines.filter(l => l.metric_type === "bookings").length;
     const iCount = primaryLines.filter(l => l.metric_type === "invoiced").length;
@@ -677,7 +683,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         <Card>
           <CardContent className="p-4">
             <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Bookings</p>
-            <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.bookings)}</p>
+            <p className="text-2xl font-semibold tabular-nums mt-1">
+              {primary.to < new Date(BOOKINGS_VISIBLE_FROM)
+                ? "—"
+                : formatCurrency(summaryTotals.bookings)}
+            </p>
             <p className="text-xs text-muted-foreground mt-1">
               {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
             </p>

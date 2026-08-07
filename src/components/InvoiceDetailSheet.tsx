@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 import { format, startOfDay } from "date-fns";
+import { isBookingVisibleDate, BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +54,7 @@ function filterLines(
 ): ViewLine[] {
   return viewLines.filter((l) => {
     if (l.metric_type !== metricType) return false;
+    if (metricType === "bookings" && !isBookingVisibleDate(l.transaction_date)) return false;
     const ms = new Date(l.transaction_date + "T00:00:00").getTime();
     if (Number.isNaN(ms) || ms < fromMs || ms > toMs) return false;
     return matchesRow(l, groupBy, rowKey);
@@ -172,10 +174,10 @@ export function InvoiceDetailSheet({
           />
           <StatCard
             label="Bookings"
-            value={formatCurrency(primBookingsTotal)}
-            compValue={hasCompare ? formatCurrency(compBookingsTotal) : undefined}
+            value={to < new Date(BOOKINGS_VISIBLE_FROM) ? "—" : formatCurrency(primBookingsTotal)}
+            compValue={hasCompare ? (compareTo! < new Date(BOOKINGS_VISIBLE_FROM) ? "—" : formatCurrency(compBookingsTotal)) : undefined}
             compLabel={compLabel ?? undefined}
-            delta={hasCompare ? pctDelta(primBookingsTotal, compBookingsTotal) : undefined}
+            delta={hasCompare && to >= new Date(BOOKINGS_VISIBLE_FROM) && compareTo! >= new Date(BOOKINGS_VISIBLE_FROM) ? pctDelta(primBookingsTotal, compBookingsTotal) : undefined}
           />
           <StatCard
             label="Lines"

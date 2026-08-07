@@ -11,6 +11,7 @@ import { useRepIdentifiers } from "@/hooks/useRepIdentifiers";
 import { resolveRepIdentifiers } from "@/utils/repResolver";
 import { MtdInvoicingCard } from "@/components/MtdInvoicingCard";
 import { useRepTargets, MONTH_LABEL_TO_KEY, type RepTarget } from "@/hooks/useRepTargets";
+import { isBookingVisible } from "@/utils/bookingCutoff";
 
 const PROJ_STORAGE_KEY = "kpi_projections_2026_v1";
 
@@ -852,24 +853,28 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                   ytdBContainer?: number; ytdBWarehouse?: number;
                   b25Container?: number; b25Warehouse?: number;
                 };
-                const ytdICont = rAny.ytdIContainer ?? 0;
-                const ytdIWh = rAny.ytdIWarehouse ?? 0;
-                const i25Cont = rAny.i25Container ?? 0;
-                const i25Wh = rAny.i25Warehouse ?? 0;
                 const ytdBCont = rAny.ytdBContainer ?? 0;
-                const ytdBWh = rAny.ytdBWarehouse ?? 0;
-                const b25Cont = rAny.b25Container ?? 0;
-                const b25Wh = rAny.b25Warehouse ?? 0;
+                const ytdBWh  = rAny.ytdBWarehouse  ?? 0;
+                // Booking actuals are only visible from Aug 2026 onwards.
+                const bkVisible = isBookingVisible(2026, idx + 1);
                 return (
                   <tr key={r.m} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
                     {showB && <>
-                      <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdB)}</td>
+                      <td className="p-2 text-right border-l font-medium">
+                        {bkVisible ? formatCurrency(r.ytdB) : "—"}
+                      </td>
                       <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
-                      <td className="p-2 text-right">{fmtPct(r.ytdB / r.b26p)}</td>
+                      <td className="p-2 text-right">
+                        {bkVisible ? fmtPct(r.ytdB / r.b26p) : "—"}
+                      </td>
                       <td className="p-2 text-right">{formatCurrency(r.b25)}</td>
-                      <td className="p-2 text-right">{fmtPct(ytdBCont / Math.max(r.ytdB, 1))}</td>
-                      <td className="p-2 text-right">{fmtPct(ytdBWh  / Math.max(r.ytdB, 1))}</td>
+                      <td className="p-2 text-right">
+                        {bkVisible ? fmtPct(ytdBCont / Math.max(r.ytdB, 1)) : "—"}
+                      </td>
+                      <td className="p-2 text-right">
+                        {bkVisible ? fmtPct(ytdBWh / Math.max(r.ytdB, 1)) : "—"}
+                      </td>
                     </>}
                     {showI && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>

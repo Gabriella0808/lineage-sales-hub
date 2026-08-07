@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isBookingVisible } from "@/utils/bookingCutoff";
 
 export type MonthlyAgg = {
   /** Long month name, e.g. "January" */
@@ -154,9 +155,12 @@ export function useDealerSalesAggregates(
           const bkC = Number(r.container_bookings_actual) || 0;
           const bkW = Number(r.warehouse_bookings_actual) || 0;
           if (Number(r.year) === currentYear) {
-            agg[name].ytdB          = bk;
-            agg[name].ytdBContainer = bkC;
-            agg[name].ytdBWarehouse = bkW;
+            // Only accumulate current-year booking actuals from the cutoff date onwards.
+            if (isBookingVisible(currentYear, Number(r.month_number))) {
+              agg[name].ytdB          = bk;
+              agg[name].ytdBContainer = bkC;
+              agg[name].ytdBWarehouse = bkW;
+            }
           } else if (Number(r.year) === prevYear) {
             agg[name].b25          = bk;
             agg[name].b25Container = bkC;
@@ -178,9 +182,11 @@ export function useDealerSalesAggregates(
           const bkC = Number(r.bookings_container) || 0;
           const bkW = Number(r.bookings_warehouse) || 0;
           if (Number(r.year) === currentYear) {
-            agg[name].ytdB          += bk;
-            agg[name].ytdBContainer += bkC;
-            agg[name].ytdBWarehouse += bkW;
+            if (isBookingVisible(currentYear, Number(r.month))) {
+              agg[name].ytdB          += bk;
+              agg[name].ytdBContainer += bkC;
+              agg[name].ytdBWarehouse += bkW;
+            }
           } else if (Number(r.year) === prevYear) {
             agg[name].b25          += bk;
             agg[name].b25Container += bkC;

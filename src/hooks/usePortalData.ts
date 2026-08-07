@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { isBookingVisible } from "@/utils/bookingCutoff";
 
 // ── Types matching DB schema ──────────────────────────────────────
 
@@ -375,8 +376,11 @@ export function useDealerSales() {
 
       for (const l of lines) {
         const cur = ensure(l.dealer_id, l.year, l.month);
-        cur.bookings = (cur.bookings ?? 0) + (l.bookings ?? 0);
-        cur.booking_count = (cur.booking_count ?? 0) + (l.booking_count ?? 0);
+        const monthNum = MONTH_ABBR.indexOf(l.month) + 1;
+        if (monthNum > 0 && isBookingVisible(l.year, monthNum)) {
+          cur.bookings = (cur.bookings ?? 0) + (l.bookings ?? 0);
+          cur.booking_count = (cur.booking_count ?? 0) + (l.booking_count ?? 0);
+        }
       }
 
       for (const r of invoiced) {

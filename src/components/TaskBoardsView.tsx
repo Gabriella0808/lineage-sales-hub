@@ -124,7 +124,9 @@ export default function TaskBoardsView() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [tasks, setTasks] = useState<BoardTask[]>([]);
-  const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
+  const [activeBoardId, setActiveBoardId] = useState<string | null>(() => {
+    try { return localStorage.getItem("active_task_board_id"); } catch { return null; }
+  });
   const [addingGroupId, setAddingGroupId] = useState<string | null>(null);
   const [newItemTitle, setNewItemTitle] = useState("");
   const [statusFilter, setStatusFilter] = useState<Status[]>([]);
@@ -193,7 +195,9 @@ export default function TaskBoardsView() {
     if (!bRes.error) {
       const list = (bRes.data ?? []) as unknown as Board[];
       setBoards(list);
-      if (!activeBoardId && list.length > 0) setActiveBoardId(list[0].id);
+      if (list.length > 0 && (!activeBoardId || !list.find((b) => b.id === activeBoardId))) {
+        setActiveBoardId(list[0].id);
+      }
     } else {
       toast({ title: "Failed to load boards", description: bRes.error.message, variant: "destructive" });
     }

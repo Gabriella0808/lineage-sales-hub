@@ -17,6 +17,7 @@ import TaskBoardsView from "@/components/TaskBoardsView";
 import TodosView from "@/components/TodosView";
 import BoardTemplatesView from "@/components/BoardTemplatesView";
 import { useToast } from "@/hooks/use-toast";
+import { useUserRole } from "@/hooks/useUserRole";
 import { cn } from "@/lib/utils";
 
 interface BoardTemplate {
@@ -41,6 +42,7 @@ export default function TasksPage() {
   const [activeTab, setActiveTab] = useState("todos");
   const [boardsViewKey, setBoardsViewKey] = useState(0);
   const { toast } = useToast();
+  const { isAdmin } = useUserRole();
 
   // Template-from-board picker state
   const [templates, setTemplates] = useState<BoardTemplate[]>([]);
@@ -133,7 +135,7 @@ export default function TasksPage() {
         <TabsList>
           <TabsTrigger value="todos">To Do's</TabsTrigger>
           <TabsTrigger value="boards">Boards</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
+          {isAdmin && <TabsTrigger value="templates">Templates</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="todos" className="mt-4">
@@ -141,8 +143,8 @@ export default function TasksPage() {
         </TabsContent>
 
         <TabsContent value="boards" className="mt-4 space-y-4">
-          {/* Template shortcut row - shows above the board view */}
-          {templates.length > 0 && (
+          {/* Template shortcut row - shows above the board view (admins only) */}
+          {isAdmin && templates.length > 0 && (
             <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-2.5">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <LayoutTemplate className="h-4 w-4" />
@@ -157,14 +159,16 @@ export default function TasksPage() {
           <TaskBoardsView key={boardsViewKey} />
         </TabsContent>
 
-        <TabsContent value="templates" className="mt-4">
-          <BoardTemplatesView
-            onBoardCreated={(id) => {
-              loadTemplates();
-              switchToBoards(id);
-            }}
-          />
-        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="templates" className="mt-4">
+            <BoardTemplatesView
+              onBoardCreated={(id) => {
+                loadTemplates();
+                switchToBoards(id);
+              }}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* ── Template picker dialog ── */}

@@ -465,11 +465,15 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
     load();
   }, [load]);
 
-  // Real-time refresh
+  // Real-time refresh — patch updates in-place, full reload only for insert/delete
   useEffect(() => {
     const channel = supabase
       .channel("todos-view-tasks")
-      .on("postgres_changes", { event: "*", schema: "public", table: "manager_tasks" }, () => load())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "manager_tasks" }, (payload) => {
+        setTasks((prev) => prev.map((t) => t.id === (payload.new as Task).id ? { ...t, ...(payload.new as Task) } : t));
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "manager_tasks" }, () => load())
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "manager_tasks" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [load]);

@@ -187,7 +187,7 @@ function TaskRow({ task, assigneeNames, commentCount, groupName, onToggle, onOpe
 
   return (
     <div
-      className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/40 border-b border-border/40 cursor-pointer group transition-colors"
+      className="flex items-center gap-2.5 px-3 py-2 hover:bg-muted/40 border-b border-border/40 cursor-pointer group transition-colors"
       onClick={() => onOpen(task)}
     >
       <Checkbox
@@ -197,9 +197,10 @@ function TaskRow({ task, assigneeNames, commentCount, groupName, onToggle, onOpe
         className="shrink-0"
       />
 
-      <span className="text-xs text-muted-foreground shrink-0 w-16 tabular-nums">
-        {format(new Date(task.created_at), "MMM d")}
-      </span>
+      <div className="flex flex-col shrink-0 w-16">
+        <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/60">Date Created</span>
+        <span className="text-xs text-muted-foreground tabular-nums">{format(new Date(task.created_at), "MMM d")}</span>
+      </div>
 
       <div className="flex-1 min-w-0">
         <span
@@ -217,21 +218,26 @@ function TaskRow({ task, assigneeNames, commentCount, groupName, onToggle, onOpe
         )}
       </div>
 
-      {task.due_date && (
-        <span
-          className={cn(
-            "text-xs whitespace-nowrap shrink-0 flex items-center gap-0.5",
-            bucket === "overdue" && "text-destructive font-semibold",
-            bucket === "today" && "text-amber-600 dark:text-amber-400 font-semibold",
-            (bucket === "upcoming" || bucket === "none") && "text-muted-foreground",
-            task.status === "done" && "text-muted-foreground/50",
-          )}
-        >
-          {bucket === "overdue" && <AlertTriangle className="h-3 w-3" />}
-          {bucket === "today" && <Clock className="h-3 w-3" />}
-          {formatDueDate(task.due_date)}
-        </span>
-      )}
+      <div className="flex flex-col shrink-0 w-16">
+        <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/60">Due Date</span>
+        {task.due_date ? (
+          <span
+            className={cn(
+              "text-xs whitespace-nowrap flex items-center gap-0.5 tabular-nums",
+              bucket === "overdue" && "text-destructive font-semibold",
+              bucket === "today" && "text-amber-600 dark:text-amber-400 font-semibold",
+              (bucket === "upcoming" || bucket === "none") && "text-muted-foreground",
+              task.status === "done" && "text-muted-foreground/50",
+            )}
+          >
+            {bucket === "overdue" && <AlertTriangle className="h-3 w-3" />}
+            {bucket === "today" && <Clock className="h-3 w-3" />}
+            {formatDueDate(task.due_date)}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground/40">—</span>
+        )}
+      </div>
 
       <span
         className={cn(

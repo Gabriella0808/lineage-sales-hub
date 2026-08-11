@@ -178,9 +178,9 @@ export default function TaskBoardsView() {
   const [taskAssignees, setTaskAssignees] = useState<Record<string, string[]>>({});
   const [addUserId, setAddUserId] = useState<string>("");
 
-  const load = async () => {
+  const load = async (silent = false) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     const [bRes, gRes, tRes, uRes] = await Promise.all([
       supabase.from("task_boards" as any).select("*").order("updated_at", { ascending: false }),
       supabase.from("task_board_groups" as any).select("*").order("position", { ascending: true }),
@@ -356,14 +356,14 @@ export default function TaskBoardsView() {
       setActiveBoardId(newId);
     }
     setBoardDlgOpen(false);
-    load();
+    load(true);
   };
   const deleteBoard = async (b: Board) => {
     if (!confirm(`Delete board "${b.name}"? Tasks will remain in My Tasks but lose board association.`)) return;
     const { error } = await supabase.from("task_boards" as any).delete().eq("id", b.id);
     if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     if (activeBoardId === b.id) setActiveBoardId(null);
-    load();
+    load(true);
   };
 
   // - Members / Subscribers ---
@@ -442,13 +442,13 @@ export default function TaskBoardsView() {
       if (error) return toast({ title: "Create failed", description: error.message, variant: "destructive" });
     }
     setGroupDlgOpen(false);
-    load();
+    load(true);
   };
   const deleteGroup = async (g: Group) => {
     if (!confirm(`Delete group "${g.name}"? Tasks will move out of this group.`)) return;
     const { error } = await supabase.from("task_board_groups" as any).delete().eq("id", g.id);
     if (error) return toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    load();
+    load(true);
   };
   const saveInlineGroupName = async (groupId: string, name: string) => {
     if (!name.trim()) return;
@@ -606,7 +606,7 @@ export default function TaskBoardsView() {
     }
 
     setTaskDlgOpen(false);
-    load();
+    load(true);
   };
   const deleteTask = async (t: BoardTask) => {
     setDeletingTask(null);

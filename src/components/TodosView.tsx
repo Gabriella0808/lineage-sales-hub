@@ -395,9 +395,9 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
   const [commentsTaskId, setCommentsTaskId] = useState<string | null>(null);
 
   // ── Load ────────────────────────────────────────────────────────────────────
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
 
     const [assignmentRes, assignableRes, profilesRes] = await Promise.all([
       supabase.from("manager_task_assignees" as any).select("task_id").eq("user_id", user.id),
@@ -1132,11 +1132,11 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
         onOpenChange={(o) => {
           if (!o) {
             setCommentsTaskId(null);
-            load();
+            load(true);
           }
         }}
         users={assignableUsers.map((a) => ({ user_id: a.user_id, full_name: a.full_name, email: a.email }))}
-        onActivityChange={() => load()}
+        onActivityChange={() => load(true)}
       />
     </div>
   );

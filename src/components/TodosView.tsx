@@ -197,6 +197,10 @@ function TaskRow({ task, assigneeNames, commentCount, groupName, onToggle, onOpe
         className="shrink-0"
       />
 
+      <span className="text-xs text-muted-foreground shrink-0 w-16 tabular-nums">
+        {format(new Date(task.created_at), "MMM d")}
+      </span>
+
       <div className="flex-1 min-w-0">
         <span
           className={cn(

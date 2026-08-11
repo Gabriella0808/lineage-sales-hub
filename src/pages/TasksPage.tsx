@@ -42,7 +42,8 @@ export default function TasksPage() {
   const [activeTab, setActiveTab] = useState("todos");
   const [boardsViewKey, setBoardsViewKey] = useState(0);
   const { toast } = useToast();
-  const { isAdmin } = useUserRole();
+  const { data: roleInfo } = useUserRole();
+  const isAdmin = roleInfo?.isAdmin ?? false;
 
   // Template-from-board picker state
   const [templates, setTemplates] = useState<BoardTemplate[]>([]);

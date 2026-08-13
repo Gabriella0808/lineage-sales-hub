@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { LayoutTemplate, Plus } from "lucide-react";
+import { LayoutTemplate, Plus, ExternalLink } from "lucide-react";
 import TaskBoardsView from "@/components/TaskBoardsView";
 import TodosView from "@/components/TodosView";
 import BoardTemplatesView from "@/components/BoardTemplatesView";
@@ -26,6 +26,13 @@ interface BoardTemplate {
   description: string | null;
   color: string | null;
   is_builtin: boolean;
+}
+
+interface SopBoard {
+  id: string;
+  name: string;
+  color: string | null;
+  description: string | null;
 }
 
 interface TemplateGroup {
@@ -49,16 +56,18 @@ export default function TasksPage() {
   const [templates, setTemplates] = useState<BoardTemplate[]>([]);
   const [templateGroupCounts, setTemplateGroupCounts] = useState<Record<string, number>>({});
   const [templateTaskCounts, setTemplateTaskCounts] = useState<Record<string, number>>({});
+  const [sopBoards, setSopBoards] = useState<SopBoard[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<BoardTemplate | null>(null);
   const [boardName, setBoardName] = useState("");
   const [creating, setCreating] = useState(false);
 
   const loadTemplates = useCallback(async () => {
-    const [tmplRes, grpRes, taskRes] = await Promise.all([
+    const [tmplRes, grpRes, taskRes, sopRes] = await Promise.all([
       supabase.from("board_templates" as any).select("id, name, description, color, is_builtin").order("is_builtin", { ascending: false }).order("name"),
       supabase.from("board_template_groups" as any).select("id, template_id"),
       supabase.from("board_template_tasks" as any).select("id, template_id"),
+      supabase.from("task_boards" as any).select("id, name, color, description").ilike("name", "%SOP%").order("name"),
     ]);
     setTemplates(((tmplRes.data ?? []) as unknown) as BoardTemplate[]);
     const grpCounts: Record<string, number> = {};
@@ -71,6 +80,7 @@ export default function TasksPage() {
     });
     setTemplateGroupCounts(grpCounts);
     setTemplateTaskCounts(taskCounts);
+    setSopBoards(((sopRes.data ?? []) as unknown) as SopBoard[]);
   }, []);
 
   useEffect(() => {
@@ -161,13 +171,48 @@ export default function TasksPage() {
         </TabsContent>
 
         {isAdmin && (
-          <TabsContent value="templates" className="mt-4">
+          <TabsContent value="templates" className="mt-4 space-y-8">
             <BoardTemplatesView
               onBoardCreated={(id) => {
                 loadTemplates();
                 switchToBoards(id);
               }}
             />
+
+            {sopBoards.length > 0 && (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-semibold">SOP Boards</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Standard operating procedure boards. Click to open.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {sopBoards.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => switchToBoards(b.id)}
+                      className="flex items-start gap-3 rounded-lg border border-border/60 bg-card p-4 text-left hover:border-border hover:shadow-sm transition-all"
+                    >
+                      <span
+                        className="mt-1 h-3 w-3 rounded-full shrink-0"
+                        style={{ backgroundColor: b.color ?? "#94a3b8" }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-medium truncate">{b.name}</span>
+                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        </div>
+                        {b.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{b.description}</p>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </TabsContent>
         )}
       </Tabs>

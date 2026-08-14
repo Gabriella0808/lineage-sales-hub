@@ -168,6 +168,9 @@ const END = new Date(TODAY.getFullYear(), 11, 31);
 const DAYS_REMAINING = Math.max(0, Math.ceil((END.getTime() - TODAY.getTime()) / 86400000));
 
 const fmtPct = (n: number) => n === 0 ? "-" : `${(n * 100).toFixed(1)}%`;
+// Like fmtPct but never returns "-" for 0 — used when we know classified data exists
+// and a zero share is meaningful (e.g. container=0 while warehouse>0).
+const fmtPctRaw = (n: number) => `${(n * 100).toFixed(1)}%`;
 
 const growth = (p: number, a: number) => a === 0 ? 0 : (p - a) / a;
 
@@ -883,8 +886,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                       <td className="p-2 text-right">{formatCurrency(r.i26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.i25)}</td>
-                      <td className="p-2 text-right">{fmtPct(ytdICont / Math.max(r.ytdI, 1))}</td>
-                      <td className="p-2 text-right">{fmtPct(ytdIWh   / Math.max(r.ytdI, 1))}</td>
+                      <td className="p-2 text-right">{ytdICont + ytdIWh === 0 ? "-" : fmtPctRaw(ytdICont / Math.max(r.ytdI, 1))}</td>
+                      <td className="p-2 text-right">{ytdICont + ytdIWh === 0 ? "-" : fmtPctRaw(ytdIWh   / Math.max(r.ytdI, 1))}</td>
                     </>}
                   </tr>
                 );
@@ -904,8 +907,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                   <td className="p-2 text-right">{formatCurrency(sumI26P)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdI / sumI26P)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumI25)}</td>
-                  <td className="p-2 text-right">{fmtPct(sumYtdICont / Math.max(sumYtdI, 1))}</td>
-                  <td className="p-2 text-right">{fmtPct(sumYtdIWh  / Math.max(sumYtdI, 1))}</td>
+                  <td className="p-2 text-right">{sumYtdICont + sumYtdIWh === 0 ? "-" : fmtPctRaw(sumYtdICont / Math.max(sumYtdI, 1))}</td>
+                  <td className="p-2 text-right">{sumYtdICont + sumYtdIWh === 0 ? "-" : fmtPctRaw(sumYtdIWh  / Math.max(sumYtdI, 1))}</td>
                 </>}
               </tr>
               {monthFilter === "All" && (

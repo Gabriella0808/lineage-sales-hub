@@ -283,8 +283,7 @@ interface Props {
 }
 
 export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions }: Props) {
-  const today       = new Date();
-  const yearStart   = startOfYear(today);
+  const today = new Date();
 
   const [groupBy, setGroupBy]       = useState<GroupBy>(initialGroupBy);
   const [primary, setPrimary]       = useState<DateRange>({ from: startOfMonth(today), to: today });
@@ -551,20 +550,22 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Quick range</span>
               <Select
                 onValueChange={(v) => {
-                  const todayEnd = startOfDay(today);
-                  const monthEnd = endOfMonth(today);
+                  // Compute today fresh so stale closure from mount date never applies.
+                  const now      = new Date();
+                  const todayEnd = startOfDay(now);
+                  const monthEnd = endOfMonth(now);
                   let from: Date; let to: Date;
                   switch (v) {
                     case "today":    from = todayEnd; to = todayEnd; break;
-                    case "mtd":      from = startOfMonth(today); to = todayEnd; break;
-                    case "qtd":      from = startOfQuarter(today); to = todayEnd; break;
-                    case "ytd":      from = startOfYear(today); to = todayEnd; break;
+                    case "mtd":      from = startOfMonth(now); to = todayEnd; break;
+                    case "qtd":      from = startOfQuarter(now); to = todayEnd; break;
+                    case "ytd":      from = startOfYear(now); to = todayEnd; break;
                     case "last30":   from = subDays(todayEnd, 29); to = todayEnd; break;
                     case "last90":   from = subDays(todayEnd, 89); to = todayEnd; break;
                     case "3m":       from = startOfMonth(subMonths(monthEnd, 2)); to = monthEnd; break;
                     case "6m":       from = startOfMonth(subMonths(monthEnd, 5)); to = monthEnd; break;
                     case "12m":      from = startOfMonth(subMonths(monthEnd, 11)); to = monthEnd; break;
-                    case "lastYear": from = startOfYear(subYears(today, 1)); to = endOfMonth(subMonths(startOfYear(today), 1)); break;
+                    case "lastYear": from = startOfYear(subYears(now, 1)); to = endOfMonth(subMonths(startOfYear(now), 1)); break;
                     default: return;
                   }
                   applyPrimary(from, to);
@@ -590,7 +591,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               label="Primary date range"
               value={primary}
               onChange={(r) => applyPrimary(r.from, r.to)}
-              onReset={() => applyPrimary(yearStart, endOfMonth(today))}
+              onReset={() => { const now = new Date(); applyPrimary(startOfYear(now), endOfMonth(now)); }}
             />
 
             <div className="flex flex-col gap-1">
@@ -636,9 +637,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               size="sm"
               className="h-9 text-muted-foreground"
               onClick={() => {
+                const now = new Date();
                 setCompareMode("prev-year");
-                setPrimary({ from: startOfMonth(today), to: today });
-                setComparative({ from: subYears(startOfMonth(today), 1), to: subYears(today, 1) });
+                setPrimary({ from: startOfMonth(now), to: now });
+                setComparative({ from: subYears(startOfMonth(now), 1), to: subYears(now, 1) });
                 setTerritoryIds([]);
                 setRepIds([]);
                 setDealerIds([]);

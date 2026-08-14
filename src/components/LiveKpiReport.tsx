@@ -875,10 +875,10 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                       </td>
                       <td className="p-2 text-right">{formatCurrency(r.b25)}</td>
                       <td className="p-2 text-right">
-                        {bkVisible ? fmtPct(ytdBCont / Math.max(r.ytdB, 1)) : "—"}
+                        {bkVisible ? (ytdBCont + ytdBWh === 0 ? "-" : fmtPctRaw(ytdBCont / Math.max(r.ytdB, 1))) : "—"}
                       </td>
                       <td className="p-2 text-right">
-                        {bkVisible ? fmtPct(ytdBWh / Math.max(r.ytdB, 1)) : "—"}
+                        {bkVisible ? (ytdBCont + ytdBWh === 0 ? "-" : fmtPctRaw(ytdBWh  / Math.max(r.ytdB, 1))) : "—"}
                       </td>
                     </>}
                     {showI && <>
@@ -899,8 +899,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                   <td className="p-2 text-right">{formatCurrency(sumB26P)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdB / sumB26P)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumB25)}</td>
-                  <td className="p-2 text-right">{fmtPct(sumYtdBCont / Math.max(sumYtdB, 1))}</td>
-                  <td className="p-2 text-right">{fmtPct(sumYtdBWh  / Math.max(sumYtdB, 1))}</td>
+                  <td className="p-2 text-right">{sumYtdBCont + sumYtdBWh === 0 ? "-" : fmtPctRaw(sumYtdBCont / Math.max(sumYtdB, 1))}</td>
+                  <td className="p-2 text-right">{sumYtdBCont + sumYtdBWh === 0 ? "-" : fmtPctRaw(sumYtdBWh  / Math.max(sumYtdB, 1))}</td>
                 </>}
                 {showI && <>
                   <td className="p-2 text-right border-l">{formatCurrency(sumYtdI)}</td>

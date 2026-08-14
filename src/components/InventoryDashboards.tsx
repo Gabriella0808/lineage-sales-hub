@@ -139,7 +139,7 @@ function ReportInventoryValue({ rows, total }: { rows: InventorySummaryRow[]; to
               <td className="px-3 py-2 text-xs">{r.warehouse ?? "-"}</td>
               <td className="px-3 py-2 text-right tabular-nums">{fmtNum(onHand)}</td>
               <td className="px-3 py-2 text-right tabular-nums">{fmtNum(Number(r.available))}</td>
-              <td className="px-3 py-2 text-right tabular-nums">{unitCost != null ? `$${unitCost.toFixed(2)}` : "-"}</td>
+              <td className="px-3 py-2 text-right tabular-nums">{unitCost != null ? `$${Math.round(unitCost).toLocaleString()}` : "-"}</td>
               <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(invValue)}</td>
               <td className="px-3 py-2 text-right tabular-nums text-xs text-muted-foreground">
                 {total > 0 ? `${((invValue / total) * 100).toFixed(1)}%` : "-"}
@@ -734,7 +734,7 @@ function ReportBacklog({ rows }: { rows: { id: string; order_number: string | nu
             <td className="px-3 py-2 max-w-[200px] truncate">{r.dealer_name ?? "-"}</td>
             <td className="px-3 py-2 font-mono text-xs">{r.sku}</td>
             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(Number(r.qty_open))}</td>
-            <td className="px-3 py-2 text-right tabular-nums">${Number(r.unit_price).toFixed(2)}</td>
+            <td className="px-3 py-2 text-right tabular-nums">${Math.round(Number(r.unit_price)).toLocaleString()}</td>
             <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(Number(r.extended_value))}</td>
             <td className="px-3 py-2 text-xs">{r.promised_date ? new Date(r.promised_date).toLocaleDateString() : "-"}</td>
           </tr>
@@ -1822,7 +1822,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                       <td className="px-3 py-2 text-xs">{r.warehouse ?? "-"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{fmtNum(Number(r.on_hand))}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{fmtNum(Number(r.available))}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{r.unit_cost != null ? `$${Number(r.unit_cost).toFixed(2)}` : "-"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{r.unit_cost != null ? `$${Math.round(Number(r.unit_cost)).toLocaleString()}` : "-"}</td>
                       <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(Number(r.inventory_value))}</td>
                     </tr>
                   ))}
@@ -1849,7 +1849,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                     ["Warehouse", selectedRow.warehouse ?? "-"],
                     ["On Hand", fmtNum(Number(selectedRow.on_hand))],
                     ["Available", fmtNum(Number(selectedRow.available))],
-                    ["Unit Cost", selectedRow.unit_cost != null ? `$${Number(selectedRow.unit_cost).toFixed(2)}` : "-"],
+                    ["Unit Cost", selectedRow.unit_cost != null ? `$${Math.round(Number(selectedRow.unit_cost)).toLocaleString()}` : "-"],
                     ["Inventory Value", fmtMoney(Number(selectedRow.inventory_value))],
                     ["Discontinued", fmtBool(selectedRow.discontinued)],
                     ["Active Product", fmtBool(selectedRow.active_product)],

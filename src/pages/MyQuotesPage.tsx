@@ -32,7 +32,7 @@ type Quote = {
 
 function formatPrice(n: number | null | undefined) {
   if (n == null) return "-";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(Number(n));
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(n));
 }
 
 function formatDate(s: string | null) {

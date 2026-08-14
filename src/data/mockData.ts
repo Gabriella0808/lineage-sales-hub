@@ -186,5 +186,5 @@ export const getRepsByTerritory = (terId: string) => salesReps.filter(r => r.ter
 export const getDealersByRep = (repId: string) => dealers.filter(d => d.repId === repId);
 export const getDealersByTerritory = (terId: string) => dealers.filter(d => d.territoryId === terId);
 
-export const formatCurrency = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n);
+export const formatCurrency = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 export const formatPercent = (n: number) => `${Math.round(n * 100)}%`;

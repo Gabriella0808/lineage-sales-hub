@@ -24,7 +24,7 @@ type Item = {
 type Product = { id: string; sku: string; name: string | null; base_price: number | null; brand: string | null };
 
 function fmt(n: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n || 0);
 }
 
 export default function CustomerQuoteBuilderPage() {

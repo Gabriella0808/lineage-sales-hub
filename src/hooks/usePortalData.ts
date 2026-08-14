@@ -487,6 +487,6 @@ export function getInitials(name: string): string {
 }
 
 export const formatCurrency = (n: number | null) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0 }).format(n ?? 0);
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n ?? 0);
 
 export const formatPercent = (n: number) => `${Math.round(n * 100)}%`;

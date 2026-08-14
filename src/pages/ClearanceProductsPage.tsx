@@ -227,7 +227,7 @@ export default function ClearanceProductsPage() {
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {item.retail_value_price_source === "Missing SD"
                         ? <span className="text-muted-foreground text-[11px]">Missing SD</span>
-                        : item.list_price != null ? `$${item.list_price.toFixed(2)}` : "-"}
+                        : item.list_price != null ? `$${Math.round(item.list_price).toLocaleString()}` : "-"}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {item.retail_value_price_source === "Missing SD"

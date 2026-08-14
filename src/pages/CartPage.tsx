@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 function formatPrice(n: number | null | undefined) {
   if (n == null) return "-";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(n);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 }
 
 export default function CartPage() {

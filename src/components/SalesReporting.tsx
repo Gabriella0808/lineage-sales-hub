@@ -136,12 +136,13 @@ interface GroupedRowsParams {
   customerIds: string[] | null;
   brandCats:   string[] | null;
   skus:        string[] | null;
+  repIds:      string[] | null;  // lowercase Acctivate rep_ids for canonical rep filter
 }
 
 function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
   return useQuery({
     queryKey: [
-      "sales_grouped_rows_v1",
+      "sales_grouped_rows_v2",
       params.metric,
       params.groupBy,
       format(params.from, "yyyy-MM-dd"),
@@ -151,6 +152,7 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
       JSON.stringify(params.customerIds),
       JSON.stringify(params.brandCats),
       JSON.stringify(params.skus),
+      JSON.stringify(params.repIds),
     ],
     enabled,
     staleTime: 2 * 60 * 1000,
@@ -167,6 +169,7 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
           p_customer_ids: params.customerIds ?? null,
           p_brand_cats:   params.brandCats   ?? null,
           p_skus:         params.skus        ?? null,
+          p_rep_ids:      params.repIds      ?? null,
         },
       );
       if (error) {
@@ -498,11 +501,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
   // ── Fetch view data ───────────────────────────────────────────────────────
 
-  // Use server-side RPC for Total display (dealer/rep groupBy, no rep filter).
+  // Use server-side RPC for Total display (dealer/rep groupBy).
   // Territory groupBy always uses line mode (needs customer_id → territory mapping).
-  // When a rep filter is active the dataset is small (one rep's lines ~few hundred
-  // rows) so line mode is fast and avoids needing to pass rep_id aliases to the RPC.
-  const useRpcMode = display === "total" && groupBy !== "territory" && repIds.length === 0;
+  // Rep filter is handled via p_rep_ids parameter, no longer falls back to line mode.
+  const useRpcMode = display === "total" && groupBy !== "territory";
 
   const { data: primaryInvoiced = [], isFetching: invFetching } = usePortalInvoicedLines(primary.from, primary.to, !useRpcMode);
   const { data: primaryBookings = [], isFetching: bkgFetching } = usePortalBookingLines(primary.from, primary.to, !useRpcMode);
@@ -541,23 +543,63 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return list;
   }, [dealers, managerScopeRepIds, territoryIds, repIds]);
 
-  const scopedCustomerIds = useMemo<Set<string> | null>(() => {
-    const noScope = !managerScopeRepIds
-      && territoryIds.length === 0
-      && repIds.length    === 0
-      && dealerIds.length === 0;
-    if (noScope) return null;
+  // Customer IDs for the RPC p_customer_ids param: manager scope + territory + dealer only.
+  // Rep filter is excluded here because it is handled via p_rep_ids (canonical acctivate_id).
+  // Values are lowercase to match the lower() SQL comparison in the RPCs.
+  const rpcCustomerIds = useMemo<string[] | null>(() => {
+    const hasFilter = !!managerScopeRepIds || territoryIds.length > 0 || dealerIds.length > 0;
+    if (!hasFilter) return null;
 
-    const filtered = dealerIds.length > 0
-      ? visibleDealers.filter((d) => dealerIds.includes(d.id))
-      : visibleDealers;
+    let list = dealers;
+    if (managerScopeRepIds)      list = list.filter((d) => d.rep_id && managerScopeRepIds.includes(d.rep_id));
+    if (territoryIds.length > 0) list = list.filter((d) => d.territory_id && territoryIds.includes(d.territory_id));
+    if (dealerIds.length > 0)    list = list.filter((d) => dealerIds.includes(d.id));
 
+    return list
+      .map((d) => d.acctivate_id?.trim().toLowerCase())
+      .filter((id): id is string => !!id);
+  }, [managerScopeRepIds, territoryIds, dealerIds, dealers]);
+
+  // Territory names for the selected territoryIds (for line-mode canonical filter).
+  const selectedTerritoryNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const id of territoryIds) {
+      const t = territories.find((t) => t.id === id);
+      if (t) names.add(t.name);
+    }
+    return names;
+  }, [territoryIds, territories]);
+
+  // Acctivate customer_ids (lowercase) for the selected dealerIds.
+  const selectedDealerAcIds = useMemo(() => {
     const ids = new Set<string>();
-    for (const d of filtered) {
+    for (const id of dealerIds) {
+      const d = dealers.find((d) => d.id === id);
+      if (d?.acctivate_id) ids.add(d.acctivate_id.trim().toLowerCase());
+    }
+    return ids;
+  }, [dealerIds, dealers]);
+
+  // Dealer names (lowercase) for the selected dealerIds — fallback when customer_id is absent.
+  const selectedDealerNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const id of dealerIds) {
+      const d = dealers.find((d) => d.id === id);
+      if (d?.name) names.add(d.name.trim().toLowerCase());
+    }
+    return names;
+  }, [dealerIds, dealers]);
+
+  // Manager-scope-only customer_id set for line-mode filtering.
+  const managerScopeCustomerIds = useMemo<Set<string> | null>(() => {
+    if (!managerScopeRepIds) return null;
+    const list = dealers.filter((d) => d.rep_id && managerScopeRepIds.includes(d.rep_id));
+    const ids = new Set<string>();
+    for (const d of list) {
       if (d.acctivate_id) ids.add(d.acctivate_id.trim().toLowerCase());
     }
     return ids;
-  }, [managerScopeRepIds, territoryIds, repIds, dealerIds, visibleDealers]);
+  }, [managerScopeRepIds, dealers]);
 
   const customerIdToTerritoryName = useMemo(() => {
     const map = new Map<string, string>();
@@ -600,9 +642,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       to:          primary.to,
       compFrom:    compareMode !== "none" ? comparative.from : null,
       compTo:      compareMode !== "none" ? comparative.to   : null,
-      customerIds: scopedCustomerIds ? Array.from(scopedCustomerIds) : null,
+      customerIds: rpcCustomerIds,
       brandCats:   brandCategories.length > 0 ? brandCategories : null,
       skus:        skus.length > 0 ? skus : null,
+      repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
     },
     useRpcMode,
   );
@@ -647,14 +690,27 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       if (line.metric_type !== targetMetric) continue;
       if (targetMetric === "bookings" && !isBookingVisibleDate(line.transaction_date)) continue;
 
-      // Scope filter: for rep groupBy + rep filter use acctivate_id matching so that
-      // rows where rep_name differs ("Brent" vs "Brent Holbrook") are all captured.
-      if (groupBy === "rep" && selectedRepAcIds.size > 0) {
+      // Manager scope (system-controlled, always via customer_id).
+      if (managerScopeCustomerIds !== null) {
+        const cid = (line.customer_id ?? "").trim().toLowerCase();
+        if (!cid || !managerScopeCustomerIds.has(cid)) continue;
+      }
+      // Territory filter — canonical: look up line's customer_id in the territory map.
+      if (selectedTerritoryNames.size > 0) {
+        const cid = (line.customer_id ?? "").trim().toLowerCase();
+        const terrName = cid ? customerIdToTerritoryName.get(cid) : undefined;
+        if (!terrName || !selectedTerritoryNames.has(terrName)) continue;
+      }
+      // Rep filter — canonical acctivate_id matching regardless of groupBy.
+      if (selectedRepAcIds.size > 0) {
         const repAcId = (line.rep_id ?? "").trim().toLowerCase();
         if (!repAcId || !selectedRepAcIds.has(repAcId)) continue;
-      } else if (scopedCustomerIds !== null) {
-        const cid = (line.customer_id ?? "").trim().toLowerCase();
-        if (!cid || !scopedCustomerIds.has(cid)) continue;
+      }
+      // Dealer filter — by customer_id (acctivate_id) or dealer_name as fallback.
+      if (selectedDealerAcIds.size > 0 || selectedDealerNames.size > 0) {
+        const cid   = (line.customer_id ?? "").trim().toLowerCase();
+        const dName = (line.dealer_name  ?? "").trim().toLowerCase();
+        if (!(cid && selectedDealerAcIds.has(cid)) && !(dName && selectedDealerNames.has(dName))) continue;
       }
 
       const effectiveBrand = line.brand_category ??
@@ -700,20 +756,32 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return { rows: sorted, primMonths, compMonths };
   }, [
     repLines, metric, primary, comparative, compareMode, groupBy,
-    scopedCustomerIds, selectedRepAcIds, repAcIdToCanonical,
-    brandCategorySet, skuSet, customerIdToTerritoryName,
+    managerScopeCustomerIds, selectedTerritoryNames, selectedRepAcIds,
+    selectedDealerAcIds, selectedDealerNames,
+    repAcIdToCanonical, brandCategorySet, skuSet, customerIdToTerritoryName,
   ]);
 
   // ── Summary totals + KPI stats ────────────────────────────────────────────
 
   const summaryTotals = useMemo(() => {
     const scopeFilter = (line: DealerRepLine) => {
-      if (groupBy === "rep" && selectedRepAcIds.size > 0) {
+      if (managerScopeCustomerIds !== null) {
+        const cid = (line.customer_id ?? "").trim().toLowerCase();
+        if (!cid || !managerScopeCustomerIds.has(cid)) return false;
+      }
+      if (selectedTerritoryNames.size > 0) {
+        const cid = (line.customer_id ?? "").trim().toLowerCase();
+        const terrName = cid ? customerIdToTerritoryName.get(cid) : undefined;
+        if (!terrName || !selectedTerritoryNames.has(terrName)) return false;
+      }
+      if (selectedRepAcIds.size > 0) {
         const repAcId = (line.rep_id ?? "").trim().toLowerCase();
         if (!repAcId || !selectedRepAcIds.has(repAcId)) return false;
-      } else if (scopedCustomerIds !== null) {
-        const cid = (line.customer_id ?? "").trim().toLowerCase();
-        if (!cid || !scopedCustomerIds.has(cid)) return false;
+      }
+      if (selectedDealerAcIds.size > 0 || selectedDealerNames.size > 0) {
+        const cid   = (line.customer_id ?? "").trim().toLowerCase();
+        const dName = (line.dealer_name  ?? "").trim().toLowerCase();
+        if (!(cid && selectedDealerAcIds.has(cid)) && !(dName && selectedDealerNames.has(dName))) return false;
       }
       const effectiveBrand = line.brand_category ??
         (line.metric_type === "invoiced" ? "Historical Invoice" : "");
@@ -764,7 +832,12 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       bookingEntities: bookingEntities.size,
       invoiceEntities: invoiceEntities.size,
     };
-  }, [primaryInvoiced, primaryBookings, scopedCustomerIds, selectedRepAcIds, repAcIdToCanonical, brandCategorySet, skuSet, groupBy, primary]);
+  }, [
+    primaryInvoiced, primaryBookings, groupBy, primary,
+    managerScopeCustomerIds, selectedTerritoryNames, selectedRepAcIds,
+    selectedDealerAcIds, selectedDealerNames,
+    repAcIdToCanonical, brandCategorySet, skuSet, customerIdToTerritoryName,
+  ]);
 
 
   // In RPC mode the KPI totals come from grouped rows (no line data available).
@@ -827,7 +900,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     const metricStr = metric === "invoices" ? "invoiced" : "bookings";
     const fromStr   = format(primary.from, "yyyy-MM-dd");
     const toStr     = format(primary.to,   "yyyy-MM-dd");
-    const cids      = scopedCustomerIds ? Array.from(scopedCustomerIds) : null;
+    const cids      = rpcCustomerIds;
+    const rids      = selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null;
     const bcs       = brandCategories.length > 0 ? brandCategories : null;
     const sks       = skus.length > 0 ? skus : null;
     return async ({ limit, offset }) => {
@@ -842,6 +916,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           p_customer_ids: cids,
           p_brand_cats:   bcs,
           p_skus:         sks,
+          p_rep_ids:      rids,
           p_limit:        limit,
           p_offset:       offset,
         },
@@ -853,17 +928,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       return ((data ?? []) as any[]).map((r): ViewLine => ({
         metric_type:      metricStr,
         transaction_date: String(r.transaction_date),
-        dealer_name:      r.dealer_name ?? null,
-        rep_name:         r.rep_name    ?? null,
-        sku:              r.sku         ?? null,
-        description:      r.description ?? null,
+        dealer_name:      r.dealer_name    ?? null,
+        rep_name:         r.rep_name       ?? null,
+        rep_id:           r.rep_id         ?? null,
+        sku:              r.sku            ?? null,
+        description:      r.description   ?? null,
         brand_category:   r.brand_category ?? null,
         amount:           Number(r.amount) || 0,
         invoice_number:   r.invoice_number ?? null,
       }));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRpcMode, drillRow?.key, metric, groupBy, primary.from, primary.to, scopedCustomerIds, brandCategories, skus]);
+  }, [useRpcMode, drillRow?.key, metric, groupBy, primary.from, primary.to, rpcCustomerIds, selectedRepAcIds, brandCategories, skus]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
 

@@ -46,17 +46,28 @@ export default function CompanyWidePage() {
     ? reportParam
     : (pathDefault ?? "live-kpi");
 
-  const visibleManagers = useMemo(
-    () => managers.filter((m) => {
+  const visibleManagers = useMemo(() => {
+    // Step 1: apply base exclusions
+    const base = managers.filter((m) => {
       if (isRep) return repManagerId ? m.id === repManagerId : false;
       const n = m.name.trim().toLowerCase();
       const e = m.email?.trim().toLowerCase();
       if (n === "sales" || e === "sales@lineage-collections.com") return false;
       if (n === "scott grisack") return false;
       return true;
-    }),
-    [managers, isRep, repManagerId],
-  );
+    });
+    // Step 2: deduplicate — if a single-word entry ("Will", "Mateo") has a corresponding
+    // multi-word canonical entry ("Will Grisack", "Mateo De Lisa"), drop the short one.
+    const baseNamesLower = base.map((m) => m.name.trim().toLowerCase());
+    return base.filter((m) => {
+      const name = m.name.trim();
+      if (!name.includes(" ")) {
+        const first = name.toLowerCase();
+        if (baseNamesLower.some((n) => n.startsWith(first + " "))) return false;
+      }
+      return true;
+    });
+  }, [managers, isRep, repManagerId]);
 
   const effectiveManagerId = isRep && repManagerId ? repManagerId : managerParam;
 

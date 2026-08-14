@@ -255,7 +255,7 @@ async function fetchInvoiceAggregateViewRows(
   if (dealerIds === null) {
     const { data, error } = await supabase
       .from("mv_portal_monthly_invoiced_actuals" as any)
-      .select("year, month_number, invoiced_actual")
+      .select("year, month_number, invoiced_actual, invoiced_container, invoiced_warehouse")
       .in("year", [currentYear, prevYear]);
     if (error) {
       console.error(
@@ -270,9 +270,9 @@ async function fetchInvoiceAggregateViewRows(
       year:                   Number(r.year),
       month:                  Number(r.month_number),
       dealer_id:              null,
-      invoiced:               Number(r.invoiced_actual) || 0,
-      invoiced_container:     0,
-      invoiced_warehouse:     0,
+      invoiced:               Number(r.invoiced_actual)    || 0,
+      invoiced_container:     Number(r.invoiced_container) || 0,
+      invoiced_warehouse:     Number(r.invoiced_warehouse) || 0,
       invoiced_container_pct: null,
       invoiced_warehouse_pct: null,
     }));

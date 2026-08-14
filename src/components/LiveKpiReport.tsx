@@ -168,7 +168,7 @@ const END = new Date(TODAY.getFullYear(), 11, 31);
 const DAYS_REMAINING = Math.max(0, Math.ceil((END.getTime() - TODAY.getTime()) / 86400000));
 
 const fmtPct = (n: number) => n === 0 ? "-" : `${(n * 100).toFixed(1)}%`;
-const fmtViewPct = (n: number | null | undefined) => n == null ? "-" : `${Number(n).toFixed(1)}%`;
+
 const growth = (p: number, a: number) => a === 0 ? 0 : (p - a) / a;
 
 const MONTHS = ["All","January","February","March","April","May","June","July","August","September","October","November","December"] as const;
@@ -855,6 +855,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                 };
                 const ytdBCont = rAny.ytdBContainer ?? 0;
                 const ytdBWh  = rAny.ytdBWarehouse  ?? 0;
+                const ytdICont = rAny.ytdIContainer ?? 0;
+                const ytdIWh   = rAny.ytdIWarehouse  ?? 0;
                 // Booking actuals are only visible from Aug 2026 onwards.
                 const bkVisible = isBookingVisible(2026, idx + 1);
                 return (
@@ -881,8 +883,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
                       <td className="p-2 text-right">{formatCurrency(r.i26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.i25)}</td>
-                      <td className="p-2 text-right">{fmtViewPct(rAny.ytdIContainerPct)}</td>
-                      <td className="p-2 text-right">{fmtViewPct(rAny.ytdIWarehousePct)}</td>
+                      <td className="p-2 text-right">{fmtPct(ytdICont / Math.max(r.ytdI, 1))}</td>
+                      <td className="p-2 text-right">{fmtPct(ytdIWh   / Math.max(r.ytdI, 1))}</td>
                     </>}
                   </tr>
                 );

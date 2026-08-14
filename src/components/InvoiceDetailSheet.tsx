@@ -13,6 +13,7 @@ export interface ViewLine {
   transaction_date: string;
   dealer_name:      string | null;
   rep_name:         string | null;
+  rep_id:           string | null;
   sku:              string | null;
   description:      string | null;
   brand_category:   string | null;
@@ -26,7 +27,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groupBy: "dealer" | "rep" | "territory";
-  rowKey: string;      // dealer_name | rep_name | territory_name
+  rowKey: string;      // dealer_name | rep_id (canonical) | territory_name
   rowLabel: string;
   from: Date;
   to: Date;
@@ -34,6 +35,8 @@ interface Props {
   compareTo?: Date;
   viewLines: ViewLine[];
   metric: "bookings" | "invoices";
+  /** Maps lowercase Acctivate rep_id → canonical full name ("brent" → "Brent Holbrook"). */
+  repAcIdToCanonical?: Map<string, string>;
   /** When provided, detail lines are fetched lazily on sheet open instead of
    *  filtering the in-memory viewLines.  Used in RPC / Total-display mode. */
   fetchLines?: (params: { limit: number; offset: number }) => Promise<ViewLine[]>;
@@ -41,11 +44,22 @@ interface Props {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function matchesRow(l: ViewLine, groupBy: Props["groupBy"], rowKey: string): boolean {
-  if (rowKey === "" || rowKey === "Unassigned") return false; // can't reliably filter unassigned
+function matchesRow(
+  l: ViewLine,
+  groupBy: Props["groupBy"],
+  rowKey: string,
+  repAcIdToCanonical?: Map<string, string>,
+): boolean {
+  if (rowKey === "" || rowKey === "Unassigned") return false;
   if (groupBy === "dealer") return (l.dealer_name ?? "") === rowKey;
-  if (groupBy === "rep")    return (l.rep_name    ?? "") === rowKey;
-  return false; // territory: name not available in view without lookup
+  if (groupBy === "rep") {
+    // rowKey is the canonical rep name (line mode) or rep_id (RPC mode).
+    // Match by canonical name derived from rep_id, falling back to rep_name.
+    const repAcId = (l.rep_id ?? "").trim().toLowerCase();
+    const canonical = (repAcId && repAcIdToCanonical?.get(repAcId)) ?? (l.rep_name ?? "");
+    return canonical === rowKey || repAcId === rowKey.trim().toLowerCase();
+  }
+  return false;
 }
 
 function filterLines(
@@ -55,13 +69,14 @@ function filterLines(
   fromMs: number,
   toMs: number,
   metricType: string,
+  repAcIdToCanonical?: Map<string, string>,
 ): ViewLine[] {
   return viewLines.filter((l) => {
     if (l.metric_type !== metricType) return false;
     if (metricType === "bookings" && !isBookingVisibleDate(l.transaction_date)) return false;
     const ms = new Date(l.transaction_date + "T00:00:00").getTime();
     if (Number.isNaN(ms) || ms < fromMs || ms > toMs) return false;
-    return matchesRow(l, groupBy, rowKey);
+    return matchesRow(l, groupBy, rowKey, repAcIdToCanonical);
   });
 }
 
@@ -102,7 +117,7 @@ const DETAIL_PAGE = 200;
 
 export function InvoiceDetailSheet({
   open, onOpenChange, groupBy, rowKey, rowLabel,
-  from, to, compareFrom, compareTo, viewLines, fetchLines, metric,
+  from, to, compareFrom, compareTo, viewLines, repAcIdToCanonical, fetchLines, metric,
 }: Props) {
   // ── Lazy-load state (RPC / Total mode) ──────────────────────────────────────
   const [lazyLines,   setLazyLines]   = useState<ViewLine[]>([]);
@@ -148,20 +163,20 @@ export function InvoiceDetailSheet({
   ) : null;
 
   const primInvoiced = useMemo(() =>
-    fetchLines ? [] : filterLines(viewLines, groupBy, rowKey, primFromMs, primToMs, "invoiced"),
-  [fetchLines, viewLines, groupBy, rowKey, primFromMs, primToMs]);
+    fetchLines ? [] : filterLines(viewLines, groupBy, rowKey, primFromMs, primToMs, "invoiced", repAcIdToCanonical),
+  [fetchLines, viewLines, groupBy, rowKey, primFromMs, primToMs, repAcIdToCanonical]);
 
   const primBookings = useMemo(() =>
-    fetchLines ? [] : filterLines(viewLines, groupBy, rowKey, primFromMs, primToMs, "bookings"),
-  [fetchLines, viewLines, groupBy, rowKey, primFromMs, primToMs]);
+    fetchLines ? [] : filterLines(viewLines, groupBy, rowKey, primFromMs, primToMs, "bookings", repAcIdToCanonical),
+  [fetchLines, viewLines, groupBy, rowKey, primFromMs, primToMs, repAcIdToCanonical]);
 
   const compInvoiced = useMemo(() =>
-    hasCompare ? filterLines(viewLines, groupBy, rowKey, compFromMs, compToMs, "invoiced") : [],
-  [viewLines, groupBy, rowKey, compFromMs, compToMs, hasCompare]);
+    hasCompare ? filterLines(viewLines, groupBy, rowKey, compFromMs, compToMs, "invoiced", repAcIdToCanonical) : [],
+  [viewLines, groupBy, rowKey, compFromMs, compToMs, hasCompare, repAcIdToCanonical]);
 
   const compBookings = useMemo(() =>
-    hasCompare ? filterLines(viewLines, groupBy, rowKey, compFromMs, compToMs, "bookings") : [],
-  [viewLines, groupBy, rowKey, compFromMs, compToMs, hasCompare]);
+    hasCompare ? filterLines(viewLines, groupBy, rowKey, compFromMs, compToMs, "bookings", repAcIdToCanonical) : [],
+  [viewLines, groupBy, rowKey, compFromMs, compToMs, hasCompare, repAcIdToCanonical]);
 
   const primInvoicedTotal = useMemo(() => sumAmount(primInvoiced), [primInvoiced]);
   const primBookingsTotal = useMemo(() => sumAmount(primBookings),  [primBookings]);

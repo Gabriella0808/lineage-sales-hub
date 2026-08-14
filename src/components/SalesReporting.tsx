@@ -498,11 +498,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
   // ── Fetch view data ───────────────────────────────────────────────────────
 
-  // In Total display (dealer or rep groupBy) we use the server-side RPC which
-  // returns pre-aggregated rows — no line-level fetch needed.
-  // Territory groupBy always uses line mode because it needs the
-  // customer_id → territory_name mapping that only works client-side.
-  const useRpcMode = display === "total" && groupBy !== "territory";
+  // Use server-side RPC for Total display (dealer/rep groupBy, no rep filter).
+  // Territory groupBy always uses line mode (needs customer_id → territory mapping).
+  // When a rep filter is active the dataset is small (one rep's lines ~few hundred
+  // rows) so line mode is fast and avoids needing to pass rep_id aliases to the RPC.
+  const useRpcMode = display === "total" && groupBy !== "territory" && repIds.length === 0;
 
   const { data: primaryInvoiced = [], isFetching: invFetching } = usePortalInvoicedLines(primary.from, primary.to, !useRpcMode);
   const { data: primaryBookings = [], isFetching: bkgFetching } = usePortalBookingLines(primary.from, primary.to, !useRpcMode);
@@ -520,7 +520,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // ── Hierarchical filter helpers ───────────────────────────────────────────
 
   const visibleReps = useMemo(() => {
-    let list = reps;
+    // Only show real Acctivate reps — entries without acctivate_id are pseudo-reps
+    // (e.g., territories that were accidentally added to the sales_reps table).
+    let list = reps.filter((r) => r.acctivate_id !== null && r.acctivate_id !== "");
     if (managerScopeRepIds) list = list.filter((r) => managerScopeRepIds.includes(r.id));
     if (territoryIds.length > 0) {
       const allowedRepIds = new Set(
@@ -566,6 +568,27 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     }
     return map;
   }, [dealers, territories]);
+
+  // ── Canonical rep mapping (acctivate_id → full portal name) ─────────────
+  // Enables matching "Brent" and "Brent Holbrook" lines to the same rep entity.
+
+  const repAcIdToCanonical = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const r of reps) {
+      if (r.acctivate_id) map.set(r.acctivate_id.trim().toLowerCase(), r.name);
+    }
+    return map;
+  }, [reps]);
+
+  // Acctivate rep_ids (lowercase) for the currently selected portal reps.
+  const selectedRepAcIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const id of repIds) {
+      const rep = reps.find((r) => r.id === id);
+      if (rep?.acctivate_id) ids.add(rep.acctivate_id.trim().toLowerCase());
+    }
+    return ids;
+  }, [repIds, reps]);
 
   // ── Server-side grouped rows (RPC mode) ──────────────────────────────────
 
@@ -624,7 +647,12 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       if (line.metric_type !== targetMetric) continue;
       if (targetMetric === "bookings" && !isBookingVisibleDate(line.transaction_date)) continue;
 
-      if (scopedCustomerIds !== null) {
+      // Scope filter: for rep groupBy + rep filter use acctivate_id matching so that
+      // rows where rep_name differs ("Brent" vs "Brent Holbrook") are all captured.
+      if (groupBy === "rep" && selectedRepAcIds.size > 0) {
+        const repAcId = (line.rep_id ?? "").trim().toLowerCase();
+        if (!repAcId || !selectedRepAcIds.has(repAcId)) continue;
+      } else if (scopedCustomerIds !== null) {
         const cid = (line.customer_id ?? "").trim().toLowerCase();
         if (!cid || !scopedCustomerIds.has(cid)) continue;
       }
@@ -646,7 +674,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       if (groupBy === "dealer") {
         k = line.dealer_name ?? line.customer_id ?? "Unknown";
       } else if (groupBy === "rep") {
-        k = line.rep_name ?? line.rep_id ?? "Unassigned";
+        // Canonical name so "Brent" and "Brent Holbrook" lines share one row.
+        const repAcId = (line.rep_id ?? "").trim().toLowerCase();
+        k = (repAcId ? repAcIdToCanonical.get(repAcId) : undefined) ?? line.rep_name ?? line.rep_id ?? "Unassigned";
       } else {
         const cid = (line.customer_id ?? "").trim().toLowerCase();
         k = (cid ? customerIdToTerritoryName.get(cid) : undefined) ?? "Unassigned";
@@ -670,14 +700,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return { rows: sorted, primMonths, compMonths };
   }, [
     repLines, metric, primary, comparative, compareMode, groupBy,
-    scopedCustomerIds, brandCategorySet, skuSet, customerIdToTerritoryName,
+    scopedCustomerIds, selectedRepAcIds, repAcIdToCanonical,
+    brandCategorySet, skuSet, customerIdToTerritoryName,
   ]);
 
   // ── Summary totals + KPI stats ────────────────────────────────────────────
 
   const summaryTotals = useMemo(() => {
     const scopeFilter = (line: DealerRepLine) => {
-      if (scopedCustomerIds !== null) {
+      if (groupBy === "rep" && selectedRepAcIds.size > 0) {
+        const repAcId = (line.rep_id ?? "").trim().toLowerCase();
+        if (!repAcId || !selectedRepAcIds.has(repAcId)) return false;
+      } else if (scopedCustomerIds !== null) {
         const cid = (line.customer_id ?? "").trim().toLowerCase();
         if (!cid || !scopedCustomerIds.has(cid)) return false;
       }
@@ -688,10 +722,14 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       return true;
     };
 
-    const entityKey = (line: DealerRepLine) =>
-      groupBy === "dealer"
-        ? (line.dealer_name ?? line.customer_id ?? "")
-        : (line.rep_name ?? line.rep_id ?? "");
+    const entityKey = (line: DealerRepLine) => {
+      if (groupBy === "dealer") return line.dealer_name ?? line.customer_id ?? "";
+      if (groupBy === "rep") {
+        const repAcId = (line.rep_id ?? "").trim().toLowerCase();
+        return (repAcId ? repAcIdToCanonical.get(repAcId) : undefined) ?? line.rep_name ?? line.rep_id ?? "";
+      }
+      return "";
+    };
 
     let bookings = 0, bookingLines = 0;
     const bookingEntities = new Set<string>();
@@ -726,7 +764,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       bookingEntities: bookingEntities.size,
       invoiceEntities: invoiceEntities.size,
     };
-  }, [primaryInvoiced, primaryBookings, scopedCustomerIds, brandCategorySet, skuSet, groupBy, primary]);
+  }, [primaryInvoiced, primaryBookings, scopedCustomerIds, selectedRepAcIds, repAcIdToCanonical, brandCategorySet, skuSet, groupBy, primary]);
 
 
   // In RPC mode the KPI totals come from grouped rows (no line data available).
@@ -1157,12 +1195,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               </div>
             ) : useRpcMode ? (
               <TotalTable
-                rows={groupedRows.map((r) => ({
-                  key:         r.entity_key,
-                  label:       r.entity_key,
-                  primary:     r.primary_amt,
-                  comparative: r.comp_amt,
-                }))}
+                rows={groupedRows.map((r) => {
+                  // For rep groupBy entity_key is the Acctivate rep_id; map to full name.
+                  const label = groupBy === "rep"
+                    ? (repAcIdToCanonical.get(r.entity_key.trim().toLowerCase()) ?? r.entity_key)
+                    : r.entity_key;
+                  return { key: r.entity_key, label, primary: r.primary_amt, comparative: r.comp_amt };
+                })}
                 leftHeader={leftHeader}
                 showComparison={compareMode !== "none"}
                 onRowClick={(key, label) => setDrillRow({ key, label })}
@@ -1199,6 +1238,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         compareFrom={compareMode !== "none" ? comparative.from : undefined}
         compareTo={compareMode !== "none" ? comparative.to : undefined}
         viewLines={useRpcMode ? [] : repLines}
+        repAcIdToCanonical={repAcIdToCanonical}
         fetchLines={drillDetailFetch}
         metric={metric}
       />

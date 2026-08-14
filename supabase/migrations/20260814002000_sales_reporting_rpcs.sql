@@ -44,7 +44,10 @@ AS $$
       CASE
         WHEN p_group_by = 'dealer'
         THEN COALESCE(NULLIF(TRIM(dealer_name::text), ''), customer_id::text, 'Unknown')
-        ELSE COALESCE(NULLIF(TRIM(rep_name::text),    ''), rep_id::text,      'Unassigned')
+        -- For rep: group by rep_id (Acctivate canonical key) so that rows where
+        -- rep_name differs ("Brent" vs "Brent Holbrook") still merge into one group.
+        -- The frontend maps rep_id → full canonical name via repAcIdToCanonical.
+        ELSE COALESCE(NULLIF(TRIM(rep_id::text), ''), NULLIF(TRIM(rep_name::text), ''), 'Unassigned')
       END            AS entity_key,
       amount,
       transaction_date
@@ -150,8 +153,9 @@ AS $$
       (p_group_by = 'dealer'
        AND COALESCE(NULLIF(TRIM(dealer_name::text), ''), customer_id::text, 'Unknown') = p_entity_key)
       OR
+      -- p_entity_key is the rep_id (canonical Acctivate key), matching grouped-rows RPC.
       (p_group_by = 'rep'
-       AND COALESCE(NULLIF(TRIM(rep_name::text), ''), rep_id::text, 'Unassigned') = p_entity_key)
+       AND COALESCE(NULLIF(TRIM(rep_id::text), ''), NULLIF(TRIM(rep_name::text), ''), 'Unassigned') = p_entity_key)
     )
     AND (p_customer_ids IS NULL
          OR customer_id::text = ANY(p_customer_ids))

@@ -4,7 +4,9 @@ import {
   format, startOfYear, endOfMonth, subYears, subMonths, startOfMonth, startOfDay,
   startOfQuarter, subDays, addDays, differenceInCalendarDays,
 } from "date-fns";
-import { RotateCcw } from "lucide-react";
+import {
+  RotateCcw, X, FileText, ShoppingCart, Hash, Users2, Calculator,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -19,7 +21,7 @@ import {
   formatCurrency,
 } from "@/hooks/usePortalData";
 import { isBookingVisibleDate, BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
-import { InvoiceDetailSheet } from "@/components/InvoiceDetailSheet";
+import { InvoiceDetailSheet, type ViewLine } from "@/components/InvoiceDetailSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -34,7 +36,7 @@ const MONTH_NAMES = ["January","February","March","April","May","June","July","A
 // ── View row type ─────────────────────────────────────────────────────────────
 
 type DealerRepLine = {
-  metric_type:      string;        // 'bookings' | 'invoiced'
+  metric_type:      string;
   transaction_date: string;
   year:             number;
   month_number:     number;
@@ -51,11 +53,9 @@ type DealerRepLine = {
 
 // ── Data hooks ────────────────────────────────────────────────────────────────
 
-// PostgREST's default max-rows is 1000. Using a larger pageSize would cause
-// the pagination loop to terminate early (batch.length < pageSize after the
-// first page), so we cap at 1000 and page through exhaustively.
-// Invoiced and bookings are fetched as separate queries (each filtered by
-// metric_type) so neither is truncated by sharing the row budget with the other.
+// PostgREST's default max-rows is 1000. PAGE_SIZE matches it so the loop
+// terminates correctly. Invoiced and bookings are separate queries filtered by
+// metric_type so neither crowds out the other within the 1000-row budget.
 const PAGE_SIZE = 1000;
 
 async function fetchPortalLinesByType(
@@ -116,6 +116,74 @@ function usePortalBookingLines(from: Date, to: Date, enabled = true) {
   });
 }
 
+// ── Server-aggregated data (Total display) ────────────────────────────────────
+
+interface GroupedRow {
+  entity_key:    string;
+  primary_amt:   number;
+  primary_lines: number;
+  comp_amt:      number;
+  comp_lines:    number;
+}
+
+interface GroupedRowsParams {
+  metric:      "invoiced" | "bookings";
+  groupBy:     "dealer" | "rep";
+  from:        Date;
+  to:          Date;
+  compFrom:    Date | null;
+  compTo:      Date | null;
+  customerIds: string[] | null;
+  brandCats:   string[] | null;
+  skus:        string[] | null;
+}
+
+function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
+  return useQuery({
+    queryKey: [
+      "sales_grouped_rows_v1",
+      params.metric,
+      params.groupBy,
+      format(params.from, "yyyy-MM-dd"),
+      format(params.to,   "yyyy-MM-dd"),
+      params.compFrom ? format(params.compFrom, "yyyy-MM-dd") : null,
+      params.compTo   ? format(params.compTo,   "yyyy-MM-dd") : null,
+      JSON.stringify(params.customerIds),
+      JSON.stringify(params.brandCats),
+      JSON.stringify(params.skus),
+    ],
+    enabled,
+    staleTime: 2 * 60 * 1000,
+    queryFn: async (): Promise<GroupedRow[]> => {
+      const { data, error } = await (supabase as any).rpc(
+        "get_sales_reporting_grouped_rows",
+        {
+          p_metric:       params.metric,
+          p_group_by:     params.groupBy,
+          p_from:         format(params.from, "yyyy-MM-dd"),
+          p_to:           format(params.to,   "yyyy-MM-dd"),
+          p_comp_from:    params.compFrom ? format(params.compFrom, "yyyy-MM-dd") : null,
+          p_comp_to:      params.compTo   ? format(params.compTo,   "yyyy-MM-dd") : null,
+          p_customer_ids: params.customerIds ?? null,
+          p_brand_cats:   params.brandCats   ?? null,
+          p_skus:         params.skus        ?? null,
+        },
+      );
+      if (error) {
+        console.error("[sales-reporting] grouped rows fetch failed:", error.message, error);
+        return [];
+      }
+      return ((data ?? []) as any[]).map((r) => ({
+        entity_key:    String(r.entity_key ?? ""),
+        primary_amt:   Number(r.primary_amt)   || 0,
+        primary_lines: Number(r.primary_lines) || 0,
+        comp_amt:      Number(r.comp_amt)      || 0,
+        comp_lines:    Number(r.comp_lines)    || 0,
+      }));
+    },
+  });
+}
+
 // ── UI helpers ────────────────────────────────────────────────────────────────
 
 function MultiSelect({
@@ -142,7 +210,7 @@ function MultiSelect({
   }, [options, query, searchable]);
 
   return (
-    <div className="flex flex-col gap-1 min-w-[160px]">
+    <div className="flex flex-col gap-1 min-w-[140px]">
       <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
       <Popover>
         <PopoverTrigger asChild>
@@ -218,9 +286,9 @@ function DateRangePicker({ label, value, onChange, onReset }: { label: string; v
       <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
       <Popover open={open} onOpenChange={(o) => { setOpen(o); setDraft(o ? { from: undefined, to: undefined } : undefined); }}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 justify-start font-normal min-w-[230px]">
-            <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-            {format(value.from, "MMM d, yyyy")} - {format(value.to, "MMM d, yyyy")}
+          <Button variant="outline" size="sm" className="h-9 justify-start font-normal min-w-[220px]">
+            <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0" />
+            {format(value.from, "MMM d, yyyy")} – {format(value.to, "MMM d, yyyy")}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -274,6 +342,100 @@ function monthsInRange(range: DateRange): { year: number; monthIdx: number; key:
   return out;
 }
 
+// ── FilterChip ────────────────────────────────────────────────────────────────
+
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground/70">
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        className="ml-0.5 hover:text-foreground transition-colors"
+        aria-label={`Remove ${label} filter`}
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
+// ── SegmentedControl ──────────────────────────────────────────────────────────
+
+function SegmentedControl<T extends string>({
+  value, onChange, options, size = "sm",
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+  size?: "sm" | "md";
+}) {
+  return (
+    <div className="inline-flex rounded-[var(--radius)] border border-border overflow-hidden">
+      {options.map((opt, i) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={cn(
+            "font-medium transition-colors whitespace-nowrap",
+            size === "md" ? "px-5 py-2 text-sm" : "px-3.5 py-1.5 text-[13px]",
+            i > 0 && "border-l border-border",
+            value === opt.value
+              ? "bg-foreground text-background"
+              : "bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── KpiCard ───────────────────────────────────────────────────────────────────
+
+function KpiCard({
+  label, value, sub, icon: Icon, muted,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: React.FC<{ className?: string }>;
+  muted?: boolean;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground leading-tight">{label}</p>
+          <Icon className="h-3.5 w-3.5 text-muted-foreground/35 shrink-0 mt-0.5" />
+        </div>
+        <p className={cn("text-2xl font-semibold tabular-nums tracking-tight", muted && "text-muted-foreground")}>
+          {value}
+        </p>
+        {sub && <p className="text-[11px] text-muted-foreground/70 mt-1.5">{sub}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function TableSkeleton() {
+  return (
+    <div className="p-6 space-y-3 animate-pulse">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="flex gap-4">
+          <div className="h-4 bg-muted rounded flex-1" style={{ opacity: 1 - i * 0.1 }} />
+          <div className="h-4 bg-muted rounded w-28" style={{ opacity: 1 - i * 0.1 }} />
+          <div className="h-4 bg-muted rounded w-24" style={{ opacity: 1 - i * 0.1 }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -285,31 +447,41 @@ interface Props {
 export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions }: Props) {
   const today = new Date();
 
-  const [groupBy, setGroupBy]       = useState<GroupBy>(initialGroupBy);
-  const [primary, setPrimary]       = useState<DateRange>({ from: startOfMonth(today), to: today });
+  const [groupBy, setGroupBy]         = useState<GroupBy>(initialGroupBy);
+  // Default primary to YTD because Display defaults to "total"
+  const [primary, setPrimary]         = useState<DateRange>({ from: startOfYear(today), to: today });
   const [comparative, setComparative] = useState<DateRange>({
-    from: subYears(startOfMonth(today), 1),
+    from: subYears(startOfYear(today), 1),
     to:   subYears(today, 1),
   });
   type CompareMode = "prev-year" | "prev-period" | "custom" | "none";
   const [compareMode, setCompareMode] = useState<CompareMode>("prev-year");
-  const [metric,  setMetric]  = useState<Metric>("bookings");
+  const [metric,  setMetric]  = useState<Metric>("invoices");
   const [display, setDisplay] = useState<Display>("total");
   const [drillRow, setDrillRow] = useState<{ key: string; label: string } | null>(null);
+
+  // When switching display modes, auto-sync the primary range so that
+  // Total always opens on YTD and Monthly always opens on the current month.
+  const handleDisplayChange = (newDisplay: Display) => {
+    setDisplay(newDisplay);
+    if (metric === "invoices") {
+      const now = new Date();
+      applyPrimary(newDisplay === "total" ? startOfYear(now) : startOfMonth(now), now);
+    }
+  };
 
   const applyPrimary = (from: Date, to: Date, mode: CompareMode = compareMode) => {
     setPrimary({ from, to });
     if (mode === "prev-year") {
       setComparative({ from: subYears(from, 1), to: subYears(to, 1) });
     } else if (mode === "prev-period") {
-      const days  = differenceInCalendarDays(to, from) + 1;
-      const prevTo   = subDays(from, 1);
-      const prevFrom = subDays(prevTo, days - 1);
-      setComparative({ from: prevFrom, to: prevTo });
+      const days    = differenceInCalendarDays(to, from) + 1;
+      const prevTo  = subDays(from, 1);
+      setComparative({ from: subDays(prevTo, days - 1), to: prevTo });
     }
   };
 
-  // ── Filter state ─────────────────────────────────────────────────────────
+  // ── Filter state ──────────────────────────────────────────────────────────
 
   const [territoryIds,    setTerritoryIds]    = useState<string[]>([]);
   const [repIds,          setRepIds]          = useState<string[]>([]);
@@ -317,36 +489,35 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const [brandCategories, setBrandCategories] = useState<string[]>([]);
   const [skus,            setSkus]            = useState<string[]>([]);
 
-  // ── Portal reference data (for filter dropdowns and scoping) ──────────────
+  // ── Portal reference data ─────────────────────────────────────────────────
 
-  const { data: dealers     = [] } = useDealers();
-  const { data: reps        = [] } = useSalesReps();
-  const { data: territories = [] } = useTerritories();
+  const { data: dealers        = [] } = useDealers();
+  const { data: reps           = [] } = useSalesReps();
+  const { data: territories    = [] } = useTerritories();
   const { data: repTerritories = [] } = useRepTerritories();
 
   // ── Fetch view data ───────────────────────────────────────────────────────
-  // Invoiced and bookings are fetched as separate metric_type-filtered queries
-  // so PostgREST's 1000-row cap doesn't cause one type to crowd out the other.
 
-  const { data: primaryInvoiced  = [] } = usePortalInvoicedLines(primary.from, primary.to);
-  const { data: primaryBookings  = [] } = usePortalBookingLines(primary.from, primary.to);
-  const { data: compInvoiced     = [] } = usePortalInvoicedLines(
-    comparative.from, comparative.to, compareMode !== "none",
-  );
-  const { data: compBookings     = [] } = usePortalBookingLines(
-    comparative.from, comparative.to, compareMode !== "none",
-  );
+  // In Total display (dealer or rep groupBy) we use the server-side RPC which
+  // returns pre-aggregated rows — no line-level fetch needed.
+  // Territory groupBy always uses line mode because it needs the
+  // customer_id → territory_name mapping that only works client-side.
+  const useRpcMode = display === "total" && groupBy !== "territory";
 
-  // Lines for the selected metric (used in aggregation table + drilldown)
+  const { data: primaryInvoiced = [], isFetching: invFetching } = usePortalInvoicedLines(primary.from, primary.to, !useRpcMode);
+  const { data: primaryBookings = [], isFetching: bkgFetching } = usePortalBookingLines(primary.from, primary.to, !useRpcMode);
+  const { data: compInvoiced    = [] } = usePortalInvoicedLines(comparative.from, comparative.to, !useRpcMode && compareMode !== "none");
+  const { data: compBookings    = [] } = usePortalBookingLines(comparative.from, comparative.to, !useRpcMode && compareMode !== "none");
+
   const primaryLines = metric === "invoices" ? primaryInvoiced : primaryBookings;
-  const compLines    = metric === "invoices" ? compInvoiced    : compBookings;
+  const compLines    = metric === "invoices" ? compInvoiced      : compBookings;
 
   const repLines = useMemo(
     () => compareMode === "none" ? primaryLines : [...primaryLines, ...compLines],
     [primaryLines, compLines, compareMode],
   );
 
-  // ── Hierarchical filter helpers (portal tables) ───────────────────────────
+  // ── Hierarchical filter helpers ───────────────────────────────────────────
 
   const visibleReps = useMemo(() => {
     let list = reps;
@@ -368,12 +539,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return list;
   }, [dealers, managerScopeRepIds, territoryIds, repIds]);
 
-  /** Set of Acctivate customer_ids to include, derived from portal dealer scoping.
-   *  null = no customer_id filter (company-wide, unscoped). */
   const scopedCustomerIds = useMemo<Set<string> | null>(() => {
     const noScope = !managerScopeRepIds
       && territoryIds.length === 0
-      && repIds.length  === 0
+      && repIds.length    === 0
       && dealerIds.length === 0;
     if (noScope) return null;
 
@@ -388,7 +557,6 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return ids;
   }, [managerScopeRepIds, territoryIds, repIds, dealerIds, visibleDealers]);
 
-  /** Map of Acctivate customer_id → territory name (for territory groupBy). */
   const customerIdToTerritoryName = useMemo(() => {
     const map = new Map<string, string>();
     for (const d of dealers) {
@@ -398,6 +566,23 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     }
     return map;
   }, [dealers, territories]);
+
+  // ── Server-side grouped rows (RPC mode) ──────────────────────────────────
+
+  const { data: groupedRows = [], isFetching: groupedFetching } = useGroupedRows(
+    {
+      metric:      metric === "invoices" ? "invoiced" : "bookings",
+      groupBy:     (groupBy === "territory" ? "dealer" : groupBy) as "dealer" | "rep",
+      from:        primary.from,
+      to:          primary.to,
+      compFrom:    compareMode !== "none" ? comparative.from : null,
+      compTo:      compareMode !== "none" ? comparative.to   : null,
+      customerIds: scopedCustomerIds ? Array.from(scopedCustomerIds) : null,
+      brandCats:   brandCategories.length > 0 ? brandCategories : null,
+      skus:        skus.length > 0 ? skus : null,
+    },
+    useRpcMode,
+  );
 
   // ── Filter options from view data ─────────────────────────────────────────
 
@@ -417,22 +602,19 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return map;
   }, [repLines]);
 
-  // ── Active filter sets ────────────────────────────────────────────────────
-
   const brandCategorySet = useMemo(() => new Set(brandCategories), [brandCategories]);
   const skuSet           = useMemo(() => new Set(skus),            [skus]);
 
   // ── Aggregation ───────────────────────────────────────────────────────────
 
   const aggregation = useMemo(() => {
-    const primMonths  = monthsInRange(primary);
-    const compMonths  = monthsInRange(comparative);
-    const primFromMs  = startOfDay(primary.from).getTime();
-    const primToMs    = startOfDay(primary.to).getTime();
-    const compFromMs  = startOfDay(comparative.from).getTime();
-    const compToMs    = startOfDay(comparative.to).getTime();
+    const primMonths = monthsInRange(primary);
+    const compMonths = monthsInRange(comparative);
+    const primFromMs = startOfDay(primary.from).getTime();
+    const primToMs   = startOfDay(primary.to).getTime();
+    const compFromMs = startOfDay(comparative.from).getTime();
+    const compToMs   = startOfDay(comparative.to).getTime();
 
-    // The metric toggle maps: UI "bookings" → view 'bookings', UI "invoices" → view 'invoiced'
     const targetMetric = metric === "bookings" ? "bookings" : "invoiced";
 
     type Key = string;
@@ -440,20 +622,16 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
     for (const line of repLines) {
       if (line.metric_type !== targetMetric) continue;
-      // Booking actuals before the cutoff are hidden portal-wide.
       if (targetMetric === "bookings" && !isBookingVisibleDate(line.transaction_date)) continue;
 
-      // Scope filter (manager/territory/rep/dealer selection via Acctivate customer_id)
       if (scopedCustomerIds !== null) {
         const cid = (line.customer_id ?? "").trim().toLowerCase();
         if (!cid || !scopedCustomerIds.has(cid)) continue;
       }
 
-      // Brand/Category filter — for invoiced lines, null brand_category falls back to "Historical Invoice"
       const effectiveBrand = line.brand_category ??
         (line.metric_type === "invoiced" ? "Historical Invoice" : "");
       if (brandCategorySet.size > 0 && !brandCategorySet.has(effectiveBrand)) continue;
-      // SKU filter
       if (skuSet.size > 0 && !skuSet.has(line.sku ?? "")) continue;
 
       const d  = new Date(line.transaction_date + "T00:00:00");
@@ -464,20 +642,17 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
       if (!inPrim && !inComp) continue;
 
-      // Row key — fall back to rep_id for unresolved rep names
       let k: Key;
       if (groupBy === "dealer") {
         k = line.dealer_name ?? line.customer_id ?? "Unknown";
       } else if (groupBy === "rep") {
         k = line.rep_name ?? line.rep_id ?? "Unassigned";
       } else {
-        // territory: resolve via customer_id → portal dealer → territory
         const cid = (line.customer_id ?? "").trim().toLowerCase();
         k = (cid ? customerIdToTerritoryName.get(cid) : undefined) ?? "Unassigned";
       }
 
       const val = line.amount;
-      // For bookings, skip $0 lines (no order). For invoiced, include all (credits, adjustments).
       if (targetMetric === "bookings" && val === 0) continue;
 
       const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
@@ -498,9 +673,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     scopedCustomerIds, brandCategorySet, skuSet, customerIdToTerritoryName,
   ]);
 
-  // ── Summary totals (both metrics over the primary range) ──────────────────
-  // Uses the dedicated per-metric fetches so both cards show correct totals
-  // regardless of which metric is selected in the dropdown.
+  // ── Summary totals + KPI stats ────────────────────────────────────────────
 
   const summaryTotals = useMemo(() => {
     const scopeFilter = (line: DealerRepLine) => {
@@ -515,16 +688,30 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       return true;
     };
 
-    let bookings = 0;
+    const entityKey = (line: DealerRepLine) =>
+      groupBy === "dealer"
+        ? (line.dealer_name ?? line.customer_id ?? "")
+        : (line.rep_name ?? line.rep_id ?? "");
+
+    let bookings = 0, bookingLines = 0;
+    const bookingEntities = new Set<string>();
     for (const line of primaryBookings) {
       if (!scopeFilter(line)) continue;
-      if (isBookingVisibleDate(line.transaction_date)) bookings += line.amount;
+      if (!isBookingVisibleDate(line.transaction_date)) continue;
+      bookings += line.amount;
+      bookingLines++;
+      const ek = entityKey(line);
+      if (ek) bookingEntities.add(ek);
     }
 
-    let invoices = 0;
+    let invoices = 0, invoiceLines = 0;
+    const invoiceEntities = new Set<string>();
     for (const line of primaryInvoiced) {
       if (!scopeFilter(line)) continue;
       invoices += line.amount;
+      invoiceLines++;
+      const ek = entityKey(line);
+      if (ek) invoiceEntities.add(ek);
     }
 
     console.log(
@@ -532,25 +719,147 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       ` | bookings=${primaryBookings.length} rows $${bookings.toFixed(2)}` +
       ` | invoiced=${primaryInvoiced.length} rows $${invoices.toFixed(2)}`,
     );
-    return { bookings, invoices };
-  }, [primaryInvoiced, primaryBookings, scopedCustomerIds, brandCategorySet, skuSet, primary]);
+
+    return {
+      bookings, invoices,
+      bookingLines, invoiceLines,
+      bookingEntities: bookingEntities.size,
+      invoiceEntities: invoiceEntities.size,
+    };
+  }, [primaryInvoiced, primaryBookings, scopedCustomerIds, brandCategorySet, skuSet, groupBy, primary]);
+
+
+  // In RPC mode the KPI totals come from grouped rows (no line data available).
+  const rpcKpis = useMemo(() => {
+    if (!useRpcMode) return null;
+    let total = 0, lines = 0, entities = 0;
+    for (const r of groupedRows) {
+      total += r.primary_amt;
+      lines += r.primary_lines;
+      if (r.primary_amt !== 0) entities++;
+    }
+    return { total, lines, entities };
+  }, [groupedRows, useRpcMode]);
+
+  // ── Active filter chips ───────────────────────────────────────────────────
+
+  const activeFilterChips = useMemo((): { label: string; clear: () => void }[] => {
+    const chips: { label: string; clear: () => void }[] = [];
+    if (territoryIds.length > 0) {
+      const names = territoryIds.map((id) => territories.find((t) => t.id === id)?.name ?? id);
+      chips.push({
+        label: names.length === 1 ? `Territory: ${names[0]}` : `${names.length} territories`,
+        clear: () => setTerritoryIds([]),
+      });
+    }
+    if (repIds.length > 0) {
+      const names = repIds.map((id) => visibleReps.find((r) => r.id === id)?.name ?? id);
+      chips.push({
+        label: names.length === 1 ? names[0] : `${names.length} reps`,
+        clear: () => setRepIds([]),
+      });
+    }
+    if (dealerIds.length > 0) {
+      const names = dealerIds.map((id) => visibleDealers.find((d) => d.id === id)?.name ?? id);
+      chips.push({
+        label: names.length === 1 ? names[0] : `${names.length} dealers`,
+        clear: () => setDealerIds([]),
+      });
+    }
+    if (brandCategories.length > 0) {
+      chips.push({
+        label: brandCategories.length === 1 ? `Brand: ${brandCategories[0]}` : `${brandCategories.length} brands`,
+        clear: () => setBrandCategories([]),
+      });
+    }
+    if (skus.length > 0) {
+      chips.push({
+        label: skus.length === 1 ? `SKU: ${skus[0]}` : `${skus.length} SKUs`,
+        clear: () => setSkus([]),
+      });
+    }
+    return chips;
+  }, [territoryIds, repIds, dealerIds, brandCategories, skus, territories, visibleReps, visibleDealers]);
+
+  // Lazy detail-line fetcher closed over the current drill target.
+  // Re-created only when the clicked entity, filters, or date range change.
+  const drillDetailFetch = useMemo((): ((p: { limit: number; offset: number }) => Promise<ViewLine[]>) | undefined => {
+    if (!useRpcMode || !drillRow) return undefined;
+    const entityKey = drillRow.key;
+    const metricStr = metric === "invoices" ? "invoiced" : "bookings";
+    const fromStr   = format(primary.from, "yyyy-MM-dd");
+    const toStr     = format(primary.to,   "yyyy-MM-dd");
+    const cids      = scopedCustomerIds ? Array.from(scopedCustomerIds) : null;
+    const bcs       = brandCategories.length > 0 ? brandCategories : null;
+    const sks       = skus.length > 0 ? skus : null;
+    return async ({ limit, offset }) => {
+      const { data, error } = await (supabase as any).rpc(
+        "get_sales_reporting_detail_lines",
+        {
+          p_metric:       metricStr,
+          p_group_by:     groupBy === "territory" ? "dealer" : groupBy,
+          p_entity_key:   entityKey,
+          p_from:         fromStr,
+          p_to:           toStr,
+          p_customer_ids: cids,
+          p_brand_cats:   bcs,
+          p_skus:         sks,
+          p_limit:        limit,
+          p_offset:       offset,
+        },
+      );
+      if (error) {
+        console.error("[sales-reporting] detail lines fetch failed:", error.message, error);
+        return [];
+      }
+      return ((data ?? []) as any[]).map((r): ViewLine => ({
+        metric_type:      metricStr,
+        transaction_date: String(r.transaction_date),
+        dealer_name:      r.dealer_name ?? null,
+        rep_name:         r.rep_name    ?? null,
+        sku:              r.sku         ?? null,
+        description:      r.description ?? null,
+        brand_category:   r.brand_category ?? null,
+        amount:           Number(r.amount) || 0,
+        invoice_number:   r.invoice_number ?? null,
+      }));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useRpcMode, drillRow?.key, metric, groupBy, primary.from, primary.to, scopedCustomerIds, brandCategories, skus]);
+
+  // ── Render helpers ────────────────────────────────────────────────────────
+
+  const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
+  const isFetching = useRpcMode
+    ? groupedFetching
+    : (metric === "invoices" ? invFetching : bkgFetching);
+  const isLoading  = isFetching && (useRpcMode ? groupedRows.length === 0 : primaryLines.length === 0);
+  const noData     = !isFetching && (useRpcMode ? groupedRows.length === 0 : primaryLines.length === 0);
+  const dateRangeLabel  = `${format(primary.from, "MMM d, yyyy")} – ${format(primary.to, "MMM d, yyyy")}`;
+  const compRangeLabel  = `${format(comparative.from, "MMM d, yyyy")} – ${format(comparative.to, "MMM d, yyyy")}`;
+  const tableRangeLabel = dateRangeLabel;
+
+  // Effective invoice KPI values: RPC mode uses grouped-row sums; line mode uses summaryTotals.
+  const invTotal    = rpcKpis?.total    ?? summaryTotals.invoices;
+  const invLines    = rpcKpis?.lines    ?? summaryTotals.invoiceLines;
+  const invEntities = rpcKpis?.entities ?? summaryTotals.invoiceEntities;
+  const tableRows   = useRpcMode ? groupedRows.length : aggregation.rows.length;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
-  const noData     = primaryLines.length === 0;
-
   return (
     <div className="space-y-4">
-      {/* Filters */}
+
+      {/* ── A. Filter Card ─────────────────────────────────────────── */}
       <Card>
         <CardContent className="p-4 space-y-4">
+
+          {/* Row 1: Date ranges */}
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Quick range</span>
               <Select
                 onValueChange={(v) => {
-                  // Compute today fresh so stale closure from mount date never applies.
                   const now      = new Date();
                   const todayEnd = startOfDay(now);
                   const monthEnd = endOfMonth(now);
@@ -571,7 +880,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   applyPrimary(from, to);
                 }}
               >
-                <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Select preset..." /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[180px]">
+                  <SelectValue placeholder="Select preset…" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="mtd">Month to date</SelectItem>
@@ -603,8 +914,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   if (v === "prev-year") {
                     setComparative({ from: subYears(primary.from, 1), to: subYears(primary.to, 1) });
                   } else if (v === "prev-period") {
-                    const days  = differenceInCalendarDays(primary.to, primary.from) + 1;
-                    const prevTo   = subDays(primary.from, 1);
+                    const days   = differenceInCalendarDays(primary.to, primary.from) + 1;
+                    const prevTo = subDays(primary.from, 1);
                     setComparative({ from: subDays(prevTo, days - 1), to: prevTo });
                   }
                 }}
@@ -635,12 +946,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               type="button"
               variant="ghost"
               size="sm"
-              className="h-9 text-muted-foreground"
+              className="h-9 text-muted-foreground self-end"
               onClick={() => {
                 const now = new Date();
+                const fromReset = display === "total" && metric === "invoices" ? startOfYear(now) : startOfMonth(now);
                 setCompareMode("prev-year");
-                setPrimary({ from: startOfMonth(now), to: now });
-                setComparative({ from: subYears(startOfMonth(now), 1), to: subYears(now, 1) });
+                setPrimary({ from: fromReset, to: now });
+                setComparative({ from: subYears(fromReset, 1), to: subYears(now, 1) });
                 setTerritoryIds([]);
                 setRepIds([]);
                 setDealerIds([]);
@@ -648,50 +960,54 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 setSkus([]);
               }}
             >
-              <RotateCcw className="h-3.5 w-3.5 mr-1" /> Reset
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset
             </Button>
-
-            {groupByOptions && groupByOptions.length > 1 && (
-              <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Group by</span>
-                <Select value={groupBy} onValueChange={(v: GroupBy) => setGroupBy(v)}>
-                  <SelectTrigger className="h-9 w-[140px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {groupByOptions.map((g) => (
-                      <SelectItem key={g} value={g}>
-                        {g === "dealer" ? "Dealer" : g === "rep" ? "Rep" : "Territory"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Metric</span>
-              <Select value={metric} onValueChange={(v: Metric) => setMetric(v)}>
-                <SelectTrigger className="h-9 w-[140px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="bookings">Bookings</SelectItem>
-                  <SelectItem value="invoices">Invoices</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Display</span>
-              <Select value={display} onValueChange={(v: Display) => setDisplay(v)}>
-                <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="total">Total</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
-          {/* Row 2: dimension filters */}
-          <div className="flex flex-wrap items-end gap-3 pt-3 border-t">
+          {/* Row 2: Metric + Display + Group By */}
+          <div className="pt-3 border-t flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Metric</span>
+              <SegmentedControl
+                value={metric}
+                onChange={setMetric}
+                options={[
+                  { value: "invoices", label: "Invoices" },
+                  { value: "bookings", label: "Bookings" },
+                ]}
+                size="md"
+              />
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Display</span>
+              <SegmentedControl
+                value={display}
+                onChange={handleDisplayChange}
+                options={[
+                  { value: "total", label: "Total" },
+                  { value: "monthly", label: "Monthly" },
+                ]}
+              />
+            </div>
+
+            {groupByOptions && groupByOptions.length > 1 && (
+              <div className="flex items-center gap-2.5">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Group by</span>
+                <SegmentedControl
+                  value={groupBy}
+                  onChange={setGroupBy}
+                  options={(groupByOptions).map((g) => ({
+                    value: g,
+                    label: g === "dealer" ? "Dealer" : g === "rep" ? "Rep" : "Territory",
+                  }))}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Row 3: Dimension filters */}
+          <div className="pt-3 border-t flex flex-wrap items-end gap-3">
             <MultiSelect
               label="Territory" selected={territoryIds} onChange={setTerritoryIds}
               options={territories.map((t) => ({ value: t.id, label: t.name }))}
@@ -703,68 +1019,154 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <MultiSelect
               label="Dealer" selected={dealerIds} onChange={setDealerIds}
               options={visibleDealers.map((d) => ({ value: d.id, label: d.name }))}
-              searchable searchPlaceholder="Search dealers..."
+              searchable searchPlaceholder="Search dealers…"
             />
             <MultiSelect
               label="Brand / Category" selected={brandCategories} onChange={setBrandCategories}
               options={allBrandCategories.map((bc) => ({ value: bc, label: bc }))}
-              searchable searchPlaceholder="Search brand/category..."
+              searchable searchPlaceholder="Search brand / category…"
             />
             <MultiSelect
               label="SKU" selected={skus} onChange={setSkus}
               options={Array.from(skuLabelMap.entries()).map(([sku, label]) => ({ value: sku, label }))}
-              searchable searchPlaceholder="Search SKU..."
+              searchable searchPlaceholder="Search SKU…"
             />
           </div>
+
+          {/* Active filter chips */}
+          {activeFilterChips.length > 0 && (
+            <div className="pt-2.5 border-t flex flex-wrap gap-1.5 items-center">
+              <span className="text-[11px] text-muted-foreground mr-0.5">Active:</span>
+              {activeFilterChips.map((chip) => (
+                <FilterChip key={chip.label} label={chip.label} onClear={chip.clear} />
+              ))}
+              <button
+                type="button"
+                onClick={() => { setTerritoryIds([]); setRepIds([]); setDealerIds([]); setBrandCategories([]); setSkus([]); }}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline ml-1 transition-colors"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Summary totals */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Bookings</p>
-            <p className="text-2xl font-semibold tabular-nums mt-1">
-              {primary.to < new Date(BOOKINGS_VISIBLE_FROM)
-                ? "—"
-                : formatCurrency(summaryTotals.bookings)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Total Invoices</p>
-            <p className="text-2xl font-semibold tabular-nums mt-1">{formatCurrency(summaryTotals.invoices)}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* ── B. KPI Cards ───────────────────────────────────────────── */}
+      {metric === "invoices" ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            label={display === "total" ? "Total YTD Invoices" : "Total Invoices"}
+            value={formatCurrency(invTotal)}
+            sub={dateRangeLabel}
+            icon={FileText}
+          />
+          <KpiCard
+            label="Avg per Line"
+            value={invLines > 0 ? formatCurrency(invTotal / invLines) : "—"}
+            sub="Per invoice line item"
+            icon={Calculator}
+          />
+          <KpiCard
+            label="Invoice Lines"
+            value={invLines.toLocaleString()}
+            sub={display === "total" ? "YTD rows" : "Rows in selected range"}
+            icon={Hash}
+          />
+          <KpiCard
+            label={`${leftHeader}s Active`}
+            value={String(invEntities)}
+            sub={display === "total" ? "With YTD invoice activity" : "With invoice activity"}
+            icon={Users2}
+          />
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            label="Total Bookings"
+            value={primary.to < new Date(BOOKINGS_VISIBLE_FROM) ? "—" : formatCurrency(summaryTotals.bookings)}
+            sub={dateRangeLabel}
+            icon={ShoppingCart}
+            muted={primary.to < new Date(BOOKINGS_VISIBLE_FROM)}
+          />
+          <KpiCard
+            label="Avg per Line"
+            value={summaryTotals.bookingLines > 0
+              ? formatCurrency(summaryTotals.bookings / summaryTotals.bookingLines)
+              : "—"}
+            sub="Per booking line item"
+            icon={Calculator}
+          />
+          <KpiCard
+            label="Booking Lines"
+            value={summaryTotals.bookingLines.toLocaleString()}
+            sub="Rows in selected range"
+            icon={Hash}
+          />
+          <KpiCard
+            label={`${leftHeader}s Active`}
+            value={String(summaryTotals.bookingEntities)}
+            sub="With booking activity"
+            icon={Users2}
+          />
+        </div>
+      )}
 
-      {/* Result table */}
+      {/* ── C. Results Table ────────────────────────────────────────── */}
       <Card>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-base">
-            {metric === "bookings" ? "Bookings" : "Invoices"} by {leftHeader}
-          </CardTitle>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Badge variant="secondary">{aggregation.rows.length} rows</Badge>
-            <Badge variant="outline">{format(primary.from, "MMM d, yyyy")} – {format(primary.to, "MMM d, yyyy")}</Badge>
-            {compareMode !== "none" && (
-              <Badge variant="outline">vs {format(comparative.from, "MMM d, yyyy")} – {format(comparative.to, "MMM d, yyyy")}</Badge>
-            )}
+        <CardHeader className="pb-0 pt-5 px-5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-4 border-b">
+            <div>
+              <CardTitle className="text-base font-semibold tracking-tight">
+                {metric === "invoices" ? "Invoices" : "Bookings"} by {leftHeader}
+              </CardTitle>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{tableRangeLabel}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+              <Badge variant="secondary" className="text-[11px] font-medium">
+                {tableRows} rows
+              </Badge>
+              <Badge variant="outline" className="text-[11px]">{tableRangeLabel}</Badge>
+              {compareMode !== "none" && (
+                <Badge variant="outline" className="text-[11px]">
+                  vs {compRangeLabel}
+                </Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-auto max-h-[55vh]">
-            {noData ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">
-                No data for the selected date range.
+          <div className="overflow-auto max-h-[60vh]">
+            {isLoading ? (
+              <TableSkeleton />
+            ) : noData ? (
+              <div className="py-16 text-center px-8">
+                <div className="h-11 w-11 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                  {metric === "invoices"
+                    ? <FileText className="h-4.5 w-4.5 text-muted-foreground" />
+                    : <ShoppingCart className="h-4.5 w-4.5 text-muted-foreground" />}
+                </div>
+                <p className="text-sm font-medium text-foreground/80">
+                  {metric === "invoices"
+                    ? "No invoice data for the selected filters."
+                    : "No booking data for the selected filters."}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Try adjusting the date range or active filters above.
+                </p>
               </div>
+            ) : useRpcMode ? (
+              <TotalTable
+                rows={groupedRows.map((r) => ({
+                  key:         r.entity_key,
+                  label:       r.entity_key,
+                  primary:     r.primary_amt,
+                  comparative: r.comp_amt,
+                }))}
+                leftHeader={leftHeader}
+                showComparison={compareMode !== "none"}
+                onRowClick={(key, label) => setDrillRow({ key, label })}
+              />
             ) : display === "monthly" ? (
               <MonthlyTable
                 rows={aggregation.rows}
@@ -796,7 +1198,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         to={primary.to}
         compareFrom={compareMode !== "none" ? comparative.from : undefined}
         compareTo={compareMode !== "none" ? comparative.to : undefined}
-        viewLines={repLines}
+        viewLines={useRpcMode ? [] : repLines}
+        fetchLines={drillDetailFetch}
         metric={metric}
       />
     </div>
@@ -820,11 +1223,27 @@ function TotalTable({
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b bg-card sticky top-0 z-20">
-          <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-card z-20">{leftHeader}</th>
-          <th className="text-right p-3 font-medium text-muted-foreground">Primary</th>
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Comparative</th>}
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Δ</th>}
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Δ %</th>}
+          <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground sticky left-0 bg-card z-20">
+            {leftHeader}
+          </th>
+          <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            Primary
+          </th>
+          {showComparison && (
+            <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Comparative
+            </th>
+          )}
+          {showComparison && (
+            <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Δ
+            </th>
+          )}
+          {showComparison && (
+            <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Δ %
+            </th>
+          )}
         </tr>
       </thead>
       <tbody>
@@ -834,41 +1253,58 @@ function TotalTable({
           return (
             <tr
               key={r.key}
-              className={cn("border-b last:border-0 hover:bg-muted/20", onRowClick && "cursor-pointer")}
+              className={cn(
+                "border-b last:border-0 transition-colors",
+                onRowClick ? "hover:bg-muted/30 cursor-pointer" : "hover:bg-muted/20",
+              )}
               onClick={onRowClick ? () => onRowClick(r.key, r.label) : undefined}
             >
-              <td className="p-3 font-medium sticky left-0 bg-card z-10">
+              <td className="px-5 py-3 font-medium sticky left-0 bg-card z-10 max-w-[220px] truncate">
                 {onRowClick ? (
-                  <button type="button" className="text-left text-primary hover:underline">{r.label}</button>
+                  <button type="button" className="text-left text-primary hover:underline truncate max-w-full">
+                    {r.label}
+                  </button>
                 ) : r.label}
               </td>
-              <td className="p-3 text-right tabular-nums">{formatCurrency(r.primary)}</td>
-              {showComparison && <td className="p-3 text-right tabular-nums text-muted-foreground">{formatCurrency(r.comparative)}</td>}
+              <td className="px-5 py-3 text-right tabular-nums font-medium">{formatCurrency(r.primary)}</td>
               {showComparison && (
-                <td className={cn("p-3 text-right tabular-nums", delta >= 0 ? "text-green-600" : "text-destructive")}>
+                <td className="px-5 py-3 text-right tabular-nums text-muted-foreground">{formatCurrency(r.comparative)}</td>
+              )}
+              {showComparison && (
+                <td className={cn("px-5 py-3 text-right tabular-nums font-medium", delta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
                   {delta >= 0 ? "+" : ""}{formatCurrency(delta)}
                 </td>
               )}
               {showComparison && (
-                <td className={cn("p-3 text-right tabular-nums", pct >= 0 ? "text-green-600" : "text-destructive")}>
-                  {r.comparative === 0 ? "-" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
+                <td className={cn("px-5 py-3 text-right tabular-nums", pct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+                  {r.comparative === 0 ? "—" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
                 </td>
               )}
             </tr>
           );
         })}
         {rows.length === 0 && (
-          <tr><td colSpan={showComparison ? 5 : 2} className="p-8 text-center text-muted-foreground text-sm">No data for the selected filters.</td></tr>
+          <tr>
+            <td colSpan={showComparison ? 5 : 2} className="px-5 py-10 text-center text-sm text-muted-foreground">
+              No results for the selected filters.
+            </td>
+          </tr>
         )}
         {rows.length > 0 && (
-          <tr className="border-t-2 font-semibold bg-card sticky bottom-0 z-10">
-            <td className="p-3 sticky left-0 bg-card z-20">Total</td>
-            <td className="p-3 text-right tabular-nums">{formatCurrency(totalP)}</td>
-            {showComparison && <td className="p-3 text-right tabular-nums">{formatCurrency(totalC)}</td>}
-            {showComparison && <td className="p-3 text-right tabular-nums">{formatCurrency(totalP - totalC)}</td>}
+          <tr className="border-t bg-card sticky bottom-0 z-10">
+            <td className="px-5 py-3 font-semibold sticky left-0 bg-card z-20">Total</td>
+            <td className="px-5 py-3 text-right tabular-nums font-semibold">{formatCurrency(totalP)}</td>
             {showComparison && (
-              <td className="p-3 text-right tabular-nums">
-                {totalC === 0 ? "-" : `${((totalP - totalC) / totalC * 100).toFixed(1)}%`}
+              <td className="px-5 py-3 text-right tabular-nums font-semibold text-muted-foreground">{formatCurrency(totalC)}</td>
+            )}
+            {showComparison && (
+              <td className={cn("px-5 py-3 text-right tabular-nums font-semibold", totalP - totalC >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+                {totalP - totalC >= 0 ? "+" : ""}{formatCurrency(totalP - totalC)}
+              </td>
+            )}
+            {showComparison && (
+              <td className={cn("px-5 py-3 text-right tabular-nums font-semibold", totalP - totalC >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+                {totalC === 0 ? "—" : `${((totalP - totalC) / totalC * 100) >= 0 ? "+" : ""}${((totalP - totalC) / totalC * 100).toFixed(1)}%`}
               </td>
             )}
           </tr>
@@ -900,58 +1336,79 @@ function MonthlyTable({
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b bg-card sticky top-0 z-20">
-          <th className="text-left p-3 font-medium text-muted-foreground sticky left-0 bg-card z-20">{leftHeader}</th>
+          <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground sticky left-0 bg-card z-20">
+            {leftHeader}
+          </th>
           {interleaved.map((m) => (
-            <th key={m.key} className="text-right p-3 font-medium text-muted-foreground whitespace-nowrap">{m.label}</th>
+            <th key={m.key} className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+              {m.label}
+            </th>
           ))}
-          <th className="text-right p-3 font-medium text-muted-foreground border-l">Primary Total</th>
-          {showComparison && <th className="text-right p-3 font-medium text-muted-foreground">Comparative Total</th>}
+          <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground border-l whitespace-nowrap">
+            Primary Total
+          </th>
+          {showComparison && (
+            <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+              Comp. Total
+            </th>
+          )}
         </tr>
       </thead>
       <tbody>
         {rows.map((r) => (
           <tr
             key={r.key}
-            className={cn("border-b last:border-0 hover:bg-muted/20", onRowClick && "cursor-pointer")}
+            className={cn(
+              "border-b last:border-0 transition-colors",
+              onRowClick ? "hover:bg-muted/30 cursor-pointer" : "hover:bg-muted/20",
+            )}
             onClick={onRowClick ? () => onRowClick(r.key, r.label) : undefined}
           >
-            <td className="p-3 font-medium sticky left-0 bg-card z-10">
+            <td className="px-5 py-3 font-medium sticky left-0 bg-card z-10 max-w-[180px] truncate">
               {onRowClick ? (
-                <button type="button" className="text-left text-primary hover:underline">{r.label}</button>
+                <button type="button" className="text-left text-primary hover:underline truncate max-w-full">
+                  {r.label}
+                </button>
               ) : r.label}
             </td>
             {interleaved.map((m) => (
-              <td key={m.key} className="p-3 text-right tabular-nums whitespace-nowrap">
+              <td key={m.key} className="px-4 py-3 text-right tabular-nums whitespace-nowrap text-muted-foreground">
                 {formatCurrency(r.byMonth.get(m.key) ?? 0)}
               </td>
             ))}
-            <td className="p-3 text-right tabular-nums border-l font-medium">{formatCurrency(r.primary)}</td>
-            {showComparison && <td className="p-3 text-right tabular-nums text-muted-foreground">{formatCurrency(r.comparative)}</td>}
+            <td className="px-5 py-3 text-right tabular-nums border-l font-medium">{formatCurrency(r.primary)}</td>
+            {showComparison && (
+              <td className="px-5 py-3 text-right tabular-nums text-muted-foreground">{formatCurrency(r.comparative)}</td>
+            )}
           </tr>
         ))}
         {rows.length > 0 && (
-          <tr className="border-t-2 font-semibold bg-card sticky bottom-0 z-10">
-            <td className="p-3 sticky left-0 bg-card z-20">Total</td>
+          <tr className="border-t bg-card sticky bottom-0 z-10">
+            <td className="px-5 py-3 font-semibold sticky left-0 bg-card z-20">Total</td>
             {interleaved.map((m) => {
               const monthTotal = rows.reduce((s, r) => s + (r.byMonth.get(m.key) ?? 0), 0);
               return (
-                <td key={m.key} className="p-3 text-right tabular-nums whitespace-nowrap">
+                <td key={m.key} className="px-4 py-3 text-right tabular-nums whitespace-nowrap font-semibold">
                   {formatCurrency(monthTotal)}
                 </td>
               );
             })}
-            <td className="p-3 text-right tabular-nums border-l">
+            <td className="px-5 py-3 text-right tabular-nums border-l font-semibold">
               {formatCurrency(rows.reduce((s, r) => s + r.primary, 0))}
             </td>
             {showComparison && (
-              <td className="p-3 text-right tabular-nums">
+              <td className="px-5 py-3 text-right tabular-nums font-semibold text-muted-foreground">
                 {formatCurrency(rows.reduce((s, r) => s + r.comparative, 0))}
               </td>
             )}
           </tr>
         )}
         {rows.length === 0 && (
-          <tr><td colSpan={totalCols} className="p-8 text-center text-muted-foreground text-sm">No data for the selected filters.</td></tr>
+          <tr>
+            <td colSpan={totalCols} className="px-5 py-10 text-center text-sm text-muted-foreground">
+              No results for the selected filters.
+            </td>
+          </tr>
         )}
       </tbody>
     </table>

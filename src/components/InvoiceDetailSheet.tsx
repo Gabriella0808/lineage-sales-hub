@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { format, startOfDay } from "date-fns";
 import { isBookingVisibleDate, BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -17,6 +17,7 @@ export interface ViewLine {
   description:      string | null;
   brand_category:   string | null;
   amount:           number;
+  invoice_number:   string | null;
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -33,6 +34,9 @@ interface Props {
   compareTo?: Date;
   viewLines: ViewLine[];
   metric: "bookings" | "invoices";
+  /** When provided, detail lines are fetched lazily on sheet open instead of
+   *  filtering the in-memory viewLines.  Used in RPC / Total-display mode. */
+  fetchLines?: (params: { limit: number; offset: number }) => Promise<ViewLine[]>;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -94,27 +98,62 @@ function pctDelta(cur: number, prev: number): number | null {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+const DETAIL_PAGE = 200;
+
 export function InvoiceDetailSheet({
   open, onOpenChange, groupBy, rowKey, rowLabel,
-  from, to, compareFrom, compareTo, viewLines, metric,
+  from, to, compareFrom, compareTo, viewLines, fetchLines, metric,
 }: Props) {
+  // ── Lazy-load state (RPC / Total mode) ──────────────────────────────────────
+  const [lazyLines,   setLazyLines]   = useState<ViewLine[]>([]);
+  const [lazyLoading, setLazyLoading] = useState(false);
+  const [hasMore,     setHasMore]     = useState(false);
+
+  useEffect(() => {
+    if (!open || !fetchLines) {
+      if (!open) { setLazyLines([]); setHasMore(false); }
+      return;
+    }
+    let cancelled = false;
+    setLazyLoading(true);
+    setLazyLines([]);
+    setHasMore(false);
+    fetchLines({ limit: DETAIL_PAGE, offset: 0 }).then((rows) => {
+      if (cancelled) return;
+      setLazyLines(rows);
+      setHasMore(rows.length === DETAIL_PAGE);
+      setLazyLoading(false);
+    }).catch(() => { if (!cancelled) setLazyLoading(false); });
+    return () => { cancelled = true; };
+  }, [open, fetchLines]);
+
+  const handleLoadMore = async () => {
+    if (!fetchLines || lazyLoading) return;
+    setLazyLoading(true);
+    const rows = await fetchLines({ limit: DETAIL_PAGE, offset: lazyLines.length }).catch(() => []);
+    setLazyLines((prev) => [...prev, ...rows]);
+    setHasMore(rows.length === DETAIL_PAGE);
+    setLazyLoading(false);
+  };
+
+  // ── Line mode (Monthly / territory) ─────────────────────────────────────────
   const primFromMs = useMemo(() => startOfDay(from).getTime(), [from]);
   const primToMs   = useMemo(() => startOfDay(to).getTime(),   [to]);
   const compFromMs = useMemo(() => compareFrom ? startOfDay(compareFrom).getTime() : 0, [compareFrom]);
   const compToMs   = useMemo(() => compareTo   ? startOfDay(compareTo).getTime()   : 0, [compareTo]);
-  const hasCompare = !!(compareFrom && compareTo);
+  const hasCompare = !!(compareFrom && compareTo) && !fetchLines;
 
   const compLabel: ReactNode = hasCompare ? (
     <>vs {format(compareFrom!, "MMM d, yyyy")} – {format(compareTo!, "MMM d, yyyy")}</>
   ) : null;
 
   const primInvoiced = useMemo(() =>
-    filterLines(viewLines, groupBy, rowKey, primFromMs, primToMs, "invoiced"),
-  [viewLines, groupBy, rowKey, primFromMs, primToMs]);
+    fetchLines ? [] : filterLines(viewLines, groupBy, rowKey, primFromMs, primToMs, "invoiced"),
+  [fetchLines, viewLines, groupBy, rowKey, primFromMs, primToMs]);
 
   const primBookings = useMemo(() =>
-    filterLines(viewLines, groupBy, rowKey, primFromMs, primToMs, "bookings"),
-  [viewLines, groupBy, rowKey, primFromMs, primToMs]);
+    fetchLines ? [] : filterLines(viewLines, groupBy, rowKey, primFromMs, primToMs, "bookings"),
+  [fetchLines, viewLines, groupBy, rowKey, primFromMs, primToMs]);
 
   const compInvoiced = useMemo(() =>
     hasCompare ? filterLines(viewLines, groupBy, rowKey, compFromMs, compToMs, "invoiced") : [],
@@ -124,19 +163,21 @@ export function InvoiceDetailSheet({
     hasCompare ? filterLines(viewLines, groupBy, rowKey, compFromMs, compToMs, "bookings") : [],
   [viewLines, groupBy, rowKey, compFromMs, compToMs, hasCompare]);
 
-  const primInvoicedTotal  = useMemo(() => sumAmount(primInvoiced),  [primInvoiced]);
-  const primBookingsTotal  = useMemo(() => sumAmount(primBookings),   [primBookings]);
-  const compInvoicedTotal  = useMemo(() => sumAmount(compInvoiced),  [compInvoiced]);
-  const compBookingsTotal  = useMemo(() => sumAmount(compBookings),   [compBookings]);
+  const primInvoicedTotal = useMemo(() => sumAmount(primInvoiced), [primInvoiced]);
+  const primBookingsTotal = useMemo(() => sumAmount(primBookings),  [primBookings]);
+  const compInvoicedTotal = useMemo(() => sumAmount(compInvoiced), [compInvoiced]);
+  const compBookingsTotal = useMemo(() => sumAmount(compBookings),  [compBookings]);
 
-  // Breakdowns and Lines count follow whichever metric the user is viewing.
+  // The "active" lines for breakdowns: lazy lines (RPC mode) or filtered lines (line mode).
   const activeMetricType = metric === "bookings" ? "bookings" : "invoiced";
-  const primActive = activeMetricType === "bookings" ? primBookings : primInvoiced;
+  const primActive = fetchLines
+    ? lazyLines
+    : (activeMetricType === "bookings" ? primBookings : primInvoiced);
   const compActive = activeMetricType === "bookings" ? compBookings : compInvoiced;
 
-  const bySku     = useMemo(() => groupBySku(primActive),      [primActive]);
-  const byBrandCat = useMemo(() => groupByBrandCat(primActive), [primActive]);
-  const compBySkuMap = useMemo(() => {
+  const bySku         = useMemo(() => groupBySku(primActive),      [primActive]);
+  const byBrandCat    = useMemo(() => groupByBrandCat(primActive), [primActive]);
+  const compBySkuMap  = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of groupBySku(compActive)) m.set(r.sku, r.total);
     return m;
@@ -147,7 +188,9 @@ export function InvoiceDetailSheet({
     return m;
   }, [compActive]);
 
-  const noData = primInvoiced.length === 0 && primBookings.length === 0;
+  const noData = fetchLines
+    ? (!lazyLoading && lazyLines.length === 0)
+    : (primInvoiced.length === 0 && primBookings.length === 0);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -164,37 +207,56 @@ export function InvoiceDetailSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <StatCard
-            label="Invoiced"
-            value={formatCurrency(primInvoicedTotal)}
-            compValue={hasCompare ? formatCurrency(compInvoicedTotal) : undefined}
-            compLabel={compLabel ?? undefined}
-            delta={hasCompare ? pctDelta(primInvoicedTotal, compInvoicedTotal) : undefined}
-          />
-          <StatCard
-            label="Bookings"
-            value={to < new Date(BOOKINGS_VISIBLE_FROM) ? "—" : formatCurrency(primBookingsTotal)}
-            compValue={hasCompare ? (compareTo! < new Date(BOOKINGS_VISIBLE_FROM) ? "—" : formatCurrency(compBookingsTotal)) : undefined}
-            compLabel={compLabel ?? undefined}
-            delta={hasCompare && to >= new Date(BOOKINGS_VISIBLE_FROM) && compareTo! >= new Date(BOOKINGS_VISIBLE_FROM) ? pctDelta(primBookingsTotal, compBookingsTotal) : undefined}
-          />
-          <StatCard
-            label="Lines"
-            value={primActive.length.toLocaleString()}
-            compValue={hasCompare ? compActive.length.toLocaleString() : undefined}
-            compLabel={compLabel ?? undefined}
-            delta={hasCompare ? pctDelta(primActive.length, compActive.length) : undefined}
-          />
-        </div>
+        {/* ── Stat cards ── */}
+        {fetchLines ? (
+          // RPC / lazy mode: show only the active metric (no comparative available)
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <StatCard
+              label={metric === "invoices" ? "Invoiced" : "Bookings"}
+              value={lazyLoading && lazyLines.length === 0 ? "…" : formatCurrency(sumAmount(lazyLines))}
+            />
+            <StatCard
+              label="Lines"
+              value={lazyLoading && lazyLines.length === 0 ? "…" : lazyLines.length.toLocaleString() + (hasMore ? "+" : "")}
+            />
+          </div>
+        ) : (
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <StatCard
+              label="Invoiced"
+              value={formatCurrency(primInvoicedTotal)}
+              compValue={hasCompare ? formatCurrency(compInvoicedTotal) : undefined}
+              compLabel={compLabel ?? undefined}
+              delta={hasCompare ? pctDelta(primInvoicedTotal, compInvoicedTotal) : undefined}
+            />
+            <StatCard
+              label="Bookings"
+              value={to < new Date(BOOKINGS_VISIBLE_FROM) ? "—" : formatCurrency(primBookingsTotal)}
+              compValue={hasCompare ? (compareTo! < new Date(BOOKINGS_VISIBLE_FROM) ? "—" : formatCurrency(compBookingsTotal)) : undefined}
+              compLabel={compLabel ?? undefined}
+              delta={hasCompare && to >= new Date(BOOKINGS_VISIBLE_FROM) && compareTo! >= new Date(BOOKINGS_VISIBLE_FROM) ? pctDelta(primBookingsTotal, compBookingsTotal) : undefined}
+            />
+            <StatCard
+              label="Lines"
+              value={primActive.length.toLocaleString()}
+              compValue={hasCompare ? compActive.length.toLocaleString() : undefined}
+              compLabel={compLabel ?? undefined}
+              delta={hasCompare ? pctDelta(primActive.length, compActive.length) : undefined}
+            />
+          </div>
+        )}
 
-        {noData && (
+        {lazyLoading && lazyLines.length === 0 && (
+          <p className="mt-6 text-sm text-muted-foreground">Loading detail…</p>
+        )}
+
+        {noData && !lazyLoading && (
           <p className="mt-6 text-sm text-muted-foreground">
             No invoice detail found for this selection and date range.
           </p>
         )}
 
-        {!noData && (
+        {!noData && !lazyLoading && (
           <div className="mt-6 space-y-6">
             {byBrandCat.length > 0 && (
               <Section title="By Brand / Category" count={byBrandCat.length}>
@@ -214,6 +276,17 @@ export function InvoiceDetailSheet({
                   compLabel={compLabel ?? undefined}
                 />
               </Section>
+            )}
+
+            {fetchLines && hasMore && (
+              <button
+                type="button"
+                onClick={handleLoadMore}
+                disabled={lazyLoading}
+                className="w-full py-2 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md transition-colors disabled:opacity-50"
+              >
+                {lazyLoading ? "Loading…" : `Load more (showing ${lazyLines.length})`}
+              </button>
             )}
           </div>
         )}

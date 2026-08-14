@@ -46,54 +46,73 @@ type DealerRepLine = {
   description:      string | null;
   brand_category:   string | null;
   amount:           number;
+  invoice_number:   string | null;
 };
 
-// ── Data hook ─────────────────────────────────────────────────────────────────
+// ── Data hooks ────────────────────────────────────────────────────────────────
 
-/** Fetches rows from v_portal_dealer_rep_reporting_lines for the given date
- *  window (paginated). Both 'bookings' and 'invoiced' metric_types are loaded
- *  so the summary cards can always show both totals.
- *
- *  Upper bound is exclusive: the query uses transaction_date < toExcl
- *  so that selecting Aug 1–4 fetches exactly Aug 1, 2, 3, 4. */
-function usePortalDealerRepLines(from: Date, to: Date, enabled = true) {
+// PostgREST's default max-rows is 1000. Using a larger pageSize would cause
+// the pagination loop to terminate early (batch.length < pageSize after the
+// first page), so we cap at 1000 and page through exhaustively.
+// Invoiced and bookings are fetched as separate queries (each filtered by
+// metric_type) so neither is truncated by sharing the row budget with the other.
+const PAGE_SIZE = 1000;
+
+async function fetchPortalLinesByType(
+  from: Date,
+  to: Date,
+  metricType: "invoiced" | "bookings",
+): Promise<DealerRepLine[]> {
   const fromStr = format(from,           "yyyy-MM-dd");
-  const toExcl  = format(addDays(to, 1), "yyyy-MM-dd");  // exclusive upper bound
+  const toExcl  = format(addDays(to, 1), "yyyy-MM-dd");
+  const rows: DealerRepLine[] = [];
+  let start = 0;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { data, error } = await (supabase as any)
+      .from("v_portal_dealer_rep_reporting_lines")
+      .select("metric_type, transaction_date, year, month_number, dealer_name, customer_id, rep_name, rep_id, sku, description, brand_category, amount, invoice_number")
+      .eq("metric_type", metricType)
+      .gte("transaction_date", fromStr)
+      .lt("transaction_date", toExcl)
+      .range(start, start + PAGE_SIZE - 1);
+    if (error) {
+      console.error(`[dealer-rep] ${metricType} fetch failed:`, error.message, error);
+      break;
+    }
+    const batch = ((data ?? []) as any[]).map((r) => ({
+      ...r,
+      amount:       Number(r.amount) || 0,
+      year:         Number(r.year),
+      month_number: Number(r.month_number),
+    })) as DealerRepLine[];
+    rows.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+    start += PAGE_SIZE;
+  }
+  console.log(`[dealer-rep] ${metricType} fetched ${rows.length} rows (${fromStr}→${toExcl})`);
+  return rows;
+}
+
+function usePortalInvoicedLines(from: Date, to: Date, enabled = true) {
+  const fromStr = format(from,           "yyyy-MM-dd");
+  const toExcl  = format(addDays(to, 1), "yyyy-MM-dd");
   return useQuery({
-    queryKey: ["v_portal_dealer_rep_lines_v2", fromStr, toExcl],
+    queryKey: ["v_portal_invoiced_lines_v1", fromStr, toExcl],
     enabled,
     staleTime: 2 * 60 * 1000,
-    queryFn: async () => {
-      const rows: DealerRepLine[] = [];
-      const pageSize = 2000;
-      let start = 0;
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data, error } = await (supabase as any)
-          .from("v_portal_dealer_rep_reporting_lines")
-          .select("metric_type, transaction_date, year, month_number, dealer_name, customer_id, rep_name, rep_id, sku, description, brand_category, amount")
-          .gte("transaction_date", fromStr)
-          .lt("transaction_date", toExcl)
-          .range(start, start + pageSize - 1);
-        if (error) {
-          console.error("[dealer-rep] v_portal_dealer_rep_reporting_lines fetch failed:", error.message, error);
-          break;
-        }
-        const batch = ((data ?? []) as any[]).map((r) => ({
-          ...r,
-          amount:       Number(r.amount) || 0,
-          year:         Number(r.year),
-          month_number: Number(r.month_number),
-        })) as DealerRepLine[];
-        rows.push(...batch);
-        if (batch.length < pageSize) break;
-        start += pageSize;
-      }
-      const bookingCount  = rows.filter((r) => r.metric_type === "bookings").length;
-      const invoicedCount = rows.filter((r) => r.metric_type === "invoiced").length;
-      console.log(`[dealer-rep] fetched ${rows.length} rows (${fromStr}→${toExcl}) — bookings: ${bookingCount}, invoiced: ${invoicedCount}`);
-      return rows;
-    },
+    queryFn: () => fetchPortalLinesByType(from, to, "invoiced"),
+  });
+}
+
+function usePortalBookingLines(from: Date, to: Date, enabled = true) {
+  const fromStr = format(from,           "yyyy-MM-dd");
+  const toExcl  = format(addDays(to, 1), "yyyy-MM-dd");
+  return useQuery({
+    queryKey: ["v_portal_booking_lines_v1", fromStr, toExcl],
+    enabled,
+    staleTime: 2 * 60 * 1000,
+    queryFn: () => fetchPortalLinesByType(from, to, "bookings"),
   });
 }
 
@@ -307,19 +326,25 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const { data: repTerritories = [] } = useRepTerritories();
 
   // ── Fetch view data ───────────────────────────────────────────────────────
-  // Two separate queries keep each request small and let the primary data
-  // render immediately while the comparative range loads in parallel.
+  // Invoiced and bookings are fetched as separate metric_type-filtered queries
+  // so PostgREST's 1000-row cap doesn't cause one type to crowd out the other.
 
-  const { data: primaryLines     = [] } = usePortalDealerRepLines(primary.from, primary.to);
-  const { data: comparativeLines = [] } = usePortalDealerRepLines(
+  const { data: primaryInvoiced  = [] } = usePortalInvoicedLines(primary.from, primary.to);
+  const { data: primaryBookings  = [] } = usePortalBookingLines(primary.from, primary.to);
+  const { data: compInvoiced     = [] } = usePortalInvoicedLines(
+    comparative.from, comparative.to, compareMode !== "none",
+  );
+  const { data: compBookings     = [] } = usePortalBookingLines(
     comparative.from, comparative.to, compareMode !== "none",
   );
 
-  // Merge for aggregation; date-based filtering inside `aggregation` assigns
-  // each row to the correct period (ranges are typically non-overlapping).
+  // Lines for the selected metric (used in aggregation table + drilldown)
+  const primaryLines = metric === "invoices" ? primaryInvoiced : primaryBookings;
+  const compLines    = metric === "invoices" ? compInvoiced    : compBookings;
+
   const repLines = useMemo(
-    () => compareMode === "none" ? primaryLines : [...primaryLines, ...comparativeLines],
-    [primaryLines, comparativeLines, compareMode],
+    () => compareMode === "none" ? primaryLines : [...primaryLines, ...compLines],
+    [primaryLines, compLines, compareMode],
   );
 
   // ── Hierarchical filter helpers (portal tables) ───────────────────────────
@@ -378,7 +403,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // ── Filter options from view data ─────────────────────────────────────────
 
   const allBrandCategories = useMemo(() =>
-    Array.from(new Set(repLines.map((l) => l.brand_category).filter(Boolean) as string[])).sort(),
+    Array.from(new Set(repLines.map((l) =>
+      l.brand_category ?? (l.metric_type === "invoiced" ? "Historical Invoice" : null)
+    ).filter(Boolean) as string[])).sort(),
   [repLines]);
 
   const skuLabelMap = useMemo(() => {
@@ -423,8 +450,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         if (!cid || !scopedCustomerIds.has(cid)) continue;
       }
 
-      // Brand/Category filter
-      if (brandCategorySet.size > 0 && !brandCategorySet.has(line.brand_category ?? "")) continue;
+      // Brand/Category filter — for invoiced lines, null brand_category falls back to "Historical Invoice"
+      const effectiveBrand = line.brand_category ??
+        (line.metric_type === "invoiced" ? "Historical Invoice" : "");
+      if (brandCategorySet.size > 0 && !brandCategorySet.has(effectiveBrand)) continue;
       // SKU filter
       if (skuSet.size > 0 && !skuSet.has(line.sku ?? "")) continue;
 
@@ -436,12 +465,12 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const inComp = compareMode !== "none" && ms >= compFromMs && ms <= compToMs;
       if (!inPrim && !inComp) continue;
 
-      // Row key
+      // Row key — fall back to rep_id for unresolved rep names
       let k: Key;
       if (groupBy === "dealer") {
         k = line.dealer_name ?? line.customer_id ?? "Unknown";
       } else if (groupBy === "rep") {
-        k = line.rep_name ?? "Unassigned";
+        k = line.rep_name ?? line.rep_id ?? "Unassigned";
       } else {
         // territory: resolve via customer_id → portal dealer → territory
         const cid = (line.customer_id ?? "").trim().toLowerCase();
@@ -449,7 +478,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       }
 
       const val = line.amount;
-      if (val === 0) continue;
+      // For bookings, skip $0 lines (no order). For invoiced, include all (credits, adjustments).
+      if (targetMetric === "bookings" && val === 0) continue;
 
       const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
       let row = rows.get(k);
@@ -470,37 +500,46 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   ]);
 
   // ── Summary totals (both metrics over the primary range) ──────────────────
-  // primaryLines is already scoped to the primary date range — no date filter needed.
+  // Uses the dedicated per-metric fetches so both cards show correct totals
+  // regardless of which metric is selected in the dropdown.
 
   const summaryTotals = useMemo(() => {
-    let bookings = 0; let invoices = 0;
-    for (const line of primaryLines) {
+    const scopeFilter = (line: DealerRepLine) => {
       if (scopedCustomerIds !== null) {
         const cid = (line.customer_id ?? "").trim().toLowerCase();
-        if (!cid || !scopedCustomerIds.has(cid)) continue;
+        if (!cid || !scopedCustomerIds.has(cid)) return false;
       }
-      if (brandCategorySet.size > 0 && !brandCategorySet.has(line.brand_category ?? "")) continue;
-      if (skuSet.size > 0           && !skuSet.has(line.sku ?? ""))           continue;
-      if (line.metric_type === "bookings") {
-        if (isBookingVisibleDate(line.transaction_date)) bookings += line.amount;
-      } else if (line.metric_type === "invoiced") {
-        invoices += line.amount;
-      }
+      const effectiveBrand = line.brand_category ??
+        (line.metric_type === "invoiced" ? "Historical Invoice" : "");
+      if (brandCategorySet.size > 0 && !brandCategorySet.has(effectiveBrand)) return false;
+      if (skuSet.size > 0 && !skuSet.has(line.sku ?? "")) return false;
+      return true;
+    };
+
+    let bookings = 0;
+    for (const line of primaryBookings) {
+      if (!scopeFilter(line)) continue;
+      if (isBookingVisibleDate(line.transaction_date)) bookings += line.amount;
     }
-    const bCount = primaryLines.filter(l => l.metric_type === "bookings").length;
-    const iCount = primaryLines.filter(l => l.metric_type === "invoiced").length;
+
+    let invoices = 0;
+    for (const line of primaryInvoiced) {
+      if (!scopeFilter(line)) continue;
+      invoices += line.amount;
+    }
+
     console.log(
       `[dealer-rep] ${format(primary.from, "MMM d, yyyy")} – ${format(primary.to, "MMM d, yyyy")}` +
-      ` | rows=${primaryLines.length} (bookings=${bCount}, invoiced=${iCount})` +
-      ` | Total Bookings=$${bookings.toFixed(2)} Total Invoiced=$${invoices.toFixed(2)}`,
+      ` | bookings=${primaryBookings.length} rows $${bookings.toFixed(2)}` +
+      ` | invoiced=${primaryInvoiced.length} rows $${invoices.toFixed(2)}`,
     );
     return { bookings, invoices };
-  }, [primaryLines, scopedCustomerIds, brandCategorySet, skuSet, primary]);
+  }, [primaryInvoiced, primaryBookings, scopedCustomerIds, brandCategorySet, skuSet, primary]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
-  const noData     = repLines.length === 0;
+  const noData     = primaryLines.length === 0;
 
   return (
     <div className="space-y-4">

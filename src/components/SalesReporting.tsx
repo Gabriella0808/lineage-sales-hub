@@ -20,7 +20,7 @@ import {
   useDealers, useSalesReps, useTerritories, useRepTerritories,
   formatCurrency,
 } from "@/hooks/usePortalData";
-import { isBookingVisibleDate, BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
+import { BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
 import { InvoiceDetailSheet, type ViewLine } from "@/components/InvoiceDetailSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -688,7 +688,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
     for (const line of repLines) {
       if (line.metric_type !== targetMetric) continue;
-      if (targetMetric === "bookings" && !isBookingVisibleDate(line.transaction_date)) continue;
+      // Booking visibility cutoff applies to Live KPI only (via useDealerSalesAggregates).
+      // Dealer/Rep Reporting shows bookings for any date range the user selects.
 
       // Manager scope (system-controlled, always via customer_id).
       if (managerScopeCustomerIds !== null) {
@@ -803,7 +804,6 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     const bookingEntities = new Set<string>();
     for (const line of primaryBookings) {
       if (!scopeFilter(line)) continue;
-      if (!isBookingVisibleDate(line.transaction_date)) continue;
       bookings += line.amount;
       bookingLines++;
       const ek = entityKey(line);

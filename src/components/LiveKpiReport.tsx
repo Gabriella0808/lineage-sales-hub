@@ -320,13 +320,15 @@ export function LiveKpiReport({
   const repResolution = useMemo(() => {
     if (!scopedDbRepNames || scopedDbRepNames.length === 0) return null;
     const resolved = resolveRepIdentifiers(scopedDbRepNames, repIdentifiers);
-    console.log("[live-kpi] rep resolution:", {
-      input: scopedDbRepNames,
+    console.log("[booking-filter] 1. manager → reps resolved:", {
+      managerScopeRepIds,
+      allowedRepNames,
+      scopedDbRepNames,
       resolvedRepIds:   resolved.repIds,
       resolvedRepNames: resolved.repNames,
     });
     return resolved;
-  }, [scopedDbRepNames, repIdentifiers]);
+  }, [scopedDbRepNames, repIdentifiers, managerScopeRepIds, allowedRepNames]);
 
   // Live actuals from dealer_sales (current year YTD + prior year). Projections
   // (b26p / i26p) remain seeded from the spreadsheet defaults below and are

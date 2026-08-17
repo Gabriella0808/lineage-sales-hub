@@ -123,7 +123,9 @@ export function useDealerSalesAggregates(
           .in("name", repNames);
         if (repErr) { if (!cancelled) { setError(repErr.message); setLoading(false); } return; }
         const repIds = (repRows ?? []).map((r: any) => r.id);
+        console.log("[booking-filter] 2. reps resolved:", { repNames, foundCount: repIds.length, repIds });
         if (repIds.length === 0) {
+          console.warn("[booking-filter] no sales_reps matched by name — returning zeros. Names searched:", repNames);
           if (!cancelled) { setData(MONTH_NAMES.map((m) => agg[m])); setLoading(false); }
           return;
         }
@@ -133,7 +135,9 @@ export function useDealerSalesAggregates(
           .in("rep_id", repIds);
         if (dealerErr) { if (!cancelled) { setError(dealerErr.message); setLoading(false); } return; }
         dealerIds = (dealerRows ?? []).map((d: any) => d.id);
+        console.log("[booking-filter] 3. dealers resolved:", { dealerCount: dealerIds.length, dealerIds: dealerIds.slice(0, 10) });
         if (dealerIds.length === 0) {
+          console.warn("[booking-filter] no dealers found for those reps — returning zeros.");
           if (!cancelled) { setData(MONTH_NAMES.map((m) => agg[m])); setLoading(false); }
           return;
         }
@@ -174,7 +178,15 @@ export function useDealerSalesAggregates(
           { p_years: [currentYear, prevYear], p_dealer_ids: dealerIds },
         );
         if (bookingErr) { if (!cancelled) { setError(bookingErr.message); setLoading(false); } return; }
-        for (const r of (bookingRows ?? []) as any[]) {
+        const rows = (bookingRows ?? []) as any[];
+        const augRows = rows.filter(r => Number(r.year) === currentYear && Number(r.month) === 8);
+        console.log("[booking-filter] 4. RPC kpi_monthly_booking_rollup raw results:", {
+          totalRows: rows.length,
+          currentYearRows: rows.filter(r => Number(r.year) === currentYear),
+          augustRows: augRows,
+          augustTotal: augRows.reduce((s: number, r: any) => s + (Number(r.bookings) || 0), 0),
+        });
+        for (const r of rows) {
           const monthIdx = (Number(r.month) || 0) - 1;
           if (monthIdx < 0 || monthIdx > 11) continue;
           const name = MONTH_NAMES[monthIdx];
@@ -193,6 +205,9 @@ export function useDealerSalesAggregates(
             agg[name].b25Warehouse += bkW;
           }
         }
+        console.log("[booking-filter] 5. Live KPI monthly booking totals after filter:", {
+          months: MONTH_NAMES.map(m => ({ m, ytdB: agg[m].ytdB, b25: agg[m].b25 })).filter(x => x.ytdB > 0 || x.b25 > 0),
+        });
       }
 
       // ---------- Invoicing (server-side view first, then client-side fallback) ----------

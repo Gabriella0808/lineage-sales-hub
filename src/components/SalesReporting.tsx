@@ -20,6 +20,7 @@ import {
   useDealers, useSalesReps, useTerritories, useRepTerritories,
   formatCurrency,
 } from "@/hooks/usePortalData";
+import { useRepTargets, TARGET_MONTHS, type RepTarget } from "@/hooks/useRepTargets";
 import { BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
 import { InvoiceDetailSheet, type ViewLine } from "@/components/InvoiceDetailSheet";
 
@@ -502,6 +503,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const { data: reps           = [] } = useSalesReps();
   const { data: territories    = [] } = useTerritories();
   const { data: repTerritories = [] } = useRepTerritories();
+  const { data: targets2026    = [] } = useRepTargets(2026);
+
+  // acctivate_id (lowercase) → rep_targets row for goal % computation
+  const repAcIdToTarget = useMemo(() => {
+    const map = new Map<string, RepTarget>();
+    for (const rep of reps) {
+      if (!rep.acctivate_id) continue;
+      const target = targets2026.find((t) => t.rep_id === rep.id);
+      if (target) map.set(rep.acctivate_id.trim().toLowerCase(), target);
+    }
+    return map;
+  }, [reps, targets2026]);
 
   // ── Fetch view data ───────────────────────────────────────────────────────
 
@@ -672,6 +685,40 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   };
   const { data: bookingRows  = [] } = useGroupedRows({ ...rpcBase, metric: "bookings" }, useRpcMode);
   const { data: invoicedRows = [] } = useGroupedRows({ ...rpcBase, metric: "invoiced" }, useRpcMode);
+
+  // Fixed MTD + YTD per-rep actuals for goal % (only fetched in rep + RPC mode).
+  const rpcMetric = (metric === "invoices" ? "invoiced" : "bookings") as "invoiced" | "bookings";
+  const { data: repMtdRows = [] } = useGroupedRows(
+    { ...rpcBase, metric: rpcMetric, from: startOfMonth(today), to: today, compFrom: null, compTo: null },
+    useRpcMode && groupBy === "rep",
+  );
+  const { data: repYtdRows = [] } = useGroupedRows(
+    { ...rpcBase, metric: rpcMetric, from: startOfYear(today), to: today, compFrom: null, compTo: null },
+    useRpcMode && groupBy === "rep",
+  );
+
+  // MTD % of goal + YTD % of goal per rep (keyed by Acctivate rep_id, lowercase)
+  const repGoalMap = useMemo(() => {
+    if (groupBy !== "rep") return new Map<string, { mtdPct: number | null; ytdPct: number | null }>();
+    const curMonthIdx = new Date().getMonth(); // 0 = Jan
+    const curMonthKey = TARGET_MONTHS[curMonthIdx];
+    const ytdKeys = TARGET_MONTHS.slice(0, curMonthIdx + 1);
+    const allKeys = new Set([...repMtdRows.map((r) => r.entity_key), ...repYtdRows.map((r) => r.entity_key)]);
+    const map = new Map<string, { mtdPct: number | null; ytdPct: number | null }>();
+    for (const key of allKeys) {
+      const target = repAcIdToTarget.get(key);
+      if (!target) continue;
+      const mtdAct = repMtdRows.find((r) => r.entity_key === key)?.primary_amt ?? 0;
+      const ytdAct = repYtdRows.find((r) => r.entity_key === key)?.primary_amt ?? 0;
+      const mtdGoal = Number(target[curMonthKey as keyof RepTarget]) || 0;
+      const ytdGoal = ytdKeys.reduce((s, k) => s + (Number(target[k as keyof RepTarget]) || 0), 0);
+      map.set(key, {
+        mtdPct: mtdGoal > 0 ? (mtdAct / mtdGoal) * 100 : null,
+        ytdPct: ytdGoal > 0 ? (ytdAct / ytdGoal) * 100 : null,
+      });
+    }
+    return map;
+  }, [groupBy, repMtdRows, repYtdRows, repAcIdToTarget]);
 
   // ── Filter options from view data ─────────────────────────────────────────
 
@@ -1299,6 +1346,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 leftHeader={leftHeader}
                 showComparison={compareMode !== "none"}
                 onRowClick={(key, label) => setDrillRow({ key, label })}
+                goalData={groupBy === "rep" ? repGoalMap : undefined}
               />
             ) : display === "monthly" ? (
               <MonthlyTable
@@ -1344,13 +1392,19 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
 // ── Table sub-components ──────────────────────────────────────────────────────
 
+function fmtGoalPct(v: number | null) {
+  if (v == null) return null;
+  return `${v.toFixed(0)}%`;
+}
+
 function TotalTable({
-  rows, leftHeader, showComparison, onRowClick,
+  rows, leftHeader, showComparison, onRowClick, goalData,
 }: {
   rows: { key: string; label: string; primary: number; comparative: number }[];
   leftHeader: string;
   showComparison?: boolean;
   onRowClick?: (key: string, label: string) => void;
+  goalData?: Map<string, { mtdPct: number | null; ytdPct: number | null }>;
 }) {
   const totalP = rows.reduce((s, r) => s + r.primary, 0);
   const totalC = rows.reduce((s, r) => s + r.comparative, 0);
@@ -1395,10 +1449,21 @@ function TotalTable({
               )}
               onClick={onRowClick ? () => onRowClick(r.key, r.label) : undefined}
             >
-              <td className="px-5 py-3 font-medium sticky left-0 bg-card z-10 max-w-[220px] truncate">
+              <td className="px-5 py-3 font-medium sticky left-0 bg-card z-10 max-w-[220px]">
                 {onRowClick ? (
-                  <button type="button" className="text-left text-primary hover:underline truncate max-w-full">
-                    {r.label}
+                  <button type="button" className="text-left text-primary hover:underline block max-w-full">
+                    <span className="truncate block">{r.label}</span>
+                    {goalData?.has(r.key) && (() => {
+                      const g = goalData.get(r.key)!;
+                      const m = fmtGoalPct(g.mtdPct);
+                      const y = fmtGoalPct(g.ytdPct);
+                      if (!m && !y) return null;
+                      return (
+                        <span className="block text-[10px] font-normal text-muted-foreground mt-0.5">
+                          {m ?? "—"} MTD · {y ?? "—"} YTD
+                        </span>
+                      );
+                    })()}
                   </button>
                 ) : r.label}
               </td>

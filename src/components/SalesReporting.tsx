@@ -503,18 +503,19 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const { data: reps           = [] } = useSalesReps();
   const { data: territories    = [] } = useTerritories();
   const { data: repTerritories = [] } = useRepTerritories();
-  const { data: targets2026    = [] } = useRepTargets(2026);
+  // Fetch targets for whichever year the primary range ends in (follows the user's date filter).
+  const { data: repYearTargets = [] } = useRepTargets(primary.to.getFullYear());
 
   // acctivate_id (lowercase) → rep_targets row for goal % computation
   const repAcIdToTarget = useMemo(() => {
     const map = new Map<string, RepTarget>();
     for (const rep of reps) {
       if (!rep.acctivate_id) continue;
-      const target = targets2026.find((t) => t.rep_id === rep.id);
+      const target = repYearTargets.find((t) => t.rep_id === rep.id);
       if (target) map.set(rep.acctivate_id.trim().toLowerCase(), target);
     }
     return map;
-  }, [reps, targets2026]);
+  }, [reps, repYearTargets]);
 
   // ── Fetch view data ───────────────────────────────────────────────────────
 
@@ -687,38 +688,52 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const { data: invoicedRows = [] } = useGroupedRows({ ...rpcBase, metric: "invoiced" }, useRpcMode);
 
   // Fixed MTD + YTD per-rep actuals for goal % (only fetched in rep + RPC mode).
+  // Reference date = end of primary range so the columns follow the user's period, not today.
+  // Brand/SKU filters are excluded — goals are total per-rep, not per-brand.
   const rpcMetric = (metric === "invoices" ? "invoiced" : "bookings") as "invoiced" | "bookings";
+  const goalQueryBase = {
+    groupBy:     "rep" as const,
+    customerIds: rpcCustomerIds,
+    brandCats:   null,
+    skus:        null,
+    repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
+    managerId:   managerId ?? null,
+    compFrom:    null as null,
+    compTo:      null as null,
+  };
   const { data: repMtdRows = [] } = useGroupedRows(
-    { ...rpcBase, metric: rpcMetric, from: startOfMonth(today), to: today, compFrom: null, compTo: null },
+    { ...goalQueryBase, metric: rpcMetric, from: startOfMonth(primary.to), to: primary.to },
     useRpcMode && groupBy === "rep",
   );
   const { data: repYtdRows = [] } = useGroupedRows(
-    { ...rpcBase, metric: rpcMetric, from: startOfYear(today), to: today, compFrom: null, compTo: null },
+    { ...goalQueryBase, metric: rpcMetric, from: startOfYear(primary.to), to: primary.to },
     useRpcMode && groupBy === "rep",
   );
 
-  // MTD % of goal + YTD % of goal per rep (keyed by Acctivate rep_id, lowercase)
+  // MTD % of goal + YTD % of goal per rep.
+  // Month reference = primary.to's month (so it follows the date filter, not always today).
+  // entity_key from the RPC is raw Acctivate rep_id — lowercase before map lookup.
   const repGoalMap = useMemo(() => {
     if (groupBy !== "rep") return new Map<string, { mtdPct: number | null; ytdPct: number | null }>();
-    const curMonthIdx = new Date().getMonth(); // 0 = Jan
-    const curMonthKey = TARGET_MONTHS[curMonthIdx];
-    const ytdKeys = TARGET_MONTHS.slice(0, curMonthIdx + 1);
+    const refMonthIdx = primary.to.getMonth(); // 0 = Jan
+    const refMonthKey = TARGET_MONTHS[refMonthIdx];
+    const ytdKeys     = TARGET_MONTHS.slice(0, refMonthIdx + 1);
     const allKeys = new Set([...repMtdRows.map((r) => r.entity_key), ...repYtdRows.map((r) => r.entity_key)]);
     const map = new Map<string, { mtdPct: number | null; ytdPct: number | null }>();
     for (const key of allKeys) {
-      const target = repAcIdToTarget.get(key);
+      const target = repAcIdToTarget.get(key.trim().toLowerCase());
       if (!target) continue;
-      const mtdAct = repMtdRows.find((r) => r.entity_key === key)?.primary_amt ?? 0;
-      const ytdAct = repYtdRows.find((r) => r.entity_key === key)?.primary_amt ?? 0;
-      const mtdGoal = Number(target[curMonthKey as keyof RepTarget]) || 0;
+      const mtdAct  = repMtdRows.find((r) => r.entity_key === key)?.primary_amt ?? 0;
+      const ytdAct  = repYtdRows.find((r) => r.entity_key === key)?.primary_amt ?? 0;
+      const mtdGoal = Number(target[refMonthKey as keyof RepTarget]) || 0;
       const ytdGoal = ytdKeys.reduce((s, k) => s + (Number(target[k as keyof RepTarget]) || 0), 0);
       map.set(key, {
-        mtdPct: mtdGoal > 0 ? (mtdAct / mtdGoal) * 100 : null,
-        ytdPct: ytdGoal > 0 ? (ytdAct / ytdGoal) * 100 : null,
+        mtdPct: mtdGoal > 0 ? (mtdAct  / mtdGoal) * 100 : null,
+        ytdPct: ytdGoal > 0 ? (ytdAct  / ytdGoal) * 100 : null,
       });
     }
     return map;
-  }, [groupBy, repMtdRows, repYtdRows, repAcIdToTarget]);
+  }, [groupBy, primary.to, repMtdRows, repYtdRows, repAcIdToTarget]);
 
   // ── Filter options from view data ─────────────────────────────────────────
 

@@ -156,13 +156,23 @@ export default function CompanyWidePage() {
             managerName={managerName}
             lockedRepName={isRep ? currentRep?.name ?? null : null}
             managerScopeRepIds={managerScopeRepIds}
+            managerId={effectiveManagerId === "all" ? null : effectiveManagerId}
           />
         )}
         {activeReport === "dealer-reporting" && (
-          <SalesReporting groupBy="dealer" managerScopeRepIds={managerScopeRepIds} />
+          <SalesReporting
+            groupBy="dealer"
+            managerScopeRepIds={managerScopeRepIds}
+            managerId={effectiveManagerId === "all" ? null : effectiveManagerId}
+          />
         )}
         {activeReport === "rep-reporting" && !isRep && (
-          <SalesReporting groupBy="rep" groupByOptions={["rep", "territory"]} managerScopeRepIds={managerScopeRepIds} />
+          <SalesReporting
+            groupBy="rep"
+            groupByOptions={["rep", "territory"]}
+            managerScopeRepIds={managerScopeRepIds}
+            managerId={effectiveManagerId === "all" ? null : effectiveManagerId}
+          />
         )}
       </section>
     </div>

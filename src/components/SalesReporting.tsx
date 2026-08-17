@@ -137,6 +137,7 @@ interface GroupedRowsParams {
   brandCats:   string[] | null;
   skus:        string[] | null;
   repIds:      string[] | null;  // lowercase Acctivate rep_ids for canonical rep filter
+  managerId:   string | null;    // managers.id UUID; null = company-wide
 }
 
 function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
@@ -153,6 +154,7 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
       JSON.stringify(params.brandCats),
       JSON.stringify(params.skus),
       JSON.stringify(params.repIds),
+      params.managerId,
     ],
     enabled,
     staleTime: 2 * 60 * 1000,
@@ -170,6 +172,7 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
           p_brand_cats:   params.brandCats   ?? null,
           p_skus:         params.skus        ?? null,
           p_rep_ids:      params.repIds      ?? null,
+          p_manager_id:   params.managerId   ?? null,
         },
       );
       if (error) {
@@ -445,9 +448,10 @@ interface Props {
   groupBy: GroupBy;
   managerScopeRepIds?: string[] | null;
   groupByOptions?: GroupBy[];
+  managerId?: string | null;
 }
 
-export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions }: Props) {
+export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions, managerId }: Props) {
   const today = new Date();
 
   const [groupBy, setGroupBy]         = useState<GroupBy>(initialGroupBy);
@@ -543,22 +547,22 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return list;
   }, [dealers, managerScopeRepIds, territoryIds, repIds]);
 
-  // Customer IDs for the RPC p_customer_ids param: manager scope + territory + dealer only.
+  // Customer IDs for the RPC p_customer_ids param: territory + dealer sub-filters only.
+  // Manager scope is handled via p_manager_id — NOT included here.
   // Rep filter is excluded here because it is handled via p_rep_ids (canonical acctivate_id).
   // Values are lowercase to match the lower() SQL comparison in the RPCs.
   const rpcCustomerIds = useMemo<string[] | null>(() => {
-    const hasFilter = !!managerScopeRepIds || territoryIds.length > 0 || dealerIds.length > 0;
+    const hasFilter = territoryIds.length > 0 || dealerIds.length > 0;
     if (!hasFilter) return null;
 
     let list = dealers;
-    if (managerScopeRepIds)      list = list.filter((d) => d.rep_id && managerScopeRepIds.includes(d.rep_id));
     if (territoryIds.length > 0) list = list.filter((d) => d.territory_id && territoryIds.includes(d.territory_id));
     if (dealerIds.length > 0)    list = list.filter((d) => dealerIds.includes(d.id));
 
     return list
       .map((d) => d.acctivate_id?.trim().toLowerCase())
       .filter((id): id is string => !!id);
-  }, [managerScopeRepIds, territoryIds, dealerIds, dealers]);
+  }, [territoryIds, dealerIds, dealers]);
 
   // Territory names for the selected territoryIds (for line-mode canonical filter).
   const selectedTerritoryNames = useMemo(() => {
@@ -646,9 +650,28 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       brandCats:   brandCategories.length > 0 ? brandCategories : null,
       skus:        skus.length > 0 ? skus : null,
       repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
+      managerId:   managerId ?? null,
     },
     useRpcMode,
   );
+
+  // Always-on bookings + invoiced rows for summary cards and drill-sheet header.
+  // React Query deduplicates: when the active metric already matches, the cached
+  // groupedRows result is returned — no extra network call.
+  const rpcBase = {
+    groupBy:     (groupBy === "territory" ? "dealer" : groupBy) as "dealer" | "rep",
+    from:        primary.from,
+    to:          primary.to,
+    compFrom:    compareMode !== "none" ? comparative.from : null,
+    compTo:      compareMode !== "none" ? comparative.to   : null,
+    customerIds: rpcCustomerIds,
+    brandCats:   brandCategories.length > 0 ? brandCategories : null,
+    skus:        skus.length > 0 ? skus : null,
+    repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
+    managerId:   managerId ?? null,
+  };
+  const { data: bookingRows  = [] } = useGroupedRows({ ...rpcBase, metric: "bookings" }, useRpcMode);
+  const { data: invoicedRows = [] } = useGroupedRows({ ...rpcBase, metric: "invoiced" }, useRpcMode);
 
   // ── Filter options from view data ─────────────────────────────────────────
 
@@ -852,6 +875,25 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return { total, lines, entities };
   }, [groupedRows, useRpcMode]);
 
+  // ── Summary card stats ────────────────────────────────────────────────────
+
+  const aheadCount = compareMode !== "none"
+    ? bookingRows.filter((r) => r.primary_amt > 0 && r.primary_amt > r.comp_amt).length
+    : 0;
+  const behindCount = compareMode !== "none"
+    ? bookingRows.filter((r) => r.primary_amt > 0 && r.primary_amt < r.comp_amt && r.comp_amt > 0).length
+    : 0;
+
+  const openTerritories = useMemo(() => {
+    if (groupBy !== "rep") return 0;
+    const assignedTerrIds = new Set(repTerritories.map((rt) => rt.territory_id));
+    return territories.filter((t) => !assignedTerrIds.has(t.id)).length;
+  }, [groupBy, territories, repTerritories]);
+
+  // Pre-fetched totals for the drill-sheet header
+  const drillBookings = drillRow ? bookingRows.find((r) => r.entity_key === drillRow.key)?.primary_amt : undefined;
+  const drillInvoiced = drillRow ? invoicedRows.find((r) => r.entity_key === drillRow.key)?.primary_amt : undefined;
+
   // ── Active filter chips ───────────────────────────────────────────────────
 
   const activeFilterChips = useMemo((): { label: string; clear: () => void }[] => {
@@ -919,6 +961,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           p_rep_ids:      rids,
           p_limit:        limit,
           p_offset:       offset,
+          p_manager_id:   managerId ?? null,
         },
       );
       if (error) {
@@ -939,7 +982,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       }));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRpcMode, drillRow?.key, metric, groupBy, primary.from, primary.to, rpcCustomerIds, selectedRepAcIds, brandCategories, skus]);
+  }, [useRpcMode, drillRow?.key, metric, groupBy, primary.from, primary.to, rpcCustomerIds, selectedRepAcIds, brandCategories, skus, managerId]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
@@ -963,6 +1006,41 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
   return (
     <div className="space-y-4">
+
+      {/* ── B1. Summary Cards (Ahead / Behind / Open Territories) ─── */}
+      {useRpcMode && compareMode !== "none" && (
+        <div className={cn("grid gap-3", groupBy === "rep" ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
+                {groupBy === "rep" ? "Reps Ahead" : "Dealers Ahead"}
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">{aheadCount}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Bookings vs last year</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-5">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
+                {groupBy === "rep" ? "Reps Behind" : "Dealers Behind"}
+              </p>
+              <p className="text-2xl font-semibold tabular-nums">{behindCount}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Bookings vs last year</p>
+            </CardContent>
+          </Card>
+          {groupBy === "rep" && (
+            <Card>
+              <CardContent className="p-5">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
+                  Open Territories
+                </p>
+                <p className="text-2xl font-semibold tabular-nums">{openTerritories}</p>
+                <p className="text-[11px] text-muted-foreground mt-1">No rep assigned</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* ── A. Filter Card ─────────────────────────────────────────── */}
       <Card>
@@ -1166,66 +1244,6 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         </CardContent>
       </Card>
 
-      {/* ── B. KPI Cards ───────────────────────────────────────────── */}
-      {metric === "invoices" ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard
-            label={display === "total" ? "Total YTD Invoices" : "Total Invoices"}
-            value={formatCurrency(invTotal)}
-            sub={dateRangeLabel}
-            icon={FileText}
-          />
-          <KpiCard
-            label="Avg per Line"
-            value={invLines > 0 ? formatCurrency(invTotal / invLines) : "—"}
-            sub="Per invoice line item"
-            icon={Calculator}
-          />
-          <KpiCard
-            label="Invoice Lines"
-            value={invLines.toLocaleString()}
-            sub={display === "total" ? "YTD rows" : "Rows in selected range"}
-            icon={Hash}
-          />
-          <KpiCard
-            label={`${leftHeader}s Active`}
-            value={String(invEntities)}
-            sub={display === "total" ? "With YTD invoice activity" : "With invoice activity"}
-            icon={Users2}
-          />
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard
-            label="Total Bookings"
-            value={primary.to < new Date(BOOKINGS_VISIBLE_FROM) ? "—" : formatCurrency(summaryTotals.bookings)}
-            sub={dateRangeLabel}
-            icon={ShoppingCart}
-            muted={primary.to < new Date(BOOKINGS_VISIBLE_FROM)}
-          />
-          <KpiCard
-            label="Avg per Line"
-            value={summaryTotals.bookingLines > 0
-              ? formatCurrency(summaryTotals.bookings / summaryTotals.bookingLines)
-              : "—"}
-            sub="Per booking line item"
-            icon={Calculator}
-          />
-          <KpiCard
-            label="Booking Lines"
-            value={summaryTotals.bookingLines.toLocaleString()}
-            sub="Rows in selected range"
-            icon={Hash}
-          />
-          <KpiCard
-            label={`${leftHeader}s Active`}
-            value={String(summaryTotals.bookingEntities)}
-            sub="With booking activity"
-            icon={Users2}
-          />
-        </div>
-      )}
-
       {/* ── C. Results Table ────────────────────────────────────────── */}
       <Card>
         <CardHeader className="pb-0 pt-5 px-5">
@@ -1317,6 +1335,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         repAcIdToCanonical={repAcIdToCanonical}
         fetchLines={drillDetailFetch}
         metric={metric}
+        primaryBookingsAmt={drillBookings}
+        primaryInvoicedAmt={drillInvoiced}
       />
     </div>
   );

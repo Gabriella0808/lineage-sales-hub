@@ -40,6 +40,10 @@ interface Props {
   /** When provided, detail lines are fetched lazily on sheet open instead of
    *  filtering the in-memory viewLines.  Used in RPC / Total-display mode. */
   fetchLines?: (params: { limit: number; offset: number }) => Promise<ViewLine[]>;
+  /** Pre-fetched totals from always-on RPC queries — used in RPC mode to show
+   *  both metrics in the header without a second per-metric line-fetch. */
+  primaryBookingsAmt?: number;
+  primaryInvoicedAmt?: number;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -118,6 +122,7 @@ const DETAIL_PAGE = 200;
 export function InvoiceDetailSheet({
   open, onOpenChange, groupBy, rowKey, rowLabel,
   from, to, compareFrom, compareTo, viewLines, repAcIdToCanonical, fetchLines, metric,
+  primaryBookingsAmt, primaryInvoicedAmt,
 }: Props) {
   // ── Lazy-load state (RPC / Total mode) ──────────────────────────────────────
   const [lazyLines,   setLazyLines]   = useState<ViewLine[]>([]);
@@ -224,11 +229,15 @@ export function InvoiceDetailSheet({
 
         {/* ── Stat cards ── */}
         {fetchLines ? (
-          // RPC / lazy mode: show only the active metric (no comparative available)
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          // RPC / lazy mode: show both metrics from pre-fetched totals + lazy-loaded line count
+          <div className="mt-4 grid grid-cols-3 gap-2">
             <StatCard
-              label={metric === "invoices" ? "Invoiced" : "Bookings"}
-              value={lazyLoading && lazyLines.length === 0 ? "…" : formatCurrency(sumAmount(lazyLines))}
+              label="Invoiced"
+              value={primaryInvoicedAmt != null ? formatCurrency(primaryInvoicedAmt) : "—"}
+            />
+            <StatCard
+              label="Bookings"
+              value={primaryBookingsAmt != null ? formatCurrency(primaryBookingsAmt) : "—"}
             />
             <StatCard
               label="Lines"

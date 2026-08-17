@@ -1,15 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 import { formatCurrency, useSalesReps } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChevronsUpDown, Check, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { REP_MONTHLY, type RepMonthRow } from "@/data/repMonthly";
 import { useDealerSalesAggregates } from "@/hooks/useDealerSalesAggregates";
-import { useRepIdentifiers } from "@/hooks/useRepIdentifiers";
-import { resolveRepIdentifiers } from "@/utils/repResolver";
-import { MtdInvoicingCard } from "@/components/MtdInvoicingCard";
+import { supabase } from "@/integrations/supabase/client";
 import { useRepTargets, MONTH_LABEL_TO_KEY, type RepTarget } from "@/hooks/useRepTargets";
 import { isBookingVisible } from "@/utils/bookingCutoff";
 
@@ -69,27 +68,6 @@ const REP_BOOK = [
   { name: "WI/IL",            book: 0,         pct: 0 },
 ];
 
-// Maps display rep names (REP_BOOK) -  keys in REP_MONTHLY (spreadsheet tabs).
-// When a rep has multiple tabs (e.g. Shindell 1 + 2), list them all and they'll be summed.
-const REP_NAME_TO_MONTHLY_KEYS: Record<string, string[]> = {
-  "Internet":         ["Internet"],
-  "Hospitality":      ["Sergio"],
-  "House":            ["House"],
-  "Skip Camillo":     ["Skip"],
-  "Barbara J":        ["Barbara J"],
-  "Mike Durham":      ["Durham"],
-  "Bruce Quillen":    ["Quillen"],
-  "Jordan Shindell":  ["Shindell 1", "Shindell 2"],
-  "Stewart Hunt":     ["Stewart H"],
-  "Gary Fryer":       ["Fryer"],
-  "TN/KY":            ["TN/KY"],
-  "Dave Ervin":       ["Ervin"],
-  "Kerry":            ["Kerry"],
-  "Peter Avella":     ["Avella"],
-  "Brad Robertson":   ["Robertson"],
-  "Jastal":           ["Jastal"],
-  "WI/IL":            ["WI/IL"],
-};
 
 // Maps Live KPI display rep names -  matching name(s) in the sales_reps table
 // (used to pull `rep_targets` for the 26 Proj column). Names not listed fall
@@ -108,22 +86,6 @@ const DB_NAME_TO_DISPLAY: Record<string, string> = Object.fromEntries(
   ),
 );
 
-function sumRepMonthly(keys: string[]): RepMonthRow[] | null {
-  const tabs = keys.map((k) => REP_MONTHLY[k]).filter(Boolean);
-  if (tabs.length === 0) return null;
-  if (tabs.length === 1) return tabs[0];
-  // Sum across multiple tabs by month
-  return tabs[0].map((row, i) => {
-    let b25 = 0, b26p = 0, ytdB = 0, i25 = 0, i26p = 0, ytdI = 0;
-    for (const t of tabs) {
-      const r = t[i] ?? t.find((x) => x.m === row.m);
-      if (!r) continue;
-      b25 += r.b25; b26p += r.b26p; ytdB += r.ytdB;
-      i25 += r.i25; i26p += r.i26p; ytdI += r.ytdI;
-    }
-    return { m: row.m, b25, b26p, ytdB, i25, i26p, ytdI };
-  });
-}
 
 // Maps REP_BOOK display names -  list of territory names they cover.
 // Used by the Territory filter on the Live KPI report.
@@ -176,12 +138,32 @@ const TODAY = new Date();
 const END = new Date(TODAY.getFullYear(), 11, 31);
 const DAYS_REMAINING = Math.max(0, Math.ceil((END.getTime() - TODAY.getTime()) / 86400000));
 
-const fmtPct = (n: number) => n === 0 ? "-" : `${(n * 100).toFixed(1)}%`;
+const fmtPct = (n: number) => (!isFinite(n) || n === 0) ? "-" : `${(n * 100).toFixed(1)}%`;
 // Like fmtPct but never returns "-" for 0 — used when we know classified data exists
 // and a zero share is meaningful (e.g. container=0 while warehouse>0).
 const fmtPctRaw = (n: number) => `${(n * 100).toFixed(1)}%`;
 
-const growth = (p: number, a: number) => a === 0 ? 0 : (p - a) / a;
+type CollKey = "SW" | "FIN" | "LUX" | "HOSP" | "Other";
+const BRAND_COLLECTIONS: CollKey[] = ["SW", "FIN", "LUX", "HOSP"];
+
+function classifyCollection(bc: string | null): CollKey {
+  if (!bc) return "Other";
+  const s = bc.toLowerCase();
+  if (s.startsWith("sw") || s.includes("sea wind")) return "SW";
+  if (s.startsWith("fin") || s.includes("finn")) return "FIN";
+  if (s.startsWith("lux")) return "LUX";
+  if (s.startsWith("hosp") || s.includes("hospit")) return "HOSP";
+  return "Other";
+}
+
+// TODO: DAILY EMAIL DIGEST — wire this payload to a Supabase Edge Function
+// (e.g. Resend API) when email automation is approved. Do NOT call automatically.
+export function prepareDailyEmailPayload(params: {
+  date: string; scope: string;
+  totalInv: number; totalBkg: number;
+  invByCollection: Record<CollKey, number>;
+  bkgByCollection: Record<CollKey, number>;
+}) { return params; }
 
 const MONTHS = ["All","January","February","March","April","May","June","July","August","September","October","November","December"] as const;
 type MonthFilter = typeof MONTHS[number];
@@ -189,27 +171,17 @@ type MonthFilter = typeof MONTHS[number];
 type MetricFilter = "both" | "bookings" | "invoiced";
 type LineFilter = "all" | "lux" | "sw" | "fl";
 
-function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-        active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 export function LiveKpiReport({
   managerName,
+  managerId,
   lockedRepName,
   managerScopeRepIds,
 }: {
   managerName?: string;
+  /** managers.id UUID from the URL — passed directly to the reporting RPC. null = all. */
+  managerId?: string | null;
   lockedRepName?: string | null;
-  /** Portal rep UUID[] from CompanyWidePage — DB-driven manager scope. null = all reps. */
+  /** Portal rep UUID[] from CompanyWidePage — used for UI scoping (dropdowns, spreadsheet). */
   managerScopeRepIds?: string[] | null;
 } = {}) {
   // Must be declared before allowedRepNames so the useMemo can read it.
@@ -279,72 +251,76 @@ export function LiveKpiReport({
     if (next.length !== repFilter.length) setRepFilter(next);
   }, [visibleReps, repFilter, lockedRepName]);
 
-  const [monthFilter, setMonthFilter] = useState<MonthFilter>("All");
-  const [metricFilter, setMetricFilter] = useState<MetricFilter>("both");
+  const [monthFilter] = useState<MonthFilter>("All");
+  const [metricFilter] = useState<MetricFilter>("both");
   const [monthlyLineFilter, setMonthlyLineFilter] = useState<Exclude<LineFilter, "all">[]>([]);
   const [brandPickerOpen, setBrandPickerOpen] = useState(false);
-  const [lineFilter, setLineFilter] = useState<LineFilter>("all");
-  const [lineMonthFilter, setLineMonthFilter] = useState<MonthFilter>("All");
-  const [overrides, setOverrides] = useState<ProjOverrides>(() => loadOverrides());
+  const [overrides] = useState<ProjOverrides>(() => loadOverrides());
+
+  // Resolve individual rep/territory selections → Acctivate rep codes (acctivate_id).
+  // When no individual rep is selected, managerId drives aggregation scope via
+  // get_manager_reporting_monthly's canonical manager join — no name resolution needed.
+  const selectedRepAcIds = useMemo<string[] | null>(() => {
+    let names: string[] | null = null;
+    if (lockedRepName) names = [lockedRepName];
+    else if (repFilter.length > 0) names = repFilter;
+    else if (territoryFilter.length > 0) names = visibleReps.map((r) => r.name);
+    if (names === null) return null;
+    return names
+      .map((name) => dbReps.find((r) => r.name === name)?.acctivate_id)
+      .filter((id): id is string => !!id && id.trim() !== "");
+  }, [lockedRepName, repFilter, territoryFilter, visibleReps, dbReps]);
+
+  // Acctivate IDs for the daily scope: individual rep selection takes priority,
+  // then manager scope (portal UUIDs → acctivate_ids via dbReps).
+  const effectiveDailyRepAcIds = useMemo<string[] | null>(() => {
+    if (selectedRepAcIds && selectedRepAcIds.length > 0) return selectedRepAcIds;
+    if (managerId && managerScopeRepIds && managerScopeRepIds.length > 0) {
+      return dbReps
+        .filter((r) => managerScopeRepIds.includes(r.id))
+        .map((r) => r.acctivate_id)
+        .filter((id): id is string => !!id && id.trim() !== "");
+    }
+    return null;
+  }, [selectedRepAcIds, managerId, managerScopeRepIds, dbReps]);
+
+  // Daily actuals — fetch one day of lines from the reporting view (small dataset),
+  // then filter client-side with case-insensitive rep_id matching.
+  const todayStr = format(TODAY, "yyyy-MM-dd");
+  const { data: rawDailyRows = [] } = useQuery({
+    queryKey: ["daily_actuals_v2", todayStr, JSON.stringify(effectiveDailyRepAcIds?.slice().sort() ?? null)],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("v_portal_dealer_rep_reporting_lines")
+        .select("metric_type, brand_category, amount, rep_id")
+        .eq("transaction_date", todayStr);
+      if (error) { console.error("[daily] actuals error:", error.message); return []; }
+      let rows = (data ?? []) as Array<{ metric_type: string; brand_category: string | null; amount: string | number; rep_id: string | null }>;
+      if (effectiveDailyRepAcIds && effectiveDailyRepAcIds.length > 0) {
+        const idSet = new Set(effectiveDailyRepAcIds.map((id) => id.trim().toLowerCase()));
+        rows = rows.filter((r) => r.rep_id && idSet.has(r.rep_id.trim().toLowerCase()));
+      }
+      return rows;
+    },
+  });
+
+  // Live actuals — single canonical source for all three reporting surfaces.
+  // Manager scope: managerId UUID → sales_reps.acctivate_id → rep_id join in DB.
+  // Rep/territory scope: selectedRepAcIds overrides managerId in the RPC.
+  const { data: liveAgg } = useDealerSalesAggregates({
+    managerId: managerId ?? null,
+    repAcIds: selectedRepAcIds,
+  });
 
   useEffect(() => {
-    try { localStorage.setItem(PROJ_STORAGE_KEY, JSON.stringify(overrides)); } catch { /* ignore */ }
-  }, [overrides]);
-
-  const updateLine = (month: string, key: "luxP" | "swP" | "flP", val: number) => {
-    setOverrides((prev) => ({
-      ...prev,
-      line: { ...(prev.line ?? {}), [month]: { ...(prev.line?.[month] ?? {}), [key]: val } },
-    }));
-  };
-
-  // Determine the rep scope for live aggregates (rep > territory > manager > all).
-  // This mirrors the logic used for targets/scaledMonthly so live invoiced data
-  // narrows down when a specific rep is viewed.
-  const scopedDbRepNames = useMemo<string[] | null>(() => {
-    let scoped: string[] | null = null;
-    if (repFilter.length > 0) scoped = repFilter;
-    else if (territoryFilter.length > 0) scoped = visibleReps.map((r) => r.name);
-    else if (allowedRepNames !== null) scoped = allowedRepNames; // use even if empty
-    // null → company-wide (no manager selected)
-    if (scoped === null) return null;
-    // empty → manager selected but no reps; keep empty so hook returns zeros, not all data
-    if (scoped.length === 0) return [];
-    return Array.from(new Set(scoped.flatMap((n) => REP_NAME_TO_DB_NAMES[n] ?? [n])));
-  }, [repFilter, territoryFilter, visibleReps, allowedRepNames]);
-
-  // Resolve dropdown display names → exact Acctivate rep_id / rep_name identifiers
-  // stored in v_portal_dealer_rep_reporting_lines. Falls back gracefully if the
-  // DB function hasn't been applied yet (returns empty mapping → name fallback).
-  const { data: repIdentifiers = [] } = useRepIdentifiers();
-  const repResolution = useMemo(() => {
-    if (!scopedDbRepNames || scopedDbRepNames.length === 0) return null;
-    const resolved = resolveRepIdentifiers(scopedDbRepNames, repIdentifiers);
-    console.log("[booking-filter] 1. manager → reps resolved:", {
-      managerScopeRepIds,
-      allowedRepNames,
-      scopedDbRepNames,
-      resolvedRepIds:   resolved.repIds,
-      resolvedRepNames: resolved.repNames,
-    });
-    return resolved;
-  }, [scopedDbRepNames, repIdentifiers, managerScopeRepIds, allowedRepNames]);
-
-  // Live actuals from dealer_sales (current year YTD + prior year). Projections
-  // (b26p / i26p) remain seeded from the spreadsheet defaults below and are
-  // user-editable via inline cells.
-  const { data: liveAgg } = useDealerSalesAggregates(scopedDbRepNames, repResolution);
-
-  useEffect(() => {
-    if (!scopedDbRepNames) return;
     const nonZeroMonths = liveAgg.filter((r) => r.ytdB > 0 || r.ytdI > 0);
     console.log("[live-kpi] actuals loaded:", {
-      repFilter,
-      scopedDbRepNames,
-      repResolution,
+      managerId,
+      selectedRepAcIds,
       months: nonZeroMonths.map((r) => `${r.m}: bookings=$${r.ytdB.toFixed(0)} invoiced=$${r.ytdI.toFixed(0)}`),
     });
-  }, [scopedDbRepNames, liveAgg, repResolution]);
+  }, [managerId, selectedRepAcIds, liveAgg]);
 
 
   const baseMonthly = useMemo(() => MONTHLY.map((seed) => {
@@ -354,10 +330,10 @@ export function LiveKpiReport({
       // Override actuals with live DB values.
       // i25: the view only covers the current year (QBO-synced), so fall back to
       // the KPI spreadsheet seed when the live value is absent or zero.
-      b25:  live ? live.b25  : seed.b25,
-      i25:  live && live.i25 > 0 ? live.i25 : seed.i25,
-      ytdB: live ? live.ytdB : seed.ytdB,
-      ytdI: live ? live.ytdI : seed.ytdI,
+      b25:  live && live.b25  > 0 ? live.b25  : seed.b25,
+      i25:  live && live.i25  > 0 ? live.i25  : seed.i25,
+      ytdB: live && live.ytdB > 0 ? live.ytdB : 0,
+      ytdI: live && live.ytdI > 0 ? live.ytdI : 0,
       // Branch-split invoice totals (live only - no seed fallback).
       i25Container:     live?.i25Container     ?? 0,
       i25Warehouse:     live?.i25Warehouse     ?? 0,
@@ -391,7 +367,6 @@ export function LiveKpiReport({
     () => repFilter.map((n) => REP_BOOK.find((r) => r.name === n)).filter(Boolean) as typeof REP_BOOK,
     [repFilter],
   );
-  const selectedRep = selectedRepObjs.length === 1 ? selectedRepObjs[0] : null;
   const hasRepSelection = repFilter.length > 0;
   const managerRepBook = useMemo(
     () => visibleReps.reduce((s, r) => s + r.book, 0),
@@ -402,63 +377,11 @@ export function LiveKpiReport({
     ? (totalRepBook > 0 ? selectedRepBook / totalRepBook : 0)
     : (allowedRepNames === null ? 1 : (totalRepBook > 0 ? managerRepBook / totalRepBook : 0));
 
-  // Line-level projections remain editable.
-  const saveLine = (month: string, key: "luxP" | "swP" | "flP", displayedVal: number) => {
-    const base = repShare > 0 ? displayedVal / repShare : displayedVal;
-    updateLine(month, key, base);
-  };
-
-  const scaledMonthly = useMemo(() => {
-    // Determine which rep names should be summed for the table/chart.
-    // Priority: explicit rep selection -  territory filter -  manager scope -  all.
-    let repNames: string[] | null = null;
-    if (hasRepSelection) {
-      repNames = repFilter;
-    } else if (territoryFilter.length > 0) {
-      repNames = visibleReps.map((r) => r.name);
-    } else if (allowedRepNames !== null) {
-      repNames = allowedRepNames; // may be empty — manager selected but no reps in spreadsheet
-    }
-
-    if (repNames) {
-      const allKeys = repNames.flatMap((n) => REP_NAME_TO_MONTHLY_KEYS[n] ?? []);
-      const rows = allKeys.length > 0 ? sumRepMonthly(allKeys) : null;
-      // Overlay live invoiced totals (filtered by rep scope) onto whichever
-      // base we use, so the "25 Act", YTD-invoiced and branch-split columns
-      // reflect the rep's actual Acctivate billing.
-      const liveByMonth = new Map(baseMonthly.map((r) => [r.m, r]));
-      const overlay = (row: { m: string; b25: number; b26p: number; ytdB: number; i25: number; i26p: number; ytdI: number }) => {
-        const live = liveByMonth.get(row.m);
-        return {
-          ...row,
-          // Override Bookings 26 Act with live open_sales_orders (already scoped to the
-          // selected rep/territory via the openByMonth query) instead of the static REP_MONTHLY seed.
-          ytdB:          live ? live.ytdB : row.ytdB,
-          i25:           live ? live.i25  : row.i25,
-          ytdI:          live ? live.ytdI : row.ytdI,
-          i25Container:  live?.i25Container  ?? 0,
-          i25Warehouse:  live?.i25Warehouse  ?? 0,
-          ytdIContainer: live?.ytdIContainer ?? 0,
-          ytdIWarehouse: live?.ytdIWarehouse ?? 0,
-          b25Container:  live?.b25Container  ?? 0,
-          b25Warehouse:  live?.b25Warehouse  ?? 0,
-          ytdBContainer: live?.ytdBContainer ?? 0,
-          ytdBWarehouse: live?.ytdBWarehouse ?? 0,
-        };
-      };
-      if (rows) return rows.map(overlay);
-      // Fallback: scale team totals by share (or zeros if no share).
-      if (allowedRepNames !== null && !hasRepSelection && territoryFilter.length === 0) {
-        return baseMonthly.map((r) => ({
-          ...r,
-          b25: r.b25 * repShare, b26p: r.b26p * repShare, ytdB: r.ytdB * repShare,
-          i25: r.i25 * repShare, i26p: r.i26p * repShare, ytdI: r.ytdI * repShare,
-        }));
-      }
-      return baseMonthly.map((r) => overlay({ m: r.m, b25: 0, b26p: 0, ytdB: 0, i25: 0, i26p: 0, ytdI: 0 }));
-    }
-    return baseMonthly;
-  }, [hasRepSelection, repFilter, territoryFilter, visibleReps, baseMonthly, allowedRepNames, repShare]);
+  // Actuals (ytdB, ytdI, b25, i25, all branch-splits) are already scoped to the
+  // selected manager / rep by useDealerSalesAggregates → get_manager_reporting_monthly.
+  // The canonical DB is the single source of truth — no spreadsheet overlay or
+  // repShare scaling is applied to actuals.
+  const scaledMonthly = baseMonthly;
 
   // 26 Proj is sourced from the Sales Targets section (rep_targets table).
   // Sum targets for the reps currently in scope; fall back to seed projections only when no targets exist.
@@ -494,11 +417,38 @@ export function LiveKpiReport({
 
   const scaledMonthlyWithTargets = useMemo(() => scaledMonthly.map(r => {
     const tgt = targetByMonth[r.m] ?? 0;
-    // Always source 26 Proj (Bookings & Invoiced) from the Sales Targets section.
-    return { ...r, b26p: tgt, i26p: tgt };
+    // Only override 26 Proj when real targets exist; keep seed values when none are set.
+    return tgt > 0 ? { ...r, b26p: tgt, i26p: tgt } : r;
   }), [scaledMonthly, targetByMonth]);
 
-  
+  const MONTH_NAMES_ALL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const currentMonthName = MONTH_NAMES_ALL[TODAY.getMonth()];
+  const currentMonthEntry = useMemo(
+    () => scaledMonthlyWithTargets.find((r) => r.m === currentMonthName) ?? null,
+    [scaledMonthlyWithTargets, currentMonthName],
+  );
+  const mtdB = currentMonthEntry?.ytdB ?? 0;
+  const mtdI = currentMonthEntry?.ytdI ?? 0;
+  const mtdBookingVisible = isBookingVisible(TODAY.getFullYear(), TODAY.getMonth() + 1);
+
+  // Full monthly target from rep_targets (not prorated — shows total month goal).
+  const daysElapsed = TODAY.getDate();
+  const daysInMonth = new Date(TODAY.getFullYear(), TODAY.getMonth() + 1, 0).getDate();
+  const mtdBGoal = currentMonthEntry?.b26p ?? 0;
+  const mtdIGoal = currentMonthEntry?.i26p ?? 0;
+
+  const dailyStats = useMemo(() => {
+    const inv: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, Other: 0 };
+    const bkg: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, Other: 0 };
+    let totalInv = 0, totalBkg = 0;
+    for (const row of rawDailyRows) {
+      const coll = classifyCollection(row.brand_category);
+      const amt = Number(row.amount) || 0;
+      if (row.metric_type === "invoiced") { inv[coll] += amt; totalInv += amt; }
+      else if (row.metric_type === "bookings") { bkg[coll] += amt; totalBkg += amt; }
+    }
+    return { inv, bkg, totalInv, totalBkg };
+  }, [rawDailyRows]);
 
   const scaledLine = useMemo(() => baseLine.map((r) => ({
     ...r,
@@ -517,10 +467,6 @@ export function LiveKpiReport({
         (monthlyLineFilter.includes("lux") ? lineRow.luxP : 0) +
         (monthlyLineFilter.includes("sw") ? lineRow.swP : 0) +
         (monthlyLineFilter.includes("fl") ? lineRow.flP : 0);
-      const lineA =
-        (monthlyLineFilter.includes("lux") ? lineRow.luxA : 0) +
-        (monthlyLineFilter.includes("sw") ? lineRow.swA : 0) +
-        (monthlyLineFilter.includes("fl") ? lineRow.flA : 0);
       const share = totalP > 0 ? lineP / totalP : 0;
       return {
         ...r,
@@ -552,12 +498,8 @@ export function LiveKpiReport({
   const sumYtdI = sum(monthly, "ytdI");
   const sumYtdICont = monthly.reduce((s, r: any) => s + (r.ytdIContainer ?? 0), 0);
   const sumYtdIWh = monthly.reduce((s, r: any) => s + (r.ytdIWarehouse ?? 0), 0);
-  const sumI25Cont = monthly.reduce((s, r: any) => s + (r.i25Container ?? 0), 0);
-  const sumI25Wh = monthly.reduce((s, r: any) => s + (r.i25Warehouse ?? 0), 0);
   const sumYtdBCont = monthly.reduce((s, r: any) => s + (r.ytdBContainer ?? 0), 0);
   const sumYtdBWh = monthly.reduce((s, r: any) => s + (r.ytdBWarehouse ?? 0), 0);
-  const sumB25Cont = monthly.reduce((s, r: any) => s + (r.b25Container ?? 0), 0);
-  const sumB25Wh = monthly.reduce((s, r: any) => s + (r.b25Warehouse ?? 0), 0);
   const dayOfYear = Math.floor((TODAY.getTime() - new Date(TODAY.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
   const annualB = sumYtdB / dayOfYear * 365;
   const annualI = sumYtdI / dayOfYear * 365;
@@ -566,25 +508,103 @@ export function LiveKpiReport({
   const showI = metricFilter !== "bookings";
 
 
-  const lineRows = useMemo(
-    () => lineMonthFilter === "All" ? scaledLine : scaledLine.filter((r) => r.m === lineMonthFilter),
-    [lineMonthFilter, scaledLine]
-  );
-
-  const luxP = lineRows.reduce((s, r) => s + r.luxP, 0);
-  const luxA = lineRows.reduce((s, r) => s + r.luxA, 0);
-  const swP = lineRows.reduce((s, r) => s + r.swP, 0);
-  const swA = lineRows.reduce((s, r) => s + r.swA, 0);
-  const flP = lineRows.reduce((s, r) => s + r.flP, 0);
-  const flA = lineRows.reduce((s, r) => s + r.flA, 0);
-
-  const showLux = lineFilter === "all" || lineFilter === "lux";
-  const showSW = lineFilter === "all" || lineFilter === "sw";
-  const showFL = lineFilter === "all" || lineFilter === "fl";
-
   return (
     <div className="space-y-6">
-      <MtdInvoicingCard allowedRepNames={allowedRepNames} />
+      {/* ── MTD Summary KPI Row ──────────────────────────────────────── */}
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="glass-card p-5 grid grid-cols-3 divide-x divide-border">
+          <div className="flex flex-col gap-1 pr-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">MTD Bookings</p>
+            <p className="text-xl font-serif tabular-nums">{mtdBookingVisible ? formatCurrency(mtdB) : "—"}</p>
+            <p className="text-[10px] text-muted-foreground">{currentMonthName} {TODAY.getFullYear()}</p>
+          </div>
+          <div className="flex flex-col gap-1 px-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Booking Goal</p>
+            <p className="text-xl font-serif tabular-nums">{mtdBGoal > 0 ? formatCurrency(mtdBGoal) : "—"}</p>
+            <p className="text-[10px] text-muted-foreground">Day {daysElapsed} of {daysInMonth} · 2026</p>
+          </div>
+          <div className="flex flex-col gap-1 pl-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">% Booking Goal</p>
+            <p className="text-xl font-serif tabular-nums">{mtdBookingVisible ? fmtPct(mtdB / mtdBGoal) : "—"}</p>
+            <p className="text-[10px] text-muted-foreground">MTD vs Goal</p>
+          </div>
+        </div>
+        <div className="glass-card p-5 grid grid-cols-3 divide-x divide-border">
+          <div className="flex flex-col gap-1 pr-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">MTD Invoicing</p>
+            <p className="text-xl font-serif tabular-nums">{formatCurrency(mtdI)}</p>
+            <p className="text-[10px] text-muted-foreground">{currentMonthName} {TODAY.getFullYear()}</p>
+          </div>
+          <div className="flex flex-col gap-1 px-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Invoice Goal</p>
+            <p className="text-xl font-serif tabular-nums">{mtdIGoal > 0 ? formatCurrency(mtdIGoal) : "—"}</p>
+            <p className="text-[10px] text-muted-foreground">Day {daysElapsed} of {daysInMonth} · 2026</p>
+          </div>
+          <div className="flex flex-col gap-1 pl-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">% Invoice Goal</p>
+            <p className="text-xl font-serif tabular-nums">{fmtPct(mtdI / mtdIGoal)}</p>
+            <p className="text-[10px] text-muted-foreground">MTD vs Goal</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Daily Performance ─────────────────────────────────────────── */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="glass-card p-5">
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="text-sm font-semibold">Daily Invoices</h3>
+            <span className="text-xs text-muted-foreground">{format(TODAY, "MMM d, yyyy")}</span>
+          </div>
+          <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalInv)}</p>
+          <div className="space-y-1.5 text-xs">
+            {BRAND_COLLECTIONS.map((coll) => (
+              <div key={coll} className="flex justify-between">
+                <span className="text-muted-foreground">{coll}</span>
+                <span className="font-medium tabular-nums">{formatCurrency(dailyStats.inv[coll])}</span>
+              </div>
+            ))}
+            {dailyStats.inv.Other > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Other</span>
+                <span className="font-medium tabular-nums">{formatCurrency(dailyStats.inv.Other)}</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-1.5 border-t text-muted-foreground">
+              <span>% Warehouse</span><span>—</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>% Container</span><span>—</span>
+            </div>
+          </div>
+        </div>
+        <div className="glass-card p-5">
+          <div className="flex items-baseline justify-between mb-3">
+            <h3 className="text-sm font-semibold">Daily Bookings</h3>
+            <span className="text-xs text-muted-foreground">{format(TODAY, "MMM d, yyyy")}</span>
+          </div>
+          <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalBkg)}</p>
+          <div className="space-y-1.5 text-xs">
+            {BRAND_COLLECTIONS.map((coll) => (
+              <div key={coll} className="flex justify-between">
+                <span className="text-muted-foreground">{coll}</span>
+                <span className="font-medium tabular-nums">{formatCurrency(dailyStats.bkg[coll])}</span>
+              </div>
+            ))}
+            {dailyStats.bkg.Other > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Other</span>
+                <span className="font-medium tabular-nums">{formatCurrency(dailyStats.bkg.Other)}</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-1.5 border-t text-muted-foreground">
+              <span>% Warehouse</span><span>—</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>% Container</span><span>—</span>
+            </div>
+          </div>
+        </div>
+      </div>
       {/* Global filter + header strip */}
       <div className="glass-card p-4 space-y-4">
         <div className="flex flex-wrap items-center gap-3 pb-3 border-b">

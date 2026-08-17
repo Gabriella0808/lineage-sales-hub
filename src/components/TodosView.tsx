@@ -442,7 +442,7 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
         ? supabase.from("manager_task_assignees" as any).select("task_id, user_id").in("task_id", taskIds)
         : Promise.resolve({ data: [] }),
       boardIds.length
-        ? supabase.from("task_boards" as any).select("id, name, color").in("id", boardIds)
+        ? supabase.rpc("get_boards_by_ids" as any, { p_board_ids: boardIds })
         : Promise.resolve({ data: [] }),
       supabase.from("task_board_groups" as any).select("id, board_id, name, position"),
       supabase.from("manager_task_updates" as any).select("task_id"),

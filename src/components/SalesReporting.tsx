@@ -1416,6 +1416,16 @@ function TotalTable({
           <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground sticky left-0 bg-card z-20">
             {leftHeader}
           </th>
+          {goalData && (
+            <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              MTD %
+            </th>
+          )}
+          {goalData && (
+            <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              YTD %
+            </th>
+          )}
           <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Primary
           </th>
@@ -1440,6 +1450,7 @@ function TotalTable({
         {rows.map((r) => {
           const delta = r.primary - r.comparative;
           const pct   = r.comparative === 0 ? 0 : (delta / r.comparative) * 100;
+          const goal  = goalData?.get(r.key);
           return (
             <tr
               key={r.key}
@@ -1449,24 +1460,23 @@ function TotalTable({
               )}
               onClick={onRowClick ? () => onRowClick(r.key, r.label) : undefined}
             >
-              <td className="px-5 py-3 font-medium sticky left-0 bg-card z-10 max-w-[220px]">
+              <td className="px-5 py-3 font-medium sticky left-0 bg-card z-10 max-w-[220px] truncate">
                 {onRowClick ? (
-                  <button type="button" className="text-left text-primary hover:underline block max-w-full">
-                    <span className="truncate block">{r.label}</span>
-                    {goalData?.has(r.key) && (() => {
-                      const g = goalData.get(r.key)!;
-                      const m = fmtGoalPct(g.mtdPct);
-                      const y = fmtGoalPct(g.ytdPct);
-                      if (!m && !y) return null;
-                      return (
-                        <span className="block text-[10px] font-normal text-muted-foreground mt-0.5">
-                          {m ?? "—"} MTD · {y ?? "—"} YTD
-                        </span>
-                      );
-                    })()}
+                  <button type="button" className="text-left text-primary hover:underline truncate max-w-full">
+                    {r.label}
                   </button>
                 ) : r.label}
               </td>
+              {goalData && (
+                <td className={cn("px-4 py-3 text-right tabular-nums text-sm", goal?.mtdPct != null && goal.mtdPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+                  {goal ? (fmtGoalPct(goal.mtdPct) ?? "—") : "—"}
+                </td>
+              )}
+              {goalData && (
+                <td className={cn("px-4 py-3 text-right tabular-nums text-sm", goal?.ytdPct != null && goal.ytdPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+                  {goal ? (fmtGoalPct(goal.ytdPct) ?? "—") : "—"}
+                </td>
+              )}
               <td className="px-5 py-3 text-right tabular-nums font-medium">{formatCurrency(r.primary)}</td>
               {showComparison && (
                 <td className="px-5 py-3 text-right tabular-nums text-muted-foreground">{formatCurrency(r.comparative)}</td>
@@ -1486,7 +1496,7 @@ function TotalTable({
         })}
         {rows.length === 0 && (
           <tr>
-            <td colSpan={showComparison ? 5 : 2} className="px-5 py-10 text-center text-sm text-muted-foreground">
+            <td colSpan={(showComparison ? 5 : 2) + (goalData ? 2 : 0)} className="px-5 py-10 text-center text-sm text-muted-foreground">
               No results for the selected filters.
             </td>
           </tr>
@@ -1494,6 +1504,8 @@ function TotalTable({
         {rows.length > 0 && (
           <tr className="border-t bg-card sticky bottom-0 z-10">
             <td className="px-5 py-3 font-semibold sticky left-0 bg-card z-20">Total</td>
+            {goalData && <td className="px-4 py-3" />}
+            {goalData && <td className="px-4 py-3" />}
             <td className="px-5 py-3 text-right tabular-nums font-semibold">{formatCurrency(totalP)}</td>
             {showComparison && (
               <td className="px-5 py-3 text-right tabular-nums font-semibold text-muted-foreground">{formatCurrency(totalC)}</td>

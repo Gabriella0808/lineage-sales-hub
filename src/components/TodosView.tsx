@@ -515,7 +515,11 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
 
   // Split tasks
   const standaloneTasks = tasks.filter((t) => !t.board_id);
-  const boardTasks = tasks.filter((t) => !!t.board_id);
+  const boardTasks = tasks.filter((t) => {
+    if (!t.board_id) return false;
+    const name = boardMap.get(t.board_id)?.name ?? "";
+    return !name.toUpperCase().includes("SOP");
+  });
 
   // Filter function
   const passesFilter = (t: Task): boolean => {

@@ -152,7 +152,11 @@ export default function CompanyWidePage() {
         </div>
 
         {activeReport === "live-kpi" && (
-          <LiveKpiReport managerName={managerName} lockedRepName={isRep ? currentRep?.name ?? null : null} />
+          <LiveKpiReport
+            managerName={managerName}
+            lockedRepName={isRep ? currentRep?.name ?? null : null}
+            managerScopeRepIds={managerScopeRepIds}
+          />
         )}
         {activeReport === "dealer-reporting" && (
           <SalesReporting groupBy="dealer" managerScopeRepIds={managerScopeRepIds} />

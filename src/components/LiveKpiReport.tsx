@@ -99,6 +99,15 @@ const REP_NAME_TO_DB_NAMES: Record<string, string[]> = {
   "Jordan Shindell": ["Jordan Shindell", "Shindell - PA/OH"],
 };
 
+// Reverse of REP_NAME_TO_DB_NAMES: DB rep name (lowercased) → spreadsheet display name.
+// Used when we receive portal rep UUIDs from the manager scope to map back to display names.
+// Any DB name not listed here falls back to itself (identity mapping).
+const DB_NAME_TO_DISPLAY: Record<string, string> = Object.fromEntries(
+  Object.entries(REP_NAME_TO_DB_NAMES).flatMap(([display, dbNames]) =>
+    dbNames.map((n) => [n.toLowerCase(), display]),
+  ),
+);
+
 function sumRepMonthly(keys: string[]): RepMonthRow[] | null {
   const tabs = keys.map((k) => REP_MONTHLY[k]).filter(Boolean);
   if (tabs.length === 0) return null;
@@ -193,17 +202,47 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
   );
 }
 
-export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: string; lockedRepName?: string | null } = {}) {
+export function LiveKpiReport({
+  managerName,
+  lockedRepName,
+  managerScopeRepIds,
+}: {
+  managerName?: string;
+  lockedRepName?: string | null;
+  /** Portal rep UUID[] from CompanyWidePage — DB-driven manager scope. null = all reps. */
+  managerScopeRepIds?: string[] | null;
+} = {}) {
+  // Must be declared before allowedRepNames so the useMemo can read it.
+  const { data: dbReps = [] } = useSalesReps();
+
   const allowedRepNames = useMemo(() => {
     if (lockedRepName) return [lockedRepName];
-    if (!managerName) return null; // null = all reps
+
+    // Prefer DB-driven scope (managerScopeRepIds) over the hardcoded MANAGER_TO_REPS map.
+    // managerScopeRepIds is always provided by CompanyWidePage; undefined only in rare
+    // direct renders without the parent context.
+    if (managerScopeRepIds !== undefined) {
+      if (managerScopeRepIds === null) return null; // "All managers" → show everything
+      if (managerScopeRepIds.length === 0) return []; // manager exists but has no reps
+      // Map portal UUIDs → DB rep names → spreadsheet display names.
+      // Unknown DB names (not in DB_NAME_TO_DISPLAY) map to themselves so live data
+      // still flows through useDealerSalesAggregates correctly.
+      return Array.from(new Set(
+        managerScopeRepIds
+          .map((id) => dbReps.find((r) => r.id === id)?.name)
+          .filter((n): n is string => Boolean(n))
+          .map((n) => DB_NAME_TO_DISPLAY[n.toLowerCase()] ?? n),
+      ));
+    }
+
+    // Fallback: hardcoded map (only reached when managerScopeRepIds is not provided).
+    if (!managerName) return null;
     const list = MANAGER_TO_REPS[managerName.trim().toLowerCase()];
     return list ?? [];
-  }, [managerName, lockedRepName]);
+  }, [managerName, lockedRepName, managerScopeRepIds, dbReps]);
 
   const [territoryFilter, setTerritoryFilter] = useState<string[]>([]);
   const [territoryPickerOpen, setTerritoryPickerOpen] = useState(false);
-  const { data: dbReps = [] } = useSalesReps();
 
   // Merge REP_BOOK (which has the spreadsheet figures) with all reps from the DB,
   // so the dropdown lists every rep even if they don't have KPI workbook data yet.
@@ -266,8 +305,11 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     let scoped: string[] | null = null;
     if (repFilter.length > 0) scoped = repFilter;
     else if (territoryFilter.length > 0) scoped = visibleReps.map((r) => r.name);
-    else if (allowedRepNames && allowedRepNames.length > 0) scoped = allowedRepNames;
+    else if (allowedRepNames !== null) scoped = allowedRepNames; // use even if empty
+    // null → company-wide (no manager selected)
     if (scoped === null) return null;
+    // empty → manager selected but no reps; keep empty so hook returns zeros, not all data
+    if (scoped.length === 0) return [];
     return Array.from(new Set(scoped.flatMap((n) => REP_NAME_TO_DB_NAMES[n] ?? [n])));
   }, [repFilter, territoryFilter, visibleReps, allowedRepNames]);
 
@@ -372,8 +414,8 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       repNames = repFilter;
     } else if (territoryFilter.length > 0) {
       repNames = visibleReps.map((r) => r.name);
-    } else if (allowedRepNames && allowedRepNames.length > 0) {
-      repNames = allowedRepNames;
+    } else if (allowedRepNames !== null) {
+      repNames = allowedRepNames; // may be empty — manager selected but no reps in spreadsheet
     }
 
     if (repNames) {
@@ -404,7 +446,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
       };
       if (rows) return rows.map(overlay);
       // Fallback: scale team totals by share (or zeros if no share).
-      if (allowedRepNames && !hasRepSelection && territoryFilter.length === 0) {
+      if (allowedRepNames !== null && !hasRepSelection && territoryFilter.length === 0) {
         return baseMonthly.map((r) => ({
           ...r,
           b25: r.b25 * repShare, b26p: r.b26p * repShare, ytdB: r.ytdB * repShare,
@@ -427,7 +469,7 @@ export function LiveKpiReport({ managerName, lockedRepName }: { managerName?: st
     let scopedRepNames: string[] | null = null;
     if (hasRepSelection) scopedRepNames = repFilter;
     else if (territoryFilter.length > 0) scopedRepNames = visibleReps.map(r => r.name);
-    else if (allowedRepNames && allowedRepNames.length > 0) scopedRepNames = allowedRepNames;
+    else if (allowedRepNames !== null) scopedRepNames = allowedRepNames; // use even if empty
 
     const expandedDbNames = scopedRepNames === null
       ? null

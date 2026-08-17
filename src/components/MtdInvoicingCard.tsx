@@ -15,7 +15,9 @@ export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string
   const currentMonth = now.getMonth() + 1;
   const monthLabel   = useMemo(() => format(now, "MMMM yyyy"), []);
 
-  const isCompanyWide = !allowedRepNames || allowedRepNames.length === 0;
+  // null/undefined = no manager selected → show company-wide total.
+  // [] = manager selected but has no reps → show zero (not company-wide).
+  const isCompanyWide = allowedRepNames == null;
 
   // Resolve dealer IDs — only needed for dealer-scoped view.
   const { data: scopedDealerIds } = useQuery({
@@ -52,7 +54,7 @@ export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string
   const dealerIds   = isCompanyWide ? null : (scopedDealerIds ?? []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["mtd_invoicing", currentYear, currentMonth, isCompanyWide ? "all" : (dealerIds?.length ?? -1)],
+    queryKey: ["mtd_invoicing", currentYear, currentMonth, allowedRepNames?.join("|") ?? "all"],
     enabled: scopeReady,
     queryFn: async () => {
       // ── Company-wide: mv_portal_monthly_invoiced_actuals ──────────────────

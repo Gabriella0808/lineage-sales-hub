@@ -145,12 +145,12 @@ export default function TasksPage() {
         >
         <TabsList>
           <TabsTrigger value="todos">To Do's</TabsTrigger>
-          <TabsTrigger value="boards">Boards</TabsTrigger>
+          {isAdmin && <TabsTrigger value="boards">Boards</TabsTrigger>}
           {isAdmin && <TabsTrigger value="templates">Templates</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="todos" className="mt-4">
-          <TodosView onSwitchToBoards={switchToBoards} />
+          <TodosView onSwitchToBoards={isAdmin ? switchToBoards : undefined} />
         </TabsContent>
 
         <TabsContent value="boards" className="mt-4 space-y-4">

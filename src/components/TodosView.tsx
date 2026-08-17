@@ -431,11 +431,19 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
 
     const taskIds = tasksData.map((t) => t.id);
 
+    // Fetch boards by the specific IDs referenced in the user's tasks — not all boards.
+    // The general SELECT on task_boards is scoped by RLS to boards the user owns,
+    // which misses boards they're only assigned tasks on. Fetching by specific IDs
+    // works because RLS allows reading a board when you have tasks there.
+    const boardIds = [...new Set(tasksData.filter((t) => t.board_id).map((t) => t.board_id!))];
+
     const [taRes, boardRes, grpRes, countRes] = await Promise.all([
       taskIds.length
         ? supabase.from("manager_task_assignees" as any).select("task_id, user_id").in("task_id", taskIds)
         : Promise.resolve({ data: [] }),
-      supabase.from("task_boards" as any).select("id, name, color").order("name"),
+      boardIds.length
+        ? supabase.from("task_boards" as any).select("id, name, color").in("id", boardIds)
+        : Promise.resolve({ data: [] }),
       supabase.from("task_board_groups" as any).select("id, board_id, name, position"),
       supabase.from("manager_task_updates" as any).select("task_id"),
     ]);

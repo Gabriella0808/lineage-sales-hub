@@ -40,6 +40,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format, isBefore, startOfDay } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -178,11 +184,12 @@ interface TaskRowProps {
   commentCount: number;
   groupName?: string;
   onToggle: (id: string, done: boolean) => void;
+  onStatusChange: (id: string, status: Status) => void;
   onOpen: (task: Task) => void;
   onComments: (id: string) => void;
 }
 
-function TaskRow({ task, assigneeNames, commentCount, groupName, onToggle, onOpen, onComments }: TaskRowProps) {
+function TaskRow({ task, assigneeNames, commentCount, groupName, onToggle, onStatusChange, onOpen, onComments }: TaskRowProps) {
   const bucket = getDueBucket(task.due_date, task.status);
 
   return (
@@ -239,14 +246,37 @@ function TaskRow({ task, assigneeNames, commentCount, groupName, onToggle, onOpe
         )}
       </div>
 
-      <span
-        className={cn(
-          "shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full",
-          STATUS_COLORS[task.status],
-        )}
-      >
-        {STATUS_LABELS[task.status]}
-      </span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+          <button
+            className={cn(
+              "shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-0.5 hover:opacity-80 transition-opacity",
+              STATUS_COLORS[task.status],
+            )}
+          >
+            {STATUS_LABELS[task.status]}
+            <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-36">
+          {(Object.entries(STATUS_LABELS) as [Status, string][]).map(([value, label]) => (
+            <DropdownMenuItem
+              key={value}
+              onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, value); }}
+              className="flex items-center gap-2 text-xs"
+            >
+              <span className={cn("h-2 w-2 rounded-full", {
+                "bg-muted-foreground": value === "todo",
+                "bg-amber-500": value === "in_progress",
+                "bg-destructive": value === "blocked",
+                "bg-emerald-500": value === "done",
+              })} />
+              {label}
+              {task.status === value && <Check className="h-3 w-3 ml-auto" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {assigneeNames.length > 0 && (
         <div className="shrink-0 flex -space-x-1">
@@ -559,6 +589,16 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
     await supabase.from("manager_tasks").update(update).eq("id", id);
   };
 
+  const changeStatus = async (id: string, status: Status) => {
+    const now = new Date().toISOString();
+    const update = {
+      status,
+      completed_at: status === "done" ? now : null,
+    };
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...update } : t)));
+    await supabase.from("manager_tasks").update(update).eq("id", id);
+  };
+
   const syncAssignees = async (taskId: string, ids: string[]) => {
     await supabase.from("manager_task_assignees" as any).delete().eq("task_id", taskId);
     if (ids.length > 0) {
@@ -774,6 +814,7 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
                 assigneeNames={getAssigneeNames(task.id)}
                 commentCount={commentCounts[task.id] ?? 0}
                 onToggle={toggleDone}
+                onStatusChange={changeStatus}
                 onOpen={setDetailTask}
                 onComments={setCommentsTaskId}
               />
@@ -890,6 +931,7 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
                         commentCount={commentCounts[task.id] ?? 0}
                         groupName={getGroupName(task)}
                         onToggle={toggleDone}
+                        onStatusChange={changeStatus}
                         onOpen={setDetailTask}
                         onComments={setCommentsTaskId}
                       />

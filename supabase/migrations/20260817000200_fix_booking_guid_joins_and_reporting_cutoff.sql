@@ -21,6 +21,11 @@
 -- Fix 1: v_portal_dealer_rep_reporting_lines
 --   • Strip {} and lowercase both sides of the GUIDOrder join.
 --   • Same treatment for GUIDSalesperson in order_salesperson_lookup.
+--   • Add customer_lookup CTE (dbo_Orders.GUIDCustomer is native uuid, no
+--     brace stripping needed) as fallback for orders not in dbo_Orders.
+--     ~2565 booking lines from portal_acctivate_orders have no matching row
+--     in dbo_Orders by order GUID; looking up by customer GUID recovers
+--     customer_id for those rows.
 --   This gives correct customer_id and rep_id for booking lines, enabling
 --   all downstream RPC filters to work.
 --
@@ -30,9 +35,10 @@
 --   detail for any date range the user selects — the frontend date-range
 --   picker and the KPI card "—" rule handle display-level hiding.
 --
--- Fix 3: kpi_monthly_booking_rollup dealer join (lowercase both sides).
---   Prevents case mismatches between dealers.acctivate_id and
---   dbo_Orders."CustomerID" from silently dropping rows.
+-- Fix 3: kpi_monthly_booking_rollup dealer join.
+--   • Lowercase both sides to avoid case mismatches.
+--   • Add customer_lookup CTE (same as Fix 1) so orders not in dbo_Orders
+--     by order GUID can still resolve a dealer via customer GUID fallback.
 --
 -- Do not change: booking/invoice calculations, totals, 2025 actuals,
 --   projections, mat views, or any source table data.
@@ -44,9 +50,7 @@
 
 CREATE OR REPLACE VIEW public.v_portal_dealer_rep_reporting_lines AS
 
--- Deduplicate dbo_Orders salesperson by normalized GUIDSalesperson.
--- dbo_Orders."GUIDSalesperson" is braced {XXXX-...}; strip {} and lowercase
--- so it can be compared to v_portal_bookings_line_facts.guid_salesperson (plain UUID).
+-- dbo_Orders."GUIDSalesperson" is braced {XXXX-...}; strip {} and lowercase.
 WITH order_salesperson_lookup AS (
   SELECT
     TRIM(BOTH '{}' FROM LOWER("GUIDSalesperson"::text))   AS guid_salesperson_norm,
@@ -55,6 +59,27 @@ WITH order_salesperson_lookup AS (
   FROM public."dbo_Orders"
   WHERE "GUIDSalesperson" IS NOT NULL
   GROUP BY TRIM(BOTH '{}' FROM LOWER("GUIDSalesperson"::text))
+),
+-- dbo_Orders."GUIDCustomer" is native uuid type → casts to plain UUID text,
+-- same format as portal_acctivate_orders.guid_customer. No brace stripping needed.
+-- Used as fallback customer_id for orders not found in dbo_Orders by order GUID.
+customer_lookup AS (
+  SELECT
+    LOWER("GUIDCustomer"::text)                            AS guid_customer_norm,
+    MAX(NULLIF(TRIM("CustomerID"::text), ''))               AS customer_id
+  FROM public."dbo_Orders"
+  WHERE "GUIDCustomer" IS NOT NULL
+  GROUP BY LOWER("GUIDCustomer"::text)
+),
+-- Last-resort fallback: match by dealer name when the name is unique in dealers.
+-- Excludes duplicate names to avoid fan-out / double-counting.
+unique_dealer_name_lookup AS (
+  SELECT
+    LOWER(TRIM(name))  AS name_norm,
+    MIN(acctivate_id)  AS acctivate_id
+  FROM public.dealers
+  GROUP BY LOWER(TRIM(name))
+  HAVING COUNT(*) = 1
 )
 
 SELECT
@@ -62,18 +87,21 @@ SELECT
   f.booking_date::date                                                           AS transaction_date,
   EXTRACT(YEAR  FROM f.booking_date)::int                                        AS year,
   EXTRACT(MONTH FROM f.booking_date)::int                                        AS month_number,
-  COALESCE(f.dealer_name::text, o."CustomerID"::text)                           AS dealer_name,
-  o."CustomerID"::text                                                           AS customer_id,
+  COALESCE(f.dealer_name::text, o."CustomerID"::text, cl.customer_id,
+           udl.acctivate_id)                                                     AS dealer_name,
+  COALESCE(o."CustomerID"::text, cl.customer_id, udl.acctivate_id)              AS customer_id,
   COALESCE(
     osl.salesperson_name,
     NULLIF(o."SalespersonName"::text, ''),
     NULLIF(o."_Rep1"::text,           ''),
     NULLIF(o."_Rep2"::text,           ''),
+    NULLIF(f.rep1::text,              ''),
+    NULLIF(f.rep2::text,              ''),
     'Unassigned'
   )::text                                                                        AS rep_name,
-  -- rep_id: prefer Acctivate salesperson code (short, canonical);
-  -- falls back to raw guid_salesperson only when the salesperson lookup fails.
-  COALESCE(NULLIF(osl.salesperson_id, ''), f.guid_salesperson::text)::text      AS rep_id,
+  -- rep_id: prefer Acctivate salesperson code; fall back to portal rep1 then raw GUID.
+  COALESCE(NULLIF(osl.salesperson_id, ''), NULLIF(f.rep1::text, ''),
+           f.guid_salesperson::text)::text                                       AS rep_id,
   f.sku::text                                                                    AS sku,
   f.description::text                                                            AS description,
   f.brand_category::text                                                         AS brand_category,
@@ -86,6 +114,12 @@ LEFT JOIN public."dbo_Orders" o
 -- Salesperson lookup fix: strip {} and lowercase both sides.
 LEFT JOIN order_salesperson_lookup osl
   ON osl.guid_salesperson_norm = TRIM(BOTH '{}' FROM LOWER(f.guid_salesperson::text))
+-- Customer fallback 1: recover customer_id via customer GUID when order GUID misses.
+LEFT JOIN customer_lookup cl
+  ON cl.guid_customer_norm = LOWER(f.guid_customer)
+-- Customer fallback 2: last resort — match by dealer name (unique names only).
+LEFT JOIN unique_dealer_name_lookup udl
+  ON udl.name_norm = LOWER(TRIM(f.dealer_name))
 WHERE f.booking_date IS NOT NULL
 
 UNION ALL
@@ -134,6 +168,20 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
+  WITH customer_lookup AS (
+    SELECT
+      LOWER("GUIDCustomer"::text)                          AS guid_customer_norm,
+      MAX(NULLIF(TRIM("CustomerID"::text), ''))             AS customer_id
+    FROM public."dbo_Orders"
+    WHERE "GUIDCustomer" IS NOT NULL
+    GROUP BY LOWER("GUIDCustomer"::text)
+  ),
+  unique_dealer_name_lookup AS (
+    SELECT LOWER(TRIM(name)) AS name_norm, MIN(acctivate_id) AS acctivate_id
+    FROM public.dealers
+    GROUP BY LOWER(TRIM(name))
+    HAVING COUNT(*) = 1
+  )
   SELECT
     EXTRACT(YEAR  FROM f.booking_date)::int              AS year,
     EXTRACT(MONTH FROM f.booking_date)::int              AS month,
@@ -148,15 +196,16 @@ AS $$
            THEN f.net_booking_amount ELSE 0 END
     ), 0)                                                AS bookings_warehouse
   FROM public.v_portal_bookings_line_facts f
-  -- GUIDOrder fix: strip {} and lowercase dbo_Orders side.
   LEFT JOIN public."dbo_Orders" o
     ON TRIM(BOTH '{}' FROM LOWER(o."GUIDOrder"::text)) = LOWER(f.guid_order)
-  -- Branch classification from booking_orders_sync where available.
+  LEFT JOIN customer_lookup cl
+    ON cl.guid_customer_norm = LOWER(f.guid_customer)
+  LEFT JOIN unique_dealer_name_lookup udl
+    ON udl.name_norm = LOWER(TRIM(f.dealer_name))
   LEFT JOIN public.booking_orders_sync bos
     ON bos.guid_order = f.guid_order::uuid
-  -- Dealer join: lowercase both sides to avoid case mismatches.
   LEFT JOIN public.dealers dl
-    ON LOWER(dl.acctivate_id) = LOWER(o."CustomerID"::text)
+    ON LOWER(dl.acctivate_id) = LOWER(COALESCE(o."CustomerID"::text, cl.customer_id, udl.acctivate_id))
   WHERE EXTRACT(YEAR FROM f.booking_date)::int = ANY(p_years)
     AND f.booking_date IS NOT NULL
     AND (p_dealer_ids IS NULL OR dl.id = ANY(p_dealer_ids))
@@ -256,7 +305,7 @@ AS $$
       WHERE p_comp_from IS NOT NULL
         AND transaction_date BETWEEN p_comp_from AND p_comp_to
     ), 0) != 0
-  ORDER BY primary_amt DESC NULLS LAST
+  ORDER BY 2 DESC NULLS LAST
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_sales_reporting_grouped_rows(

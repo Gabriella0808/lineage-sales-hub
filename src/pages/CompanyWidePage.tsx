@@ -1,9 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  BarChart3, Store, UserSquare2, ChevronRight,
+  BarChart3, Store, UserSquare2, ChevronRight, RefreshCw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { LiveKpiReport } from "@/components/LiveKpiReport";
@@ -24,6 +26,20 @@ const REPORTS: { key: ReportKey; label: string; icon: typeof BarChart3; descript
 export default function CompanyWidePage() {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
+  const queryClient = useQueryClient();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+
+  const handleRefresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["daily_actuals_v2"] });
+    queryClient.invalidateQueries({ queryKey: ["sales_grouped_rows_v2"] });
+    queryClient.invalidateQueries({ queryKey: ["v_portal_invoiced_lines_v1"] });
+    queryClient.invalidateQueries({ queryKey: ["v_portal_booking_lines_v1"] });
+    queryClient.invalidateQueries({ queryKey: ["mtd_invoicing_cw"] });
+    queryClient.invalidateQueries({ queryKey: ["mtd_invoicing_mgr"] });
+    setRefreshKey((k) => k + 1);
+    setLastRefreshed(new Date());
+  }, [queryClient]);
   const reportParam = params.get("report") as ReportKey | null;
   const managerParam = params.get("manager") ?? "all";
 
@@ -98,8 +114,18 @@ export default function CompanyWidePage() {
   return (
     <div className="animate-fade-in space-y-6">
       <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h1 className="page-title">Company-Wide</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="page-title">Company-Wide</h1>
+          {lastRefreshed && (
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              Refreshed {lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={handleRefresh} className="h-9 px-2 text-muted-foreground hover:text-foreground">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
           <span className="text-xs text-muted-foreground hidden sm:inline">Manager</span>
           <Select value={effectiveManagerId} onValueChange={setManager} disabled={isRep}>
             <SelectTrigger className="w-[220px] h-9">
@@ -157,6 +183,7 @@ export default function CompanyWidePage() {
             lockedRepName={isRep ? currentRep?.name ?? null : null}
             managerScopeRepIds={managerScopeRepIds}
             managerId={effectiveManagerId === "all" ? null : effectiveManagerId}
+            refreshKey={refreshKey}
           />
         )}
         {activeReport === "dealer-reporting" && (

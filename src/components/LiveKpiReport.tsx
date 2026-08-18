@@ -3,14 +3,16 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { formatCurrency, useSalesReps } from "@/hooks/usePortalData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ChevronsUpDown, Check, X } from "lucide-react";
+import { ChevronsUpDown, Check, X, CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useDealerSalesAggregates } from "@/hooks/useDealerSalesAggregates";
 import { supabase } from "@/integrations/supabase/client";
 import { useRepTargets, MONTH_LABEL_TO_KEY, type RepTarget } from "@/hooks/useRepTargets";
 import { isBookingVisible } from "@/utils/bookingCutoff";
+import { getReportingToday, getReportingTodayStr } from "@/utils/reportingDate";
 
 const PROJ_STORAGE_KEY = "kpi_projections_2026_v1";
 
@@ -134,17 +136,16 @@ const LINE_BOOK = [
   { m: "December",  luxP: 80400,  luxA: 0, swP: 669500, swA: 0, flP: 257175, flA: 0 },
 ];
 
-const TODAY = new Date();
-const END = new Date(TODAY.getFullYear(), 11, 31);
-const DAYS_REMAINING = Math.max(0, Math.ceil((END.getTime() - TODAY.getTime()) / 86400000));
 
 const fmtPct = (n: number) => (!isFinite(n) || n === 0) ? "-" : `${(n * 100).toFixed(1)}%`;
 // Like fmtPct but never returns "-" for 0 — used when we know classified data exists
 // and a zero share is meaningful (e.g. container=0 while warehouse>0).
 const fmtPctRaw = (n: number) => `${(n * 100).toFixed(1)}%`;
 
-type CollKey = "SW" | "FIN" | "LUX" | "HOSP" | "Other";
-const BRAND_COLLECTIONS: CollKey[] = ["SW", "FIN", "LUX", "HOSP"];
+type CollKey = "SW" | "FIN" | "LUX" | "HOSP" | "MISC" | "Other";
+const COLL_LABEL: Record<CollKey, string> = {
+  SW: "SW", FIN: "FIN", LUX: "LUX", HOSP: "HOSP", MISC: "MISC", Other: "Other",
+};
 
 function classifyCollection(bc: string | null): CollKey {
   if (!bc) return "Other";
@@ -153,6 +154,7 @@ function classifyCollection(bc: string | null): CollKey {
   if (s.startsWith("fin") || s.includes("finn")) return "FIN";
   if (s.startsWith("lux")) return "LUX";
   if (s.startsWith("hosp") || s.includes("hospit")) return "HOSP";
+  if (s === "misc" || s.startsWith("allow")) return "MISC";
   return "Other";
 }
 
@@ -176,6 +178,7 @@ export function LiveKpiReport({
   managerId,
   lockedRepName,
   managerScopeRepIds,
+  refreshKey,
 }: {
   managerName?: string;
   /** managers.id UUID from the URL — passed directly to the reporting RPC. null = all. */
@@ -183,7 +186,19 @@ export function LiveKpiReport({
   lockedRepName?: string | null;
   /** Portal rep UUID[] from CompanyWidePage — used for UI scoping (dropdowns, spreadsheet). */
   managerScopeRepIds?: string[] | null;
+  /** Increment to force re-fetch of useDealerSalesAggregates (non-React Query). */
+  refreshKey?: number;
 } = {}) {
+  // Eastern Time reporting date — single source of truth for all date logic in this component.
+  const reportingToday    = getReportingToday();
+  const reportingTodayStr = getReportingTodayStr();
+  const reportingYear     = reportingToday.getFullYear();
+  const reportingEndOfYear = new Date(reportingYear, 11, 31);
+  const reportingDaysRemaining = Math.max(
+    0,
+    Math.ceil((reportingEndOfYear.getTime() - reportingToday.getTime()) / 86400000),
+  );
+
   // Must be declared before allowedRepNames so the useMemo can read it.
   const { data: dbReps = [] } = useSalesReps();
 
@@ -215,6 +230,8 @@ export function LiveKpiReport({
 
   const [territoryFilter, setTerritoryFilter] = useState<string[]>([]);
   const [territoryPickerOpen, setTerritoryPickerOpen] = useState(false);
+  const [dailyDate, setDailyDate] = useState<Date>(() => getReportingToday());
+  const [dailyDatePickerOpen, setDailyDatePickerOpen] = useState(false);
 
   // Merge REP_BOOK (which has the spreadsheet figures) with all reps from the DB,
   // so the dropdown lists every rep even if they don't have KPI workbook data yet.
@@ -271,34 +288,33 @@ export function LiveKpiReport({
       .filter((id): id is string => !!id && id.trim() !== "");
   }, [lockedRepName, repFilter, territoryFilter, visibleReps, dbReps]);
 
-  // Acctivate IDs for the daily scope: individual rep selection takes priority,
-  // then manager scope (portal UUIDs → acctivate_ids via dbReps).
-  const effectiveDailyRepAcIds = useMemo<string[] | null>(() => {
-    if (selectedRepAcIds && selectedRepAcIds.length > 0) return selectedRepAcIds;
-    if (managerId && managerScopeRepIds && managerScopeRepIds.length > 0) {
-      return dbReps
-        .filter((r) => managerScopeRepIds.includes(r.id))
-        .map((r) => r.acctivate_id)
-        .filter((id): id is string => !!id && id.trim() !== "");
-    }
-    return null;
-  }, [selectedRepAcIds, managerId, managerScopeRepIds, dbReps]);
 
-  // Daily actuals — fetch one day of lines from the reporting view (small dataset),
-  // then filter client-side with case-insensitive rep_id matching.
-  const todayStr = format(TODAY, "yyyy-MM-dd");
+  // Daily actuals — canonical source v_companywide_reporting_actuals.
+  // Manager scope: server-side manager_id filter (reliable, no name resolution).
+  // Individual rep selection: client-side rep_id filter (case-insensitive).
+  const todayStr      = reportingTodayStr;
+  const dailyDateStr  = format(dailyDate,  "yyyy-MM-dd");
+  const isToday       = dailyDateStr === todayStr;
   const { data: rawDailyRows = [] } = useQuery({
-    queryKey: ["daily_actuals_v2", todayStr, JSON.stringify(effectiveDailyRepAcIds?.slice().sort() ?? null)],
+    queryKey: ["daily_actuals_v2", dailyDateStr, managerId ?? null, JSON.stringify(selectedRepAcIds?.slice().sort() ?? null)],
     staleTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("v_portal_dealer_rep_reporting_lines")
+      let q = (supabase as any)
+        .from("v_companywide_reporting_actuals")
         .select("metric_type, brand_category, amount, rep_id")
-        .eq("transaction_date", todayStr);
+        .eq("transaction_date", dailyDateStr);
+      // Manager-scoped with no individual rep override: use server-side filter.
+      if (managerId && !(selectedRepAcIds && selectedRepAcIds.length > 0)) {
+        q = q.eq("manager_id", managerId);
+      }
+      const { data, error } = await q;
       if (error) { console.error("[daily] actuals error:", error.message); return []; }
       let rows = (data ?? []) as Array<{ metric_type: string; brand_category: string | null; amount: string | number; rep_id: string | null }>;
-      if (effectiveDailyRepAcIds && effectiveDailyRepAcIds.length > 0) {
-        const idSet = new Set(effectiveDailyRepAcIds.map((id) => id.trim().toLowerCase()));
+      // Individual rep/territory selection: client-side case-insensitive rep_id match.
+      if (selectedRepAcIds && selectedRepAcIds.length > 0) {
+        const idSet = new Set(selectedRepAcIds.map((id) => id.trim().toLowerCase()));
         rows = rows.filter((r) => r.rep_id && idSet.has(r.rep_id.trim().toLowerCase()));
       }
       return rows;
@@ -311,6 +327,7 @@ export function LiveKpiReport({
   const { data: liveAgg } = useDealerSalesAggregates({
     managerId: managerId ?? null,
     repAcIds: selectedRepAcIds,
+    refreshKey,
   });
 
   useEffect(() => {
@@ -422,24 +439,24 @@ export function LiveKpiReport({
   }), [scaledMonthly, targetByMonth]);
 
   const MONTH_NAMES_ALL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-  const currentMonthName = MONTH_NAMES_ALL[TODAY.getMonth()];
+  const currentMonthName = MONTH_NAMES_ALL[reportingToday.getMonth()];
   const currentMonthEntry = useMemo(
     () => scaledMonthlyWithTargets.find((r) => r.m === currentMonthName) ?? null,
     [scaledMonthlyWithTargets, currentMonthName],
   );
   const mtdB = currentMonthEntry?.ytdB ?? 0;
   const mtdI = currentMonthEntry?.ytdI ?? 0;
-  const mtdBookingVisible = isBookingVisible(TODAY.getFullYear(), TODAY.getMonth() + 1);
+  const mtdBookingVisible = isBookingVisible(reportingToday.getFullYear(), reportingToday.getMonth() + 1);
 
   // Full monthly target from rep_targets (not prorated — shows total month goal).
-  const daysElapsed = TODAY.getDate();
-  const daysInMonth = new Date(TODAY.getFullYear(), TODAY.getMonth() + 1, 0).getDate();
+  const daysElapsed = reportingToday.getDate();
+  const daysInMonth = new Date(reportingToday.getFullYear(), reportingToday.getMonth() + 1, 0).getDate();
   const mtdBGoal = currentMonthEntry?.b26p ?? 0;
   const mtdIGoal = currentMonthEntry?.i26p ?? 0;
 
   const dailyStats = useMemo(() => {
-    const inv: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, Other: 0 };
-    const bkg: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, Other: 0 };
+    const inv: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, MISC: 0, Other: 0 };
+    const bkg: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, MISC: 0, Other: 0 };
     let totalInv = 0, totalBkg = 0;
     for (const row of rawDailyRows) {
       const coll = classifyCollection(row.brand_category);
@@ -500,7 +517,7 @@ export function LiveKpiReport({
   const sumYtdIWh = monthly.reduce((s, r: any) => s + (r.ytdIWarehouse ?? 0), 0);
   const sumYtdBCont = monthly.reduce((s, r: any) => s + (r.ytdBContainer ?? 0), 0);
   const sumYtdBWh = monthly.reduce((s, r: any) => s + (r.ytdBWarehouse ?? 0), 0);
-  const dayOfYear = Math.floor((TODAY.getTime() - new Date(TODAY.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
+  const dayOfYear = Math.floor((reportingToday.getTime() - new Date(reportingToday.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
   const annualB = sumYtdB / dayOfYear * 365;
   const annualI = sumYtdI / dayOfYear * 365;
 
@@ -516,7 +533,7 @@ export function LiveKpiReport({
           <div className="flex flex-col gap-1 pr-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">MTD Bookings</p>
             <p className="text-xl font-serif tabular-nums">{mtdBookingVisible ? formatCurrency(mtdB) : "—"}</p>
-            <p className="text-[10px] text-muted-foreground">{currentMonthName} {TODAY.getFullYear()}</p>
+            <p className="text-[10px] text-muted-foreground">{currentMonthName} {reportingYear}</p>
           </div>
           <div className="flex flex-col gap-1 px-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Booking Goal</p>
@@ -533,7 +550,7 @@ export function LiveKpiReport({
           <div className="flex flex-col gap-1 pr-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">MTD Invoicing</p>
             <p className="text-xl font-serif tabular-nums">{formatCurrency(mtdI)}</p>
-            <p className="text-[10px] text-muted-foreground">{currentMonthName} {TODAY.getFullYear()}</p>
+            <p className="text-[10px] text-muted-foreground">{currentMonthName} {reportingYear}</p>
           </div>
           <div className="flex flex-col gap-1 px-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Invoice Goal</p>
@@ -549,58 +566,88 @@ export function LiveKpiReport({
       </div>
 
       {/* ── Daily Performance ─────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="glass-card p-5">
-          <div className="flex items-baseline justify-between mb-3">
-            <h3 className="text-sm font-semibold">Daily Invoices</h3>
-            <span className="text-xs text-muted-foreground">{format(TODAY, "MMM d, yyyy")}</span>
-          </div>
-          <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalInv)}</p>
-          <div className="space-y-1.5 text-xs">
-            {BRAND_COLLECTIONS.map((coll) => (
-              <div key={coll} className="flex justify-between">
-                <span className="text-muted-foreground">{coll}</span>
-                <span className="font-medium tabular-nums">{formatCurrency(dailyStats.inv[coll])}</span>
-              </div>
-            ))}
-            {dailyStats.inv.Other > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Other</span>
-                <span className="font-medium tabular-nums">{formatCurrency(dailyStats.inv.Other)}</span>
-              </div>
-            )}
-            <div className="flex justify-between pt-1.5 border-t text-muted-foreground">
-              <span>% Warehouse</span><span>—</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>% Container</span><span>—</span>
-            </div>
-          </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Daily Performance</span>
+          <Popover open={dailyDatePickerOpen} onOpenChange={setDailyDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <button type="button" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1">
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {isToday ? `Today · ${format(dailyDate, "MMM d")}` : format(dailyDate, "MMM d, yyyy")}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={dailyDate}
+                onSelect={(d) => { if (d) { setDailyDate(d); setDailyDatePickerOpen(false); } }}
+                disabled={(d) => d > reportingToday}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
-        <div className="glass-card p-5">
-          <div className="flex items-baseline justify-between mb-3">
-            <h3 className="text-sm font-semibold">Daily Bookings</h3>
-            <span className="text-xs text-muted-foreground">{format(TODAY, "MMM d, yyyy")}</span>
-          </div>
-          <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalBkg)}</p>
-          <div className="space-y-1.5 text-xs">
-            {BRAND_COLLECTIONS.map((coll) => (
-              <div key={coll} className="flex justify-between">
-                <span className="text-muted-foreground">{coll}</span>
-                <span className="font-medium tabular-nums">{formatCurrency(dailyStats.bkg[coll])}</span>
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Bookings card — SW / FIN / LUX / HOSP always; MISC only if nonzero */}
+          <div className="glass-card p-5">
+            <h3 className="text-sm font-semibold mb-3">Daily Bookings</h3>
+            <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalBkg)}</p>
+            <div className="space-y-1.5 text-xs">
+              {(["SW", "FIN", "LUX", "HOSP"] as CollKey[]).map((coll) => (
+                <div key={coll} className="flex justify-between">
+                  <span className="text-muted-foreground">{COLL_LABEL[coll]}</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(dailyStats.bkg[coll])}</span>
+                </div>
+              ))}
+              {dailyStats.bkg.MISC > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">MISC</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(dailyStats.bkg.MISC)}</span>
+                </div>
+              )}
+              {dailyStats.bkg.Other > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Other</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(dailyStats.bkg.Other)}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-1.5 border-t text-muted-foreground">
+                <span>% Warehouse</span><span>—</span>
               </div>
-            ))}
-            {dailyStats.bkg.Other > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Other</span>
-                <span className="font-medium tabular-nums">{formatCurrency(dailyStats.bkg.Other)}</span>
+              <div className="flex justify-between text-muted-foreground">
+                <span>% Container</span><span>—</span>
               </div>
-            )}
-            <div className="flex justify-between pt-1.5 border-t text-muted-foreground">
-              <span>% Warehouse</span><span>—</span>
             </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>% Container</span><span>—</span>
+          </div>
+          {/* Invoice card — SW / FIN / LUX / MISC always; HOSP only if nonzero */}
+          <div className="glass-card p-5">
+            <h3 className="text-sm font-semibold mb-3">Daily Invoices</h3>
+            <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalInv)}</p>
+            <div className="space-y-1.5 text-xs">
+              {(["SW", "FIN", "LUX", "MISC"] as CollKey[]).map((coll) => (
+                <div key={coll} className="flex justify-between">
+                  <span className="text-muted-foreground">{COLL_LABEL[coll]}</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(dailyStats.inv[coll])}</span>
+                </div>
+              ))}
+              {dailyStats.inv.HOSP > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">HOSP</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(dailyStats.inv.HOSP)}</span>
+                </div>
+              )}
+              {dailyStats.inv.Other > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Other</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(dailyStats.inv.Other)}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-1.5 border-t text-muted-foreground">
+                <span>% Warehouse</span><span>—</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>% Container</span><span>—</span>
+              </div>
             </div>
           </div>
         </div>
@@ -794,15 +841,15 @@ export function LiveKpiReport({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Today's Date</p>
-            <p className="font-semibold">{TODAY.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+            <p className="font-semibold">{new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric" }).format(new Date())}</p>
           </div>
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground">End Date</p>
-            <p className="font-semibold">{END.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
+            <p className="font-semibold">{reportingEndOfYear.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
           </div>
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Days Remaining</p>
-            <p className="font-semibold">{DAYS_REMAINING}</p>
+            <p className="font-semibold">{reportingDaysRemaining}</p>
           </div>
           <div>
             <p className="text-xs uppercase tracking-wider text-muted-foreground">Reporting Year</p>

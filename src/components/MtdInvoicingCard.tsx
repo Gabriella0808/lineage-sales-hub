@@ -2,62 +2,43 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/hooks/usePortalData";
-import { format } from "date-fns";
+import { getReportingYear, getReportingMonth } from "@/utils/reportingDate";
 
 /**
  * Live MTD Total Invoicing card.
- * Company-wide: reads from mv_portal_monthly_invoiced_actuals (year + month_number filter).
- * Dealer-scoped: falls back to kpi_monthly_invoice_rollup (supports dealer filtering).
+ *
+ * Company-wide (managerId = null): reads mv_portal_monthly_invoiced_actuals.
+ * Manager-scoped (managerId = UUID): calls get_manager_reporting_monthly, the
+ *   same canonical source as the Monthly Results table in Live KPI, so both
+ *   surfaces always show identical numbers.
+ * Rep-scoped (repAcIds provided): filters by individual Acctivate rep IDs.
  */
-export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string[] | null }) {
-  const now = new Date();
-  const currentYear  = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-  const monthLabel   = useMemo(() => format(now, "MMMM yyyy"), []);
+export function MtdInvoicingCard({
+  managerId,
+  repAcIds,
+}: {
+  managerId?: string | null;
+  repAcIds?: string[] | null;
+}) {
+  const currentYear  = getReportingYear();
+  const currentMonth = getReportingMonth();
+  const monthLabel   = useMemo(() => {
+    const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    return `${months[currentMonth - 1]} ${currentYear}`;
+  }, [currentYear, currentMonth]);
 
-  // null/undefined = no manager selected → show company-wide total.
-  // [] = manager selected but has no reps → show zero (not company-wide).
-  const isCompanyWide = allowedRepNames == null;
+  const isCompanyWide = managerId == null && (repAcIds == null || repAcIds.length === 0);
 
-  // Resolve dealer IDs — only needed for dealer-scoped view.
-  const { data: scopedDealerIds } = useQuery({
-    queryKey: ["mtd_scoped_dealers", (allowedRepNames ?? []).join("|")],
-    enabled: !isCompanyWide,
-    queryFn: async () => {
-      const { data: repRows, error: repErr } = await supabase
-        .from("sales_reps")
-        .select("id")
-        .in("name", allowedRepNames!);
-      if (repErr) throw repErr;
-      const repIds = (repRows ?? []).map((r: any) => r.id);
-      if (repIds.length === 0) return [] as string[];
-      const ids: string[] = [];
-      let start = 0;
-      const pageSize = 1000;
-      while (true) {
-        const { data, error } = await supabase
-          .from("dealers")
-          .select("id")
-          .in("rep_id", repIds)
-          .range(start, start + pageSize - 1);
-        if (error) throw error;
-        const batch = (data ?? []) as { id: string }[];
-        ids.push(...batch.map((b) => b.id));
-        if (batch.length < pageSize) break;
-        start += pageSize;
-      }
-      return ids;
-    },
-  });
-
-  const scopeReady = isCompanyWide || scopedDealerIds !== undefined;
-  const dealerIds   = isCompanyWide ? null : (scopedDealerIds ?? []);
+  const queryKey = isCompanyWide
+    ? ["mtd_invoicing_cw", currentYear, currentMonth]
+    : ["mtd_invoicing_mgr", managerId ?? "none", repAcIds?.join("|") ?? "", currentYear, currentMonth];
 
   const { data, isLoading } = useQuery({
-    queryKey: ["mtd_invoicing", currentYear, currentMonth, allowedRepNames?.join("|") ?? "all"],
-    enabled: scopeReady,
+    queryKey,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60 * 1000,
     queryFn: async () => {
-      // ── Company-wide: mv_portal_monthly_invoiced_actuals ──────────────────
+      // ── Company-wide: materialized view ──────────────────────────────────
       if (isCompanyWide) {
         const { data: viewData, error } = await supabase
           .from("mv_portal_monthly_invoiced_actuals" as any)
@@ -66,7 +47,7 @@ export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string
           .eq("month_number", currentMonth)
           .maybeSingle();
         if (error) {
-          console.error("[mtd] mv_portal_monthly_invoiced_actuals fetch failed:", error.message);
+          console.error("[mtd] mv_portal_monthly_invoiced_actuals failed:", error.message);
           throw error;
         }
         return {
@@ -75,24 +56,27 @@ export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string
         };
       }
 
-      // ── Dealer-scoped: kpi_monthly_invoice_rollup ────────────────────────
-      if (dealerIds !== null && dealerIds.length === 0) return { total: 0, count: 0 };
-
+      // ── Manager / rep scoped: canonical view RPC ──────────────────────────
+      // Same source as useDealerSalesAggregates + Monthly Results table.
       const { data: rpcData, error } = await (supabase as any).rpc(
-        "kpi_monthly_invoice_rollup",
-        { p_years: [currentYear], p_dealer_ids: dealerIds ?? null },
+        "get_manager_reporting_monthly",
+        {
+          p_manager_id: managerId ?? null,
+          p_rep_ac_ids: repAcIds && repAcIds.length > 0 ? repAcIds : null,
+          p_years:      [currentYear],
+        },
       );
       if (error) {
-        console.error("[mtd] kpi_monthly_invoice_rollup failed:", error.message);
+        console.error("[mtd] get_manager_reporting_monthly failed:", error.message);
         throw error;
       }
-      const monthRow = ((rpcData ?? []) as any[]).find(
-        (r) => Number(r.month) === currentMonth,
+      const rows = ((rpcData ?? []) as any[]).filter(
+        (r: any) => r.metric_type === "invoiced" && Number(r.month_number) === currentMonth,
       );
-      return {
-        total: Number(monthRow?.invoiced       ?? 0),
-        count: Number(monthRow?.invoice_count  ?? 0),
-      };
+      const total = rows.reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
+      const count = rows.reduce((s: number, r: any) => s + (Number(r.row_count)    || 0), 0);
+      console.log("[mtd] manager-scoped invoice total:", { managerId, repAcIds, currentMonth, total, count });
+      return { total, count };
     },
   });
 
@@ -103,7 +87,7 @@ export function MtdInvoicingCard({ allowedRepNames }: { allowedRepNames?: string
           MTD Total Invoicing
         </p>
         <p className="text-3xl font-serif mt-1">
-          {isLoading || !scopeReady ? "…" : formatCurrency(data?.total ?? 0)}
+          {isLoading ? "…" : formatCurrency(data?.total ?? 0)}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
           {monthLabel} • {data?.count ?? 0} invoices

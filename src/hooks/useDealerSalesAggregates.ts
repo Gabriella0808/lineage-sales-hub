@@ -58,8 +58,9 @@ export function classifyBranch(raw: string | null | undefined): "container" | "w
 export function useDealerSalesAggregates(params: {
   managerId: string | null | undefined;
   repAcIds?: string[] | null;
+  refreshKey?: number;
 }) {
-  const { managerId, repAcIds } = params;
+  const { managerId, repAcIds, refreshKey } = params;
 
   const [data, setData] = useState<MonthlyAgg[]>(() => emptyYear());
   const [loading, setLoading] = useState(true);
@@ -240,7 +241,7 @@ export function useDealerSalesAggregates(params: {
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cacheKey]);
+  }, [cacheKey, refreshKey]);
 
   return { data, loading, error };
 }

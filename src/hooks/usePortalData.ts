@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { isBookingVisible } from "@/utils/bookingCutoff";
+import { getReportingYear } from "@/utils/reportingDate";
 
 // ── Types matching DB schema ──────────────────────────────────────
 
@@ -272,7 +273,7 @@ export function useDealers() {
       });
 
       // YTD invoice totals per dealer via server-side rollup (single round-trip).
-      const currentYear = new Date().getFullYear();
+      const currentYear = getReportingYear();
       const ytdByDealer = new Map<string, number>();
       const { data: ytdRows, error: ytdErr } = await (supabase as any).rpc(
         "kpi_dealer_monthly_invoiced",
@@ -345,7 +346,7 @@ export function useDealerSales() {
       // Only the current and previous calendar year are needed by the Overview.
       // Bookings come from dealer_sales_lines (sparse, date-bounded).
       // Invoices come from the server-side per-dealer monthly rollup (RPC).
-      const currentYear = new Date().getFullYear();
+      const currentYear = getReportingYear();
       const prevYear = currentYear - 1;
 
       const [linesRes, invoicedRes] = await Promise.all([

@@ -123,7 +123,34 @@ Deno.serve(async (req) => {
   // Create Supabase client with service role (bypasses RLS)
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-  // 2. Check suppression list (fail-closed: if we can't verify, don't send)
+  // 2. Idempotency check: if a caller-provided key was given (not the auto-generated
+  // messageId fallback), skip enqueue when a 'sent' or 'pending' row already exists.
+  // This prevents duplicate sends when the triggering code fires more than once for
+  // the same logical event (e.g. a DB trigger that fires on update as well as insert).
+  const callerProvidedKey = idempotencyKey !== messageId
+  if (callerProvidedKey) {
+    const { data: existingLog } = await supabase
+      .from('email_send_log')
+      .select('id, status')
+      .eq('idempotency_key', idempotencyKey)
+      .in('status', ['sent', 'pending', 'suppressed'])
+      .maybeSingle()
+
+    if (existingLog) {
+      console.log('Skipping duplicate email (idempotency_key already exists)', {
+        idempotencyKey,
+        existingStatus: existingLog.status,
+        templateName,
+        effectiveRecipient,
+      })
+      return new Response(
+        JSON.stringify({ success: true, skipped: true, reason: 'duplicate', existingStatus: existingLog.status }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+  }
+
+  // 3. Check suppression list (fail-closed: if we can't verify, don't send)
   const { data: suppressed, error: suppressionError } = await supabase
     .from('suppressed_emails')
     .select('id')
@@ -148,6 +175,7 @@ Deno.serve(async (req) => {
     // Log the suppressed attempt
     await supabase.from('email_send_log').insert({
       message_id: messageId,
+      idempotency_key: idempotencyKey,
       template_name: templateName,
       recipient_email: effectiveRecipient,
       status: 'suppressed',
@@ -184,6 +212,7 @@ Deno.serve(async (req) => {
       template_name: templateName,
       recipient_email: effectiveRecipient,
       status: 'failed',
+      idempotency_key: idempotencyKey,
       error_message: 'Failed to look up unsubscribe token',
     })
     return new Response(
@@ -214,6 +243,7 @@ Deno.serve(async (req) => {
       })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
+        idempotency_key: idempotencyKey,
         template_name: templateName,
         recipient_email: effectiveRecipient,
         status: 'failed',
@@ -243,6 +273,7 @@ Deno.serve(async (req) => {
       })
       await supabase.from('email_send_log').insert({
         message_id: messageId,
+        idempotency_key: idempotencyKey,
         template_name: templateName,
         recipient_email: effectiveRecipient,
         status: 'failed',
@@ -265,6 +296,7 @@ Deno.serve(async (req) => {
     })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
+      idempotency_key: idempotencyKey,
       template_name: templateName,
       recipient_email: effectiveRecipient,
       status: 'suppressed',
@@ -301,6 +333,7 @@ Deno.serve(async (req) => {
   // Log pending BEFORE enqueue so we have a record even if enqueue crashes
   await supabase.from('email_send_log').insert({
     message_id: messageId,
+    idempotency_key: idempotencyKey,
     template_name: templateName,
     recipient_email: effectiveRecipient,
     status: 'pending',
@@ -333,6 +366,7 @@ Deno.serve(async (req) => {
 
     await supabase.from('email_send_log').insert({
       message_id: messageId,
+      idempotency_key: idempotencyKey,
       template_name: templateName,
       recipient_email: effectiveRecipient,
       status: 'failed',

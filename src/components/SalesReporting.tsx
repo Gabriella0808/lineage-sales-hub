@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { getReportingToday } from "@/utils/reportingDate";
 import { useQuery } from "@tanstack/react-query";
 import {
   format, startOfYear, endOfMonth, subYears, subMonths, startOfMonth, startOfDay,
@@ -102,6 +103,8 @@ function usePortalInvoicedLines(from: Date, to: Date, enabled = true) {
     queryKey: ["v_portal_invoiced_lines_v1", fromStr, toExcl],
     enabled,
     staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60 * 1000,
     queryFn: () => fetchPortalLinesByType(from, to, "invoiced"),
   });
 }
@@ -113,6 +116,8 @@ function usePortalBookingLines(from: Date, to: Date, enabled = true) {
     queryKey: ["v_portal_booking_lines_v1", fromStr, toExcl],
     enabled,
     staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60 * 1000,
     queryFn: () => fetchPortalLinesByType(from, to, "bookings"),
   });
 }
@@ -159,6 +164,8 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
     ],
     enabled,
     staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60 * 1000,
     queryFn: async (): Promise<GroupedRow[]> => {
       const { data, error } = await (supabase as any).rpc(
         "get_sales_reporting_grouped_rows",
@@ -453,7 +460,7 @@ interface Props {
 }
 
 export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions, managerId }: Props) {
-  const today = new Date();
+  const today = getReportingToday();
 
   const [groupBy, setGroupBy]         = useState<GroupBy>(initialGroupBy);
   // Default primary to YTD because Display defaults to "total"
@@ -473,7 +480,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const handleDisplayChange = (newDisplay: Display) => {
     setDisplay(newDisplay);
     if (metric === "invoices") {
-      const now = new Date();
+      const now = getReportingToday();
       applyPrimary(newDisplay === "total" ? startOfYear(now) : startOfMonth(now), now);
     }
   };
@@ -1114,7 +1121,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Quick range</span>
               <Select
                 onValueChange={(v) => {
-                  const now      = new Date();
+                  const now      = getReportingToday();
                   const todayEnd = startOfDay(now);
                   const monthEnd = endOfMonth(now);
                   let from: Date; let to: Date;
@@ -1156,7 +1163,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               label="Primary date range"
               value={primary}
               onChange={(r) => applyPrimary(r.from, r.to)}
-              onReset={() => { const now = new Date(); applyPrimary(startOfYear(now), endOfMonth(now)); }}
+              onReset={() => { const now = getReportingToday(); applyPrimary(startOfYear(now), endOfMonth(now)); }}
             />
 
             <div className="flex flex-col gap-1">
@@ -1202,7 +1209,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               size="sm"
               className="h-9 text-muted-foreground self-end"
               onClick={() => {
-                const now = new Date();
+                const now = getReportingToday();
                 const fromReset = display === "total" && metric === "invoices" ? startOfYear(now) : startOfMonth(now);
                 setCompareMode("prev-year");
                 setPrimary({ from: fromReset, to: now });

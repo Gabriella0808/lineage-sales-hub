@@ -7,7 +7,7 @@
 // Request body (all optional):
 //   dryRun: true              — compute data + recipients, do not send
 //   testEmail: "a@b.com"     — send only to this address; sets testMode: true in response
-//   date: "YYYY-MM-DD"       — override the reporting date (for back-testing)
+//   reportingDate: "YYYY-MM-DD" — use this ET date instead of today (also accepted as "date")
 import * as React from "npm:react@18.3.1";
 import { renderAsync } from "npm:@react-email/components@0.0.22";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -227,7 +227,7 @@ Deno.serve(async (req) => {
     const dryRun: boolean    = !!body?.dryRun;
     const testEmail: string | undefined = body?.testEmail;
     const testMode           = testEmail !== undefined;
-    const dateOverride: string | undefined = body?.date;
+    const dateOverride: string | undefined = body?.reportingDate ?? body?.date;
 
     const reportingDateStr = dateOverride ?? getReportingDateET();
     const reportingDate    = formatDisplayDate(reportingDateStr);

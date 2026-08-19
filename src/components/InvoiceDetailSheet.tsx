@@ -110,6 +110,36 @@ function groupByBrandCat(lines: ViewLine[]) {
     .sort((a, b) => b.total - a.total);
 }
 
+// Non-sales categories to exclude from the By Collection section.
+const EXCLUDED_BRAND_CATS = new Set([
+  "freighto", "tariff", "salestax", "ccfee",
+  "freight", "tax", "surcharge", "qc",
+]);
+
+function toCollectionName(bc: string | null): string | null {
+  if (!bc || bc.trim() === "") return null;
+  const s = bc.toLowerCase().trim();
+  if (EXCLUDED_BRAND_CATS.has(s)) return null;
+  if (s.startsWith("sw") || s.includes("sea wind")) return "Sea Winds";
+  if (s.startsWith("fin") || s.includes("finn")) return "Finn & Lou";
+  if (s.startsWith("lux")) return "Lux";
+  if (s.startsWith("hosp") || s.includes("hospit")) return "Hospitality";
+  if (s === "misc" || s.startsWith("allow")) return "MISC";
+  return null; // anything else is a non-sales category
+}
+
+function groupByCollection(lines: ViewLine[]) {
+  const map = new Map<string, number>();
+  for (const l of lines) {
+    const coll = toCollectionName(l.brand_category);
+    if (!coll) continue;
+    map.set(coll, (map.get(coll) ?? 0) + Number(l.amount));
+  }
+  return Array.from(map.entries())
+    .map(([label, total]) => ({ label, total }))
+    .sort((a, b) => b.total - a.total);
+}
+
 function pctDelta(cur: number, prev: number): number | null {
   if (!prev) return null;
   return ((cur - prev) / prev) * 100;
@@ -195,9 +225,10 @@ export function InvoiceDetailSheet({
     : (activeMetricType === "bookings" ? primBookings : primInvoiced);
   const compActive = activeMetricType === "bookings" ? compBookings : compInvoiced;
 
-  const bySku         = useMemo(() => groupBySku(primActive),      [primActive]);
-  const byBrandCat    = useMemo(() => groupByBrandCat(primActive), [primActive]);
-  const compBySkuMap  = useMemo(() => {
+  const bySku            = useMemo(() => groupBySku(primActive),        [primActive]);
+  const byBrandCat       = useMemo(() => groupByBrandCat(primActive),   [primActive]);
+  const byCollection     = useMemo(() => groupByCollection(primActive), [primActive]);
+  const compBySkuMap     = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of groupBySku(compActive)) m.set(r.sku, r.total);
     return m;
@@ -205,6 +236,11 @@ export function InvoiceDetailSheet({
   const compByBrandCatMap = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of groupByBrandCat(compActive)) m.set(r.label, r.total);
+    return m;
+  }, [compActive]);
+  const compByCollectionMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of groupByCollection(compActive)) m.set(r.label, r.total);
     return m;
   }, [compActive]);
 
@@ -286,6 +322,16 @@ export function InvoiceDetailSheet({
               <Section title="By Brand / Category" count={byBrandCat.length}>
                 <BreakdownTable
                   rows={byBrandCat.map((r) => ({ label: r.label, total: r.total, comp: compByBrandCatMap.get(r.label) }))}
+                  showComp={hasCompare}
+                  compLabel={compLabel ?? undefined}
+                />
+              </Section>
+            )}
+
+            {byCollection.length > 0 && (
+              <Section title="By Collection" count={byCollection.length}>
+                <BreakdownTable
+                  rows={byCollection.map((r) => ({ label: r.label, total: r.total, comp: compByCollectionMap.get(r.label) }))}
                   showComp={hasCompare}
                   compLabel={compLabel ?? undefined}
                 />

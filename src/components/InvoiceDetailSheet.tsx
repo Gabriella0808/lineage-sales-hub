@@ -17,6 +17,7 @@ export interface ViewLine {
   sku:              string | null;
   description:      string | null;
   brand_category:   string | null;
+  product_class:    string | null;
   amount:           number;
   invoice_number:   string | null;
 }
@@ -102,7 +103,9 @@ function groupBySku(lines: ViewLine[]) {
 function groupByBrandCat(lines: ViewLine[]) {
   const map = new Map<string, number>();
   for (const l of lines) {
-    const k = l.brand_category ?? "Unknown";
+    // product_class is the real Acctivate product family (e.g. "Chatham Maple").
+    // Fall back to brand_category (collection name) only when product_class is absent (bookings).
+    const k = l.product_class?.trim() || l.brand_category || "Unknown";
     map.set(k, (map.get(k) ?? 0) + Number(l.amount));
   }
   return Array.from(map.entries())

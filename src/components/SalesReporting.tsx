@@ -49,6 +49,7 @@ type DealerRepLine = {
   sku:              string | null;
   description:      string | null;
   brand_category:   string | null;
+  product_class:    string | null;
   amount:           number;
   invoice_number:   string | null;
 };
@@ -73,7 +74,7 @@ async function fetchPortalLinesByType(
   while (true) {
     const { data, error } = await (supabase as any)
       .from("v_portal_dealer_rep_reporting_lines")
-      .select("metric_type, transaction_date, year, month_number, dealer_name, customer_id, rep_name, rep_id, sku, description, brand_category, amount, invoice_number")
+      .select("metric_type, transaction_date, year, month_number, dealer_name, customer_id, rep_name, rep_id, sku, description, brand_category, product_class, amount, invoice_number")
       .eq("metric_type", metricType)
       .gte("transaction_date", fromStr)
       .lt("transaction_date", toExcl)
@@ -1046,6 +1047,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         sku:              r.sku            ?? null,
         description:      r.description   ?? null,
         brand_category:   r.brand_category ?? null,
+        product_class:    r.product_class   ?? null,
         amount:           Number(r.amount) || 0,
         invoice_number:   r.invoice_number ?? null,
       }));

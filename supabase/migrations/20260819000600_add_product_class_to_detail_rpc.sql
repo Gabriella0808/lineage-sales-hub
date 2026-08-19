@@ -146,7 +146,6 @@ customer_lookup AS (
 unique_dealer_name_lookup AS (
   SELECT
     LOWER(TRIM(name))  AS name_norm,
-    MIN(id)            AS id,
     MIN(acctivate_id)  AS acctivate_id
   FROM public.dealers
   GROUP BY LOWER(TRIM(name))

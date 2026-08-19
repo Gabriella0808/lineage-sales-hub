@@ -72,6 +72,9 @@ verify_jwt = false
 [functions.notify-weekly-clearance]
 verify_jwt = false
 
+[functions.send-daily-performance-email]
+verify_jwt = false
+
 [functions.resurrect-failed-lead-emails]
 verify_jwt = false
 

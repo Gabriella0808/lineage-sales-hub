@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, ArrowLeft, ChevronDown, Trash2, X } from "lucide-react";
+import { Plus, Search, ArrowLeft, ChevronDown, Trash2, X, Download } from "lucide-react";
 import { ImportAccountsDialog } from "@/components/ImportAccountsDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
@@ -320,6 +320,57 @@ export default function CrmAccountsPage() {
 
   const cameFromDashboard = stageParam !== "all" || brandParam !== "all" || managerParam !== "all";
 
+  const exportToCsv = () => {
+    const escape = (v: string | null | undefined) => {
+      if (v == null || v === "") return "";
+      const s = String(v).replace(/"/g, '""');
+      return /[",\n\r]/.test(s) ? `"${s}"` : s;
+    };
+    const headers = [
+      "Company", "Brand(s)", "Contact First Name", "Contact Last Name",
+      "Phone", "Email", "Website",
+      "Street", "City", "State", "Zip",
+      "Rep", "Manager",
+      "Account Type", "Prospect Type(s)",
+      "Date Added", "Last Contacted",
+      "Buying Group", "Notes",
+    ];
+    const rows = filtered.map((a) => {
+      const accBrands = a.brands?.length ? a.brands : (a.brand ? [a.brand] : []);
+      const accTypes  = a.prospect_types?.length ? a.prospect_types : (a.prospect_type ? [a.prospect_type] : []);
+      const lastC     = lastContactedMap.get(a.id);
+      return [
+        a.company_name,
+        accBrands.join("; "),
+        a.contact_first_name,
+        a.contact_last_name,
+        a.main_phone,
+        a.email,
+        a.website,
+        a.street_1,
+        a.city,
+        a.state,
+        a.zip,
+        repName(a.assigned_rep_id),
+        managerName(a.assigned_manager_id),
+        a.account_type ?? "prospect",
+        accTypes.join("; "),
+        a.created_at ? new Date(a.created_at).toLocaleDateString("en-US") : "",
+        lastC ? new Date(lastC).toLocaleDateString("en-US") : "",
+        a.buying_group,
+        a.notes,
+      ].map(escape).join(",");
+    });
+    const csv = [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `prospects_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {cameFromDashboard && (
@@ -333,6 +384,9 @@ export default function CrmAccountsPage() {
         subtitle={`${filtered.length} of ${accounts.length} prospects`}
         actions={
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={exportToCsv} className="h-9">
+              <Download className="h-4 w-4 mr-1.5" />Export CSV
+            </Button>
             <ImportAccountsDialog />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

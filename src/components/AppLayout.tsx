@@ -44,7 +44,9 @@ const NAV_SECTIONS: NavSection[] = [
     id: "command",
     label: "Command Center",
     items: [
-      { title: "Overview",  url: "/",      icon: Compass,     roles: ["admin", "manager", "rep"] },
+      { title: "Company-wide",     url: "/",  icon: BarChart3, roles: ["admin"] },
+      { title: "Team Performance", url: "/",  icon: BarChart3, roles: ["manager"] },
+      { title: "My Performance",   url: "/",  icon: BarChart3, roles: ["rep"] },
       { title: "My Tasks", url: "/tasks", icon: ListChecks, roles: ["admin", "manager", "rep"] },
       { title: "Meeting Intelligence", url: "/meeting-intelligence", icon: AudioLines, roles: ["admin", "manager"], allowEmails: ["gmaccioni0808@gmail.com"] },
     ],
@@ -108,9 +110,6 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Inventory & Reporting",
     items: [
       { title: "Inventory", url: "/inventory", icon: Boxes, roles: ["admin", "manager", "rep", "dealer"] },
-      { title: "Company-wide",     url: "/company-wide",  icon: BarChart3, roles: ["admin"] },
-      { title: "Team Performance", url: "/company-wide",  icon: BarChart3, roles: ["manager"] },
-      { title: "My Performance",   url: "/company-wide",  icon: BarChart3, roles: ["rep"] },
     ],
   },
   {

@@ -22,7 +22,7 @@ const SITE_NAME     = "Lineage Collections";
 const FROM_DOMAIN   = "lineage-collections.com";
 const SENDER_DOMAIN = "lineage-collections.com";
 const TEMPLATE_LABEL = "daily-performance-report";
-const PORTAL_URL     = "https://www.lineage-collections-portal.com/";
+const PORTAL_URL     = "https://lineage-collections-portal.com/company-wide";
 
 // ── Timezone helpers ──────────────────────────────────────────────────────────
 
@@ -33,10 +33,28 @@ function getReportingDateET(): string {
   }).format(new Date());
 }
 
+function getYesterdayET(): string {
+  const today = getReportingDateET();
+  const [y, m, d] = today.split("-").map(Number);
+  const prev = new Date(y, m - 1, d - 1);
+  return [
+    prev.getFullYear(),
+    String(prev.getMonth() + 1).padStart(2, "0"),
+    String(prev.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 function formatDisplayDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-US", {
     month: "long", day: "numeric", year: "numeric",
+  });
+}
+
+function formatShortDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    month: "short", day: "numeric",
   });
 }
 
@@ -63,13 +81,11 @@ const COLLECTION_ORDER = ["SW", "FIN", "LUX", "HOSP", "MISC"];
 
 interface CollectionRow { label: string; amount: number }
 
-function aggregateByCollection(
-  lines: Array<{ metric_type: string; brand_category: string | null; amount: number }>,
-  metricType: string,
+function aggregateLines(
+  lines: Array<{ brand_category: string | null; amount: number }>,
 ): CollectionRow[] {
   const map = new Map<string, number>();
   for (const r of lines) {
-    if (r.metric_type !== metricType) continue;
     const label = toCollectionLabel(r.brand_category);
     if (!label) continue;
     map.set(label, (map.get(label) ?? 0) + r.amount);
@@ -224,40 +240,61 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const dryRun: boolean    = !!body?.dryRun;
+    const dryRun: boolean = !!body?.dryRun;
     const testEmail: string | undefined = body?.testEmail;
-    const testMode           = testEmail !== undefined;
-    const dateOverride: string | undefined = body?.reportingDate ?? body?.date;
+    const testMode = testEmail !== undefined;
+    const mode = testMode ? "test" : dryRun ? "dry-run" : "cron";
 
-    const reportingDateStr = dateOverride ?? getReportingDateET();
-    const reportingDate    = formatDisplayDate(reportingDateStr);
+    // Invoices = yesterday ET; Bookings = today ET.
+    // Both overridable for testing via invoiceDate / bookingDate.
+    // Legacy reportingDate sets both (backward compat).
+    const invoiceDateStr   = body?.invoiceDate  ?? body?.reportingDate ?? getYesterdayET();
+    const bookingDateStr   = body?.bookingDate  ?? body?.reportingDate ?? getReportingDateET();
+    const invoiceDate      = formatDisplayDate(invoiceDateStr);
+    const bookingDate      = formatDisplayDate(bookingDateStr);
+    const invoiceDateShort = formatShortDate(invoiceDateStr);
+    const bookingDateShort = formatShortDate(bookingDateStr);
 
-    console.log(`[daily-perf] date=${reportingDateStr} testMode=${testMode} dryRun=${dryRun}`);
+    console.log(`[daily-perf] mode=${mode} invoiceDate=${invoiceDateStr} bookingDate=${bookingDateStr}`);
 
-    // ── 1. Fetch today's data ───────────────────────────────────────────────
-    const { data: rawLines, error: dataErr } = await supabase
-      .from("v_companywide_reporting_actuals")
-      .select("metric_type, brand_category, amount")
-      .eq("transaction_date", reportingDateStr)
-      .limit(5000);
+    // ── 1. Fetch data — two separate queries, different dates ───────────────
+    const [{ data: rawInvoiceLines, error: invErr }, { data: rawBookingLines, error: bkgErr }] =
+      await Promise.all([
+        supabase
+          .from("v_companywide_reporting_actuals")
+          .select("brand_category, amount")
+          .eq("metric_type", "invoiced")
+          .eq("transaction_date", invoiceDateStr)
+          .limit(5000),
+        supabase
+          .from("v_companywide_reporting_actuals")
+          .select("brand_category, amount")
+          .eq("metric_type", "bookings")
+          .eq("transaction_date", bookingDateStr)
+          .limit(5000),
+      ]);
 
-    if (dataErr) throw dataErr;
+    if (invErr) throw invErr;
+    if (bkgErr) throw bkgErr;
 
-    const lines = (rawLines ?? []).map((r: any) => ({
-      metric_type:    String(r.metric_type ?? ""),
-      brand_category: (r.brand_category ?? null) as string | null,
-      amount:         Number(r.amount) || 0,
-    }));
+    const toLines = (raw: any[] | null) =>
+      (raw ?? []).map((r: any) => ({
+        brand_category: (r.brand_category ?? null) as string | null,
+        amount: Number(r.amount) || 0,
+      }));
 
-    const invoicedRows  = aggregateByCollection(lines, "invoiced");
-    const bookingRows   = aggregateByCollection(lines, "bookings");
+    const invoicedRows  = aggregateLines(toLines(rawInvoiceLines));
+    const bookingRows   = aggregateLines(toLines(rawBookingLines));
     const totalInvoiced = invoicedRows.reduce((s, r) => s + r.amount, 0);
     const totalBookings  = bookingRows.reduce((s, r) => s + r.amount, 0);
 
-    console.log(`[daily-perf] invoiced=$${Math.round(totalInvoiced)} bookings=$${Math.round(totalBookings)}`);
+    console.log(`[daily-perf] invoiced=$${Math.round(totalInvoiced)} (${invoiceDateStr}) bookings=$${Math.round(totalBookings)} (${bookingDateStr})`);
 
     const templateData = {
-      reportingDate,
+      invoiceDate,
+      bookingDate,
+      invoiceDateShort,
+      bookingDateShort,
       totalInvoiced,
       totalBookings,
       invoicedRows,
@@ -277,30 +314,38 @@ Deno.serve(async (req) => {
     const listResult = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (listResult.error) throw listResult.error;
 
+    const now = new Date();
     const seen = new Set<string>();
     const allRecipients: string[] = [];
     for (const u of listResult.data?.users ?? []) {
       if (!eligibleIds.has(u.id)) continue;
+      // Skip banned/disabled users
+      if (u.banned_until && new Date(u.banned_until) > now) continue;
       const email = (u.email ?? "").trim().toLowerCase();
       if (!email || seen.has(email)) continue;
       seen.add(email);
       allRecipients.push(email);
     }
 
-    console.log(`[daily-perf] ${allRecipients.length} recipient(s): ${allRecipients.join(", ")}`);
+    console.log(`[daily-perf] mode=${mode} recipientCount=${allRecipients.length} recipients=${allRecipients.join(", ")}`);
 
     // ── 3. Dry run ──────────────────────────────────────────────────────────
     if (dryRun) {
+      console.log(`[daily-perf] dry-run — not sending`);
       return new Response(
         JSON.stringify({
           ok:             true,
+          mode,
           dryRun:         true,
-          reportingDate,
-          reportingDateStr,
+          invoiceDate,
+          invoiceDateStr,
+          bookingDate,
+          bookingDateStr,
           totalInvoiced,
           totalBookings,
           invoicedRows,
           bookingRows,
+          recipientCount: allRecipients.length,
           recipients:     allRecipients,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -322,11 +367,12 @@ Deno.serve(async (req) => {
 
     // ── 5. Send ─────────────────────────────────────────────────────────────
     const toList: string[] = testMode ? [testEmail!] : allRecipients;
+    console.log(`[daily-perf] mode=${mode} sending to ${toList.length} recipient(s): ${toList.join(", ")}`);
     let emailed = 0;
     const errors: string[] = [];
 
     for (const email of toList) {
-      const idempotencyKey = `daily-performance-${reportingDateStr}-${email}${testMode ? `-test-${Date.now()}` : ""}`;
+      const idempotencyKey = `daily-performance-inv${invoiceDateStr}-bkg${bookingDateStr}-${email}${testMode ? `-test-${Date.now()}` : ""}`;
       const result = await sendToRecipient(supabase, { email, html, text, subject, idempotencyKey });
       if (result.ok) {
         if (!result.skipped) emailed++;
@@ -335,14 +381,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    console.log(`[daily-perf] mode=${mode} emailed=${emailed} errors=${errors.length}`);
+
     // Non-200 if nothing was sent and there were errors
     if (emailed === 0 && errors.length > 0) {
       return new Response(
         JSON.stringify({
-          ok:     false,
+          ok:             false,
+          mode,
           ...(testMode ? { testMode: true } : {}),
-          reportingDate,
-          recipients: toList,
+          invoiceDate,
+          invoiceDateStr,
+          bookingDate,
+          bookingDateStr,
+          recipientCount: toList.length,
+          recipients:     toList,
           emailed,
           errors,
         }),
@@ -352,13 +405,17 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        ok:     true,
+        ok:             true,
+        mode,
         ...(testMode ? { testMode: true } : {}),
-        reportingDate,
-        reportingDateStr,
+        invoiceDate,
+        invoiceDateStr,
+        bookingDate,
+        bookingDateStr,
         totalInvoiced,
         totalBookings,
-        recipients: toList,
+        recipientCount: toList.length,
+        recipients:     toList,
         emailed,
         errors,
       }),

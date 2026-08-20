@@ -37,6 +37,16 @@ interface RepRow {
 
 // --------- Helpers ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+/** Returns today's calendar date in America/New_York as a plain Date at local midnight. */
+function getTodayET(): Date {
+  const etStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+  const [y, m, d] = etStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 /**
  * Returns the current Friday if today is Friday, otherwise the NEXT upcoming Friday.
  * This gives the END date of the current reporting period on every day of the week:
@@ -65,8 +75,8 @@ function fmtCurrency(n: number) {
 const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
 
 export default function ClearanceAnalyticsPage() {
-  // anchor = the END Friday of the displayed period
-  const [anchor, setAnchor] = useState<Date>(() => currentOrNextFriday(new Date()));
+  // anchor = the END Friday of the displayed period, computed in ET timezone
+  const [anchor, setAnchor] = useState<Date>(() => currentOrNextFriday(getTodayET()));
 
   const periodEnd   = anchor;               // end Friday (inclusive, displayed)
   const periodStart = addDays(anchor, -6);  // Saturday 6 days before (Sat–Fri, no overlap)
@@ -76,14 +86,15 @@ export default function ClearanceAnalyticsPage() {
   const filterEndStr   = format(filterEnd,   "yyyy-MM-dd");
   const weekLabel      = fmtWeekLabel(periodStart, periodEnd);
 
-  const isCurrentWeek = format(anchor, "yyyy-MM-dd") === format(currentOrNextFriday(new Date()), "yyyy-MM-dd");
+  const isCurrentWeek = format(anchor, "yyyy-MM-dd") === format(currentOrNextFriday(getTodayET()), "yyyy-MM-dd");
 
   const [salesRows, setSalesRows]       = useState<SalesRow[]>([]);
   const [loadingData, setLoadingData]   = useState(true);
   const [expandedReps, setExpandedReps] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    console.log("[clearance-analytics] period:", periodStartStr, "to <", filterEndStr);
+    console.log("[clearance-analytics] selectedWeekStart:", periodStartStr);
+    console.log("[clearance-analytics] selectedWeekEndExclusive:", filterEndStr);
 
     async function load() {
       setLoadingData(true);
@@ -96,7 +107,7 @@ export default function ClearanceAnalyticsPage() {
         .lt("sale_date", filterEndStr);
 
       if (error) {
-        console.error("[clearance-analytics] fetch failed:", error.message, error);
+        console.error("[clearance-analytics] Supabase error:", error.code, error.message, error);
         setSalesRows([]);
         setLoadingData(false);
         return;
@@ -107,13 +118,18 @@ export default function ClearanceAnalyticsPage() {
         rep_name:      r.rep_name ?? null,
         sku:           String(r.sku ?? ""),
         product:       r.product  ?? null,
-        quantity_sold: Number(r.quantity_sold || 0),
-        sales_amount:  Number(r.sales_amount  || 0),
+        quantity_sold: Number(r.quantity_sold ?? 0),
+        sales_amount:  Number(r.sales_amount  ?? 0),
       })) as SalesRow[];
 
-      console.log("[clearance-analytics] rows:", rows.length,
-        "· units:", rows.reduce((s, r) => s + r.quantity_sold, 0),
-        "· revenue:", rows.reduce((s, r) => s + r.sales_amount, 0));
+      console.log("[clearance-analytics] rows returned:", rows.length);
+      console.log("[clearance-analytics] first 5 rows:", rows.slice(0, 5));
+      console.log(
+        "[clearance-analytics] totals — units:",
+        rows.reduce((s, r) => s + r.quantity_sold, 0),
+        "· revenue:",
+        rows.reduce((s, r) => s + r.sales_amount, 0),
+      );
 
       setSalesRows(rows);
       setLoadingData(false);
@@ -128,14 +144,14 @@ export default function ClearanceAnalyticsPage() {
       const rep = row.rep_name?.trim() || "Unattributed";
       if (MANAGER_NAMES.has(rep.toLowerCase())) continue;
       if (!agg[rep]) agg[rep] = { skus: {}, totalQty: 0, totalRevenue: 0 };
-      agg[rep].totalQty     += Number(row.quantity_sold || 0);
-      agg[rep].totalRevenue += Number(row.sales_amount  || 0);
+      agg[rep].totalQty     += Number(row.quantity_sold ?? 0);
+      agg[rep].totalRevenue += Number(row.sales_amount  ?? 0);
       const sku = row.sku;
       if (!agg[rep].skus[sku]) {
         agg[rep].skus[sku] = { sku, product: row.product ?? null, qty: 0, revenue: 0 };
       }
-      agg[rep].skus[sku].qty     += Number(row.quantity_sold || 0);
-      agg[rep].skus[sku].revenue += Number(row.sales_amount  || 0);
+      agg[rep].skus[sku].qty     += Number(row.quantity_sold ?? 0);
+      agg[rep].skus[sku].revenue += Number(row.sales_amount  ?? 0);
     }
     return Object.entries(agg)
       .sort(([, a], [, b]) => b.totalRevenue - a.totalRevenue)
@@ -150,8 +166,8 @@ export default function ClearanceAnalyticsPage() {
 
   // Summary KPIs use all rows (including managers), matching Supabase totals
   const summary = useMemo(() => ({
-    totalUnits:    salesRows.reduce((s, r) => s + Number(r.quantity_sold || 0), 0),
-    totalRevenue:  salesRows.reduce((s, r) => s + Number(r.sales_amount  || 0), 0),
+    totalUnits:    salesRows.reduce((s, r) => s + Number(r.quantity_sold ?? 0), 0),
+    totalRevenue:  salesRows.reduce((s, r) => s + Number(r.sales_amount  ?? 0), 0),
     skusMoved:     new Set(salesRows.map((r) => r.sku)).size,
     repsWithSales: repRows.length,
   }), [salesRows, repRows]);
@@ -187,7 +203,7 @@ export default function ClearanceAnalyticsPage() {
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setAnchor(currentOrNextFriday(new Date()))}>
+        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setAnchor(currentOrNextFriday(getTodayET()))}>
           This Week
         </Button>
       </div>

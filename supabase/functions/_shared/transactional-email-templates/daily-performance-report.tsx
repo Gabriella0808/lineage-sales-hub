@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import {
-  Body, Container, Head, Heading, Hr, Html, Preview, Section, Text,
+  Body, Container, Head, Heading, Hr, Html, Preview, Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
@@ -12,7 +12,10 @@ interface CollectionRow {
 }
 
 interface DailyPerformanceReportProps {
-  reportingDate?: string        // "August 19, 2026"
+  invoiceDate?: string       // "August 18, 2026" — yesterday
+  bookingDate?: string       // "August 19, 2026" — today
+  invoiceDateShort?: string  // "Aug 18" — used in section headings
+  bookingDateShort?: string  // "Aug 19" — used in section headings
   totalInvoiced?: number
   totalBookings?: number
   invoicedRows?: CollectionRow[]
@@ -23,11 +26,11 @@ interface DailyPerformanceReportProps {
 const fmt = (n: number) =>
   `$${Math.round(n).toLocaleString('en-US')}`
 
-// ── Sub-component ─────────────────────────────────────────────────────────────
+// ── Collection table ──────────────────────────────────────────────────────────
 
 function CollectionTable({ rows, total }: { rows: CollectionRow[]; total: number }) {
   return (
-    <table style={rowTable} cellPadding={0} cellSpacing={0}>
+    <table width="100%" cellPadding={0} cellSpacing={0} style={{ borderCollapse: 'collapse', width: '100%' }}>
       <thead>
         <tr>
           <th style={th}>Collection</th>
@@ -50,30 +53,94 @@ function CollectionTable({ rows, total }: { rows: CollectionRow[]; total: number
   )
 }
 
+// ── Section box with colored heading bar ──────────────────────────────────────
+
+interface SectionBoxProps {
+  headingText: string
+  headingBg: string
+  headingColor: string
+  borderColor: string
+  children: React.ReactNode
+}
+
+function SectionBox({ headingText, headingBg, headingColor, borderColor, children }: SectionBoxProps) {
+  return (
+    <table
+      cellPadding={0}
+      cellSpacing={0}
+      role="presentation"
+      style={{
+        width: '100%',
+        borderCollapse: 'separate',
+        borderSpacing: '0',
+        border: `2px solid ${borderColor}`,
+        borderRadius: '8px',
+        marginBottom: '24px',
+      }}
+    >
+      <tbody>
+        {/* Colored heading bar */}
+        <tr>
+          <td
+            style={{
+              backgroundColor: headingBg,
+              color: headingColor,
+              padding: '12px 20px',
+              fontSize: '11px',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontFamily: '"DM Sans", Arial, sans-serif',
+              borderRadius: '6px 6px 0 0',
+              borderBottom: `1px solid ${borderColor}`,
+            }}
+          >
+            {headingText}
+          </td>
+        </tr>
+        {/* White body */}
+        <tr>
+          <td
+            style={{
+              backgroundColor: '#ffffff',
+              padding: '6px 20px 18px',
+              borderRadius: '0 0 6px 6px',
+            }}
+          >
+            {children}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  )
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const DailyPerformanceReportEmail = ({
-  reportingDate = 'Today',
+  invoiceDate = '',
+  bookingDate = '',
+  invoiceDateShort = '',
+  bookingDateShort = '',
   totalInvoiced = 0,
   totalBookings = 0,
   invoicedRows = [],
   bookingRows = [],
-  portalUrl = 'https://www.lineage-collections-portal.com/',
+  portalUrl = 'https://lineage-collections-portal.com/company-wide',
 }: DailyPerformanceReportProps) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>
-      Daily Performance {reportingDate} · Invoices {fmt(totalInvoiced)} · Bookings {fmt(totalBookings)}
+      Daily Performance · Invoices {fmt(totalInvoiced)} ({invoiceDateShort}) · Bookings {fmt(totalBookings)} ({bookingDateShort})
     </Preview>
     <Body style={main}>
       <Container style={container}>
 
-        {/* Eyebrow + title */}
+        {/* Eyebrow + title — no single date; each card shows its own */}
         <Text style={eyebrow}>LINEAGE COLLECTIONS</Text>
         <Heading style={h1}>Daily Performance Report</Heading>
-        <Text style={dateLine}>{reportingDate}</Text>
 
-        {/* Summary cards */}
+        {/* ── Summary cards ─────────────────────────────────────────────── */}
         <table
           cellPadding={0}
           cellSpacing={0}
@@ -82,56 +149,145 @@ const DailyPerformanceReportEmail = ({
         >
           <tbody>
             <tr>
-              <td style={card}>
-                <Text style={cardLabel}>Daily Invoices</Text>
-                <Text style={cardValue}>{fmt(totalInvoiced)}</Text>
+
+              {/* Invoices card — gold accent */}
+              <td style={{ width: '48%', verticalAlign: 'top' }}>
+                <table cellPadding={0} cellSpacing={0} style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {/* Gold accent strip */}
+                    <tr>
+                      <td
+                        style={{
+                          backgroundColor: '#c9a44c',
+                          height: '5px',
+                          lineHeight: '5px',
+                          fontSize: '1px',
+                          borderRadius: '8px 8px 0 0',
+                          borderLeft: '2px solid #c9a44c',
+                          borderRight: '2px solid #c9a44c',
+                          borderTop: '2px solid #c9a44c',
+                        }}
+                      >&nbsp;</td>
+                    </tr>
+                    {/* Card body */}
+                    <tr>
+                      <td
+                        style={{
+                          backgroundColor: '#fdf8ec',
+                          borderLeft: '2px solid #c9a44c',
+                          borderRight: '2px solid #c9a44c',
+                          borderBottom: '2px solid #c9a44c',
+                          borderRadius: '0 0 8px 8px',
+                          padding: '16px 20px 20px',
+                        }}
+                      >
+                        <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8a6a2f', margin: '0 0 8px', fontFamily: '"DM Sans", Arial, sans-serif' }}>
+                          Daily Invoices
+                        </p>
+                        <p style={{ fontFamily: '"DM Serif Display", Georgia, serif', fontSize: '26px', fontWeight: 400, color: '#1e2d47', margin: '0 0 6px', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmt(totalInvoiced)}
+                        </p>
+                        {invoiceDate ? <p style={{ fontSize: '12px', color: '#999', margin: '0', fontFamily: '"DM Sans", Arial, sans-serif' }}>{invoiceDate}</p> : null}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </td>
-              <td style={{ width: '12px' }} />
-              <td style={card}>
-                <Text style={cardLabel}>Daily Bookings</Text>
-                <Text style={cardValue}>{fmt(totalBookings)}</Text>
+
+              {/* Gap */}
+              <td style={{ width: '4%' }}>&nbsp;</td>
+
+              {/* Bookings card — dark accent */}
+              <td style={{ width: '48%', verticalAlign: 'top' }}>
+                <table cellPadding={0} cellSpacing={0} style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {/* Dark accent strip */}
+                    <tr>
+                      <td
+                        style={{
+                          backgroundColor: '#1e2d47',
+                          height: '5px',
+                          lineHeight: '5px',
+                          fontSize: '1px',
+                          borderRadius: '8px 8px 0 0',
+                          borderLeft: '2px solid #1e2d47',
+                          borderRight: '2px solid #1e2d47',
+                          borderTop: '2px solid #1e2d47',
+                        }}
+                      >&nbsp;</td>
+                    </tr>
+                    {/* Card body */}
+                    <tr>
+                      <td
+                        style={{
+                          backgroundColor: '#f4f0eb',
+                          borderLeft: '2px solid #b9914d',
+                          borderRight: '2px solid #b9914d',
+                          borderBottom: '2px solid #b9914d',
+                          borderRadius: '0 0 8px 8px',
+                          padding: '16px 20px 20px',
+                        }}
+                      >
+                        <p style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#1e2d47', margin: '0 0 8px', fontFamily: '"DM Sans", Arial, sans-serif' }}>
+                          Daily Bookings
+                        </p>
+                        <p style={{ fontFamily: '"DM Serif Display", Georgia, serif', fontSize: '26px', fontWeight: 400, color: '#1e2d47', margin: '0 0 6px', fontVariantNumeric: 'tabular-nums' }}>
+                          {fmt(totalBookings)}
+                        </p>
+                        {bookingDate ? <p style={{ fontSize: '12px', color: '#999', margin: '0', fontFamily: '"DM Sans", Arial, sans-serif' }}>{bookingDate}</p> : null}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </td>
+
             </tr>
           </tbody>
         </table>
 
-        {/* Invoiced breakdown */}
-        <Text style={sectionHead}>Daily Invoices by Collection</Text>
-        <Section style={detailsBox}>
+        {/* ── Invoiced breakdown ────────────────────────────────────────── */}
+        <SectionBox
+          headingText={invoiceDateShort ? `Daily Invoices by Collection · ${invoiceDateShort}` : 'Daily Invoices by Collection'}
+          headingBg="#c9a44c"
+          headingColor="#1a1a1a"
+          borderColor="#c9a44c"
+        >
           <CollectionTable rows={invoicedRows} total={totalInvoiced} />
-        </Section>
+        </SectionBox>
 
-        {/* Bookings breakdown */}
-        <Text style={sectionHead}>Daily Bookings by Collection</Text>
-        <Section style={detailsBox}>
+        {/* ── Bookings breakdown ────────────────────────────────────────── */}
+        <SectionBox
+          headingText={bookingDateShort ? `Daily Bookings by Collection · ${bookingDateShort}` : 'Daily Bookings by Collection'}
+          headingBg="#1e2d47"
+          headingColor="#ffffff"
+          borderColor="#1e2d47"
+        >
           <CollectionTable rows={bookingRows} total={totalBookings} />
-        </Section>
+        </SectionBox>
 
         {/* CTA */}
         {portalUrl && (
-          <Section style={{ margin: '24px 0' }}>
-            <table
-              cellPadding={0}
-              cellSpacing={0}
-              role="presentation"
-              style={{ margin: '0 auto', borderCollapse: 'separate' }}
-            >
-              <tbody>
-                <tr>
-                  <td style={{ backgroundColor: '#c9a44c', borderRadius: '8px' }}>
-                    <a
-                      href={portalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={ctaButton}
-                    >
-                      View in Portal
-                    </a>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </Section>
+          <table
+            cellPadding={0}
+            cellSpacing={0}
+            role="presentation"
+            style={{ margin: '24px auto 0', borderCollapse: 'collapse' }}
+          >
+            <tbody>
+              <tr>
+                <td style={{ backgroundColor: '#c9a44c', borderRadius: '8px' }}>
+                  <a
+                    href={portalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={ctaButton}
+                  >
+                    View in Portal
+                  </a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         )}
 
         <Hr style={hr} />
@@ -148,12 +304,17 @@ const DailyPerformanceReportEmail = ({
 export const template = {
   component: DailyPerformanceReportEmail,
   subject: (data: Record<string, any>) => {
-    const d = data?.reportingDate ? ` · ${data.reportingDate}` : ''
-    return `Lineage Daily Performance${d}`
+    const inv = data?.invoiceDateShort ?? ''
+    const bk  = data?.bookingDateShort ?? ''
+    const parts = [inv ? `Invoices ${inv}` : '', bk ? `Bookings ${bk}` : ''].filter(Boolean)
+    return parts.length ? `Lineage Daily Performance · ${parts.join(' · ')}` : 'Lineage Daily Performance'
   },
   displayName: 'Daily Performance Report',
   previewData: {
-    reportingDate: 'August 19, 2026',
+    invoiceDate: 'August 18, 2026',
+    bookingDate: 'August 19, 2026',
+    invoiceDateShort: 'Aug 18',
+    bookingDateShort: 'Aug 19',
     totalInvoiced: 85605,
     totalBookings: 27170,
     invoicedRows: [
@@ -168,7 +329,7 @@ export const template = {
       { label: 'LUX',  amount: 3110  },
       { label: 'HOSP', amount: 1170  },
     ],
-    portalUrl: 'https://www.lineage-collections-portal.com/',
+    portalUrl: 'https://lineage-collections-portal.com/company-wide',
   },
 } satisfies TemplateEntry
 
@@ -178,11 +339,13 @@ const main = {
   backgroundColor: '#ffffff',
   fontFamily: '"DM Sans", Arial, sans-serif',
 }
+
 const container = {
   padding: '36px 28px',
   maxWidth: '560px',
   margin: '0 auto',
 }
+
 const eyebrow = {
   fontSize: '10px',
   fontWeight: 700,
@@ -191,6 +354,7 @@ const eyebrow = {
   color: '#c9a44c',
   margin: '0 0 14px',
 }
+
 const h1 = {
   fontFamily: '"DM Serif Display", Georgia, serif',
   fontSize: '26px',
@@ -198,98 +362,72 @@ const h1 = {
   color: 'hsl(220, 35%, 22%)',
   margin: '0 0 4px',
 }
+
 const dateLine = {
   fontSize: '14px',
   color: 'hsl(220, 10%, 50%)',
   margin: '0 0 28px',
 }
-const card = {
-  backgroundColor: 'hsl(40, 15%, 96%)',
-  border: '1px solid hsl(220, 13%, 90%)',
-  borderRadius: '8px',
-  padding: '16px 20px',
-  verticalAlign: 'top' as const,
-  width: '50%',
-}
-const cardLabel = {
-  fontSize: '11px',
-  fontWeight: 600,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.06em',
-  color: 'hsl(220, 10%, 50%)',
-  margin: '0 0 6px',
-}
-const cardValue = {
-  fontFamily: '"DM Serif Display", Georgia, serif',
-  fontSize: '24px',
-  fontWeight: 400,
-  color: 'hsl(220, 35%, 22%)',
-  margin: '0',
-  fontVariantNumeric: 'tabular-nums' as const,
-}
-const sectionHead = {
-  fontSize: '12px',
-  fontWeight: 700,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.06em',
-  color: 'hsl(220, 10%, 40%)',
-  margin: '4px 0 6px',
-}
-const detailsBox = {
-  backgroundColor: 'hsl(40, 15%, 96%)',
-  border: '1px solid hsl(220, 13%, 90%)',
-  borderRadius: '8px',
-  padding: '16px 20px',
-  margin: '0 0 24px',
-}
-const rowTable = {
-  width: '100%',
-  borderCollapse: 'collapse' as const,
-}
+
+// ── Collection table ──────────────────────────────────────────────────────────
+
 const th = {
   fontSize: '11px',
   textTransform: 'uppercase' as const,
   letterSpacing: '0.05em',
-  color: 'hsl(220, 10%, 50%)',
-  padding: '6px 8px 6px 0',
+  color: '#888888',
+  padding: '8px 8px 8px 0',
   textAlign: 'left' as const,
-  borderBottom: '1px solid hsl(220, 13%, 88%)',
+  borderBottom: '1px solid #e4e0da',
   fontWeight: 600,
+  fontFamily: '"DM Sans", Arial, sans-serif',
 }
-const thNum: typeof th = { ...th, textAlign: 'right' as const, padding: '6px 0 6px 8px' }
+
+const thNum: typeof th = { ...th, textAlign: 'right' as const, padding: '8px 0 8px 8px' }
+
 const tdName = {
   fontSize: '14px',
   color: '#1a1a1a',
   fontWeight: 500,
-  padding: '9px 8px 9px 0',
+  padding: '10px 8px 10px 0',
+  fontFamily: '"DM Sans", Arial, sans-serif',
 }
+
 const tdNum = {
   fontSize: '14px',
   color: '#1a1a1a',
   fontWeight: 600,
-  padding: '9px 0 9px 8px',
+  padding: '10px 0 10px 8px',
   textAlign: 'right' as const,
   fontVariantNumeric: 'tabular-nums' as const,
+  fontFamily: '"DM Sans", Arial, sans-serif',
 }
+
 const tdTotalName = {
   ...tdName,
-  borderTop: '1px solid hsl(220, 13%, 88%)',
+  borderTop: '2px solid #d6d0c8',
   fontWeight: 700,
 }
+
 const tdTotalNum = {
   ...tdNum,
-  borderTop: '1px solid hsl(220, 13%, 88%)',
+  borderTop: '2px solid #d6d0c8',
   fontWeight: 700,
 }
+
+// ── CTA + footer ──────────────────────────────────────────────────────────────
+
 const hr = {
-  borderColor: 'hsl(220, 13%, 90%)',
-  margin: '28px 0 16px',
+  borderColor: '#e8e3db',
+  margin: '32px 0 16px',
 }
+
 const footer = {
   fontSize: '12px',
-  color: '#999',
+  color: '#999999',
   margin: '0',
 }
+
 const ctaButton = {
   display: 'inline-block' as const,
   backgroundColor: '#c9a44c',

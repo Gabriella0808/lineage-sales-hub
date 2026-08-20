@@ -101,10 +101,7 @@ export default function ClearanceAnalyticsPage() {
       setExpandedReps(new Set());
 
       const { data, error } = await (supabase as any)
-        .from("v_portal_clearance_sales_analytics")
-        .select("sale_date, rep_name, sku, product, quantity_sold, sales_amount")
-        .gte("sale_date", periodStartStr)
-        .lt("sale_date", filterEndStr);
+        .rpc("get_clearance_analytics", { p_from: periodStartStr, p_to: filterEndStr });
 
       if (error) {
         console.error("[clearance-analytics] Supabase error:", error.code, error.message, error);

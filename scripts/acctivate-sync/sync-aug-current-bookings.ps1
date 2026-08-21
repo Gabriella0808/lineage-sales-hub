@@ -64,14 +64,46 @@ if ($cfg.sql.integratedSecurity) {
 $connStr += 'Encrypt=False;TrustServerCertificate=True;'
 
 # ---------------------------------------------------------------------------
+# SQL: Orders — schema discovery
+#
+# CustomerID is confirmed present in dbo.Orders (same value as dbo_Orders."CustomerID").
+# SoldToName and ShipToDescription vary by Acctivate version; check at runtime.
+# ---------------------------------------------------------------------------
+
+function Test-ColumnExists {
+    param([string]$Table, [string]$Column)
+    $r = Invoke-Sql -SqlQuery "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                                WHERE TABLE_SCHEMA='dbo' AND TABLE_NAME='$Table' AND COLUMN_NAME='$Column'"
+    return ($r.Count -gt 0)
+}
+
+Write-Host 'Checking dbo.Orders schema for optional columns...' -ForegroundColor Cyan
+$hasSoldToName  = Test-ColumnExists -Table 'Orders' -Column 'SoldToName'
+$hasShipToDesc  = Test-ColumnExists -Table 'Orders' -Column 'ShipToDescription'
+Write-Host ("  SoldToName       : " + $hasSoldToName)
+Write-Host ("  ShipToDescription: " + $hasShipToDesc)
+
+$soldToNameExpr = if ($hasSoldToName) {
+    "CAST(ISNULL(o.SoldToName,       '') AS NVARCHAR(500))"
+} else {
+    "CAST('' AS NVARCHAR(500))"
+}
+$shipToDescExpr = if ($hasShipToDesc) {
+    "CAST(ISNULL(o.ShipToDescription,'') AS NVARCHAR(500))"
+} else {
+    "CAST('' AS NVARCHAR(500))"
+}
+
+# ---------------------------------------------------------------------------
 # SQL: Orders
 #
 # Column names match public.portal_acctivate_orders exactly.
 # Timestamps → CONVERT(126) = "yyyy-MM-ddThh:mi:ss.mmm"  (PostgREST accepts)
 # Numeric-as-text → CAST(decimal) AS NVARCHAR so they arrive as strings.
-# Fields not in dbo.Orders (ship_via, fob, po, sold_to_name, discount_amount,
-# sales_tax, total_amount, sched_subtotal, sched_total_amount, updated_date,
-# completed) are omitted; Supabase will store NULL for new rows.
+# customer_id  = dbo.Orders.CustomerID  (the Acctivate customer code; same as
+#                dealers.acctivate_id).  Confirmed present in all versions.
+# sold_to_name = dbo.Orders.SoldToName  (checked above; empty string if absent).
+# ship_to_description = dbo.Orders.ShipToDescription (checked above).
 # ---------------------------------------------------------------------------
 
 $OrdersQuery = @"
@@ -85,7 +117,10 @@ SELECT
     LOWER(REPLACE(REPLACE(CAST(o.GUIDSalesperson AS NVARCHAR(64)), '{', ''), '}', '')) AS guid_salesperson,
     CAST(ISNULL(o._Rep1, '')          AS NVARCHAR(100))                                 AS rep1,
     CAST(ISNULL(o._Rep2, '')          AS NVARCHAR(100))                                 AS rep2,
-    CAST(CAST(COALESCE(o.SubTotal, 0) AS decimal(18,2)) AS NVARCHAR(30))               AS subtotal
+    CAST(CAST(COALESCE(o.SubTotal, 0) AS decimal(18,2)) AS NVARCHAR(30))               AS subtotal,
+    CAST(ISNULL(o.CustomerID, '')     AS NVARCHAR(100))                                 AS customer_id,
+    $soldToNameExpr                                                                     AS sold_to_name,
+    $shipToDescExpr                                                                     AS ship_to_description
 FROM dbo.Orders o
 WHERE o.OrderDate >= '2026-08-01'
   AND o.OrderDate <  DATEADD(day, 1, CAST(GETDATE() AS date))
@@ -252,10 +287,11 @@ function Get-NetBookingAmount {
 # ---------------------------------------------------------------------------
 
 $OrderAllowedCols = @{
-    'guid_order'       = 1; 'order_number'     = 1; 'order_date'      = 1
-    'entry_date'       = 1; 'order_status'     = 1; 'guid_customer'   = 1
-    'guid_salesperson' = 1; 'rep1'             = 1; 'rep2'            = 1
-    'subtotal'         = 1; 'synced_at'        = 1
+    'guid_order'          = 1; 'order_number'        = 1; 'order_date'          = 1
+    'entry_date'          = 1; 'order_status'        = 1; 'guid_customer'       = 1
+    'guid_salesperson'    = 1; 'rep1'                = 1; 'rep2'                = 1
+    'subtotal'            = 1; 'synced_at'           = 1
+    'customer_id'         = 1; 'sold_to_name'        = 1; 'ship_to_description' = 1
 }
 
 $LineAllowedCols = @{

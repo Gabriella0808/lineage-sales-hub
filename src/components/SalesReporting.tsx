@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { getReportingToday } from "@/utils/reportingDate";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -616,6 +616,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return names;
   }, [dealerIds, dealers]);
 
+  // Diagnostic: log dealer filter resolution whenever selection changes.
+  useEffect(() => {
+    if (dealerIds.length === 0) return;
+    const selected = dealerIds.map((id) => {
+      const d = dealers.find((d) => d.id === id);
+      return { portal_id: id, name: d?.name, acctivate_id: d?.acctivate_id };
+    });
+    console.log("[dealer-filter] selected dealers:", selected);
+    console.log("[dealer-filter] selectedDealerAcIds:", Array.from(selectedDealerAcIds));
+    console.log("[dealer-filter] rpcCustomerIds:", rpcCustomerIds);
+  }, [dealerIds, dealers, selectedDealerAcIds, rpcCustomerIds]);
+
   // Manager-scope-only customer_id set for line-mode filtering.
   const managerScopeCustomerIds = useMemo<Set<string> | null>(() => {
     if (!managerScopeRepIds) return null;
@@ -1077,6 +1089,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         metric_type:      metricStr,
         transaction_date: String(r.transaction_date),
         dealer_name:      r.dealer_name    ?? null,
+        customer_id:      r.customer_id    ?? null,
         rep_name:         r.rep_name       ?? null,
         rep_id:           r.rep_id         ?? null,
         sku:              r.sku            ?? null,

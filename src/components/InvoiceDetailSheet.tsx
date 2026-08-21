@@ -12,6 +12,7 @@ export interface ViewLine {
   metric_type:      string;
   transaction_date: string;
   dealer_name:      string | null;
+  customer_id:      string | null;
   rep_name:         string | null;
   rep_id:           string | null;
   sku:              string | null;
@@ -28,7 +29,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groupBy: "dealer" | "rep" | "territory";
-  rowKey: string;      // dealer_name | rep_id (canonical) | territory_name
+  rowKey: string;      // customer_id (dealer) | rep_id (canonical) | territory_name
   rowLabel: string;
   from: Date;
   to: Date;
@@ -56,7 +57,12 @@ function matchesRow(
   repAcIdToCanonical?: Map<string, string>,
 ): boolean {
   if (rowKey === "" || rowKey === "Unassigned") return false;
-  if (groupBy === "dealer") return (l.dealer_name ?? "") === rowKey;
+  if (groupBy === "dealer") {
+    // rowKey is customer_id (lowercase). Match on customer_id first; fall back
+    // to dealer_name (lowercase) for rows where customer_id is absent.
+    const cid = (l.customer_id ?? "").trim().toLowerCase();
+    return cid ? cid === rowKey : (l.dealer_name ?? "").trim().toLowerCase() === rowKey;
+  }
   if (groupBy === "rep") {
     // rowKey is the canonical rep name (line mode) or rep_id (RPC mode).
     // Match by canonical name derived from rep_id, falling back to rep_name.

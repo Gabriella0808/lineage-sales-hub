@@ -113,8 +113,12 @@ GRANT EXECUTE ON FUNCTION public.get_sales_reporting_grouped_rows(
 -- Fix get_sales_reporting_detail_lines entity_key filter for dealer mode.
 -- Must be consistent with the grouped-rows function above so clicking a row
 -- in total mode fetches the correct detail lines.
+-- DROP required because the return type gains a customer_id column.
+DROP FUNCTION IF EXISTS public.get_sales_reporting_detail_lines(
+  text, text, text, date, date, text[], text[], text[], text[], int, int, uuid
+);
 
-CREATE OR REPLACE FUNCTION public.get_sales_reporting_detail_lines(
+CREATE FUNCTION public.get_sales_reporting_detail_lines(
   p_metric       text,
   p_group_by     text,
   p_entity_key   text,

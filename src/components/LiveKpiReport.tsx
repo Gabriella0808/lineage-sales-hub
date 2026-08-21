@@ -570,7 +570,6 @@ export function LiveKpiReport({
     arr.reduce((s, r) => s + (r[k] as number), 0);
 
   const sumB25 = sum(monthly, "b25");
-  const sumB26P = sum(monthly, "b26p");
   const sumYtdB = sum(monthly, "ytdB");
   const sumI25 = sum(monthly, "i25");
   const sumI26P = sum(monthly, "i26p");
@@ -579,9 +578,28 @@ export function LiveKpiReport({
   const sumYtdIWh = monthly.reduce((s, r: any) => s + (r.ytdIWarehouse ?? 0), 0);
   const sumYtdBCont = monthly.reduce((s, r: any) => s + (r.ytdBContainer ?? 0), 0);
   const sumYtdBWh = monthly.reduce((s, r: any) => s + (r.ytdBWarehouse ?? 0), 0);
+
+  // For bookings, only count goals for months where bookings are actually visible
+  // (Aug 2026+). The TOTAL row would otherwise show $15.8M goal vs $856K actuals
+  // because Jan–Jul goal values exist in rep_targets even though their rows show "—".
+  const sumB26P = monthly
+    .filter((r) => {
+      const idx = MONTH_NAMES_ALL.indexOf(r.m);
+      return idx >= 0 && isBookingVisible(reportingYear, idx + 1);
+    })
+    .reduce((s, r) => s + r.b26p, 0);
+
   const dayOfYear = Math.floor((reportingToday.getTime() - new Date(reportingToday.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
-  const annualB = sumYtdB / dayOfYear * 365;
   const annualI = sumYtdI / dayOfYear * 365;
+
+  // Annualize bookings from the booking cutoff date, not Jan 1, since no booking
+  // actuals exist before Aug 1.
+  const bookingCutoffDate = new Date(reportingYear, 7, 1); // Aug 1 of reporting year
+  const daysSinceBookingCutoff = Math.max(
+    1,
+    Math.floor((reportingToday.getTime() - bookingCutoffDate.getTime()) / 86400000) + 1,
+  );
+  const annualB = sumYtdB > 0 ? sumYtdB / daysSinceBookingCutoff * 365 : 0;
 
   const showB = metricFilter !== "invoiced";
   const showI = metricFilter !== "bookings";

@@ -9,7 +9,7 @@
 --
 -- Fix:
 --   1. Add customer_id TEXT column to portal_acctivate_orders (sold_to_name and
---      ship_to_description already exist in the table; they were just never
+--      ship_to_description already exist in the table;a they were just never
 --      populated by the sync script).
 --   2. Rebuild v_portal_bookings_line_facts to expose customer_id.
 --   3. Rebuild v_portal_dealer_rep_reporting_lines so that customer_id and
@@ -66,7 +66,12 @@ SELECT
   o.guid_salesperson::text                                      AS guid_salesperson,
   date(o.order_date)                                            AS booking_date,
   o.sold_to_name::text                                          AS dealer_name,
-  NULLIF(TRIM(o.customer_id::text), '')                         AS customer_id,
+  -- Prefer the directly-synced customer_id; fall back to dbo_Customer via GUID so
+  -- August orders resolve without needing a sync re-run.
+  COALESCE(
+    NULLIF(TRIM(o.customer_id::text), ''),
+    NULLIF(TRIM(c."CustId"::text),    '')
+  )                                                             AS customer_id,
   o.rep1::text                                                  AS rep1,
   o.rep2::text                                                  AS rep2,
   l.product_id::text                                            AS sku,
@@ -92,6 +97,10 @@ SELECT
 FROM public.portal_acctivate_orders o
 JOIN public.portal_acctivate_order_lines l
   ON l.guid_order = o.guid_order
+-- Join the Acctivate customer master to resolve customer_id from the order GUID
+-- when the sync has not yet populated portal_acctivate_orders.customer_id.
+LEFT JOIN public."dbo_Customer" c
+  ON LOWER(c."GUIDCustomer"::text) = LOWER(o.guid_customer::text)
 WHERE COALESCE(l.line_cancelled, false) = false
   AND l.sales_category IN ('SW', 'FINNLOU', 'LUX', 'HOSP', 'ALLOW', 'MISC');
 

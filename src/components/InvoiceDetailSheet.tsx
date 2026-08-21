@@ -257,6 +257,19 @@ export function InvoiceDetailSheet({
     ? (!lazyLoading && lazyLines.length === 0)
     : (primInvoiced.length === 0 && primBookings.length === 0);
 
+  // In RPC mode, once lazy lines are loaded, use their sum for the active metric
+  // stat card so it matches the breakdown totals below.  Fall back to the
+  // pre-fetched prop while the fetch is still in flight.
+  const lazyTotal = fetchLines && !(lazyLoading && lazyLines.length === 0)
+    ? sumAmount(lazyLines)
+    : null;
+  const displayBookingsAmt = (fetchLines && metric === "bookings" && lazyTotal !== null)
+    ? lazyTotal
+    : primaryBookingsAmt;
+  const displayInvoicedAmt = (fetchLines && metric === "invoices" && lazyTotal !== null)
+    ? lazyTotal
+    : primaryInvoicedAmt;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
@@ -278,11 +291,11 @@ export function InvoiceDetailSheet({
           <div className="mt-4 grid grid-cols-3 gap-2">
             <StatCard
               label="Invoiced"
-              value={primaryInvoicedAmt != null ? formatCurrency(primaryInvoicedAmt) : "—"}
+              value={displayInvoicedAmt != null ? formatCurrency(displayInvoicedAmt) : "—"}
             />
             <StatCard
               label="Bookings"
-              value={primaryBookingsAmt != null ? formatCurrency(primaryBookingsAmt) : "—"}
+              value={displayBookingsAmt != null ? formatCurrency(displayBookingsAmt) : "—"}
             />
             <StatCard
               label="Lines"

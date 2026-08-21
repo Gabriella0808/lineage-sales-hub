@@ -16,6 +16,9 @@ import { getReportingToday, getReportingTodayStr } from "@/utils/reportingDate";
 
 const PROJ_STORAGE_KEY = "kpi_projections_2026_v1";
 
+// Gate 2025 actuals behind this flag. Set to true once 2025 data has been pulled.
+const SHOW_PRIOR_YEAR_ACTUALS = false;
+
 type ProjOverrides = {
   monthly?: Record<string, { b26p?: number; i26p?: number }>;
   line?: Record<string, { luxP?: number; swP?: number; flP?: number }>;
@@ -942,15 +945,15 @@ export function LiveKpiReport({
             <thead>
               <tr className="border-b">
                 <th rowSpan={2} className="text-left p-2 font-medium text-muted-foreground align-bottom">Month</th>
-                {showB && <th colSpan={6} className="text-center p-2 font-semibold border-l bg-muted/30">Bookings</th>}
-                {showI && <th colSpan={6} className="text-center p-2 font-semibold border-l bg-muted/30">Invoiced</th>}
+                {showB && <th colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 6 : 5} className="text-center p-2 font-semibold border-l bg-muted/30">Bookings</th>}
+                {showI && <th colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 6 : 5} className="text-center p-2 font-semibold border-l bg-muted/30">Invoiced</th>}
               </tr>
               <tr className="border-b text-muted-foreground">
                 {showB && <>
                   <th className="text-right p-2 font-medium border-l">26 Act</th>
                   <th className="text-right p-2 font-medium">26 Proj</th>
                   <th className="text-right p-2 font-medium">% Goal</th>
-                  <th className="text-right p-2 font-medium">25 Act</th>
+                  {SHOW_PRIOR_YEAR_ACTUALS && <th className="text-right p-2 font-medium">25 Act</th>}
                   <th className="text-right p-2 font-medium">% Container</th>
                   <th className="text-right p-2 font-medium">% Warehouse</th>
                 </>}
@@ -958,7 +961,7 @@ export function LiveKpiReport({
                   <th className="text-right p-2 font-medium border-l">26 Act</th>
                   <th className="text-right p-2 font-medium">26 Proj</th>
                   <th className="text-right p-2 font-medium">% Goal</th>
-                  <th className="text-right p-2 font-medium">25 Act</th>
+                  {SHOW_PRIOR_YEAR_ACTUALS && <th className="text-right p-2 font-medium">25 Act</th>}
                   <th className="text-right p-2 font-medium">% Container</th>
                   <th className="text-right p-2 font-medium">% Warehouse</th>
                 </>}
@@ -987,11 +990,11 @@ export function LiveKpiReport({
                       <td className="p-2 text-right border-l font-medium">
                         {bkVisible ? formatCurrency(r.ytdB) : "—"}
                       </td>
-                      <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
+                      <td className="p-2 text-right">{bkVisible ? formatCurrency(r.b26p) : "—"}</td>
                       <td className="p-2 text-right">
                         {bkVisible ? fmtPct(r.ytdB / r.b26p) : "—"}
                       </td>
-                      <td className="p-2 text-right">{formatCurrency(r.b25)}</td>
+                      {SHOW_PRIOR_YEAR_ACTUALS && <td className="p-2 text-right">{formatCurrency(r.b25)}</td>}
                       <td className="p-2 text-right">
                         {bkVisible ? (ytdBCont + ytdBWh === 0 ? "-" : fmtPctRaw(ytdBCont / Math.max(r.ytdB, 1))) : "—"}
                       </td>
@@ -1003,7 +1006,7 @@ export function LiveKpiReport({
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.i26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
-                      <td className="p-2 text-right">{formatCurrency(r.i25)}</td>
+                      {SHOW_PRIOR_YEAR_ACTUALS && <td className="p-2 text-right">{formatCurrency(r.i25)}</td>}
                       <td className="p-2 text-right">{ytdICont + ytdIWh === 0 ? "-" : fmtPctRaw(ytdICont / Math.max(r.ytdI, 1))}</td>
                       <td className="p-2 text-right">{ytdICont + ytdIWh === 0 ? "-" : fmtPctRaw(ytdIWh   / Math.max(r.ytdI, 1))}</td>
                     </>}
@@ -1016,7 +1019,7 @@ export function LiveKpiReport({
                   <td className="p-2 text-right border-l">{formatCurrency(sumYtdB)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumB26P)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdB / sumB26P)}</td>
-                  <td className="p-2 text-right">{formatCurrency(sumB25)}</td>
+                  {SHOW_PRIOR_YEAR_ACTUALS && <td className="p-2 text-right">{formatCurrency(sumB25)}</td>}
                   <td className="p-2 text-right">{sumYtdBCont + sumYtdBWh === 0 ? "-" : fmtPctRaw(sumYtdBCont / Math.max(sumYtdB, 1))}</td>
                   <td className="p-2 text-right">{sumYtdBCont + sumYtdBWh === 0 ? "-" : fmtPctRaw(sumYtdBWh  / Math.max(sumYtdB, 1))}</td>
                 </>}
@@ -1024,7 +1027,7 @@ export function LiveKpiReport({
                   <td className="p-2 text-right border-l">{formatCurrency(sumYtdI)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumI26P)}</td>
                   <td className="p-2 text-right">{fmtPct(sumYtdI / sumI26P)}</td>
-                  <td className="p-2 text-right">{formatCurrency(sumI25)}</td>
+                  {SHOW_PRIOR_YEAR_ACTUALS && <td className="p-2 text-right">{formatCurrency(sumI25)}</td>}
                   <td className="p-2 text-right">{sumYtdICont + sumYtdIWh === 0 ? "-" : fmtPctRaw(sumYtdICont / Math.max(sumYtdI, 1))}</td>
                   <td className="p-2 text-right">{sumYtdICont + sumYtdIWh === 0 ? "-" : fmtPctRaw(sumYtdIWh  / Math.max(sumYtdI, 1))}</td>
                 </>}
@@ -1032,8 +1035,8 @@ export function LiveKpiReport({
               {monthFilter === "All" && (
                 <tr className="bg-accent/5 text-accent-foreground/80">
                   <td className="p-2 font-medium">ANNUALIZED</td>
-                  {showB && <td colSpan={6} className="p-2 text-right border-l font-medium">{formatCurrency(annualB)}</td>}
-                  {showI && <td colSpan={6} className="p-2 text-right border-l font-medium">{formatCurrency(annualI)}</td>}
+                  {showB && <td colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 6 : 5} className="p-2 text-right border-l font-medium">{formatCurrency(annualB)}</td>}
+                  {showI && <td colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 6 : 5} className="p-2 text-right border-l font-medium">{formatCurrency(annualI)}</td>}
                 </tr>
               )}
             </tbody>

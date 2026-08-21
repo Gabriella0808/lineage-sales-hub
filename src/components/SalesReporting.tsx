@@ -22,7 +22,7 @@ import {
   formatCurrency,
 } from "@/hooks/usePortalData";
 import { useRepTargets, TARGET_MONTHS, type RepTarget } from "@/hooks/useRepTargets";
-import { BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
+import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCutoff";
 import { InvoiceDetailSheet, type ViewLine } from "@/components/InvoiceDetailSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -764,6 +764,27 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const brandCategorySet = useMemo(() => new Set(brandCategories), [brandCategories]);
   const skuSet           = useMemo(() => new Set(skus),            [skus]);
 
+  // Best display label for each customer_id, derived from actual line data.
+  // Prefers a dealer_name that is not identical to the customer_id (a real name vs a code).
+  const customerIdBestLabel = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const line of repLines) {
+      const cid = (line.customer_id ?? "").trim().toLowerCase();
+      if (!cid) continue;
+      const dname = (line.dealer_name ?? "").trim();
+      if (!dname) continue;
+      const existing = map.get(cid);
+      const isCode = dname.toLowerCase() === cid;
+      if (!existing) {
+        map.set(cid, dname);
+      } else if (!isCode && existing.toLowerCase() === cid) {
+        // Replace a code-only label with a proper display name.
+        map.set(cid, dname);
+      }
+    }
+    return map;
+  }, [repLines]);
+
   // ── Aggregation ───────────────────────────────────────────────────────────
 
   const aggregation = useMemo(() => {
@@ -781,8 +802,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
     for (const line of repLines) {
       if (line.metric_type !== targetMetric) continue;
-      // Booking visibility cutoff applies to Live KPI only (via useDealerSalesAggregates).
-      // Dealer/Rep Reporting shows bookings for any date range the user selects.
+      // Jan–Jul 2026 booking actuals are not trusted; hide them everywhere in the portal.
+      if (line.metric_type === "bookings" && !isBookingVisibleDate(line.transaction_date)) continue;
 
       // Manager scope (system-controlled, always via customer_id).
       if (managerScopeCustomerIds !== null) {
@@ -822,7 +843,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
       let k: Key;
       if (groupBy === "dealer") {
-        k = line.dealer_name ?? line.customer_id ?? "Unknown";
+        // Use customer_id as the canonical key so the same dealer is not split
+        // into multiple rows when dealer_name differs between bookings and invoices.
+        const cid = (line.customer_id ?? "").trim().toLowerCase();
+        k = cid || (line.dealer_name ?? "").trim().toLowerCase() || "unknown";
       } else if (groupBy === "rep") {
         // Canonical name so "Brent" and "Brent Holbrook" lines share one row.
         const repAcId = (line.rep_id ?? "").trim().toLowerCase();
@@ -844,7 +868,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     }
 
     const sorted = Array.from(rows.entries())
-      .map(([k, v]) => ({ key: k, label: k === "Unassigned" ? "Unassigned" : k, ...v }))
+      .map(([k, v]) => ({
+        key: k,
+        label: groupBy === "dealer"
+          ? (customerIdBestLabel.get(k) ?? k)
+          : (k === "Unassigned" ? "Unassigned" : k),
+        ...v,
+      }))
       .sort((a, b) => b.primary - a.primary);
 
     return { rows: sorted, primMonths, compMonths };
@@ -853,6 +883,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     managerScopeCustomerIds, selectedTerritoryNames, selectedRepAcIds,
     selectedDealerAcIds, selectedDealerNames,
     repAcIdToCanonical, brandCategorySet, skuSet, customerIdToTerritoryName,
+    customerIdBestLabel,
   ]);
 
   // ── Summary totals + KPI stats ────────────────────────────────────────────
@@ -881,11 +912,15 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         (line.metric_type === "invoiced" ? "Historical Invoice" : "");
       if (brandCategorySet.size > 0 && !brandCategorySet.has(effectiveBrand)) return false;
       if (skuSet.size > 0 && !skuSet.has(line.sku ?? "")) return false;
+      if (line.metric_type === "bookings" && !isBookingVisibleDate(line.transaction_date)) return false;
       return true;
     };
 
     const entityKey = (line: DealerRepLine) => {
-      if (groupBy === "dealer") return line.dealer_name ?? line.customer_id ?? "";
+      if (groupBy === "dealer") {
+        const cid = (line.customer_id ?? "").trim().toLowerCase();
+        return cid || (line.dealer_name ?? "").trim().toLowerCase();
+      }
       if (groupBy === "rep") {
         const repAcId = (line.rep_id ?? "").trim().toLowerCase();
         return (repAcId ? repAcIdToCanonical.get(repAcId) : undefined) ?? line.rep_name ?? line.rep_id ?? "";

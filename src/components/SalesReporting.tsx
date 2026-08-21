@@ -23,6 +23,10 @@ import {
 } from "@/hooks/usePortalData";
 import { useRepTargets, TARGET_MONTHS, type RepTarget } from "@/hooks/useRepTargets";
 import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCutoff";
+
+// Booking data is only trusted from this date onwards.
+// Used to clamp query start dates before any fetch — not applied post-aggregation.
+const BOOKING_CUTOFF_DATE = new Date(BOOKINGS_VISIBLE_FROM + "T00:00:00");
 import { InvoiceDetailSheet, type ViewLine } from "@/components/InvoiceDetailSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -532,10 +536,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // Rep filter is handled via p_rep_ids parameter, no longer falls back to line mode.
   const useRpcMode = display === "total" && groupBy !== "territory";
 
+  // Clamp booking fetch dates at the query level so Jan-Jul 2026 rows are never
+  // fetched, aggregated, or counted.  effectiveFrom = max(selectedFrom, cutoff).
+  // primBkEnabled = false when the entire selected range predates the cutoff.
+  const primBkFrom    = primary.from    < BOOKING_CUTOFF_DATE ? BOOKING_CUTOFF_DATE : primary.from;
+  const primBkEnabled = primary.to      >= BOOKING_CUTOFF_DATE;
+  const compBkFrom    = comparative.from < BOOKING_CUTOFF_DATE ? BOOKING_CUTOFF_DATE : comparative.from;
+  const compBkEnabled = comparative.to   >= BOOKING_CUTOFF_DATE;
+
   const { data: primaryInvoiced = [], isFetching: invFetching } = usePortalInvoicedLines(primary.from, primary.to, !useRpcMode);
-  const { data: primaryBookings = [], isFetching: bkgFetching } = usePortalBookingLines(primary.from, primary.to, !useRpcMode);
+  const { data: primaryBookings = [], isFetching: bkgFetching } = usePortalBookingLines(primBkFrom, primary.to, !useRpcMode && primBkEnabled);
   const { data: compInvoiced    = [] } = usePortalInvoicedLines(comparative.from, comparative.to, !useRpcMode && compareMode !== "none");
-  const { data: compBookings    = [] } = usePortalBookingLines(comparative.from, comparative.to, !useRpcMode && compareMode !== "none");
+  const { data: compBookings    = [] } = usePortalBookingLines(compBkFrom, comparative.to, !useRpcMode && compareMode !== "none" && compBkEnabled);
 
   const primaryLines = metric === "invoices" ? primaryInvoiced : primaryBookings;
   const compLines    = metric === "invoices" ? compInvoiced      : compBookings;
@@ -672,21 +684,22 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
   // ── Server-side grouped rows (RPC mode) ──────────────────────────────────
 
+  const isBkMetric = metric === "bookings";
   const { data: groupedRows = [], isFetching: groupedFetching } = useGroupedRows(
     {
-      metric:      metric === "invoices" ? "invoiced" : "bookings",
+      metric:      isBkMetric ? "bookings" : "invoiced",
       groupBy:     (groupBy === "territory" ? "dealer" : groupBy) as "dealer" | "rep",
-      from:        primary.from,
+      from:        isBkMetric ? primBkFrom : primary.from,
       to:          primary.to,
-      compFrom:    compareMode !== "none" ? comparative.from : null,
-      compTo:      compareMode !== "none" ? comparative.to   : null,
+      compFrom:    compareMode !== "none" ? (isBkMetric ? compBkFrom : comparative.from) : null,
+      compTo:      compareMode !== "none" ? comparative.to : null,
       customerIds: rpcCustomerIds,
       brandCats:   brandCategories.length > 0 ? brandCategories : null,
       skus:        skus.length > 0 ? skus : null,
       repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
       managerId:   managerId ?? null,
     },
-    useRpcMode,
+    useRpcMode && (!isBkMetric || primBkEnabled),
   );
 
   // Always-on bookings + invoiced rows for summary cards and drill-sheet header.
@@ -704,7 +717,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
     managerId:   managerId ?? null,
   };
-  const { data: bookingRows  = [] } = useGroupedRows({ ...rpcBase, metric: "bookings" }, useRpcMode);
+  const { data: bookingRows  = [] } = useGroupedRows(
+    { ...rpcBase, metric: "bookings", from: primBkFrom, compFrom: compareMode !== "none" ? compBkFrom : null },
+    useRpcMode && primBkEnabled,
+  );
   const { data: invoicedRows = [] } = useGroupedRows({ ...rpcBase, metric: "invoiced" }, useRpcMode);
 
   // Fixed MTD + YTD per-rep actuals for goal % (only fetched in rep + RPC mode).
@@ -721,13 +737,20 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     compFrom:    null as null,
     compTo:      null as null,
   };
+  const repMtdNaturalFrom = startOfMonth(primary.to);
+  const repYtdNaturalFrom = startOfYear(primary.to);
+  // Clamp booking goal-actual queries the same way as the table queries.
+  const repMtdFrom = rpcMetric === "bookings" && repMtdNaturalFrom < BOOKING_CUTOFF_DATE
+    ? BOOKING_CUTOFF_DATE : repMtdNaturalFrom;
+  const repYtdFrom = rpcMetric === "bookings" && repYtdNaturalFrom < BOOKING_CUTOFF_DATE
+    ? BOOKING_CUTOFF_DATE : repYtdNaturalFrom;
   const { data: repMtdRows = [] } = useGroupedRows(
-    { ...goalQueryBase, metric: rpcMetric, from: startOfMonth(primary.to), to: primary.to },
-    useRpcMode && groupBy === "rep",
+    { ...goalQueryBase, metric: rpcMetric, from: repMtdFrom, to: primary.to },
+    useRpcMode && groupBy === "rep" && (rpcMetric !== "bookings" || primBkEnabled),
   );
   const { data: repYtdRows = [] } = useGroupedRows(
-    { ...goalQueryBase, metric: rpcMetric, from: startOfYear(primary.to), to: primary.to },
-    useRpcMode && groupBy === "rep",
+    { ...goalQueryBase, metric: rpcMetric, from: repYtdFrom, to: primary.to },
+    useRpcMode && groupBy === "rep" && (rpcMetric !== "bookings" || primBkEnabled),
   );
 
   // MTD % of goal + YTD % of goal per rep.
@@ -1055,10 +1078,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // Re-created only when the clicked entity, filters, or date range change.
   const drillDetailFetch = useMemo((): ((p: { limit: number; offset: number }) => Promise<ViewLine[]>) | undefined => {
     if (!useRpcMode || !drillRow) return undefined;
-    const entityKey = drillRow.key;
     const metricStr = metric === "invoices" ? "invoiced" : "bookings";
-    const fromStr   = format(primary.from, "yyyy-MM-dd");
-    const toStr     = format(primary.to,   "yyyy-MM-dd");
+    if (metricStr === "bookings" && !primBkEnabled) return undefined; // range entirely before cutoff
+    const entityKey = drillRow.key;
+    const fromStr   = metricStr === "bookings" ? format(primBkFrom, "yyyy-MM-dd") : format(primary.from, "yyyy-MM-dd");
+    const toStr     = format(primary.to, "yyyy-MM-dd");
     const cids      = rpcCustomerIds;
     const rids      = selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null;
     const bcs       = brandCategories.length > 0 ? brandCategories : null;
@@ -1101,7 +1125,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       }));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRpcMode, drillRow?.key, metric, groupBy, primary.from, primary.to, rpcCustomerIds, selectedRepAcIds, brandCategories, skus, managerId]);
+  }, [useRpcMode, drillRow?.key, metric, groupBy, primary.from, primary.to, primBkFrom, primBkEnabled, rpcCustomerIds, selectedRepAcIds, brandCategories, skus, managerId]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
 

@@ -589,17 +589,6 @@ export function LiveKpiReport({
     })
     .reduce((s, r) => s + r.b26p, 0);
 
-  const dayOfYear = Math.floor((reportingToday.getTime() - new Date(reportingToday.getFullYear(), 0, 1).getTime()) / 86400000) + 1;
-  const annualI = sumYtdI / dayOfYear * 365;
-
-  // Annualize bookings from the booking cutoff date, not Jan 1, since no booking
-  // actuals exist before Aug 1.
-  const bookingCutoffDate = new Date(reportingYear, 7, 1); // Aug 1 of reporting year
-  const daysSinceBookingCutoff = Math.max(
-    1,
-    Math.floor((reportingToday.getTime() - bookingCutoffDate.getTime()) / 86400000) + 1,
-  );
-  const annualB = sumYtdB > 0 ? sumYtdB / daysSinceBookingCutoff * 365 : 0;
 
   const showB = metricFilter !== "invoiced";
   const showI = metricFilter !== "bookings";
@@ -1102,13 +1091,6 @@ export function LiveKpiReport({
                   <td className="p-2 text-right">{sumYtdICont + sumYtdIWh === 0 ? "-" : fmtPctRaw(sumYtdIWh  / Math.max(sumYtdI, 1))}</td>
                 </>}
               </tr>
-              {monthFilter === "All" && (
-                <tr className="bg-accent/5 text-accent-foreground/80">
-                  <td className="p-2 font-medium">ANNUALIZED</td>
-                  {showB && <td colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 6 : 5} className="p-2 text-right border-l font-medium">{formatCurrency(annualB)}</td>}
-                  {showI && <td colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 6 : 5} className="p-2 text-right border-l font-medium">{formatCurrency(annualI)}</td>}
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

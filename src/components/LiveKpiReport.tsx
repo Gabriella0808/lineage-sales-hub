@@ -422,14 +422,12 @@ export function LiveKpiReport({
       ? dbReps.map(r => r.id)
       : dbReps.filter(r => expandedDbNames.has(r.name)).map(r => r.id);
     const repIdSet = new Set(repIds);
-    const scoped = targets2026.filter(t => repIdSet.has(t.rep_id));
-
-    console.log("[26proj] targets2026 count:", targets2026.length,
-      "| dbReps count:", dbReps.length,
-      "| repIdSet size:", repIdSet.size,
-      "| scoped count:", scoped.length,
-      "| sample rep IDs in targets:", targets2026.slice(0, 3).map(t => t.rep_id),
-      "| sample IDs in dbReps:", dbReps.slice(0, 3).map(r => r.id));
+    // For company-wide view (scopedRepNames === null), include ALL targets: the rep_id
+    // UUIDs in rep_targets may not match the current sales_reps.id values if sales_reps
+    // was rebuilt, so UUID filtering would incorrectly exclude every row.
+    const scoped = scopedRepNames === null
+      ? targets2026
+      : targets2026.filter(t => repIdSet.has(t.rep_id));
 
     const sums: Record<string, number> = {};
     for (const row of MONTHLY) {
@@ -438,8 +436,6 @@ export function LiveKpiReport({
       for (const t of scoped) total += Number(t[key]) || 0;
       sums[row.m] = total;
     }
-
-    console.log("[26proj] January sum:", sums["January"], "| using seed fallback:", sums["January"] === 0);
     return sums;
   }, [targets2026, dbReps, hasRepSelection, repFilter, territoryFilter, visibleReps, allowedRepNames]);
 

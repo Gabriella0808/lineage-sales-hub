@@ -424,6 +424,13 @@ export function LiveKpiReport({
     const repIdSet = new Set(repIds);
     const scoped = targets2026.filter(t => repIdSet.has(t.rep_id));
 
+    console.log("[26proj] targets2026 count:", targets2026.length,
+      "| dbReps count:", dbReps.length,
+      "| repIdSet size:", repIdSet.size,
+      "| scoped count:", scoped.length,
+      "| sample rep IDs in targets:", targets2026.slice(0, 3).map(t => t.rep_id),
+      "| sample IDs in dbReps:", dbReps.slice(0, 3).map(r => r.id));
+
     const sums: Record<string, number> = {};
     for (const row of MONTHLY) {
       const key = MONTH_LABEL_TO_KEY[MONTH_FULL_TO_SHORT[row.m]] as keyof RepTarget;
@@ -431,6 +438,8 @@ export function LiveKpiReport({
       for (const t of scoped) total += Number(t[key]) || 0;
       sums[row.m] = total;
     }
+
+    console.log("[26proj] January sum:", sums["January"], "| using seed fallback:", sums["January"] === 0);
     return sums;
   }, [targets2026, dbReps, hasRepSelection, repFilter, territoryFilter, visibleReps, allowedRepNames]);
 

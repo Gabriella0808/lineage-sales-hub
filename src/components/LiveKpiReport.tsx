@@ -292,19 +292,15 @@ export function LiveKpiReport({
   // Daily actuals — canonical source v_companywide_reporting_actuals.
   // Manager scope: server-side manager_id filter (reliable, no name resolution).
   // Individual rep selection: client-side rep_id filter (case-insensitive).
-  const todayStr      = reportingTodayStr;
-  const dailyDateStr  = format(dailyDate, "yyyy-MM-dd");
-  // Invoices use yesterday; Bookings use the selected date (today by default).
-  const invoiceDateObj = new Date(dailyDate);
-  invoiceDateObj.setDate(invoiceDateObj.getDate() - 1);
-  const invoiceDateStr = format(invoiceDateObj, "yyyy-MM-dd");
-  const isToday        = dailyDateStr === todayStr;
+  const todayStr     = reportingTodayStr;
+  const dailyDateStr = format(dailyDate, "yyyy-MM-dd");
+  const isToday      = dailyDateStr === todayStr;
 
   const repQueryKey = JSON.stringify(selectedRepAcIds?.slice().sort() ?? null);
 
-  // Booking rows — selected date (today by default)
-  const { data: rawBookingRows = [] } = useQuery({
-    queryKey: ["daily_bookings_v2", dailyDateStr, managerId ?? null, repQueryKey],
+  // Daily actuals — both bookings and invoiced for the selected date.
+  const { data: rawDailyRows = [] } = useQuery({
+    queryKey: ["daily_actuals_v2", dailyDateStr, managerId ?? null, repQueryKey],
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true,
     refetchInterval: 5 * 60_000,
@@ -312,39 +308,12 @@ export function LiveKpiReport({
       let q = (supabase as any)
         .from("v_companywide_reporting_actuals")
         .select("metric_type, brand_category, amount, rep_id")
-        .eq("transaction_date", dailyDateStr)
-        .eq("metric_type", "bookings");
+        .eq("transaction_date", dailyDateStr);
       if (managerId && !(selectedRepAcIds && selectedRepAcIds.length > 0)) {
         q = q.eq("manager_id", managerId);
       }
       const { data, error } = await q;
-      if (error) { console.error("[daily] bookings error:", error.message); return []; }
-      let rows = (data ?? []) as Array<{ metric_type: string; brand_category: string | null; amount: string | number; rep_id: string | null }>;
-      if (selectedRepAcIds && selectedRepAcIds.length > 0) {
-        const idSet = new Set(selectedRepAcIds.map((id) => id.trim().toLowerCase()));
-        rows = rows.filter((r) => r.rep_id && idSet.has(r.rep_id.trim().toLowerCase()));
-      }
-      return rows;
-    },
-  });
-
-  // Invoice rows — one day before selected date (yesterday by default)
-  const { data: rawInvoiceRows = [] } = useQuery({
-    queryKey: ["daily_invoices_v2", invoiceDateStr, managerId ?? null, repQueryKey],
-    staleTime: 5 * 60_000,
-    refetchOnWindowFocus: true,
-    refetchInterval: 5 * 60_000,
-    queryFn: async () => {
-      let q = (supabase as any)
-        .from("v_companywide_reporting_actuals")
-        .select("metric_type, brand_category, amount, rep_id")
-        .eq("transaction_date", invoiceDateStr)
-        .eq("metric_type", "invoiced");
-      if (managerId && !(selectedRepAcIds && selectedRepAcIds.length > 0)) {
-        q = q.eq("manager_id", managerId);
-      }
-      const { data, error } = await q;
-      if (error) { console.error("[daily] invoices error:", error.message); return []; }
+      if (error) { console.error("[daily] actuals error:", error.message); return []; }
       let rows = (data ?? []) as Array<{ metric_type: string; brand_category: string | null; amount: string | number; rep_id: string | null }>;
       if (selectedRepAcIds && selectedRepAcIds.length > 0) {
         const idSet = new Set(selectedRepAcIds.map((id) => id.trim().toLowerCase()));
@@ -491,18 +460,14 @@ export function LiveKpiReport({
     const inv: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, MISC: 0, Other: 0 };
     const bkg: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, MISC: 0, Other: 0 };
     let totalInv = 0, totalBkg = 0;
-    for (const row of rawBookingRows) {
+    for (const row of rawDailyRows) {
       const coll = classifyCollection(row.brand_category);
       const amt = Number(row.amount) || 0;
-      bkg[coll] += amt; totalBkg += amt;
-    }
-    for (const row of rawInvoiceRows) {
-      const coll = classifyCollection(row.brand_category);
-      const amt = Number(row.amount) || 0;
-      inv[coll] += amt; totalInv += amt;
+      if (row.metric_type === "invoiced")  { inv[coll] += amt; totalInv += amt; }
+      else if (row.metric_type === "bookings") { bkg[coll] += amt; totalBkg += amt; }
     }
     return { inv, bkg, totalInv, totalBkg };
-  }, [rawBookingRows, rawInvoiceRows]);
+  }, [rawDailyRows]);
 
   const scaledLine = useMemo(() => baseLine.map((r) => ({
     ...r,
@@ -610,7 +575,7 @@ export function LiveKpiReport({
             <PopoverTrigger asChild>
               <button type="button" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1">
                 <CalendarIcon className="h-3.5 w-3.5" />
-                {isToday ? `Bkg: Today · Inv: ${format(invoiceDateObj, "MMM d")}` : `Bkg: ${format(dailyDate, "MMM d")} · Inv: ${format(invoiceDateObj, "MMM d")}`}
+                {isToday ? "Today" : format(dailyDate, "MMM d, yyyy")}
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-auto p-0">
@@ -625,10 +590,9 @@ export function LiveKpiReport({
           </Popover>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Bookings card — today's date */}
+          {/* Bookings card */}
           <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold mb-0.5">Daily Bookings</h3>
-            <p className="text-xs text-muted-foreground mb-3">{format(dailyDate, "MMM d, yyyy")}</p>
+            <h3 className="text-sm font-semibold mb-3">Daily Bookings</h3>
             <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalBkg)}</p>
             <div className="space-y-1.5 text-xs">
               {(["SW", "FIN", "LUX", "HOSP"] as CollKey[]).map((coll) => (
@@ -657,10 +621,9 @@ export function LiveKpiReport({
               </div>
             </div>
           </div>
-          {/* Invoice card — yesterday's date */}
+          {/* Invoice card */}
           <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold mb-0.5">Daily Invoices</h3>
-            <p className="text-xs text-muted-foreground mb-3">{format(invoiceDateObj, "MMM d, yyyy")}</p>
+            <h3 className="text-sm font-semibold mb-3">Daily Invoices</h3>
             <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalInv)}</p>
             <div className="space-y-1.5 text-xs">
               {(["SW", "FIN", "LUX", "MISC"] as CollKey[]).map((coll) => (

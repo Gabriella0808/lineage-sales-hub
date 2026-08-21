@@ -413,24 +413,35 @@ export function LiveKpiReport({
     July:"Jul", August:"Aug", September:"Sep", October:"Oct", November:"Nov", December:"Dec",
   };
   const targetByMonth = useMemo(() => {
-    let scopedRepNames: string[] | null = null;
-    if (hasRepSelection) scopedRepNames = repFilter;
-    else if (territoryFilter.length > 0) scopedRepNames = visibleReps.map(r => r.name);
-    else if (allowedRepNames !== null) scopedRepNames = allowedRepNames; // use even if empty
+    // ── Determine which portal rep UUIDs to include in the goal sum ──────────
+    // Priority: individual rep selection > territory filter > manager scope > company-wide.
+    let repIdFilter: Set<string> | null = null; // null = company-wide
 
-    const expandedDbNames = scopedRepNames === null
-      ? null
-      : new Set(scopedRepNames.flatMap(n => REP_NAME_TO_DB_NAMES[n] ?? [n]));
-    const repIds = expandedDbNames === null
-      ? dbReps.map(r => r.id)
-      : dbReps.filter(r => expandedDbNames.has(r.name)).map(r => r.id);
-    const repIdSet = new Set(repIds);
-    // For company-wide view (scopedRepNames === null), include ALL targets: the rep_id
-    // UUIDs in rep_targets may not match the current sales_reps.id values if sales_reps
-    // was rebuilt, so UUID filtering would incorrectly exclude every row.
-    const scoped = scopedRepNames === null
-      ? targets2026
-      : targets2026.filter(t => repIdSet.has(t.rep_id));
+    if (hasRepSelection) {
+      // Display name → DB name(s) → portal UUID
+      const dbNames = new Set(repFilter.flatMap(n => REP_NAME_TO_DB_NAMES[n] ?? [n]));
+      repIdFilter = new Set(dbReps.filter(r => dbNames.has(r.name)).map(r => r.id));
+    } else if (territoryFilter.length > 0) {
+      // visibleReps is already scoped to the selected territory
+      const dbNames = new Set(visibleReps.flatMap(r => REP_NAME_TO_DB_NAMES[r.name] ?? [r.name]));
+      repIdFilter = new Set(dbReps.filter(r => dbNames.has(r.name)).map(r => r.id));
+    } else if (managerScopeRepIds !== undefined && managerScopeRepIds !== null) {
+      // Manager scope: CompanyWidePage passes portal UUIDs directly — use them without
+      // any name round-trip so no rep is silently dropped by a name-mapping gap.
+      repIdFilter = new Set(managerScopeRepIds);
+    } else if (managerScopeRepIds === undefined && allowedRepNames !== null) {
+      // Fallback for direct KpiPage renders (no managerScopeRepIds prop): use the
+      // hardcoded MANAGER_TO_REPS map to resolve display names → DB names → UUIDs.
+      const dbNames = new Set(allowedRepNames.flatMap(n => REP_NAME_TO_DB_NAMES[n] ?? [n]));
+      repIdFilter = new Set(dbReps.filter(r => dbNames.has(r.name)).map(r => r.id));
+    }
+
+    // Company-wide (repIdFilter === null): restrict to reps currently in sales_reps so
+    // orphaned rep_targets rows (stale UUIDs from a prior rebuild) are excluded.
+    const activeRepIds = new Set(dbReps.map(r => r.id));
+    const scoped = targets2026.filter(t =>
+      repIdFilter !== null ? repIdFilter.has(t.rep_id) : activeRepIds.has(t.rep_id),
+    );
 
     const sums: Record<string, number> = {};
     for (const row of MONTHLY) {
@@ -439,14 +450,16 @@ export function LiveKpiReport({
       for (const t of scoped) total += Number(t[key]) || 0;
       sums[row.m] = total;
     }
-    return sums;
-  }, [targets2026, dbReps, hasRepSelection, repFilter, territoryFilter, visibleReps, allowedRepNames]);
+    return { sums, scoped };
+  }, [targets2026, dbReps, hasRepSelection, repFilter, territoryFilter, visibleReps, allowedRepNames, managerScopeRepIds]);
+
+  const { sums: targetSums, scoped: targetScoped } = targetByMonth;
 
   const scaledMonthlyWithTargets = useMemo(() => scaledMonthly.map(r => {
-    const tgt = targetByMonth[r.m] ?? 0;
+    const tgt = targetSums[r.m] ?? 0;
     // Only override 26 Proj when real targets exist; keep seed values when none are set.
     return tgt > 0 ? { ...r, b26p: tgt, i26p: tgt } : r;
-  }), [scaledMonthly, targetByMonth]);
+  }), [scaledMonthly, targetSums]);
 
   const MONTH_NAMES_ALL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const currentMonthName = MONTH_NAMES_ALL[reportingToday.getMonth()];
@@ -463,6 +476,45 @@ export function LiveKpiReport({
   const daysInMonth = new Date(reportingToday.getFullYear(), reportingToday.getMonth() + 1, 0).getDate();
   const mtdBGoal = currentMonthEntry?.b26p ?? 0;
   const mtdIGoal = currentMonthEntry?.i26p ?? 0;
+
+  // ── Goal debug logging ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!targets2026.length && !targetScoped.length) return;
+    const MONTH_FULL_TO_SHORT_LOCAL: Record<string, string> = {
+      January:"Jan", February:"Feb", March:"Mar", April:"Apr", May:"May", June:"Jun",
+      July:"Jul", August:"Aug", September:"Sep", October:"Oct", November:"Nov", December:"Dec",
+    };
+    const currentKey = MONTH_LABEL_TO_KEY[MONTH_FULL_TO_SHORT_LOCAL[currentMonthName]] as keyof RepTarget;
+    const scope = hasRepSelection
+      ? `rep: ${repFilter.join(", ")}`
+      : managerScopeRepIds !== null && managerScopeRepIds !== undefined
+        ? `manager (${managerScopeRepIds.length} reps)`
+        : territoryFilter.length > 0
+          ? `territory: ${territoryFilter.join(", ")}`
+          : "company-wide";
+
+    const repBreakdown = targetScoped.map(t => {
+      const rep = dbReps.find(r => r.id === t.rep_id);
+      return {
+        rep_name:    rep?.name ?? `UNMATCHED (${t.rep_id})`,
+        rep_id:      t.rep_id,
+        month_goal:  Number(t[currentKey]) || 0,
+        annual_goal: Number(t.annual_target) || 0,
+      };
+    });
+
+    console.group(`[goals] LiveKPI — ${reportingYear} ${currentMonthName} — ${scope}`);
+    console.log("year:", reportingYear, "| month:", currentMonthName, "| scope:", scope);
+    console.log("rep filter:", repFilter.length ? repFilter : "(none)");
+    console.log("territory filter:", territoryFilter.length ? territoryFilter : "(none)");
+    console.log("manager scope rep IDs:", managerScopeRepIds ?? "null (company-wide)");
+    console.log("targets2026 total rows:", targets2026.length, "| in-scope rows:", targetScoped.length);
+    console.table(repBreakdown);
+    console.log("summed booking goal:", `$${(targetSums[currentMonthName] ?? 0).toLocaleString()}`);
+    console.log("summed invoice goal:", `$${(targetSums[currentMonthName] ?? 0).toLocaleString()} (same source)`);
+    console.groupEnd();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targets2026, targetScoped, targetSums, currentMonthName, reportingYear, hasRepSelection, repFilter, managerScopeRepIds, territoryFilter, dbReps]);
 
   const dailyStats = useMemo(() => {
     const inv: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, MISC: 0, Other: 0 };

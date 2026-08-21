@@ -518,7 +518,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // Fetch targets for whichever year the primary range ends in (follows the user's date filter).
   const { data: repYearTargets = [] } = useRepTargets(primary.to.getFullYear());
 
-  // acctivate_id (lowercase) → rep_targets row for goal % computation
+  // acctivate_id (lowercase) → rep_targets row for goal % computation.
+  // Join key: sales_reps.id (portal UUID) === rep_targets.rep_id
   const repAcIdToTarget = useMemo(() => {
     const map = new Map<string, RepTarget>();
     for (const rep of reps) {
@@ -526,8 +527,20 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const target = repYearTargets.find((t) => t.rep_id === rep.id);
       if (target) map.set(rep.acctivate_id.trim().toLowerCase(), target);
     }
+    console.log("[goals] SalesReporting repAcIdToTarget", {
+      year: primary.to.getFullYear(),
+      reps_with_acctivate_id: reps.filter(r => r.acctivate_id).length,
+      rep_targets_loaded: repYearTargets.length,
+      matched: map.size,
+      unmatched_reps: reps
+        .filter(r => r.acctivate_id && !map.has(r.acctivate_id.trim().toLowerCase()))
+        .map(r => ({ name: r.name, portal_id: r.id, acctivate_id: r.acctivate_id })),
+      unmatched_targets: repYearTargets
+        .filter(t => !reps.find(r => r.id === t.rep_id))
+        .map(t => ({ rep_id: t.rep_id, annual: t.annual_target })),
+    });
     return map;
-  }, [reps, repYearTargets]);
+  }, [reps, repYearTargets, primary.to]);
 
   // ── Fetch view data ───────────────────────────────────────────────────────
 
@@ -763,6 +776,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     const ytdKeys     = TARGET_MONTHS.slice(0, refMonthIdx + 1);
     const allKeys = new Set([...repMtdRows.map((r) => r.entity_key), ...repYtdRows.map((r) => r.entity_key)]);
     const map = new Map<string, { mtdPct: number | null; ytdPct: number | null }>();
+    const debugRows: Array<{ entity_key: string; mtd_act: number; ytd_act: number; mtd_goal: number; ytd_goal: number; mtd_pct: string; ytd_pct: string }> = [];
     for (const key of allKeys) {
       const target = repAcIdToTarget.get(key.trim().toLowerCase());
       if (!target) continue;
@@ -774,9 +788,25 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         mtdPct: mtdGoal > 0 ? (mtdAct  / mtdGoal) * 100 : null,
         ytdPct: ytdGoal > 0 ? (ytdAct  / ytdGoal) * 100 : null,
       });
+      debugRows.push({
+        entity_key: key,
+        mtd_act: Math.round(mtdAct),
+        ytd_act: Math.round(ytdAct),
+        mtd_goal: mtdGoal,
+        ytd_goal: ytdGoal,
+        mtd_pct: mtdGoal > 0 ? `${((mtdAct / mtdGoal) * 100).toFixed(1)}%` : "—",
+        ytd_pct: ytdGoal > 0 ? `${((ytdAct / ytdGoal) * 100).toFixed(1)}%` : "—",
+      });
     }
+    const keysWithNoTarget = Array.from(allKeys).filter(k => !repAcIdToTarget.has(k.trim().toLowerCase()));
+    console.group(`[goals] SalesReporting repGoalMap — ${metric} / ${primary.to.toISOString().slice(0,7)}`);
+    console.log("scope:", { groupBy, metric, repIds: Array.from(selectedRepAcIds), managerId });
+    console.log("entity_keys from RPC:", Array.from(allKeys));
+    console.log("keys with no target match:", keysWithNoTarget);
+    console.table(debugRows);
+    console.groupEnd();
     return map;
-  }, [groupBy, primary.to, repMtdRows, repYtdRows, repAcIdToTarget]);
+  }, [groupBy, metric, primary.to, repMtdRows, repYtdRows, repAcIdToTarget, selectedRepAcIds, managerId]);
 
   // ── Filter options from view data ─────────────────────────────────────────
 

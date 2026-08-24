@@ -139,7 +139,8 @@ ORDER BY o.OrderDate, o.OrderNumber
 # line_cancelled, freight → BIT (schema: boolean).
 # order_date → CONVERT(23) = "yyyy-MM-dd" (schema: date).
 # order_number is pulled for natural_key computation and stripped by whitelist.
-# misc_charge_type and product_class are NOT in the schema and will be stripped.
+# misc_charge_type is NOT in the schema and will be stripped.
+# product_class is populated via dbo.ProductClass.Description (human-readable).
 # ---------------------------------------------------------------------------
 
 $LinesQuery = @"
@@ -162,6 +163,8 @@ WITH src AS (
         CAST(CAST(COALESCE(od._TariffAmt,      0) AS decimal(18,2)) AS NVARCHAR(30))       AS tariff_amount,
         CAST(CAST(COALESCE(od._FreightAmt,     0) AS decimal(18,2)) AS NVARCHAR(30))       AS freight_amount,
         CAST(ISNULL(prod.SalesCategory, '') AS NVARCHAR(100))                               AS sales_category,
+        -- Human-readable collection name from ProductClass; falls back to ProductClassID code
+        CAST(COALESCE(NULLIF(RTRIM(pc.Description), ''), NULLIF(RTRIM(prod.ProductClassID), ''), '') AS NVARCHAR(128)) AS product_class,
         CAST(CASE WHEN od.LineCancelled = 1 THEN 1 ELSE 0 END AS bit)                      AS line_cancelled,
         CAST(CASE WHEN od.Freight       = 1 THEN 1 ELSE 0 END AS bit)                      AS freight,
         CAST('aug_direct_pull' AS NVARCHAR(50))                                             AS source,
@@ -173,8 +176,9 @@ WITH src AS (
                 od.ProductID, od.Description, od.QtyOrdered, od._OriginalPrice, od.Amount
         ) AS duplicate_row_ordinal
     FROM dbo.OrderDetail od
-    INNER JOIN dbo.Orders o   ON od.GUIDOrder  = o.GUIDOrder
-    LEFT  JOIN dbo.Product prod ON od.ProductID = prod.ProductID
+    INNER JOIN dbo.Orders o     ON od.GUIDOrder  = o.GUIDOrder
+    LEFT  JOIN dbo.Product prod ON od.ProductID  = prod.ProductID
+    LEFT  JOIN dbo.ProductClass pc ON pc.ProductClassID = prod.ProductClassID
     WHERE o.OrderDate >= '2026-08-01'
       AND o.OrderDate <  DATEADD(day, 1, CAST(GETDATE() AS date))
 )
@@ -306,6 +310,7 @@ $LineAllowedCols = @{
     'component_level'          = 1; 'duplicate_row_ordinal'= 1
     'natural_key'              = 1; 'source'               = 1
     'order_date'               = 1; 'synced_at'            = 1
+    'product_class'            = 1
 }
 
 function Strip-Row {

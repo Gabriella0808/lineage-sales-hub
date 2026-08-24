@@ -296,19 +296,6 @@ function pctDelta(cur: number, prev: number): number | null {
 
 // ── Print / PDF ───────────────────────────────────────────────────────────────
 
-// Light background tints cycled per collection within each brand section.
-// Chosen to be print-friendly (light enough for black text, distinct enough to scan).
-const COLL_TINTS = [
-  "#e8f4fd", // blue
-  "#fef9e7", // amber
-  "#e9f7ef", // green
-  "#fdf2f8", // rose
-  "#f4ecf7", // lavender
-  "#fdebd0", // peach
-  "#d5f5e3", // mint
-  "#eaf4fb", // sky
-];
-
 function generatePrintHTML(
   rowLabel: string, metric: string,
   fromDate: Date, toDate: Date,
@@ -316,22 +303,17 @@ function generatePrintHTML(
 ) {
   const dateRange = `${format(fromDate, "MMM d, yyyy")} – ${format(toDate, "MMM d, yyyy")}`;
   let rows = "";
-  let clsIdx = 0; // increments per labelled collection across all brands
   for (const brand of hierarchy) {
     rows += `<tr class="brand-row"><td colspan="5"><strong>${brand.label}</strong></td><td class="amt"><strong>${formatCurrency(brand.total)}</strong></td></tr>`;
     for (const cls of brand.classes) {
-      const bg   = cls.label ? COLL_TINTS[clsIdx % COLL_TINTS.length] : "";
-      const hdrBg = cls.label ? adjustTint(bg, -12) : "";
       if (cls.label) {
-        rows += `<tr class="class-row" style="background:${hdrBg}"><td></td><td colspan="4" style="padding-left:12px"><em>${cls.label}</em></td><td class="amt">${formatCurrency(cls.total)}</td></tr>`;
-        clsIdx++;
+        rows += `<tr class="class-row"><td></td><td colspan="4" style="padding-left:12px"><em>${cls.label}</em></td><td class="amt">${formatCurrency(cls.total)}</td></tr>`;
       }
       for (const sku of cls.skus) {
         const indent = cls.label ? 24 : 12;
-        const bgStyle = bg ? ` style="background:${bg}"` : "";
-        rows += `<tr class="sku-row"${bgStyle}><td></td><td style="padding-left:${indent}px;font-family:monospace;font-size:10px" colspan="2">${sku.sku}</td><td colspan="2">${sku.desc !== sku.sku ? sku.desc : ""}</td><td class="amt">${formatCurrency(sku.total)}</td></tr>`;
+        rows += `<tr class="sku-row"><td></td><td style="padding-left:${indent}px;font-family:monospace;font-size:10px" colspan="2">${sku.sku}</td><td colspan="2">${sku.desc !== sku.sku ? sku.desc : ""}</td><td class="amt">${formatCurrency(sku.total)}</td></tr>`;
         for (const line of [...sku.lines].sort((a, b) => a.transaction_date.localeCompare(b.transaction_date))) {
-          rows += `<tr class="line-row"${bgStyle}><td></td><td></td><td style="padding-left:${indent + 12}px">${line.transaction_date}</td><td>${line.invoice_number ?? "—"}</td><td>${line.rep_name ?? line.dealer_name ?? ""}</td><td class="amt">${formatCurrency(Number(line.amount))}</td></tr>`;
+          rows += `<tr class="line-row"><td></td><td></td><td style="padding-left:${indent + 12}px">${line.transaction_date}</td><td>${line.invoice_number ?? "—"}</td><td>${line.rep_name ?? line.dealer_name ?? ""}</td><td class="amt">${formatCurrency(Number(line.amount))}</td></tr>`;
         }
       }
     }
@@ -345,10 +327,10 @@ function generatePrintHTML(
   table{width:100%;border-collapse:collapse}
   th,td{padding:3px 6px;text-align:left;border-bottom:1px solid #eee}
   th{font-weight:600;border-bottom:2px solid #ccc;background:#f9f9f9}
-  .brand-row{background:#e8e8e8}
-  .class-row{color:#333}
+  .brand-row{background:#d0d0d0}
+  .class-row{background:#ebebeb;color:#333}
   .sku-row td{color:#333}
-  .line-row td{font-size:10px;color:#555;border-bottom:1px dotted #ddd}
+  .line-row td{font-size:10px;color:#666;border-bottom:1px dotted #ddd}
   .amt{text-align:right;font-variant-numeric:tabular-nums}
   tfoot td{font-weight:600;border-top:2px solid #ccc}
   @media print{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -362,15 +344,6 @@ function generatePrintHTML(
 <tfoot><tr><td colspan="5">Total</td><td class="amt">${formatCurrency(grandTotal)}</td></tr></tfoot>
 </table>
 </body></html>`;
-}
-
-// Darken a hex color by `amount` (0–255) for the collection header row.
-function adjustTint(hex: string, amount: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.max(0, Math.min(255, (n >> 16) + amount));
-  const g = Math.max(0, Math.min(255, ((n >> 8) & 0xff) + amount));
-  const b = Math.max(0, Math.min(255, (n & 0xff) + amount));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────

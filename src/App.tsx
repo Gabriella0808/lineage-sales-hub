@@ -7,7 +7,6 @@ import { CartProvider } from "@/contexts/CartContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import EmailGuard from "@/components/EmailGuard";
 import AppLayout from "@/components/AppLayout";
-import SalesRepsPage from "@/pages/SalesRepsPage";
 import SalesRepsAcctivatePage from "@/pages/SalesRepsAcctivatePage";
 
 import DealersPage from "@/pages/DealersPage";
@@ -75,7 +74,6 @@ const App = () => (
                     <Routes>
                       <Route path="/" element={<CompanyWidePage />} />
                       <Route path="/managers" element={<ProtectedRoute allow={["admin", "manager"]}><ManagersPage /></ProtectedRoute>} />
-                      <Route path="/reps" element={<ProtectedRoute allow={["admin", "manager"]}><SalesRepsPage /></ProtectedRoute>} />
                       <Route path="/reps-acctivate" element={<ProtectedRoute allow={["admin"]}><SalesRepsAcctivatePage /></ProtectedRoute>} />
                       <Route path="/dealers" element={<DealersPage />} />
                       <Route path="/directory" element={<ProtectedRoute allow={["admin", "manager"]}><DirectoryPage /></ProtectedRoute>} />

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  LayoutDashboard, Users, Store, BookOpen, BarChart3, Settings,
+  LayoutDashboard, Store, BookOpen, BarChart3, Settings,
   UserCog, LogOut, ListChecks, Boxes, MapPinned, Plane, PieChart,
   ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
   FileText, Send, FolderOpen, Tag, Database, ChevronLeft, ChevronRight, AudioLines,
@@ -118,7 +118,6 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { title: "Organizational Chart", url: "/org-chart", icon: Network,  roles: ["admin"] },
       { title: "Sales Managers", url: "/managers", icon: UserCog,  roles: ["admin", "manager"] },
-      { title: "Sales Reps",     url: "/reps",     icon: Users,    roles: ["admin", "manager"] },
       { title: "Sales Rep Database (Acctivate)", url: "/reps-acctivate", icon: Database, roles: ["admin"] },
       { title: "Settings",       url: "/settings", icon: Settings, roles: ["admin", "manager", "rep"] },
     ],

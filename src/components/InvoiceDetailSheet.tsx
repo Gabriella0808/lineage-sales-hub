@@ -61,9 +61,10 @@ type PeriodPreset = "report" | "today" | "yesterday" | "this_month" | "last_mont
 const BOOKING_CUTOFF = new Date(BOOKINGS_VISIBLE_FROM + "T00:00:00");
 const BATCH = 500;
 
-// Maps Acctivate product_class codes → human-readable collection names.
-// These codes come from acctivate_invoice_lines_2026_direct.product_class.
-// Fall back to the raw value if the code is not in the map (e.g. already readable).
+// Maps Acctivate product_class short codes → human-readable collection names.
+// Only furniture collection codes belong here — non-collection codes (Closeouts, QC,
+// Returns, Lamps sub-classes, etc.) are intentionally excluded so they never appear
+// as sidebar collection names.
 const COLLECTION_DISPLAY: Record<string, string> = {
   // Sea Winds
   ISLAMORA: "Islamorada",
@@ -74,7 +75,7 @@ const COLLECTION_DISPLAY: Record<string, string> = {
   OCEANISL: "Ocean Isle",
   PICKET:   "Picket Fence",
   SURFSIDE: "Surfside",
-  CMAYDRIF: "Cape May",     // Cape May Driftwood finish (was wrongly "Coastal Drifter")
+  CMAYDRIF: "Cape May",     // Cape May Driftwood finish
   MIRAMAR:  "Miramar",
   MAUI:     "Maui",
   MONTEREY: "Monterey",
@@ -92,24 +93,28 @@ const COLLECTION_DISPLAY: Record<string, string> = {
   LUXCOAST: "Lux Coast",
   LUXTRANS: "Lux Transitional",
   LUXTRAD:  "Lux Traditional",
-  // Misc / Allowances / QC
-  CLOSEOUT: "Closeouts",
-  ECOMMALL: "E-Comm Allowance",
-  QCFACTOR: "Quality Control",
-  QCFREIGH: "Quality Control",
-  QCINTERN: "Quality Control",
-  RETURN:   "Return",
 };
+
+// The complete set of known furniture collection display names.
+// Used as a strict allowlist: only product_class values in this set are accepted as
+// human-readable names from the updated sync format. Everything else (Lamps Coastal,
+// Lamps Traditional, Closeouts, Quality Control, Returns, etc.) is blocked and falls
+// to description inference or the brand-level fallback.
+const KNOWN_COLLECTION_NAMES = new Set<string>([
+  ...Object.values(COLLECTION_DISPLAY),
+  "Manhattan Valley", // MHV sub-brand; Acctivate short code not yet confirmed
+]);
 
 function toCollectionDisplayName(productClass: string | null): string | null {
   if (!productClass?.trim()) return null;
   const trimmed = productClass.trim();
   const upper   = trimmed.toUpperCase();
-  // Explicit code → display name mapping (legacy short codes from sync)
+  // Explicit short code → display name (legacy sync format)
   if (COLLECTION_DISPLAY[upper]) return COLLECTION_DISPLAY[upper];
-  // Human-readable value from an updated sync (has spaces or mixed case) — use it directly
-  if (trimmed.includes(" ") || trimmed !== upper) return trimmed;
-  // Unknown all-caps code — don't show a cryptic code; let description inference handle it
+  // Human-readable description from updated sync — only accept if it's a known collection.
+  // This blocks non-collection product classes (Lamps Coastal, Closeouts, Returns, etc.)
+  // from appearing as sidebar collection names.
+  if (KNOWN_COLLECTION_NAMES.has(trimmed)) return trimmed;
   return null;
 }
 
@@ -147,9 +152,6 @@ const COLLECTION_FROM_DESC: Array<[RegExp, string]> = [
   [/\blux\s+coast\b/i,     "Lux Coast"],
   [/lux\s+trans/i,         "Lux Transitional"],
   [/lux\s+trad/i,          "Lux Traditional"],
-  // Misc
-  [/\bcloseo?uts?\b/i,     "Closeouts"],
-  [/quality\s+control/i,   "Quality Control"],
 ];
 
 function inferCollectionFromDesc(desc: string | null): string | null {

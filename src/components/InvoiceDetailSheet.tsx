@@ -338,7 +338,7 @@ function generatePrintHTML(
 <h1>${rowLabel}</h1>
 <p>${metric.charAt(0).toUpperCase() + metric.slice(1)} · ${dateRange}</p>
 <table>
-<thead><tr><th></th><th>Date</th><th>Invoice/Order</th><th>Description</th><th>Rep / Dealer</th><th class="amt">Amount</th></tr></thead>
+<thead><tr><th></th><th>Date</th><th>Invoice/Order</th><th>Description</th><th>Rep</th><th class="amt">Amount</th></tr></thead>
 <tbody>${rows}</tbody>
 <tfoot><tr><td colspan="5">Total</td><td class="amt">${formatCurrency(grandTotal)}</td></tr></tfoot>
 </table>

@@ -649,7 +649,7 @@ export function InvoiceDetailSheet({
             {hierarchy.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold">By Brand / Category</h3>
+                  <h3 className="text-sm font-semibold">Line Detail</h3>
                   <span className="text-xs tabular-nums font-semibold text-muted-foreground">
                     {formatCurrency(grandTotal)}
                   </span>

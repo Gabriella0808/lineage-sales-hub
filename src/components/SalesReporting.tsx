@@ -21,6 +21,7 @@ import {
   useDealers, useSalesReps, useTerritories, useRepTerritories,
   formatCurrency,
 } from "@/hooks/usePortalData";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { useRepTargets, TARGET_MONTHS, type RepTarget } from "@/hooks/useRepTargets";
 import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCutoff";
 
@@ -515,6 +516,17 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const { data: reps           = [] } = useSalesReps();
   const { data: territories    = [] } = useTerritories();
   const { data: repTerritories = [] } = useRepTerritories();
+
+  // Acctivate rep catalog — used for enriched labels in rep dropdown/chips.
+  // acctivate_id (lowercase) → Acctivate display name.
+  const { reps: acctivateRepsForLabels } = useAcctivateRepCatalog();
+  const acctivateNameByCode = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of acctivateRepsForLabels) {
+      m.set(r.acctivate_id.toLowerCase(), r.name);
+    }
+    return m;
+  }, [acctivateRepsForLabels]);
   // Fetch targets for whichever year the primary range ends in (follows the user's date filter).
   const { data: repYearTargets = [] } = useRepTargets(primary.to.getFullYear());
 
@@ -1076,7 +1088,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       });
     }
     if (repIds.length > 0) {
-      const names = repIds.map((id) => visibleReps.find((r) => r.id === id)?.name ?? id);
+      const names = repIds.map((id) => {
+        const rep = visibleReps.find((r) => r.id === id);
+        if (!rep) return id;
+        return (rep.acctivate_id && acctivateNameByCode.get(rep.acctivate_id.toLowerCase())) || rep.name;
+      });
       chips.push({
         label: names.length === 1 ? names[0] : `${names.length} reps`,
         clear: () => setRepIds([]),
@@ -1383,7 +1399,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             />
             <MultiSelect
               label="Rep" selected={repIds} onChange={setRepIds}
-              options={visibleReps.map((r) => ({ value: r.id, label: r.name }))}
+              options={visibleReps.map((r) => ({
+                value: r.id,
+                label: (r.acctivate_id && acctivateNameByCode.get(r.acctivate_id.toLowerCase())) || r.name,
+              }))}
             />
             <MultiSelect
               label="Dealer" selected={dealerIds} onChange={setDealerIds}

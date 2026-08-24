@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { formatCurrency, useSalesReps } from "@/hooks/usePortalData";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ChevronsUpDown, Check, X, CalendarIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -204,6 +205,35 @@ export function LiveKpiReport({
   // Must be declared before allowedRepNames so the useMemo can read it.
   const { data: dbReps = [] } = useSalesReps();
 
+  // Acctivate rep catalog — used for territory and manager labelling/filtering.
+  // Falls back to the hardcoded REP_TO_TERRITORIES map when territory data is
+  // not yet populated in acctivate_sales_reps (e.g., before first enriched sync).
+  const { reps: acctivateReps } = useAcctivateRepCatalog();
+
+  // Map: acctivate_id (lowercase) → territory_name from Acctivate rep catalog.
+  const acctivateIdToTerritory = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of acctivateReps) {
+      if (r.territory_name) m.set(r.acctivate_id.toLowerCase(), r.territory_name);
+    }
+    return m;
+  }, [acctivateReps]);
+
+  // Map: rep display name → [territory names] built from Acctivate data via dbReps.acctivate_id.
+  // Prefers Acctivate-sourced territory; falls back to hardcoded REP_TO_TERRITORIES.
+  const dbRepNameToTerritory = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const rep of dbReps) {
+      if (!rep.acctivate_id) continue;
+      const territory = acctivateIdToTerritory.get(rep.acctivate_id.toLowerCase());
+      if (!territory) continue;
+      const displayName = DB_NAME_TO_DISPLAY[rep.name.toLowerCase()] ?? rep.name;
+      const existing = m.get(displayName) ?? [];
+      if (!existing.includes(territory)) m.set(displayName, [...existing, territory]);
+    }
+    return m;
+  }, [dbReps, acctivateIdToTerritory]);
+
   const allowedRepNames = useMemo(() => {
     if (lockedRepName) return [lockedRepName];
 
@@ -246,27 +276,38 @@ export function LiveKpiReport({
     return Array.from(byName.values());
   }, [dbReps]);
 
+  // Returns territories for a rep display name.
+  // Prefers DB-sourced data from acctivate_sales_reps; falls back to hardcoded map.
+  const getRepTerritories = useMemo(() => {
+    return (repName: string): string[] => {
+      const fromDb = dbRepNameToTerritory.get(repName);
+      if (fromDb && fromDb.length > 0) return fromDb;
+      return REP_TO_TERRITORIES[repName] ?? [];
+    };
+  }, [dbRepNameToTerritory]);
+
   const visibleReps = useMemo(() => {
     let reps = allowedRepNames === null
       ? allReps
       : allReps.filter((r) => allowedRepNames.includes(r.name));
     if (territoryFilter.length > 0) {
-      reps = reps.filter((r) => (REP_TO_TERRITORIES[r.name] ?? []).some((t) => territoryFilter.includes(t)));
+      reps = reps.filter((r) => getRepTerritories(r.name).some((t) => territoryFilter.includes(t)));
     }
     return reps;
-  }, [allReps, allowedRepNames, territoryFilter]);
+  }, [allReps, allowedRepNames, territoryFilter, getRepTerritories]);
 
   // Territories available for the current manager scope (pre-territory-filter).
   // Shows only territories that have at least one rep in scope — avoids presenting
   // options that would silently return zero data.
+  // Prefers DB-sourced territory names from acctivate_sales_reps; falls back to hardcoded.
   const availableTerritories = useMemo(() => {
     const scopedReps = allowedRepNames === null
       ? allReps
       : allReps.filter((r) => allowedRepNames.includes(r.name));
     return Array.from(
-      new Set(scopedReps.flatMap((r) => REP_TO_TERRITORIES[r.name] ?? [])),
+      new Set(scopedReps.flatMap((r) => getRepTerritories(r.name))),
     ).sort();
-  }, [allReps, allowedRepNames]);
+  }, [allReps, allowedRepNames, getRepTerritories]);
 
   const [repFilter, setRepFilter] = useState<string[]>(lockedRepName ? [lockedRepName] : []);
   const [repPickerOpen, setRepPickerOpen] = useState(false);

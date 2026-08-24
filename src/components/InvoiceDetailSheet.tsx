@@ -133,6 +133,7 @@ const COLLECTION_FROM_DESC: Array<[RegExp, string]> = [
   [/\bcabinet\s+bed/i,     "Cabinet Beds"],
   [/\bpicket\b/i,          "Picket Fence"],
   // Finn & Lou
+  [/manhattan\s+valley/i,  "Manhattan Valley"],
   [/chatham\s+midnight/i,  "Chatham Midnight"],
   [/chatham\s+maple/i,     "Chatham Maple"],
   [/\bchatham\b/i,         "Chatham Maple"],

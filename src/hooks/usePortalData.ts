@@ -16,6 +16,7 @@ export interface AcctivateSalesRep {
   manager_acctivate_id: string | null;
   territory_name: string | null;
   territory_acctivate_id: string | null;
+  territory_code: string | null;
   active: boolean;
   synced_at: string | null;
 }
@@ -173,7 +174,7 @@ export function useAcctivateSalesReps() {
       const { data, error } = await supabase
         .from("acctivate_sales_reps")
         .select(
-          "id, acctivate_id, rep_code, name, email, phone, manager_name, manager_acctivate_id, territory_name, territory_acctivate_id, active, synced_at",
+          "id, acctivate_id, rep_code, name, email, phone, manager_name, manager_acctivate_id, territory_name, territory_acctivate_id, territory_code, active, synced_at",
         )
         .order("name");
       if (error) throw error;

@@ -164,8 +164,17 @@ function inferCollectionFromDesc(desc: string | null): string | null {
 // Primary source: product_class from Acctivate (populated by the VM sync scripts).
 // Fallback: description-based inference using confirmed Acctivate collection names —
 // active only while product_class is absent in legacy-synced rows.
+// Brand fallback: if neither source resolves a specific collection, use the brand
+// itself (e.g. Lux bookings whose descriptions lack a sub-collection prefix).
 function resolveCollection(l: ViewLine): string | null {
-  return toCollectionDisplayName(l.product_class) ?? inferCollectionFromDesc(l.description);
+  const fromClass = toCollectionDisplayName(l.product_class);
+  if (fromClass) return fromClass;
+  const fromDesc = inferCollectionFromDesc(l.description);
+  if (fromDesc) return fromDesc;
+  // Lux items may have descriptions without a sub-collection prefix until VM sync reruns.
+  const bc = l.brand_category?.trim();
+  if (bc === "Lux") return "Lux";
+  return null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

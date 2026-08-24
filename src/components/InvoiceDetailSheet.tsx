@@ -322,18 +322,17 @@ function generatePrintHTML(
 <html><head><meta charset="utf-8"/>
 <title>${rowLabel} — ${metric} — ${dateRange}</title>
 <style>
-  body{font-family:system-ui,sans-serif;font-size:11px;margin:20px;color:#111}
+  body{font-family:system-ui,sans-serif;font-size:11px;margin:20px;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   h1{font-size:15px;margin:0 0 2px}p{margin:0 0 12px;color:#555}
   table{width:100%;border-collapse:collapse}
   th,td{padding:3px 6px;text-align:left;border-bottom:1px solid #eee}
   th{font-weight:600;border-bottom:2px solid #ccc;background:#f9f9f9}
-  .brand-row{background:#d0d0d0}
-  .class-row{background:#ebebeb;color:#333}
+  .brand-row{background-color:#d0d0d0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .class-row{background-color:#ebebeb !important;color:#333;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .sku-row td{color:#333}
   .line-row td{font-size:10px;color:#666;border-bottom:1px dotted #ddd}
   .amt{text-align:right;font-variant-numeric:tabular-nums}
   tfoot td{font-weight:600;border-top:2px solid #ccc}
-  @media print{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 </style></head>
 <body>
 <h1>${rowLabel}</h1>

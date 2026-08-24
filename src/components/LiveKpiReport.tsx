@@ -141,9 +141,9 @@ const fmtPct = (n: number) => (!isFinite(n) || n === 0) ? "-" : `${(n * 100).toF
 // and a zero share is meaningful (e.g. container=0 while warehouse>0).
 const fmtPctRaw = (n: number) => `${(n * 100).toFixed(1)}%`;
 
-type CollKey = "SW" | "FIN" | "LUX" | "HOSP" | "MISC" | "Other";
+type CollKey = "SW" | "FIN" | "LUX" | "HOSP" | "MISC" | "ALLOW" | "Other";
 const COLL_LABEL: Record<CollKey, string> = {
-  SW: "SW", FIN: "FIN", LUX: "LUX", HOSP: "HOSP", MISC: "MISC", Other: "Other",
+  SW: "SW", FIN: "FIN", LUX: "LUX", HOSP: "HOSP", MISC: "MISC", ALLOW: "ALLOW", Other: "Other",
 };
 
 function classifyCollection(bc: string | null): CollKey {
@@ -153,7 +153,10 @@ function classifyCollection(bc: string | null): CollKey {
   if (s.startsWith("fin") || s.includes("finn")) return "FIN";
   if (s.startsWith("lux")) return "LUX";
   if (s.startsWith("hosp") || s.includes("hospit")) return "HOSP";
-  if (s === "misc" || s.startsWith("allow")) return "MISC";
+  // Bookings: ALLOW maps to brand_category='MISC' (unchanged in bookings view)
+  // Invoiced: ALLOW maps to brand_category='ALLOW' (display_category in invoice view)
+  if (s === "misc") return "MISC";
+  if (s === "allow") return "ALLOW";
   return "Other";
 }
 
@@ -550,8 +553,8 @@ export function LiveKpiReport({
   }, [targets2026, targetScoped, targetSums, currentMonthName, reportingYear, hasRepSelection, repFilter, managerScopeRepIds, territoryFilter, dbReps]);
 
   const dailyStats = useMemo(() => {
-    const inv: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, MISC: 0, Other: 0 };
-    const bkg: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, MISC: 0, Other: 0 };
+    const inv: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, MISC: 0, ALLOW: 0, Other: 0 };
+    const bkg: Record<CollKey, number> = { SW: 0, FIN: 0, LUX: 0, HOSP: 0, MISC: 0, ALLOW: 0, Other: 0 };
     let totalInv = 0, totalBkg = 0;
     for (const row of rawDailyRows) {
       const coll = classifyCollection(row.brand_category);
@@ -726,7 +729,7 @@ export function LiveKpiReport({
             <h3 className="text-sm font-semibold mb-3">Daily Invoices</h3>
             <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalInv)}</p>
             <div className="space-y-1.5 text-xs">
-              {(["SW", "FIN", "LUX", "MISC"] as CollKey[]).map((coll) => (
+              {(["SW", "FIN", "LUX", "ALLOW"] as CollKey[]).map((coll) => (
                 <div key={coll} className="flex justify-between">
                   <span className="text-muted-foreground">{COLL_LABEL[coll]}</span>
                   <span className="font-medium tabular-nums">{formatCurrency(dailyStats.inv[coll])}</span>

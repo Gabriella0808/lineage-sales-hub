@@ -102,9 +102,15 @@ const COLLECTION_DISPLAY: Record<string, string> = {
 };
 
 function toCollectionDisplayName(productClass: string | null): string | null {
-  if (!productClass || productClass.trim() === "") return null;
-  const key = productClass.trim().toUpperCase();
-  return COLLECTION_DISPLAY[key] ?? productClass; // fall back to raw if already readable
+  if (!productClass?.trim()) return null;
+  const trimmed = productClass.trim();
+  const upper   = trimmed.toUpperCase();
+  // Explicit code → display name mapping (legacy short codes from sync)
+  if (COLLECTION_DISPLAY[upper]) return COLLECTION_DISPLAY[upper];
+  // Human-readable value from an updated sync (has spaces or mixed case) — use it directly
+  if (trimmed.includes(" ") || trimmed !== upper) return trimmed;
+  // Unknown all-caps code — don't show a cryptic code; let description inference handle it
+  return null;
 }
 
 // When product_class is null (bookings; or invoiced before migration 20260819000600 is applied),
@@ -112,30 +118,33 @@ function toCollectionDisplayName(productClass: string | null): string | null {
 // Ordered most-specific first so "Chatham Midnight" matches before "Chatham".
 const COLLECTION_FROM_DESC: Array<[RegExp, string]> = [
   // Most-specific matches first to avoid partial collisions
-  [/chatham\s+midnight/i,  "Chatham Midnight"],
-  [/chatham\s+maple/i,     "Chatham Maple"],
-  [/\bchatham\b/i,         "Chatham Maple"],
-  [/\bislamorada\b/i,      "Islamorada"],
-  [/\bsurfside\b/i,        "Surfside"],
-  [/\bmiramar\b/i,         "Miramar"],
-  [/\bmaui\b/i,            "Maui"],
-  [/\bocean\s+isles?\b/i,  "Ocean Isle"],
-  [/\bmonaco\b/i,          "Monaco"],
-  [/\bcape\s+may\b/i,      "Cape May"],
-  [/\bmonterey\b/i,        "Monterey"],
-  [/\bsun\s+haven\b/i,     "Sun Haven"],
-  [/\bcredenza\b/i,        "Credenza"],
-  [/\bcabinet\s+bed/i,     "Cabinet Beds"],
-  [/\bpicket\b/i,          "Picket Fence"],
-  [/\bpoint\s+breeze\b/i,  "Point Breeze"],
-  [/\bhyde\s+park\b/i,     "Hyde Park"],
-  [/\bgeneva\b/i,          "Geneva"],
-  [/\brio\s+vista\b/i,     "Rio Vista"],
-  [/\blux\s+coast\b/i,     "Lux Coast"],
-  [/lux\s+trans/i,         "Lux Transitional"],
-  [/lux\s+trad/i,          "Lux Traditional"],
-  [/\bcloseo?uts?\b/i,     "Closeouts"],
-  [/quality\s+control/i,   "Quality Control"],
+  [/chatham\s+midnight/i,   "Chatham Midnight"],
+  [/chatham\s+maple/i,      "Chatham Maple"],
+  [/\bchatham\b/i,          "Chatham Maple"],
+  [/manhattan\s+valley/i,   "Manhattan Valley"],
+  [/\bmhv\s+dark\b/i,       "MHV Dark"],
+  [/\bmhv\s+light\b/i,      "MHV Light"],
+  [/\bislamorada\b/i,       "Islamorada"],
+  [/\bsurfside\b/i,         "Surfside"],
+  [/\bmiramar\b/i,          "Miramar"],
+  [/\bmaui\b/i,             "Maui"],
+  [/\bocean\s+isles?\b/i,   "Ocean Isle"],
+  [/\bmonaco\b/i,           "Monaco"],
+  [/\bcape\s+may\b/i,       "Cape May"],
+  [/\bmonterey\b/i,         "Monterey"],
+  [/\bsun\s+haven\b/i,      "Sun Haven"],
+  [/\bcredenza\b/i,         "Credenza"],
+  [/\bcabinet\s+bed/i,      "Cabinet Beds"],
+  [/\bpicket\b/i,           "Picket Fence"],
+  [/\bpoint\s+breeze\b/i,   "Point Breeze"],
+  [/\bhyde\s+park\b/i,      "Hyde Park"],
+  [/\bgeneva\b/i,           "Geneva"],
+  [/\brio\s+vista\b/i,      "Rio Vista"],
+  [/\blux\s+coast\b/i,      "Lux Coast"],
+  [/lux\s+trans/i,          "Lux Transitional"],
+  [/lux\s+trad/i,           "Lux Traditional"],
+  [/\bcloseo?uts?\b/i,      "Closeouts"],
+  [/quality\s+control/i,    "Quality Control"],
 ];
 
 function inferCollectionFromDesc(desc: string | null, sku: string | null): string | null {

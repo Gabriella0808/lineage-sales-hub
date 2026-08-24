@@ -116,7 +116,9 @@ WITH src AS (
             AS decimal(18,2)
         )                                                          AS formula_net_amount,
         CAST(ISNULL(prod.SalesCategory,  '')    AS NVARCHAR(100))  AS product_sales_category,
-        CAST(ISNULL(prod.ProductClassID, '')    AS NVARCHAR(100))  AS product_class,
+        -- Human-readable collection name from ProductClass.Description; falls back to
+        -- ProductClassID code so the portal can group by collection automatically.
+        CAST(COALESCE(NULLIF(RTRIM(pc.Description), ''), NULLIF(RTRIM(prod.ProductClassID), ''), '') AS NVARCHAR(128)) AS product_class,
         CAST('aug_direct_pull'                  AS NVARCHAR(50))   AS source,
         ROW_NUMBER() OVER (
             PARTITION BY
@@ -140,6 +142,8 @@ WITH src AS (
         ON dtl.InvoiceNumber = inv.InvoiceNumber
     LEFT JOIN dbo.Product prod
         ON dtl.ProductID = prod.ProductID
+    LEFT JOIN dbo.ProductClass pc
+        ON pc.ProductClassID = prod.ProductClassID
     WHERE inv.InvoiceDate >= DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
       AND inv.InvoiceDate <  DATEADD(month, DATEDIFF(month, 0, GETDATE()) + 1, 0)
 )

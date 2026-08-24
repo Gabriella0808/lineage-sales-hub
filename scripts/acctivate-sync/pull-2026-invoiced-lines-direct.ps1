@@ -180,13 +180,18 @@ SELECT
     2
   )                                                                    AS formula_net_amount,
   CAST(ISNULL(p.SalesCategory,  '') AS NVARCHAR(64))                   AS product_sales_category,
-  CAST(ISNULL(p.ProductClassID, '') AS NVARCHAR(64))                   AS product_class
+  -- Use the human-readable ProductClass Description so the portal can display collection
+  -- names automatically without a frontend code-to-name mapping.  Fall back to the raw
+  -- ProductClassID code when the ProductClass table has no matching row.
+  CAST(COALESCE(NULLIF(RTRIM(pc.Description), ''), NULLIF(RTRIM(p.ProductClassID), ''), '') AS NVARCHAR(128)) AS product_class
 FROM dbo.InvoiceDetail id
 INNER JOIN dbo.Invoice inv
   ON inv.GUIDInvoice = id.GUIDInvoice
 $branchJoin
 LEFT JOIN dbo.Product p
   ON p.ProductID = id.ProductID
+LEFT JOIN dbo.ProductClass pc
+  ON pc.ProductClassID = p.ProductClassID
 WHERE inv.InvoiceDate >= '2026-01-01'
   AND inv.InvoiceDate <  $todayClause
 "@

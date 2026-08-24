@@ -8,6 +8,52 @@
 -- Both FL and FINNLOU normalise to display_category = 'Finn & Lou'.
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Prerequisites from 20260824000100 (may not have been applied to live DB)
+-- Add product_class to bookings staging table and bookings line facts view.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE public.portal_acctivate_order_lines
+  ADD COLUMN IF NOT EXISTS product_class text;
+
+CREATE OR REPLACE VIEW public.v_portal_bookings_line_facts AS
+SELECT
+  o.guid_order::text                                            AS guid_order,
+  o.guid_customer::text                                         AS guid_customer,
+  o.guid_salesperson::text                                      AS guid_salesperson,
+  date(o.order_date)                                            AS booking_date,
+  o.sold_to_name::text                                          AS dealer_name,
+  o.rep1::text                                                  AS rep1,
+  o.rep2::text                                                  AS rep2,
+  l.product_id::text                                            AS sku,
+  l.description::text                                           AS description,
+  CASE l.sales_category
+    WHEN 'SW'      THEN 'Sea Winds'
+    WHEN 'FINNLOU' THEN 'Finn & Lou'
+    WHEN 'LUX'     THEN 'Lux'
+    WHEN 'ALLOW'   THEN 'MISC'
+    ELSE l.sales_category
+  END::text                                                     AS brand_category,
+  CASE
+    WHEN COALESCE(NULLIF(l.original_price, '')::numeric, 0) <> 0
+    THEN
+        COALESCE(l.qty_ordered::numeric,      0)
+      * NULLIF(l.original_price, '')::numeric
+      * (1.0 - COALESCE(l.line_discount_pct::numeric, 0) / 100.0)
+    ELSE
+        COALESCE(l.amount::numeric,           0)
+      - COALESCE(l.tariff_amount::numeric,    0)
+      - COALESCE(l.freight_amount::numeric,   0)
+  END::numeric                                                  AS net_booking_amount,
+  l.product_class::text                                         AS product_class
+FROM public.portal_acctivate_orders o
+JOIN public.portal_acctivate_order_lines l
+  ON l.guid_order = o.guid_order
+WHERE COALESCE(l.line_cancelled, false) = false
+  AND l.sales_category IN ('SW', 'FINNLOU', 'LUX', 'HOSP', 'ALLOW', 'MISC');
+
+GRANT SELECT ON public.v_portal_bookings_line_facts TO anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Tear down dependency chain (outermost first)
 -- ─────────────────────────────────────────────────────────────────────────────
 

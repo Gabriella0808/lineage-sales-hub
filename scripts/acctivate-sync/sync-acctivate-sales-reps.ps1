@@ -4,9 +4,10 @@
 
 .DESCRIPTION
     Pulls every salesperson from the Acctivate salesperson table (SQL Server).
-    The source table is discovered at runtime -- the script checks dbo.tbSalesperson
-    first, then dbo.Salesperson, then searches INFORMATION_SCHEMA.COLUMNS for any
-    table in dbo that contains SalespersonID / SalespersonName / GUIDSalesperson.
+    The source table is discovered at runtime -- the script checks dbo.tbSalespersonInfo
+    first, then dbo.tbSalesperson, then dbo.Salesperson, then searches
+    INFORMATION_SCHEMA.COLUMNS for any table in dbo that contains
+    SalespersonID / SalespersonName / GUIDSalesperson.
 
     Enriches each rep with their most-common territory and sales manager
     derived from dbo.Orders + dbo.tbCustomer order history.
@@ -343,7 +344,7 @@ Write-Host ''
 Write-Host 'Searching for Acctivate salesperson table...' -ForegroundColor Cyan
 
 # Priority-ordered list of table names to try
-$RepTableCandidates = @('tbSalesperson', 'Salesperson', 'tblSalesperson', 'SalesPerson', 'tblSalesPerson')
+$RepTableCandidates = @('tbSalespersonInfo', 'tbSalesperson', 'Salesperson', 'tblSalesperson', 'SalesPerson', 'tblSalesPerson')
 
 $RepTable = $null
 foreach ($candidate in $RepTableCandidates) {
@@ -383,7 +384,7 @@ if (-not $RepTable) {
 if (-not $RepTable) {
     Write-Host ''
     Write-Host 'ERROR: Cannot find a salesperson table in dbo.' -ForegroundColor Red
-    Write-Host 'Tried named: tbSalesperson, Salesperson, tblSalesperson, SalesPerson, tblSalesPerson' -ForegroundColor Red
+    Write-Host 'Tried named: tbSalespersonInfo, tbSalesperson, Salesperson, tblSalesperson, SalesPerson, tblSalesPerson' -ForegroundColor Red
     Write-Host 'Searched columns: SalespersonID, SalespersonName, GUIDSalesperson, Salesperson_ID' -ForegroundColor Red
     Write-Host 'Run this on the Acctivate DB to inspect manually:' -ForegroundColor Yellow
     Write-Host "  SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='dbo' ORDER BY TABLE_NAME" -ForegroundColor Yellow

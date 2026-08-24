@@ -280,13 +280,14 @@ function Log-FailedRow {
 
 # --- Reconciliation config ---------------------------------------------------
 
-$ReconCategories = @('ALLOW', 'FL', 'LUX', 'SW')
+$ReconCategories = @('ALLOW', 'FL', 'FINNLOU', 'LUX', 'SW')
 
 $ExpectedTotals = @{
-    'ALLOW' = @{ Lines = 0; Amt = 0 }   # update after first FL sync
-    'FL'    = @{ Lines = 0; Amt = 0 }   # update after first FL sync
-    'LUX'   = @{ Lines = 0; Amt = 0 }   # update after first FL sync
-    'SW'    = @{ Lines = 0; Amt = 0 }   # update after first FL sync
+    'ALLOW'   = @{ Lines = 0; Amt = 0 }   # update after confirming live totals
+    'FL'      = @{ Lines = 0; Amt = 0 }   # update after confirming live totals
+    'FINNLOU' = @{ Lines = 0; Amt = 0 }   # update after confirming live totals
+    'LUX'     = @{ Lines = 0; Amt = 0 }   # update after confirming live totals
+    'SW'      = @{ Lines = 0; Amt = 0 }   # update after confirming live totals
 }
 
 $SpotChecks = @(

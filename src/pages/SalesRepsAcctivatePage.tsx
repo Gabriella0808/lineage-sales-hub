@@ -19,7 +19,7 @@ type Rep = {
   territory_name: string | null;
   territory_acctivate_id: string | null;
   active: boolean | null;
-  updated_at: string | null;
+  synced_at: string | null;
 };
 
 export default function SalesRepsAcctivatePage() {
@@ -34,12 +34,12 @@ export default function SalesRepsAcctivatePage() {
       const { data, error } = await supabase
         .from("acctivate_sales_reps")
         .select(
-          "id, acctivate_id, rep_code, name, email, phone, manager_name, manager_acctivate_id, territory_name, territory_acctivate_id, active, updated_at",
+          "id, acctivate_id, rep_code, name, email, phone, manager_name, manager_acctivate_id, territory_name, territory_acctivate_id, active, synced_at",
         )
         .order("name", { ascending: true });
       if (cancelled) return;
       if (error) console.error(error);
-      setRows((data ?? []) as Rep[]);
+      setRows((data ?? []) as unknown as Rep[]);
       setLoading(false);
     })();
     return () => {
@@ -50,11 +50,16 @@ export default function SalesRepsAcctivatePage() {
   const q = query.trim().toLowerCase();
   const filtered = q
     ? rows.filter((r) =>
-        [r.name, r.rep_code, r.email, r.manager_name, r.territory_name, r.territory_acctivate_id]
+        [r.name, r.rep_code, r.email, r.phone, r.manager_name, r.territory_name, r.territory_acctivate_id]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(q)),
       )
     : rows;
+
+  const lastSynced = rows.length > 0
+    ? rows.reduce<string | null>((best, r) =>
+        r.synced_at && (!best || r.synced_at > best) ? r.synced_at : best, null)
+    : null;
 
   return (
     <div className="p-6 space-y-4">
@@ -65,13 +70,18 @@ export default function SalesRepsAcctivatePage() {
 
       <div className="flex items-center justify-between gap-3">
         <Input
-          placeholder="Search reps, codes, managers, territories..."
+          placeholder="Search rep code, name, email, phone, manager, territory..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="max-w-sm"
         />
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground text-right">
           {loading ? "Loading..." : `${filtered.length} of ${rows.length} reps`}
+          {!loading && lastSynced && (
+            <div className="text-xs">
+              Last synced: {new Date(lastSynced).toLocaleString()}
+            </div>
+          )}
         </div>
       </div>
 

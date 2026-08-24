@@ -5,6 +5,21 @@ import { getReportingYear } from "@/utils/reportingDate";
 
 // ── Types matching DB schema ──────────────────────────────────────
 
+export interface AcctivateSalesRep {
+  id: string;
+  acctivate_id: string;
+  rep_code: string | null;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  manager_name: string | null;
+  manager_acctivate_id: string | null;
+  territory_name: string | null;
+  territory_acctivate_id: string | null;
+  active: boolean;
+  synced_at: string | null;
+}
+
 export interface DbSalesRep {
   id: string;
   acctivate_id: string | null;
@@ -150,6 +165,22 @@ export interface DbDealerSalesLine {
 }
 
 // ── Hooks ─────────────────────────────────────────────────────────
+
+export function useAcctivateSalesReps() {
+  return useQuery({
+    queryKey: ["acctivate_sales_reps"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("acctivate_sales_reps")
+        .select(
+          "id, acctivate_id, rep_code, name, email, phone, manager_name, manager_acctivate_id, territory_name, territory_acctivate_id, active, synced_at",
+        )
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as unknown as AcctivateSalesRep[];
+    },
+  });
+}
 
 export function useSalesReps() {
   return useQuery({

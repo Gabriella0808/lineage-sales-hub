@@ -3,7 +3,7 @@ import {
   format, startOfDay, startOfMonth, endOfMonth, subMonths,
 } from "date-fns";
 import Papa from "papaparse";
-import { ChevronRight, Download, Printer, Search } from "lucide-react";
+import { ChevronRight, Download, Printer } from "lucide-react";
 import { isBookingVisibleDate, BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
@@ -262,16 +262,6 @@ function buildHierarchy(lines: ViewLine[]): BrandEntry[] {
     .sort((a, b) => b.total - a.total);
 }
 
-function groupBySku(lines: ViewLine[]) {
-  const map = new Map<string, { sku: string; desc: string; total: number }>();
-  for (const l of lines) {
-    const k = l.sku ?? "-";
-    const cur = map.get(k) ?? { sku: k, desc: l.description ?? k, total: 0 };
-    cur.total += Number(l.amount);
-    map.set(k, cur);
-  }
-  return Array.from(map.values()).sort((a, b) => b.total - a.total);
-}
 
 function pctDelta(cur: number, prev: number): number | null {
   if (!prev) return null;
@@ -345,8 +335,6 @@ export function InvoiceDetailSheet({
   const [expandedBrands,  setExpandedBrands]  = useState<Set<string>>(new Set());
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
   const [expandedSkus,    setExpandedSkus]    = useState<Set<string>>(new Set());
-  const [showSkuSection,  setShowSkuSection]  = useState(false);
-  const [skuSearch,       setSkuSearch]       = useState("");
 
   useEffect(() => {
     if (open) {
@@ -356,8 +344,6 @@ export function InvoiceDetailSheet({
       setExpandedBrands(new Set());
       setExpandedClasses(new Set());
       setExpandedSkus(new Set());
-      setShowSkuSection(false);
-      setSkuSearch("");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -477,22 +463,7 @@ export function InvoiceDetailSheet({
 
   // ── Derived breakdowns — all from primActive ──────────────────────────────────
   const hierarchy  = useMemo(() => buildHierarchy(primActive), [primActive]);
-  const bySku      = useMemo(() => groupBySku(primActive),     [primActive]);
   const grandTotal = useMemo(() => sumAmount(primActive),       [primActive]);
-
-  const filteredSku = useMemo(() => {
-    const q = skuSearch.toLowerCase().trim();
-    if (!q) return bySku;
-    return bySku.filter((r) =>
-      r.sku.toLowerCase().includes(q) || r.desc.toLowerCase().includes(q),
-    );
-  }, [bySku, skuSearch]);
-
-  const compBySkuMap = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const r of groupBySku(compActive)) m.set(r.sku, r.total);
-    return m;
-  }, [compActive]);
 
   // ── Accordion helpers ─────────────────────────────────────────────────────────
   function toggle(set: Set<string>, setSet: (s: Set<string>) => void, key: string) {
@@ -741,97 +712,6 @@ export function InvoiceDetailSheet({
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* ── By SKU / Product — secondary collapsible flat list ── */}
-            {bySku.length > 0 && (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setShowSkuSection((s) => !s)}
-                  className="flex items-center gap-2 text-sm font-semibold w-full mb-2"
-                >
-                  <ChevronRight className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-150 ${showSkuSection ? "rotate-90" : ""}`} />
-                  By SKU / Product
-                  <Badge variant="secondary" className="text-[10px] h-5 font-normal">{bySku.length}</Badge>
-                </button>
-                {showSkuSection && (
-                  <div>
-                    <div className="flex justify-end mb-2">
-                      <div className="relative">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                        <input
-                          type="text"
-                          placeholder="Search…"
-                          value={skuSearch}
-                          onChange={(e) => setSkuSearch(e.target.value)}
-                          className="pl-6 pr-2 py-1 text-xs border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-ring w-36"
-                        />
-                      </div>
-                    </div>
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b text-muted-foreground">
-                          <th className="py-1 text-left font-normal">SKU / Description</th>
-                          <th className="py-1 text-right font-normal">Amount</th>
-                          {hasCompare && (
-                            <>
-                              <th className="py-1 text-right font-normal">{compLabel ?? "vs"}</th>
-                              <th className="py-1 text-right font-normal">Δ</th>
-                            </>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredSku.slice(0, 100).map((r, i) => {
-                          const comp  = compBySkuMap.get(r.sku);
-                          const delta = hasCompare && comp ? pctDelta(r.total, comp) : null;
-                          return (
-                            <tr key={`${r.sku}-${i}`} className="border-b last:border-0 hover:bg-muted/20">
-                              <td className="py-1.5">
-                                <span className="font-mono text-[10px] text-muted-foreground">{r.sku}</span>
-                                {r.desc !== r.sku && (
-                                  <span className="block text-[11px] truncate max-w-[220px]">{r.desc}</span>
-                                )}
-                              </td>
-                              <td className="py-1.5 text-right tabular-nums">{formatCurrency(r.total)}</td>
-                              {hasCompare && (
-                                <>
-                                  <td className="py-1.5 text-right tabular-nums text-muted-foreground">
-                                    {comp !== undefined ? formatCurrency(comp) : "—"}
-                                  </td>
-                                  <td className={`py-1.5 text-right text-[10px] tabular-nums ${delta === null ? "text-muted-foreground" : delta >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                                    {delta === null ? "—" : `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`}
-                                  </td>
-                                </>
-                              )}
-                            </tr>
-                          );
-                        })}
-                        {filteredSku.length > 100 && (
-                          <tr>
-                            <td colSpan={hasCompare ? 4 : 2} className="py-1.5 text-center text-[10px] text-muted-foreground">
-                              Showing top 100 of {filteredSku.length} — use CSV export for full list
-                            </td>
-                          </tr>
-                        )}
-                        <tr className="border-t font-semibold">
-                          <td className="py-1.5">Total</td>
-                          <td className="py-1.5 text-right tabular-nums">{formatCurrency(grandTotal)}</td>
-                          {hasCompare && (
-                            <>
-                              <td className="py-1.5 text-right tabular-nums">
-                                {formatCurrency(sumAmount(compActive))}
-                              </td>
-                              <td />
-                            </>
-                          )}
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )}
               </div>
             )}
 

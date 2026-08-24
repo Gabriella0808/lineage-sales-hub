@@ -17,6 +17,10 @@ DROP FUNCTION  IF EXISTS public.get_manager_reporting_monthly(uuid,text[],int[])
 DROP VIEW      IF EXISTS public.v_companywide_reporting_actuals;
 DROP VIEW      IF EXISTS public.v_portal_dealer_rep_reporting_lines;
 DROP FUNCTION  IF EXISTS public.get_portal_invoiced_lines() CASCADE;
+-- v_portal_clearance_sales_analytics depends on v_portal_invoice_line_facts in the
+-- live DB (was recreated independently in a later migration that may not have run).
+-- Drop it here; it is recreated below using the correct base-table-direct definition.
+DROP VIEW      IF EXISTS public.v_portal_clearance_sales_analytics;
 DROP VIEW      IF EXISTS public.v_portal_invoice_line_facts;
 DROP MATERIALIZED VIEW IF EXISTS public.mv_portal_monthly_invoiced_actuals;
 
@@ -542,6 +546,57 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_sales_reporting_detail_lines(
   text, text, text, date, date, text[], text[], text[], text[], int, int, uuid
 ) TO authenticated, anon, service_role;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- v_portal_clearance_sales_analytics
+-- Reads directly from acctivate_invoice_lines_2026_direct so it is independent
+-- of v_portal_invoice_line_facts (avoids the dependency that broke previous runs).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE VIEW public.v_portal_clearance_sales_analytics AS
+SELECT
+  d.invoice_date                                                    AS sale_date,
+  (d.invoice_date
+    + (((5 - EXTRACT(DOW FROM d.invoice_date)::int + 7) % 7))::int
+    - 6
+  )                                                                 AS week_start,
+  (d.invoice_date
+    + (((5 - EXTRACT(DOW FROM d.invoice_date)::int + 7) % 7))::int
+  )                                                                 AS week_end,
+  COALESCE(
+    NULLIF(TRIM(asr.name::text),           ''),
+    NULLIF(TRIM(pai.sales_rep_name::text), ''),
+    NULLIF(TRIM(pai.sales_rep_id::text),   ''),
+    NULLIF(TRIM(d.sales_rep_id),           ''),
+    'Unassigned'
+  )                                                                 AS rep_name,
+  COALESCE(NULLIF(TRIM(d.sales_rep_id), ''), '')                   AS rep_id,
+  d.product_id                                                      AS sku,
+  d.description                                                     AS product,
+  COALESCE(disc.product_class, d.product_sales_category)           AS product_class,
+  COALESCE(d.qty_invoiced,      0)::numeric                        AS quantity_sold,
+  COALESCE(d.formula_net_amount, 0)::numeric                       AS sales_amount,
+  d.invoice_number,
+  disc.synced_at
+FROM public.acctivate_invoice_lines_2026_direct d
+INNER JOIN (
+  SELECT
+    product_id,
+    MAX(product_class) AS product_class,
+    MAX(synced_at)     AS synced_at
+  FROM public.stg_acctivate_discontinued_inventory
+  GROUP BY product_id
+) disc ON disc.product_id = d.product_id
+LEFT JOIN public.portal_acctivate_invoices pai
+  ON pai.guid_invoice::text = d.guid_invoice
+LEFT JOIN public.acctivate_sales_reps asr
+  ON LOWER(TRIM(asr.acctivate_id)) = LOWER(TRIM(d.sales_rep_id))
+WHERE d.invoice_date IS NOT NULL
+  AND d.invoice_date >= '2026-01-01'
+  AND COALESCE(d.product_sales_category, 'NULL') IN ('NULL', 'SW', 'ALLOW', 'FL', 'FINNLOU', 'LUX');
+
+GRANT SELECT ON public.v_portal_clearance_sales_analytics
+  TO authenticated, anon, service_role;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Refresh and reload

@@ -52,14 +52,18 @@ export default function ClearanceProductsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    console.log("[clearance] querying v_portal_clearance_products...");
     const { data, error } = await (supabase as any)
       .from("v_portal_clearance_products")
       .select("id, sku, product, warehouse, collection, available, on_hand, list_price, retail_value, inventory_value, status, retail_value_price_source")
       .order("collection", { nullsFirst: false })
       .order("sku");
 
+    console.log("[clearance] rows returned:", (data ?? []).length, "| error:", error);
+    if ((data ?? []).length > 0) console.log("[clearance] first 5 rows:", (data as any[]).slice(0, 5));
+
     if (error) {
-      console.error("[clearance] v_portal_clearance_products fetch failed:", error.message, error);
+      console.error("[clearance] fetch failed — code:", error.code, "| message:", error.message, "| details:", error.details, "| hint:", error.hint);
       setLoading(false);
       return;
     }

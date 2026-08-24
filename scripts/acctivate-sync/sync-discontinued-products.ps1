@@ -145,7 +145,7 @@ $prodIdCol       = 'ProductID'   # always present
 $descCol         = Pick-Col $prodCols @('Description','ProductDescription','Name')
 $classCol        = Pick-Col $prodCols @('ProductClassID','ProductClass','Class')
 $listPriceCol    = Pick-Col $prodCols @('ListPrice','SD_Price','SuggestedRetail','Price')
-$costCol         = Pick-Col $prodCols @('AverageCost','AvgCost','LastCost','StandardCost','Cost','UnitCost')
+$prodCostCol     = Pick-Col $prodCols @('AverageCost','AvgCost','LastCost','StandardCost','Cost','UnitCost','SD_AverageCost','InventoryUnitCost')
 $discCol         = Pick-Col $prodCols @('Discontinued','IsDiscontinued','Inactive')
 $webCol          = Pick-Col $prodCols @('AvailableOnWeb','WebAvailable','IsWebEnabled','OnWeb')
 $statusCol       = Pick-Col $prodCols @('Status','ProductStatus','Active')
@@ -155,6 +155,9 @@ $whIdCol         = Pick-Col $whCols @('WarehouseID','Warehouse','WarehouseName',
 $onHandCol       = Pick-Col $whCols @('QtyOnHand','OnHand','QuantityOnHand','Qty_OnHand')
 $availCol        = Pick-Col $whCols @('Available','QtyAvailable','QuantityAvailable','Qty_Available')
 $whProdIdCol     = Pick-Col $whCols @('ProductID','ProductCode','SKU')
+# Inventory value: prefer a direct on-hand value column; fall back to per-unit cost
+$whValueCol      = Pick-Col $whCols @('OnHandValue','InventoryValue','ValueOnHand','ExtendedCost','ExtCost','TotalCost','TotalValue','QtyOnHandValue')
+$whCostCol       = Pick-Col $whCols @('AverageCost','AvgCost','UnitCost','LastCost','StandardCost','Cost')
 
 if (-not $onHandCol -or -not $availCol -or -not $whProdIdCol) {
     Write-Error "Could not map required columns on dbo.ProductWarehouseSummary. Found: $($whCols -join ', ')"
@@ -184,7 +187,9 @@ Write-Host ('  dbo.Product          : ' + $prodCols.Count + ' columns')
 Write-Host ('  dbo.ProductWarehouseSummary : ' + $whCols.Count + ' columns')
 Write-Host ('  dbo.tbProduct        : ' + $(if ($hasTbProduct) { 'found (' + $tbpCols.Count + ' cols)' } else { 'not present' }))
 Write-Host ('  list_price col       : ' + $(if ($listPriceCol)  { $listPriceCol }  else { '(none found)' }))
-Write-Host ('  cost col             : ' + $(if ($costCol)       { $costCol }       else { '(none found)' }))
+Write-Host ('  wh value col (direct): ' + $(if ($whValueCol)    { $whValueCol }    else { '(none found)' }))
+Write-Host ('  wh cost col (fallbk) : ' + $(if ($whCostCol)     { $whCostCol }     else { '(none found)' }))
+Write-Host ('  prod cost col (fallbk): ' + $(if ($prodCostCol)  { $prodCostCol }   else { '(none found)' }))
 Write-Host ('  discontinued col     : ' + $(if ($discCol)       { $discCol }       else { '(none found)' }))
 Write-Host ('  warehouse col        : ' + $(if ($whIdCol)       { $whIdCol }       else { '(none found – will use ''Warehouse'')' }))
 Write-Host ('  clearance col (tbp)  : ' + $(if ($clearanceCol)  { $clearanceCol }  else { '(none found)' }))
@@ -192,16 +197,33 @@ Write-Host ('  closeout col (tbp)   : ' + $(if ($closeoutCol)   { $closeoutCol }
 
 # ── Build query ───────────────────────────────────────────────────────────────
 
-$descExpr     = if ($descCol)      { "CAST(p.$(Q $descCol) AS NVARCHAR(512))"    } else { "CAST(p.$(Q $prodIdCol) AS NVARCHAR(512))" }
-$classExpr    = if ($classCol)     { "CAST(p.$(Q $classCol) AS NVARCHAR(128))"   } else { 'NULL' }
-$listPriceExpr= if ($listPriceCol) { "CAST(ISNULL(p.$(Q $listPriceCol),0) AS decimal(18,4))" } else { '0' }
-$costExpr     = if ($costCol)      { "CAST(ISNULL(p.$(Q $costCol),0) AS decimal(18,4))"      } else { '0' }
-$discExpr     = if ($discCol)      { "CAST(ISNULL(p.$(Q $discCol),0) AS bit)" } else { '0' }
-$webExpr      = if ($webCol)       { "CAST(ISNULL(p.$(Q $webCol),1) AS bit)" }  else { 'NULL' }
-$statusExpr   = if ($statusCol)    { "CAST(p.$(Q $statusCol) AS NVARCHAR(50))" } else { 'NULL' }
-$whExpr       = if ($whIdCol)      { "CAST(ws.$(Q $whIdCol) AS NVARCHAR(128))" } else { "'Warehouse'" }
-$onHandExpr   = "CAST(ISNULL(ws.$(Q $onHandCol),0) AS decimal(18,4))"
-$availExpr    = "CAST(ISNULL(ws.$(Q $availCol),0) AS decimal(18,4))"
+$descExpr      = if ($descCol)      { "CAST(p.$(Q $descCol) AS NVARCHAR(512))"    } else { "CAST(p.$(Q $prodIdCol) AS NVARCHAR(512))" }
+$classExpr     = if ($classCol)     { "CAST(p.$(Q $classCol) AS NVARCHAR(128))"   } else { 'NULL' }
+$listPriceExpr = if ($listPriceCol) { "CAST(ISNULL(p.$(Q $listPriceCol),0) AS decimal(18,4))" } else { '0' }
+$discExpr      = if ($discCol)      { "CAST(ISNULL(p.$(Q $discCol),0) AS bit)" } else { '0' }
+$webExpr       = if ($webCol)       { "CAST(ISNULL(p.$(Q $webCol),1) AS bit)" }  else { 'NULL' }
+$statusExpr    = if ($statusCol)    { "CAST(p.$(Q $statusCol) AS NVARCHAR(50))" } else { 'NULL' }
+$whExpr        = if ($whIdCol)      { "CAST(ws.$(Q $whIdCol) AS NVARCHAR(128))" } else { "'Warehouse'" }
+$onHandExpr    = "CAST(ISNULL(ws.$(Q $onHandCol),0) AS decimal(18,4))"
+$availExpr     = "CAST(ISNULL(ws.$(Q $availCol),0) AS decimal(18,4))"
+
+# on_hand_value: prefer a direct warehouse-level value column; fall back to cost × on_hand.
+# The Acctivate column is typically "OnHandValue" in dbo.ProductWarehouseSummary.
+if ($whValueCol) {
+    $onHandValueExpr = "CAST(ISNULL(ws.$(Q $whValueCol),0) AS decimal(18,4))"
+    Write-Host ('  on_hand_value source : ws.' + $whValueCol + ' (direct)') -ForegroundColor Green
+} elseif ($whCostCol) {
+    $onHandValueExpr = "CAST(ISNULL(ws.$(Q $whCostCol),0) * ISNULL(ws.$(Q $onHandCol),0) AS decimal(18,4))"
+    Write-Host ('  on_hand_value source : ws.' + $whCostCol + ' × on_hand (fallback)') -ForegroundColor Yellow
+} elseif ($prodCostCol) {
+    $onHandValueExpr = "CAST(ISNULL(p.$(Q $prodCostCol),0) * ISNULL(ws.$(Q $onHandCol),0) AS decimal(18,4))"
+    Write-Host ('  on_hand_value source : p.' + $prodCostCol + ' × on_hand (product-level fallback)') -ForegroundColor Yellow
+} else {
+    $onHandValueExpr = 'CAST(0 AS decimal(18,4))'
+    Write-Warning 'No cost or value column found in ProductWarehouseSummary or Product — on_hand_value will be 0.'
+    Write-Warning ("  ProductWarehouseSummary columns: " + ($whCols -join ', '))
+    Write-Warning ("  Product columns: " + ($prodCols -join ', '))
+}
 
 # clearance / closeout: tbProduct custom columns if discovered, else 0
 $clearanceExpr = if ($clearanceCol -and $tbpAlias) { "CAST(ISNULL($tbpAlias.$(Q $clearanceCol),0) AS bit)" } else { '0' }
@@ -232,7 +254,7 @@ SELECT
   $classExpr                                                AS collection,
   $onHandExpr                                               AS on_hand,
   $availExpr                                                AS available,
-  $costExpr                                                 AS unit_cost,
+  $onHandValueExpr                                          AS on_hand_value,
   $listPriceExpr                                            AS list_price,
   $discExpr                                                 AS is_discontinued,
   $clearanceExpr                                            AS is_clearance,
@@ -290,7 +312,7 @@ $colCandidates = [ordered]@{
     'collection'      = @('collection','ProductClassID','ProductClass','Class','SalesCategory')
     'on_hand'         = @('on_hand','QtyOnHand','OnHand','QuantityOnHand','Qty_OnHand')
     'available'       = @('available','Available','QtyAvailable','QuantityAvailable','Qty_Available')
-    'unit_cost'       = @('unit_cost','AverageCost','AvgCost','LastCost','StandardCost','Cost','UnitCost')
+    'on_hand_value'   = @('on_hand_value','OnHandValue','InventoryValue','ValueOnHand','ExtendedCost','ExtCost','TotalCost','TotalValue')
     'list_price'      = @('list_price','ListPrice','SD_Price','SuggestedRetail','Price','RetailPrice')
     'is_discontinued' = @('is_discontinued','Discontinued','IsDiscontinued','Inactive','discontinued')
     'is_clearance'    = @('is_clearance','Clearance','_Clearance','IsClearance')
@@ -345,14 +367,14 @@ $totalInventory = 0.0
 $allSkus        = @()
 
 foreach ($r in $allRows) {
-    $oh = if ($null -ne $r['on_hand'])   { [double]$r['on_hand']   } else { 0 }
-    $av = if ($null -ne $r['available']) { [double]$r['available'] } else { 0 }
-    $lp = if ($null -ne $r['list_price']){ [double]$r['list_price']} else { 0 }
-    $uc = if ($null -ne $r['unit_cost']) { [double]$r['unit_cost'] } else { 0 }
+    $oh = if ($null -ne $r['on_hand'])        { [double]$r['on_hand']        } else { 0 }
+    $av = if ($null -ne $r['available'])      { [double]$r['available']      } else { 0 }
+    $lp = if ($null -ne $r['list_price'])     { [double]$r['list_price']     } else { 0 }
+    $iv = if ($null -ne $r['on_hand_value'])  { [double]$r['on_hand_value']  } else { 0 }
     $totalOnHand    += $oh
     $totalAvail     += $av
     $totalRetail    += ($lp * $av)
-    $totalInventory += ($uc * $oh)
+    $totalInventory += $iv
     $allSkus += $r['sku']
 }
 $allSkus = @($allSkus | Where-Object { $_ } | Sort-Object -Unique)
@@ -392,11 +414,11 @@ function Clean-Value {
     return $Val.ToString()
 }
 
-# Exact columns of public.stg_acctivate_discontinued_inventory (Skyvia schema).
+# Exact columns of public.stg_acctivate_discontinued_inventory.
 # Columns pulled from Acctivate that are NOT in this list are silently dropped.
 $TableColumns = @(
     'guid_product_warehouse','guid_product','product_id','description',
-    'warehouse','list_price','on_hand','available',
+    'warehouse','list_price','on_hand','available','on_hand_value',
     'product_class','discontinued','active_product','avail_on_web','synced_at'
 )
 
@@ -428,6 +450,7 @@ function Clean-Row {
         'list_price'             = ToStr $Row['list_price']
         'on_hand'                = ToStr $Row['on_hand']
         'available'              = ToStr $Row['available']
+        'on_hand_value'          = ToStr $Row['on_hand_value']
         'product_class'          = ToStr $Row['collection']
         'discontinued'           = ToStr $Row['is_discontinued']
         'active_product'         = ToStr $Row['status']

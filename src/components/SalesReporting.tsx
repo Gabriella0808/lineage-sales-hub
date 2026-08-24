@@ -1104,58 +1104,62 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return chips;
   }, [territoryIds, repIds, dealerIds, brandCategories, skus, territories, visibleReps, visibleDealers]);
 
-  // Lazy detail-line fetcher closed over the current drill target.
-  // Re-created only when the clicked entity, filters, or date range change.
-  const drillDetailFetch = useMemo((): ((p: { limit: number; offset: number }) => Promise<ViewLine[]>) | undefined => {
+  // Factory that creates a detail-line fetcher for any date range.
+  // The sidebar passes its local period dates; this factory bakes in filters
+  // for the current entity, metric, and report-level filters only.
+  const drillMakeFetch = useMemo(() => {
     if (!useRpcMode || !drillRow) return undefined;
     const metricStr = metric === "invoices" ? "invoiced" : "bookings";
-    if (metricStr === "bookings" && !primBkEnabled) return undefined; // range entirely before cutoff
     const entityKey = drillRow.key;
-    const fromStr   = metricStr === "bookings" ? format(primBkFrom, "yyyy-MM-dd") : format(primary.from, "yyyy-MM-dd");
-    const toStr     = format(primary.to, "yyyy-MM-dd");
     const cids      = rpcCustomerIds;
     const rids      = selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null;
     const bcs       = brandCategories.length > 0 ? brandCategories : null;
     const sks       = skus.length > 0 ? skus : null;
-    return async ({ limit, offset }) => {
-      const { data, error } = await (supabase as any).rpc(
-        "get_sales_reporting_detail_lines",
-        {
-          p_metric:       metricStr,
-          p_group_by:     groupBy === "territory" ? "dealer" : groupBy,
-          p_entity_key:   entityKey,
-          p_from:         fromStr,
-          p_to:           toStr,
-          p_customer_ids: cids,
-          p_brand_cats:   bcs,
-          p_skus:         sks,
-          p_rep_ids:      rids,
-          p_limit:        limit,
-          p_offset:       offset,
-          p_manager_id:   managerId ?? null,
-        },
-      );
-      if (error) {
-        console.error("[sales-reporting] detail lines fetch failed:", error.message, error);
-        return [];
-      }
-      return ((data ?? []) as any[]).map((r): ViewLine => ({
-        metric_type:      metricStr,
-        transaction_date: String(r.transaction_date),
-        dealer_name:      r.dealer_name    ?? null,
-        customer_id:      r.customer_id    ?? null,
-        rep_name:         r.rep_name       ?? null,
-        rep_id:           r.rep_id         ?? null,
-        sku:              r.sku            ?? null,
-        description:      r.description   ?? null,
-        brand_category:   r.brand_category ?? null,
-        product_class:    r.product_class   ?? null,
-        amount:           Number(r.amount) || 0,
-        invoice_number:   r.invoice_number ?? null,
-      }));
+    const gbStr     = groupBy === "territory" ? "dealer" : groupBy;
+    const mgr       = managerId ?? null;
+    return (fromDate: Date, toDate: Date) => {
+      const fromStr = format(fromDate, "yyyy-MM-dd");
+      const toStr   = format(toDate,   "yyyy-MM-dd");
+      return async ({ limit, offset }: { limit: number; offset: number }): Promise<ViewLine[]> => {
+        const { data, error } = await (supabase as any).rpc(
+          "get_sales_reporting_detail_lines",
+          {
+            p_metric:       metricStr,
+            p_group_by:     gbStr,
+            p_entity_key:   entityKey,
+            p_from:         fromStr,
+            p_to:           toStr,
+            p_customer_ids: cids,
+            p_brand_cats:   bcs,
+            p_skus:         sks,
+            p_rep_ids:      rids,
+            p_limit:        limit,
+            p_offset:       offset,
+            p_manager_id:   mgr,
+          },
+        );
+        if (error) {
+          console.error("[sales-reporting] detail lines fetch failed:", error.message, error);
+          return [];
+        }
+        return ((data ?? []) as any[]).map((r): ViewLine => ({
+          metric_type:      metricStr,
+          transaction_date: String(r.transaction_date),
+          dealer_name:      r.dealer_name    ?? null,
+          customer_id:      r.customer_id    ?? null,
+          rep_name:         r.rep_name       ?? null,
+          rep_id:           r.rep_id         ?? null,
+          sku:              r.sku            ?? null,
+          description:      r.description   ?? null,
+          brand_category:   r.brand_category ?? null,
+          product_class:    r.product_class  ?? null,
+          amount:           Number(r.amount) || 0,
+          invoice_number:   r.invoice_number ?? null,
+        }));
+      };
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRpcMode, drillRow?.key, metric, groupBy, primary.from, primary.to, primBkFrom, primBkEnabled, rpcCustomerIds, selectedRepAcIds, brandCategories, skus, managerId]);
+  }, [useRpcMode, drillRow?.key, metric, groupBy, rpcCustomerIds, selectedRepAcIds, brandCategories, skus, managerId]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
 
@@ -1507,7 +1511,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         compareTo={compareMode !== "none" ? comparative.to : undefined}
         viewLines={useRpcMode ? [] : repLines}
         repAcIdToCanonical={repAcIdToCanonical}
-        fetchLines={drillDetailFetch}
+        makeFetchLines={drillMakeFetch}
         metric={metric}
         primaryBookingsAmt={drillBookings}
         primaryInvoicedAmt={drillInvoiced}

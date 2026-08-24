@@ -110,10 +110,6 @@ const REP_TO_TERRITORIES: Record<string, string[]> = {
   "Brad Robertson":   ["VA/WV"],
   "WI/IL":            ["IL/WI"],
 };
-const ALL_TERRITORIES = Array.from(
-  new Set(Object.values(REP_TO_TERRITORIES).flat()),
-).sort();
-
 // Maps each manager (lowercased) to the REP_BOOK rep names they oversee.
 // Only includes reps that exist as tabs in the KPI workbook.
 const MANAGER_TO_REPS: Record<string, string[]> = {
@@ -257,6 +253,18 @@ export function LiveKpiReport({
     return reps;
   }, [allReps, allowedRepNames, territoryFilter]);
 
+  // Territories available for the current manager scope (pre-territory-filter).
+  // Shows only territories that have at least one rep in scope — avoids presenting
+  // options that would silently return zero data.
+  const availableTerritories = useMemo(() => {
+    const scopedReps = allowedRepNames === null
+      ? allReps
+      : allReps.filter((r) => allowedRepNames.includes(r.name));
+    return Array.from(
+      new Set(scopedReps.flatMap((r) => REP_TO_TERRITORIES[r.name] ?? [])),
+    ).sort();
+  }, [allReps, allowedRepNames]);
+
   const [repFilter, setRepFilter] = useState<string[]>(lockedRepName ? [lockedRepName] : []);
   const [repPickerOpen, setRepPickerOpen] = useState(false);
 
@@ -280,14 +288,21 @@ export function LiveKpiReport({
   // Resolve individual rep/territory selections → Acctivate rep codes (acctivate_id).
   // When no individual rep is selected, managerId drives aggregation scope via
   // get_manager_reporting_monthly's canonical manager join — no name resolution needed.
+  //
+  // Display names (from REP_BOOK / allowedRepNames) may differ from DB names —
+  // e.g. "Hospitality" in the spreadsheet vs "Sergio - Hospitality" in sales_reps.
+  // REP_NAME_TO_DB_NAMES maps display → DB name(s); fall back to the display name
+  // itself for reps whose DB name already matches.
   const selectedRepAcIds = useMemo<string[] | null>(() => {
-    let names: string[] | null = null;
-    if (lockedRepName) names = [lockedRepName];
-    else if (repFilter.length > 0) names = repFilter;
-    else if (territoryFilter.length > 0) names = visibleReps.map((r) => r.name);
-    if (names === null) return null;
-    return names
-      .map((name) => dbReps.find((r) => r.name === name)?.acctivate_id)
+    let displayNames: string[] | null = null;
+    if (lockedRepName) displayNames = [lockedRepName];
+    else if (repFilter.length > 0) displayNames = repFilter;
+    else if (territoryFilter.length > 0) displayNames = visibleReps.map((r) => r.name);
+    if (displayNames === null) return null;
+    // Translate display names → DB names, then → acctivate_id.
+    const dbNames = displayNames.flatMap((n) => REP_NAME_TO_DB_NAMES[n] ?? [n]);
+    return dbNames
+      .map((dbName) => dbReps.find((r) => r.name === dbName)?.acctivate_id)
       .filter((id): id is string => !!id && id.trim() !== "");
   }, [lockedRepName, repFilter, territoryFilter, visibleReps, dbReps]);
 
@@ -334,6 +349,24 @@ export function LiveKpiReport({
     repAcIds: selectedRepAcIds,
     refreshKey,
   });
+
+  // Scope validation: fires whenever the resolved filter changes. All five sections
+  // (MTD cards, daily cards, chart, monthly table, TOTAL row) derive from the same
+  // selectedRepAcIds → useDealerSalesAggregates → liveAgg chain, so a single log here
+  // confirms uniform scope across the component.
+  useEffect(() => {
+    const scope =
+      selectedRepAcIds === null
+        ? managerId ? `manager (${managerId})` : "company-wide"
+        : `rep-filter [${selectedRepAcIds.join(", ")}]`;
+    console.group(`[live-kpi] scope resolved → ${scope}`);
+    console.log("managerId:", managerId ?? "null (company-wide)");
+    console.log("repFilter:", repFilter.length ? repFilter : "(none)");
+    console.log("territoryFilter:", territoryFilter.length ? territoryFilter : "(none)");
+    console.log("visibleReps:", visibleReps.map((r) => r.name));
+    console.log("selectedRepAcIds:", selectedRepAcIds ?? "null → all manager/company reps");
+    console.groupEnd();
+  }, [managerId, repFilter, territoryFilter, visibleReps, selectedRepAcIds]);
 
   useEffect(() => {
     const nonZeroMonths = liveAgg.filter((r) => r.ytdB > 0 || r.ytdI > 0);
@@ -793,7 +826,7 @@ export function LiveKpiReport({
             </PopoverTrigger>
             <PopoverContent align="start" className="w-[240px] p-0 overflow-hidden">
               <div className="max-h-72 overflow-y-auto py-1">
-                {ALL_TERRITORIES.map((t) => {
+                {availableTerritories.map((t) => {
                   const checked = territoryFilter.includes(t);
                   return (
                     <button

@@ -67,9 +67,12 @@ export function useDealerSalesAggregates(params: {
   const [error, setError] = useState<string | null>(null);
 
   // Cache key: changes when manager or rep selection changes.
-  const cacheKey = managerId == null
+  // When repAcIds are set (even company-wide), include them so different rep
+  // selections don't share the same cached result.
+  const hasRepFilter = repAcIds != null && repAcIds.length > 0;
+  const cacheKey = managerId == null && !hasRepFilter
     ? "__all__"
-    : `mgr:${managerId}` + (repAcIds?.length ? `|reps:${[...repAcIds].sort().join(",")}` : "");
+    : `mgr:${managerId ?? "null"}` + (repAcIds?.length ? `|reps:${[...repAcIds].sort().join(",")}` : "");
 
   useEffect(() => {
     let cancelled = false;
@@ -91,8 +94,10 @@ export function useDealerSalesAggregates(params: {
         }]),
       );
 
-      // ── Company-wide: use mat views (pre-aggregated, fastest) ───────────────
-      if (managerId == null) {
+      // ── Company-wide (no rep filter): use mat views (pre-aggregated, fastest) ─
+      // When repAcIds are set, fall through to the RPC path so the rep filter is
+      // applied consistently — the same way daily cards filter by rep_id.
+      if (managerId == null && !hasRepFilter) {
         // Bookings from materialized view — try with branch columns, fall back if unavailable
         let bookingRows: any[] = [];
         {

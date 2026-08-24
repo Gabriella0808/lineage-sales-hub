@@ -203,9 +203,13 @@ function Convert-RowsToJsonArray {
 }
 
 function Invoke-SupabaseUpsert {
-    param([string]$Table, [array]$Rows)
+    param([string]$Table, [array]$Rows, [string]$OnConflict = '')
 
-    $url       = $SupabaseUrl + '/rest/v1/' + $Table
+    if ($OnConflict -ne '') {
+        $url = $SupabaseUrl + '/rest/v1/' + $Table + '?on_conflict=' + $OnConflict
+    } else {
+        $url = $SupabaseUrl + '/rest/v1/' + $Table
+    }
     $json      = Convert-RowsToJsonArray -Rows @($Rows)
     $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($json)
 
@@ -518,6 +522,26 @@ $enrichMap = @{}
 if ($canEnrich) {
     Write-Host 'Pulling territory/manager from dbo.Orders + dbo.tbCustomer...' -ForegroundColor Cyan
 
+    # Discover the customer join columns dynamically -- Acctivate may use
+    # GUIDCustomer rather than CustomerID on tbCustomer.
+    $tbCustCols  = Get-SqlColumns -Table 'tbCustomer'
+    $ordersAllCols = Get-SqlColumns -Table 'Orders'
+
+    $custPkCol    = Get-FirstColumn -Columns $tbCustCols   -Candidates @('GUIDCustomer','CustomerID','GUID','ID','CustomerGUID','CustID')
+    $ordersCustFk = Get-FirstColumn -Columns $ordersAllCols -Candidates @('GUIDCustomer','CustomerID','Customer_ID','CustomerGUID','CustID')
+
+    if (-not $custPkCol -or -not $ordersCustFk) {
+        Write-Host ('  Warning: cannot find customer join columns.' ) -ForegroundColor Yellow
+        Write-Host ('    tbCustomer columns  : ' + ($tbCustCols -join ', ')) -ForegroundColor DarkGray
+        Write-Host ('    Orders columns (first 20): ' + ($ordersAllCols[0..19] -join ', ')) -ForegroundColor DarkGray
+        Write-Host '  Skipping territory/manager enrichment.' -ForegroundColor Yellow
+        $canEnrich = $false
+    } else {
+        Write-Host ('  Customer join: dbo.tbCustomer.' + $custPkCol + ' = dbo.Orders.' + $ordersCustFk) -ForegroundColor DarkGray
+    }
+}
+
+if ($canEnrich) {
     if ($hasSalesMgr) {
         $managerSelectExpr = 'LTRIM(RTRIM(tc._SalesManager))'
         $managerGroupBy    = ',' + [Environment]::NewLine + '    LTRIM(RTRIM(tc._SalesManager))'
@@ -526,40 +550,29 @@ if ($canEnrich) {
         $managerGroupBy    = ''
     }
 
-    # Build the join clause: GUID path or code path
+    # Build the salesperson join clause (GUID path or code path)
     if ($ordersIdIsGuid) {
         $guidColSql  = 's.' + (Quote-SqlId $guidCol)
-        $joinClause  = '  JOIN ' + $repTableQ + ' s ON CAST(' + $guidColSql + ' AS NVARCHAR(64)) = CAST(o.SalespersonID AS NVARCHAR(64))'
+        $spJoinLine  = [Environment]::NewLine + '  JOIN ' + $repTableQ + ' s ON CAST(' + $guidColSql + ' AS NVARCHAR(64)) = CAST(o.SalespersonID AS NVARCHAR(64))'
         $idSelectSQL = 'LTRIM(RTRIM(CAST(s.' + (Quote-SqlId $idCol) + ' AS NVARCHAR(64))))'
         $partitionBy = $idSelectSQL
-    } else {
-        $joinClause  = ''
-        $idSelectSQL = 'LTRIM(RTRIM(CAST(o.SalespersonID AS NVARCHAR(64))))'
-        $partitionBy = 'LTRIM(RTRIM(CAST(o.SalespersonID AS NVARCHAR(64))))'
-    }
-
-    if ($ordersIdIsGuid) {
+        $groupByPrimary = 'LTRIM(RTRIM(CAST(s.' + (Quote-SqlId $idCol) + ' AS NVARCHAR(64)))),' + [Environment]::NewLine + '    LTRIM(RTRIM(tc._Territory))'
         $whereClause = '  WHERE o.SalespersonID IS NOT NULL' + [Environment]::NewLine +
                        '    AND tc._Territory IS NOT NULL' + [Environment]::NewLine +
                        '    AND LEN(LTRIM(RTRIM(tc._Territory))) > 0'
     } else {
+        $spJoinLine  = ''
+        $idSelectSQL = 'LTRIM(RTRIM(CAST(o.SalespersonID AS NVARCHAR(64))))'
+        $partitionBy = 'LTRIM(RTRIM(CAST(o.SalespersonID AS NVARCHAR(64))))'
+        $groupByPrimary = 'LTRIM(RTRIM(CAST(o.SalespersonID AS NVARCHAR(64)))),' + [Environment]::NewLine + '    LTRIM(RTRIM(tc._Territory))'
         $whereClause = '  WHERE o.SalespersonID IS NOT NULL' + [Environment]::NewLine +
                        '    AND LEN(LTRIM(RTRIM(CAST(o.SalespersonID AS NVARCHAR(64))))) > 0' + [Environment]::NewLine +
                        '    AND tc._Territory IS NOT NULL' + [Environment]::NewLine +
                        '    AND LEN(LTRIM(RTRIM(tc._Territory))) > 0'
     }
 
-    if ($ordersIdIsGuid) {
-        $groupByPrimary = 'LTRIM(RTRIM(CAST(s.' + (Quote-SqlId $idCol) + ' AS NVARCHAR(64)))),' + [Environment]::NewLine + '    LTRIM(RTRIM(tc._Territory))'
-    } else {
-        $groupByPrimary = 'LTRIM(RTRIM(CAST(o.SalespersonID AS NVARCHAR(64)))),' + [Environment]::NewLine + '    LTRIM(RTRIM(tc._Territory))'
-    }
-
-    if ($joinClause -ne '') {
-        $joinLine = [Environment]::NewLine + $joinClause
-    } else {
-        $joinLine = ''
-    }
+    # Customer join uses discovered column names
+    $custJoinExpr = 'CAST(tc.' + (Quote-SqlId $custPkCol) + ' AS NVARCHAR(64)) = CAST(o.' + (Quote-SqlId $ordersCustFk) + ' AS NVARCHAR(64))'
 
     $enrichSql = ';WITH rep_assignments AS (' + [Environment]::NewLine +
                  '  SELECT' + [Environment]::NewLine +
@@ -571,8 +584,8 @@ if ($canEnrich) {
                  '      PARTITION BY ' + $partitionBy + [Environment]::NewLine +
                  '      ORDER BY COUNT(*) DESC' + [Environment]::NewLine +
                  '    ) AS rk' + [Environment]::NewLine +
-                 '  FROM dbo.Orders o' + $joinLine + [Environment]::NewLine +
-                 '  JOIN dbo.tbCustomer tc ON tc.CustomerID = o.CustomerID' + [Environment]::NewLine +
+                 '  FROM dbo.Orders o' + $spJoinLine + [Environment]::NewLine +
+                 '  JOIN dbo.tbCustomer tc ON ' + $custJoinExpr + [Environment]::NewLine +
                  $whereClause + [Environment]::NewLine +
                  '  GROUP BY' + [Environment]::NewLine +
                  '    ' + $groupByPrimary + $managerGroupBy + [Environment]::NewLine +
@@ -683,14 +696,14 @@ while ($i -lt $uploadRows.Count) {
 
     Write-Host ('  Batch ' + $batchNum + ': rows ' + ($i + 1) + ' to ' + ($i + $batch.Count)) -ForegroundColor DarkGray
 
-    $result = Invoke-SupabaseUpsert -Table 'acctivate_sales_reps' -Rows $batch
+    $result = Invoke-SupabaseUpsert -Table 'acctivate_sales_reps' -Rows $batch -OnConflict 'acctivate_id'
 
     if ($result.ok) {
         $totalUploaded += $batch.Count
     } else {
         Write-Host ('  Batch failed (HTTP ' + $result.statusCode + '): ' + $result.body) -ForegroundColor Red
         foreach ($singleRow in $batch) {
-            $r2 = Invoke-SupabaseUpsert -Table 'acctivate_sales_reps' -Rows @($singleRow)
+            $r2 = Invoke-SupabaseUpsert -Table 'acctivate_sales_reps' -Rows @($singleRow) -OnConflict 'acctivate_id'
             if ($r2.ok) {
                 $totalUploaded++
             } else {

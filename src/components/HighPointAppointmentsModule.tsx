@@ -1,0 +1,1059 @@
+import { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Plus, Search, ChevronDown, CalendarDays, Clock, Building2, Mail,
+  Pencil, Trash2, Loader2, Users, TrendingUp, User,
+} from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from "recharts";
+
+// ── Constants & helpers ───────────────────────────────────────────────────────
+
+const STATUS_CONFIG = {
+  Target:    { dot: "bg-slate-400",   pill: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
+  Confirmed: { dot: "bg-blue-500",    pill: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+  Showed:    { dot: "bg-green-500",   pill: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
+  "No-Show": { dot: "bg-red-400",     pill: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+} as const;
+type ApptStatus = keyof typeof STATUS_CONFIG;
+const STATUSES = Object.keys(STATUS_CONFIG) as ApptStatus[];
+
+function fmtTime(t: string | null): string {
+  if (!t) return "";
+  const [h, m] = t.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+function fmtDay(d: string | null): string {
+  if (!d) return "";
+  const dt = new Date(d + "T00:00:00");
+  return dt.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function showRate(showed: number, noShow: number): string {
+  const resolved = showed + noShow;
+  return resolved > 0 ? `${Math.round((showed / resolved) * 100)}%` : "—";
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type ApptEvent = {
+  id: string;
+  name: string;
+  season: string | null;
+  year: number | null;
+  start_date: string | null;
+};
+
+type RepInfo = { id: string; name: string; manager_id: string | null };
+type ManagerInfo = { id: string; name: string };
+
+type MarketAppt = {
+  id: string;
+  event_id: string | null;
+  phase: string;
+  rep_id: string;
+  dealer: string | null;
+  buyer_name: string | null;
+  buyer_email: string | null;
+  appointment_day: string | null;
+  appointment_time: string | null;
+  notes: string | null;
+  status: ApptStatus;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  sales_reps: { id: string; name: string; manager_id: string | null } | null;
+};
+
+type FormData = {
+  rep_id: string;
+  dealer: string;
+  buyer_name: string;
+  buyer_email: string;
+  appointment_day: string;
+  appointment_time: string;
+  notes: string;
+  status: ApptStatus;
+};
+
+const emptyForm = (): FormData => ({
+  rep_id: "", dealer: "", buyer_name: "", buyer_email: "",
+  appointment_day: "", appointment_time: "", notes: "", status: "Target",
+});
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export function HighPointAppointmentsModule() {
+  const { user } = useAuth();
+  const { data: roleInfo } = useUserRole();
+  const isAdmin   = roleInfo?.isAdmin   ?? false;
+  const isManager = roleInfo?.isManager ?? false;
+  const isRep     = roleInfo?.isRep     ?? false;
+  const currentRepId     = roleInfo?.repId     ?? null;
+  const currentManagerId = roleInfo?.managerId ?? null;
+
+  // Event / phase
+  const [events, setEvents]               = useState<ApptEvent[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string>("");
+  const [phase, setPhase]                 = useState<"Premarket" | "Market">("Premarket");
+
+  // Data
+  const [appointments, setAppointments]   = useState<MarketAppt[]>([]);
+  const [reps, setReps]                   = useState<RepInfo[]>([]);
+  const [managers, setManagers]           = useState<ManagerInfo[]>([]);
+  const [loading, setLoading]             = useState(true);
+
+  // Form
+  const [formOpen, setFormOpen]           = useState(false);
+  const [editingId, setEditingId]         = useState<string | null>(null);
+  const [form, setForm]                   = useState<FormData>(emptyForm());
+  const [submitting, setSubmitting]       = useState(false);
+
+  // Delete
+  const [deleteTarget, setDeleteTarget]   = useState<string | null>(null);
+  const [deleting, setDeleting]           = useState(false);
+
+  // Filters
+  const [search, setSearch]               = useState("");
+  const [statusFilter, setStatusFilter]   = useState<string>("all");
+  const [repFilter, setRepFilter]         = useState<string>("all");
+  const [managerFilter, setManagerFilter] = useState<string>("all");
+
+  // ── Data loading ────────────────────────────────────────────────────────────
+
+  const loadEvents = async () => {
+    const { data, error } = await supabase
+      .from("trade_show_markets")
+      .select("id, name, season, year, start_date")
+      .order("start_date", { ascending: false });
+    if (error) { toast.error(error.message); return; }
+    const list = (data ?? []) as ApptEvent[];
+    setEvents(list);
+    if (list.length > 0) setSelectedEventId((id) => id || list[0].id);
+  };
+
+  const loadReps = async () => {
+    const { data, error } = await supabase
+      .from("sales_reps")
+      .select("id, name, manager_id")
+      .order("name");
+    if (!error) setReps((data ?? []) as RepInfo[]);
+  };
+
+  const loadManagers = async () => {
+    if (!isAdmin) return;
+    const { data, error } = await supabase.from("managers").select("id, name").order("name");
+    if (!error) setManagers((data ?? []) as ManagerInfo[]);
+  };
+
+  const loadAppointments = async (eventId: string, ph: string) => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("market_appointments")
+      .select("*, sales_reps(id, name, manager_id)")
+      .eq("event_id", eventId)
+      .eq("phase", ph)
+      .order("appointment_day", { ascending: true, nullsFirst: false })
+      .order("appointment_time", { ascending: true, nullsFirst: false });
+    if (error) { toast.error(error.message); setLoading(false); return; }
+    setAppointments((data ?? []) as unknown as MarketAppt[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (roleInfo !== undefined) {
+      loadEvents();
+      loadReps();
+      loadManagers();
+    }
+  }, [!!roleInfo, isAdmin]);
+
+  useEffect(() => {
+    if (selectedEventId && roleInfo !== undefined) {
+      loadAppointments(selectedEventId, phase);
+    }
+  }, [selectedEventId, phase, !!roleInfo]);
+
+  // ── Filtered appointments ────────────────────────────────────────────────────
+
+  const filtered = useMemo(() => {
+    let list = [...appointments];
+    if (isAdmin && managerFilter !== "all") {
+      list = list.filter((a) => a.sales_reps?.manager_id === managerFilter);
+    }
+    if ((isAdmin || isManager) && repFilter !== "all") {
+      list = list.filter((a) => a.rep_id === repFilter);
+    }
+    if (statusFilter !== "all") {
+      list = list.filter((a) => a.status === statusFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((a) =>
+        [a.dealer, a.buyer_name, a.buyer_email, a.notes, a.sales_reps?.name]
+          .some((v) => v && v.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [appointments, search, statusFilter, repFilter, managerFilter, isAdmin, isManager]);
+
+  // ── KPIs ─────────────────────────────────────────────────────────────────────
+
+  const kpis = useMemo(() => {
+    const targets   = filtered.length;
+    const confirmed = filtered.filter((a) => a.status !== "Target").length;
+    const showed    = filtered.filter((a) => a.status === "Showed").length;
+    const noShow    = filtered.filter((a) => a.status === "No-Show").length;
+    return { targets, confirmed, showed, showRate: showRate(showed, noShow) };
+  }, [filtered]);
+
+  // ── Appointments grouped by day ───────────────────────────────────────────
+
+  const appointmentsByDay = useMemo(() => {
+    const dayMap = new Map<string, MarketAppt[]>();
+    for (const a of filtered) {
+      if (a.status === "Target") continue;
+      const key = a.appointment_day ?? "__unscheduled__";
+      const list = dayMap.get(key) ?? [];
+      list.push(a);
+      dayMap.set(key, list);
+    }
+    return Array.from(dayMap.entries())
+      .sort(([a], [b]) => {
+        if (a === "__unscheduled__") return 1;
+        if (b === "__unscheduled__") return -1;
+        return a.localeCompare(b);
+      })
+      .map(([day, appts]) => ({
+        day,
+        appts: appts.sort((a, b) =>
+          (a.appointment_time ?? "").localeCompare(b.appointment_time ?? "")
+        ),
+      }));
+  }, [filtered]);
+
+  // ── Per-rep stats ─────────────────────────────────────────────────────────
+
+  const byRepStats = useMemo(() => {
+    const map = new Map<string, { repId: string; repName: string; managerId: string | null; targets: number; confirmed: number; showed: number; noShow: number }>();
+    for (const a of filtered) {
+      const cur = map.get(a.rep_id) ?? {
+        repId: a.rep_id, repName: a.sales_reps?.name ?? "Unknown",
+        managerId: a.sales_reps?.manager_id ?? null,
+        targets: 0, confirmed: 0, showed: 0, noShow: 0,
+      };
+      cur.targets++;
+      if (a.status !== "Target") cur.confirmed++;
+      if (a.status === "Showed")   cur.showed++;
+      if (a.status === "No-Show")  cur.noShow++;
+      map.set(a.rep_id, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.targets - a.targets);
+  }, [filtered]);
+
+  // ── Per-manager stats (admin) ─────────────────────────────────────────────
+
+  const byManagerStats = useMemo(() => {
+    if (!isAdmin) return [];
+    const map = new Map<string, { managerId: string; managerName: string; targets: number; confirmed: number; showed: number; noShow: number; repCount: number }>();
+    for (const r of byRepStats) {
+      const mid  = r.managerId ?? "__none__";
+      const name = managers.find((m) => m.id === mid)?.name ?? "Unassigned";
+      const cur  = map.get(mid) ?? { managerId: mid, managerName: name, targets: 0, confirmed: 0, showed: 0, noShow: 0, repCount: 0 };
+      cur.targets   += r.targets;
+      cur.confirmed += r.confirmed;
+      cur.showed    += r.showed;
+      cur.noShow    += r.noShow;
+      cur.repCount++;
+      map.set(mid, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.targets - a.targets);
+  }, [byRepStats, managers, isAdmin]);
+
+  // ── Visible reps for form dropdown ───────────────────────────────────────
+
+  const visibleReps = useMemo(() => {
+    if (isAdmin)   return reps;
+    if (isManager) return reps.filter((r) => r.manager_id === currentManagerId);
+    return [];
+  }, [reps, isAdmin, isManager, currentManagerId]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const openNew = () => {
+    setEditingId(null);
+    setForm({ ...emptyForm(), rep_id: isRep ? (currentRepId ?? "") : "" });
+    setFormOpen(true);
+  };
+
+  const openEdit = (a: MarketAppt) => {
+    setEditingId(a.id);
+    setForm({
+      rep_id:           a.rep_id,
+      dealer:           a.dealer           ?? "",
+      buyer_name:       a.buyer_name       ?? "",
+      buyer_email:      a.buyer_email      ?? "",
+      appointment_day:  a.appointment_day  ?? "",
+      appointment_time: a.appointment_time?.slice(0, 5) ?? "",
+      notes:            a.notes            ?? "",
+      status:           a.status,
+    });
+    setFormOpen(true);
+  };
+
+  const submitForm = async () => {
+    if (!selectedEventId) return;
+    if (!form.dealer.trim() && !form.buyer_name.trim())
+      return toast.error("Dealer or buyer name is required");
+    if (form.buyer_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.buyer_email))
+      return toast.error("Invalid email address");
+
+    const repId = isRep ? (currentRepId ?? "") : form.rep_id;
+    if (!repId) return toast.error("Please select a rep");
+
+    const payload = {
+      event_id:         selectedEventId,
+      phase,
+      rep_id:           repId,
+      dealer:           form.dealer.trim()           || null,
+      buyer_name:       form.buyer_name.trim()       || null,
+      buyer_email:      form.buyer_email.trim()      || null,
+      appointment_day:  form.appointment_day         || null,
+      appointment_time: form.appointment_time        || null,
+      notes:            form.notes.trim()            || null,
+      status:           form.status,
+    };
+
+    setSubmitting(true);
+    if (editingId) {
+      const { error } = await supabase.from("market_appointments").update(payload).eq("id", editingId);
+      if (error) { toast.error(error.message); setSubmitting(false); return; }
+      toast.success("Lead updated");
+    } else {
+      const { error } = await supabase.from("market_appointments").insert({ ...payload, created_by: user?.id ?? null });
+      if (error) { toast.error(error.message); setSubmitting(false); return; }
+      toast.success("Lead added");
+    }
+
+    setSubmitting(false);
+    setFormOpen(false);
+    setEditingId(null);
+    setForm(emptyForm());
+    loadAppointments(selectedEventId, phase);
+  };
+
+  const updateStatus = async (id: string, status: ApptStatus) => {
+    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
+    const { error } = await supabase.from("market_appointments").update({ status }).eq("id", id);
+    if (error) { toast.error(error.message); loadAppointments(selectedEventId, phase); }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from("market_appointments").delete().eq("id", deleteTarget);
+    setDeleting(false);
+    if (error) { toast.error(error.message); setDeleteTarget(null); return; }
+    toast.success("Lead deleted");
+    setAppointments((prev) => prev.filter((a) => a.id !== deleteTarget));
+    setDeleteTarget(null);
+  };
+
+  const showRepCol = isAdmin || isManager;
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="mt-2 space-y-5 animate-fade-in">
+      {/* Module header */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-medium">High Point Market Appointments</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Build target lists, schedule showroom appointments and track attendance.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Event selector */}
+          <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+            <SelectTrigger className="h-8 text-sm w-[210px]">
+              <SelectValue placeholder="Select event…" />
+            </SelectTrigger>
+            <SelectContent>
+              {events.length === 0 && (
+                <SelectItem value="__none__" disabled>No events found</SelectItem>
+              )}
+              {events.map((e) => (
+                <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* Phase toggle */}
+          <div className="flex border rounded-md overflow-hidden text-xs h-8">
+            {(["Premarket", "Market"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPhase(p)}
+                className={cn(
+                  "px-3 font-medium transition-colors",
+                  phase === p
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+
+          <Button size="sm" onClick={openNew} className="h-8">
+            <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Lead
+          </Button>
+        </div>
+      </div>
+
+      {/* KPI row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiCard label="Targets"   value={String(kpis.targets)}   icon={<Users className="h-4 w-4" />} />
+        <KpiCard label="Confirmed" value={String(kpis.confirmed)} icon={<CalendarDays className="h-4 w-4" />} />
+        <KpiCard label="Showed"    value={String(kpis.showed)}    icon={<TrendingUp className="h-4 w-4" />} />
+        <KpiCard label="Show Rate" value={kpis.showRate}          icon={<TrendingUp className="h-4 w-4" />} accent />
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[160px] max-w-[260px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search dealer or buyer…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="h-8 text-sm w-[130px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        {showRepCol && visibleReps.length > 0 && (
+          <Select value={repFilter} onValueChange={setRepFilter}>
+            <SelectTrigger className="h-8 text-sm w-[150px]"><SelectValue placeholder="All reps" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All reps</SelectItem>
+              {visibleReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+        {isAdmin && managers.length > 0 && (
+          <Select value={managerFilter} onValueChange={setManagerFilter}>
+            <SelectTrigger className="h-8 text-sm w-[160px]"><SelectValue placeholder="All managers" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All managers</SelectItem>
+              {managers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {/* Workspace tabs */}
+      <Tabs defaultValue="leads">
+        <TabsList>
+          <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="appointments">Appointments</TabsTrigger>
+          {showRepCol && <TabsTrigger value="performance">Performance</TabsTrigger>}
+        </TabsList>
+
+        {/* ── Leads tab ─────────────────────────────────────────────────────── */}
+        <TabsContent value="leads" className="mt-4">
+          {loading ? <LeadsSkeleton /> : filtered.length === 0 ? (
+            <EmptyState
+              icon={<CalendarDays className="h-8 w-8 text-muted-foreground/40" />}
+              title={appointments.length === 0 ? "No trade show leads yet" : "No leads match your filters"}
+              description={
+                appointments.length === 0
+                  ? `Start building your target list for ${events.find((e) => e.id === selectedEventId)?.name ?? "this event"}.`
+                  : "Try adjusting your filters or search."
+              }
+              action={appointments.length === 0 ? (
+                <Button size="sm" onClick={openNew}><Plus className="h-3.5 w-3.5 mr-1.5" />Add First Lead</Button>
+              ) : null}
+            />
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden sm:block rounded-md border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="text-left px-3 py-2.5 font-medium">Account</th>
+                      <th className="text-left px-3 py-2.5 font-medium">Buyer</th>
+                      <th className="text-left px-3 py-2.5 font-medium">Appointment</th>
+                      {showRepCol && <th className="text-left px-3 py-2.5 font-medium">Rep</th>}
+                      <th className="text-left px-3 py-2.5 font-medium">Status</th>
+                      <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Notes</th>
+                      <th className="px-3 py-2.5 w-16" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((a) => (
+                      <tr key={a.id} className="border-t hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2.5 font-medium max-w-[160px] truncate">
+                          {a.dealer || <span className="text-muted-foreground">—</span>}
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground max-w-[140px]">
+                          <p className="truncate">{a.buyer_name || "—"}</p>
+                          {a.buyer_email && (
+                            <a href={`mailto:${a.buyer_email}`} onClick={(e) => e.stopPropagation()} className="text-xs hover:underline truncate block">
+                              {a.buyer_email}
+                            </a>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-sm whitespace-nowrap text-muted-foreground">
+                          {a.appointment_day ? (
+                            <div>
+                              <p className="font-medium text-foreground text-xs">{fmtDay(a.appointment_day)}</p>
+                              {a.appointment_time && <p className="text-xs">{fmtTime(a.appointment_time)}</p>}
+                            </div>
+                          ) : "—"}
+                        </td>
+                        {showRepCol && (
+                          <td className="px-3 py-2.5 text-muted-foreground">
+                            {a.sales_reps?.name ?? "—"}
+                          </td>
+                        )}
+                        <td className="px-3 py-2.5">
+                          <StatusButton status={a.status} onStatusChange={(s) => updateStatus(a.id, s)} />
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground text-xs max-w-[200px] truncate hidden lg:table-cell">
+                          {a.notes || "—"}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-0.5 justify-end">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(a.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="sm:hidden space-y-2">
+                {filtered.map((a) => (
+                  <div key={a.id} className="border rounded-lg p-3 bg-card space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{a.dealer || a.buyer_name || "—"}</p>
+                        {a.buyer_name && a.dealer && <p className="text-xs text-muted-foreground">{a.buyer_name}</p>}
+                        {(a.appointment_day || a.appointment_time) && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {a.appointment_day && fmtDay(a.appointment_day)}
+                            {a.appointment_time && ` · ${fmtTime(a.appointment_time)}`}
+                          </p>
+                        )}
+                        {showRepCol && a.sales_reps?.name && (
+                          <p className="text-xs text-muted-foreground">{a.sales_reps.name}</p>
+                        )}
+                      </div>
+                      <StatusButton status={a.status} onStatusChange={(s) => updateStatus(a.id, s)} />
+                    </div>
+                    {a.notes && <p className="text-xs text-muted-foreground leading-relaxed">{a.notes}</p>}
+                    <div className="flex gap-1 pt-1 border-t">
+                      <Button size="sm" variant="ghost" className="h-7 text-xs flex-1" onClick={() => openEdit(a)}>
+                        <Pencil className="h-3 w-3 mr-1" /> Edit
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs flex-1 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(a.id)}>
+                        <Trash2 className="h-3 w-3 mr-1" /> Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </TabsContent>
+
+        {/* ── Appointments tab ───────────────────────────────────────────────── */}
+        <TabsContent value="appointments" className="mt-4">
+          {loading ? <LeadsSkeleton /> : appointmentsByDay.length === 0 ? (
+            <EmptyState
+              icon={<CalendarDays className="h-8 w-8 text-muted-foreground/40" />}
+              title="No confirmed appointments yet"
+              description="Appointments appear here once leads are moved to Confirmed, Showed, or No-Show."
+            />
+          ) : (
+            <div className="space-y-6">
+              {appointmentsByDay.map(({ day, appts }) => (
+                <div key={day}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <h4 className="font-medium text-sm">
+                      {day === "__unscheduled__" ? "Unscheduled" : fmtDay(day)}
+                    </h4>
+                    <span className="text-xs text-muted-foreground">({appts.length})</span>
+                  </div>
+                  <div className="space-y-2 ml-6">
+                    {appts.map((a) => (
+                      <div key={a.id} className="border rounded-lg p-3 bg-card hover:bg-muted/20 transition-colors">
+                        <div className="flex items-start gap-3">
+                          {a.appointment_time ? (
+                            <div className="w-16 shrink-0 text-right">
+                              <p className="text-xs font-medium">{fmtTime(a.appointment_time)}</p>
+                            </div>
+                          ) : (
+                            <div className="w-16 shrink-0 text-right">
+                              <p className="text-xs text-muted-foreground">No time</p>
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div>
+                                <p className="font-medium text-sm">{a.dealer || "—"}</p>
+                                {a.buyer_name && (
+                                  <p className="text-xs text-muted-foreground">{a.buyer_name}</p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {showRepCol && a.sales_reps?.name && (
+                                  <span className="text-xs text-muted-foreground hidden sm:inline">{a.sales_reps.name}</span>
+                                )}
+                                <StatusButton status={a.status} onStatusChange={(s) => updateStatus(a.id, s)} />
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(a)}>
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                            {a.notes && (
+                              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{a.notes}</p>
+                            )}
+                            {a.buyer_email && (
+                              <a href={`mailto:${a.buyer_email}`} className="text-xs text-primary hover:underline mt-1 flex items-center gap-1">
+                                <Mail className="h-3 w-3" />{a.buyer_email}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Performance tab ────────────────────────────────────────────────── */}
+        {showRepCol && (
+          <TabsContent value="performance" className="mt-4">
+            {loading ? <LeadsSkeleton /> : (
+              <PerformanceView
+                byRepStats={byRepStats}
+                byManagerStats={byManagerStats}
+                isAdmin={isAdmin}
+              />
+            )}
+          </TabsContent>
+        )}
+      </Tabs>
+
+      {/* ── Add / edit sheet ────────────────────────────────────────────────── */}
+      <Sheet open={formOpen} onOpenChange={(o) => { if (!o) { setFormOpen(false); setEditingId(null); setForm(emptyForm()); } }}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          <SheetHeader className="text-left">
+            <SheetTitle>{editingId ? "Edit Lead" : "Add Trade Show Lead"}</SheetTitle>
+            {(isAdmin || isManager) && !isRep && form.rep_id && (
+              <SheetDescription>
+                For: {reps.find((r) => r.id === form.rep_id)?.name ?? "Selected rep"}
+              </SheetDescription>
+            )}
+          </SheetHeader>
+
+          <div className="mt-5 space-y-4">
+            {/* Rep selector — managers/admins only */}
+            {showRepCol && (
+              <FormField label="Rep" required>
+                <Select value={form.rep_id} onValueChange={(v) => setForm({ ...form, rep_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select rep…" /></SelectTrigger>
+                  <SelectContent>
+                    {visibleReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            )}
+
+            <FormField label="Dealer / Account" required={!form.buyer_name}>
+              <Input
+                value={form.dealer}
+                onChange={(e) => setForm({ ...form, dealer: e.target.value })}
+                placeholder="e.g. Hudson's Furniture"
+              />
+            </FormField>
+
+            <FormField label="Buyer / Contact">
+              <Input
+                value={form.buyer_name}
+                onChange={(e) => setForm({ ...form, buyer_name: e.target.value })}
+                placeholder="Full name"
+              />
+            </FormField>
+
+            <FormField label="Email">
+              <Input
+                type="email"
+                value={form.buyer_email}
+                onChange={(e) => setForm({ ...form, buyer_email: e.target.value })}
+                placeholder="buyer@dealer.com"
+              />
+            </FormField>
+
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Appointment Day">
+                <Input
+                  type="date"
+                  value={form.appointment_day}
+                  onChange={(e) => setForm({ ...form, appointment_day: e.target.value })}
+                />
+              </FormField>
+              <FormField label="Appointment Time">
+                <Input
+                  type="time"
+                  value={form.appointment_time}
+                  onChange={(e) => setForm({ ...form, appointment_time: e.target.value })}
+                />
+              </FormField>
+            </div>
+
+            <FormField label="Status">
+              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as ApptStatus })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FormField>
+
+            <FormField label="Notes">
+              <Textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                rows={3}
+                placeholder="Any details about this appointment…"
+              />
+            </FormField>
+          </div>
+
+          <div className="flex gap-2 mt-6">
+            <Button variant="outline" className="flex-1" onClick={() => { setFormOpen(false); setEditingId(null); setForm(emptyForm()); }}>
+              Cancel
+            </Button>
+            <Button className="flex-1" onClick={submitForm} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+              {editingId ? "Save Changes" : "Save Lead"}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Delete confirmation ─────────────────────────────────────────────── */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete trade show lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove this lead and its appointment information.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function KpiCard({ label, value, icon, accent = false }: {
+  label: string; value: string; icon?: React.ReactNode; accent?: boolean;
+}) {
+  return (
+    <Card className="p-4 flex items-center justify-between gap-2">
+      <div className="min-w-0">
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className={cn("text-2xl font-serif mt-0.5 tabular-nums", accent && value !== "—" && "text-primary")}>
+          {value}
+        </p>
+      </div>
+      {icon && (
+        <div className="h-9 w-9 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+          {icon}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function StatusButton({ status, onStatusChange }: {
+  status: ApptStatus;
+  onStatusChange: (s: ApptStatus) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const cfg = STATUS_CONFIG[status];
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
+            "hover:opacity-80 transition-opacity",
+            cfg.pill
+          )}
+        >
+          {status}
+          <ChevronDown className="h-3 w-3 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-34 p-1" align="start">
+        {STATUSES.map((s) => (
+          <button
+            key={s}
+            onClick={() => { onStatusChange(s); setOpen(false); }}
+            className={cn(
+              "flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted",
+              s === status && "bg-muted font-medium"
+            )}
+          >
+            <span className={cn("h-2 w-2 rounded-full shrink-0", STATUS_CONFIG[s].dot)} />
+            {s}
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function PerformanceView({ byRepStats, byManagerStats, isAdmin }: {
+  byRepStats: Array<{ repId: string; repName: string; managerId: string | null; targets: number; confirmed: number; showed: number; noShow: number }>;
+  byManagerStats: Array<{ managerId: string; managerName: string; targets: number; confirmed: number; showed: number; noShow: number; repCount: number }>;
+  isAdmin: boolean;
+}) {
+  const [expandedManagers, setExpandedManagers] = useState<Set<string>>(new Set());
+  const toggleManager = (id: string) =>
+    setExpandedManagers((prev) => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+
+  const chartData = byRepStats.slice(0, 10).map((r) => ({
+    name: r.repName.split(" ")[0],
+    Targets: r.targets,
+    Confirmed: r.confirmed,
+    Showed: r.showed,
+  }));
+
+  if (byRepStats.length === 0) {
+    return (
+      <EmptyState
+        icon={<TrendingUp className="h-8 w-8 text-muted-foreground/40" />}
+        title="No performance data yet"
+        description="Add leads and track progress to see performance stats here."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Admin: by-manager rollup */}
+      {isAdmin && byManagerStats.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium mb-3">By Manager</h3>
+          <div className="rounded-md border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="text-left px-3 py-2.5 font-medium">Manager</th>
+                  <th className="text-right px-3 py-2.5 font-medium">Reps</th>
+                  <th className="text-right px-3 py-2.5 font-medium">Targets</th>
+                  <th className="text-right px-3 py-2.5 font-medium">Confirmed</th>
+                  <th className="text-right px-3 py-2.5 font-medium">Showed</th>
+                  <th className="text-right px-3 py-2.5 font-medium">Show Rate</th>
+                  <th className="w-8 px-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {byManagerStats.map((m) => (
+                  <>
+                    <tr
+                      key={m.managerId}
+                      className="border-t hover:bg-muted/20 cursor-pointer"
+                      onClick={() => toggleManager(m.managerId)}
+                    >
+                      <td className="px-3 py-2.5 font-medium">{m.managerName}</td>
+                      <td className="px-3 py-2.5 text-right text-muted-foreground tabular-nums">{m.repCount}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{m.targets}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-blue-600 dark:text-blue-400">{m.confirmed}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-green-600 dark:text-green-400">{m.showed}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums font-medium">{showRate(m.showed, m.noShow)}</td>
+                      <td className="px-2 py-2.5">
+                        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", expandedManagers.has(m.managerId) && "rotate-180")} />
+                      </td>
+                    </tr>
+                    {expandedManagers.has(m.managerId) && byRepStats
+                      .filter((r) => r.managerId === m.managerId)
+                      .map((r) => (
+                        <tr key={r.repId} className="border-t bg-muted/10">
+                          <td className="px-3 py-2 pl-7 text-muted-foreground text-sm flex items-center gap-1.5">
+                            <User className="h-3 w-3 shrink-0" />{r.repName}
+                          </td>
+                          <td className="px-3 py-2 text-right" />
+                          <td className="px-3 py-2 text-right tabular-nums text-sm">{r.targets}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-sm text-blue-600 dark:text-blue-400">{r.confirmed}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-sm text-green-600 dark:text-green-400">{r.showed}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-sm">{showRate(r.showed, r.noShow)}</td>
+                          <td />
+                        </tr>
+                      ))}
+                  </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Rep stats table */}
+      <div>
+        <h3 className="text-sm font-medium mb-3">{isAdmin ? "All Reps" : "Team"}</h3>
+        <div className="rounded-md border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                <th className="text-left px-3 py-2.5 font-medium">Rep</th>
+                <th className="text-right px-3 py-2.5 font-medium">Targets</th>
+                <th className="text-right px-3 py-2.5 font-medium">Confirmed</th>
+                <th className="text-right px-3 py-2.5 font-medium hidden sm:table-cell">Showed</th>
+                <th className="text-right px-3 py-2.5 font-medium hidden sm:table-cell">No-Show</th>
+                <th className="text-right px-3 py-2.5 font-medium">Show Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byRepStats.map((r) => {
+                const maxTargets = byRepStats[0]?.targets || 1;
+                const pct = Math.round((r.targets / maxTargets) * 100);
+                return (
+                  <tr key={r.repId} className="border-t">
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium">{r.repName}</span>
+                        <div className="h-1 rounded-full bg-muted overflow-hidden w-24">
+                          <div className="h-full bg-primary/60 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">{r.targets}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-blue-600 dark:text-blue-400">{r.confirmed}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-green-600 dark:text-green-400 hidden sm:table-cell">{r.showed}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-red-500 dark:text-red-400 hidden sm:table-cell">{r.noShow}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums font-medium">{showRate(r.showed, r.noShow)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Bar chart */}
+      {chartData.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium mb-3">Volume by Rep</h3>
+          <Card className="p-4">
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={chartData} margin={{ left: 0, right: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} width={28} allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="Targets"   fill="hsl(var(--muted-foreground)/0.4)" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Confirmed" fill="hsl(221 83% 53%)" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="Showed"    fill="hsl(142 71% 45%)" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ icon, title, description, action }: {
+  icon?: React.ReactNode; title: string; description?: string; action?: React.ReactNode | null;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-14 text-center gap-2">
+      {icon}
+      <p className="font-medium text-sm mt-1">{title}</p>
+      {description && <p className="text-xs text-muted-foreground max-w-xs">{description}</p>}
+      {action && <div className="mt-3">{action}</div>}
+    </div>
+  );
+}
+
+function LeadsSkeleton() {
+  return (
+    <div className="space-y-2">
+      {[1, 2, 3, 4].map((i) => (
+        <Skeleton key={i} className="h-12 w-full rounded-md" />
+      ))}
+    </div>
+  );
+}
+
+function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
+      {children}
+    </div>
+  );
+}

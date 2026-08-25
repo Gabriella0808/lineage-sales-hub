@@ -84,9 +84,9 @@ const NAV_SECTIONS: NavSection[] = [
     },
       { title: "Travel Log", url: "/travel-log", icon: Plane, roles: ["admin", "manager"] },
       {
-        title: "Trade Show Leads", url: "/trade-show-leads", icon: Megaphone, roles: ["admin", "manager"],
+        title: "Trade Show Leads", url: "/trade-show-leads", icon: Megaphone, roles: ["admin", "manager", "rep"],
         children: [
-          { title: "Capture Leads", url: "/trade-show-leads/capture", icon: ClipboardList, roles: ["admin", "manager"] },
+          { title: "Capture Leads", url: "/trade-show-leads/capture", icon: ClipboardList, roles: ["admin", "manager", "rep"] },
         ],
       },
       {

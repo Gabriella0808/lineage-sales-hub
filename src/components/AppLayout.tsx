@@ -86,7 +86,8 @@ const NAV_SECTIONS: NavSection[] = [
       {
         title: "Trade Show Leads", url: "/trade-show-leads", icon: Megaphone, roles: ["admin", "manager", "rep"],
         children: [
-          { title: "Capture Leads", url: "/trade-show-leads/capture", icon: ClipboardList, roles: ["admin", "manager", "rep"] },
+          { title: "Capture Leads", url: "/trade-show-leads/capture", icon: ClipboardList, roles: ["admin", "manager"] },
+          { title: "High Point Market Appointments", url: "/trade-show-leads/hp-appointments", icon: ClipboardList, roles: ["admin", "manager", "rep"] },
         ],
       },
       {

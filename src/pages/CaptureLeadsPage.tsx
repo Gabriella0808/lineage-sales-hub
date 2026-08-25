@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUserRole } from "@/hooks/useUserRole";
-import { cn } from "@/lib/utils";
-import { HighPointAppointmentsModule } from "@/components/HighPointAppointmentsModule";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,17 +85,6 @@ const emptyMarket = { name: "", location: "", month: new Date().getMonth() + 1, 
 
 export default function CaptureLeadsPage() {
   const { user } = useAuth();
-  const { data: roleInfo } = useUserRole();
-  const isRep = roleInfo?.isRep ?? false;
-
-  // Module selector: 'leads' = existing market leads, 'hp-appointments' = HP module
-  const [activeSection, setActiveSection] = useState<"leads" | "hp-appointments">("leads");
-
-  // Reps go straight to HP Appointments (they can't see the general leads)
-  useEffect(() => {
-    if (roleInfo?.isRep) setActiveSection("hp-appointments");
-  }, [roleInfo?.isRep]);
-
   const [markets, setMarkets] = useState<Market[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [salesReps, setSalesReps] = useState<SalesRep[]>([]);
@@ -512,10 +498,8 @@ export default function CaptureLeadsPage() {
       <div className="page-header flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="page-title">Capture Leads</h1>
-          <p className="page-subtitle">Capture and manage trade show prospects, appointments and lead activity.</p>
+          <p className="page-subtitle">Add leads grouped by market</p>
         </div>
-        {/* Add Market button — only in the Market Leads section, only for admin/manager */}
-        {activeSection === "leads" && !isRep && (
         <Dialog open={marketDialog} onOpenChange={setMarketDialog}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" /> Add Market</Button>
@@ -552,31 +536,9 @@ export default function CaptureLeadsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-        )}
       </div>
 
-      {/* Module selector tabs — hidden for reps (they go straight to HP Appointments) */}
-      {!isRep && (
-        <div className="flex gap-0 border-b mb-6 -mt-2">
-          {(["leads", "hp-appointments"] as const).map((section) => (
-            <button
-              key={section}
-              onClick={() => setActiveSection(section)}
-              className={cn(
-                "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
-                activeSection === section
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {section === "leads" ? "Market Leads" : "High Point Market Appointments"}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── Market Leads section (existing) ───────────────────────────── */}
-      {activeSection === "leads" && (loading ? (
+      {loading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading...
         </div>
@@ -716,10 +678,7 @@ export default function CaptureLeadsPage() {
             );
           })}
         </Accordion>
-      ))}
-
-      {/* ── High Point Market Appointments section ──────────────────────── */}
-      {activeSection === "hp-appointments" && <HighPointAppointmentsModule />}
+      )}
 
       <Dialog open={!!leadDialog} onOpenChange={(o) => { if (!o) { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); } }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">

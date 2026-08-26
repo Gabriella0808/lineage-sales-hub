@@ -15,6 +15,9 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -64,9 +67,9 @@ function showRate(showed: number, noShow: number): string {
 type ApptEvent = {
   id: string;
   name: string;
-  season: string | null;
-  year: number | null;
+  location: string | null;
   start_date: string | null;
+  end_date: string | null;
 };
 
 type RepInfo = { id: string; name: string; manager_id: string | null };
@@ -138,6 +141,37 @@ export function HighPointAppointmentsModule() {
   const [deleteTarget, setDeleteTarget]   = useState<string | null>(null);
   const [deleting, setDeleting]           = useState(false);
 
+  // Calendar detail
+  const [calDetail, setCalDetail]         = useState<MarketAppt | null>(null);
+
+  // New market form
+  const [marketFormOpen, setMarketFormOpen] = useState(false);
+  const [marketForm, setMarketForm]         = useState({ name: "", location: "", start_date: "", end_date: "" });
+  const [marketSubmitting, setMarketSubmitting] = useState(false);
+
+  const submitMarketForm = async () => {
+    if (!marketForm.name.trim()) return toast.error("Market name is required");
+    setMarketSubmitting(true);
+    const { data, error } = await (supabase as any)
+      .from("market_appointment_events")
+      .insert({
+        name:       marketForm.name.trim(),
+        location:   marketForm.location.trim() || null,
+        start_date: marketForm.start_date || null,
+        end_date:   marketForm.end_date   || null,
+        created_by: user?.id ?? null,
+      })
+      .select("id, name, location, start_date, end_date")
+      .single();
+    setMarketSubmitting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Market added");
+    setEvents((prev) => [data as ApptEvent, ...prev]);
+    setSelectedEventId((data as ApptEvent).id);
+    setMarketFormOpen(false);
+    setMarketForm({ name: "", location: "", start_date: "", end_date: "" });
+  };
+
   // Filters
   const [search, setSearch]               = useState("");
   const [statusFilter, setStatusFilter]   = useState<string>("all");
@@ -147,14 +181,14 @@ export function HighPointAppointmentsModule() {
   // ── Data loading ────────────────────────────────────────────────────────────
 
   const loadEvents = async () => {
-    const { data, error } = await supabase
-      .from("trade_show_markets")
-      .select("id, name, season, year, start_date")
+    const { data, error } = await (supabase as any)
+      .from("market_appointment_events")
+      .select("id, name, location, start_date, end_date")
       .order("start_date", { ascending: false });
     if (error) { toast.error(error.message); return; }
     const list = (data ?? []) as ApptEvent[];
     setEvents(list);
-    if (list.length > 0) setSelectedEventId((id) => id || list[0].id);
+    if (list.length > 0) setSelectedEventId((id: string) => id || list[0].id);
   };
 
   const loadReps = async () => {
@@ -391,28 +425,28 @@ export function HighPointAppointmentsModule() {
   return (
     <div className="mt-2 space-y-5 animate-fade-in">
       {/* Module header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-medium">High Point Market Appointments</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Build target lists, schedule showroom appointments and track attendance.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
           {/* Event selector */}
           <Select value={selectedEventId} onValueChange={setSelectedEventId}>
             <SelectTrigger className="h-8 text-sm w-[210px]">
-              <SelectValue placeholder="Select event…" />
+              <SelectValue placeholder="Select market…" />
             </SelectTrigger>
             <SelectContent>
               {events.length === 0 && (
-                <SelectItem value="__none__" disabled>No events found</SelectItem>
+                <SelectItem value="__none__" disabled>No markets yet</SelectItem>
               )}
               {events.map((e) => (
                 <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          {/* Add market — admin / manager only */}
+          {(isAdmin || isManager) && (
+            <Button size="sm" variant="outline" className="h-8" onClick={() => setMarketFormOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1" /> Add Market
+            </Button>
+          )}
 
           {/* Phase toggle */}
           <div className="flex border rounded-md overflow-hidden text-xs h-8">
@@ -435,7 +469,6 @@ export function HighPointAppointmentsModule() {
           <Button size="sm" onClick={openNew} className="h-8">
             <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Lead
           </Button>
-        </div>
       </div>
 
       {/* KPI row */}
@@ -489,6 +522,7 @@ export function HighPointAppointmentsModule() {
         <TabsList>
           <TabsTrigger value="leads">Leads</TabsTrigger>
           <TabsTrigger value="appointments">Appointments</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
           {showRepCol && <TabsTrigger value="performance">Performance</TabsTrigger>}
         </TabsList>
 
@@ -677,6 +711,21 @@ export function HighPointAppointmentsModule() {
           )}
         </TabsContent>
 
+        {/* ── Calendar tab ───────────────────────────────────────────────────── */}
+        <TabsContent value="calendar" className="mt-4">
+          {loading ? <LeadsSkeleton /> : (
+            <CalendarView
+              appointments={filtered}
+              showRepCol={showRepCol}
+              managers={managers}
+              onEdit={openEdit}
+              onStatusChange={updateStatus}
+              selectedAppt={calDetail}
+              onSelectAppt={setCalDetail}
+            />
+          )}
+        </TabsContent>
+
         {/* ── Performance tab ────────────────────────────────────────────────── */}
         {showRepCol && (
           <TabsContent value="performance" className="mt-4">
@@ -690,6 +739,54 @@ export function HighPointAppointmentsModule() {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* ── New market dialog ───────────────────────────────────────────────── */}
+      <Dialog open={marketFormOpen} onOpenChange={(o) => { if (!o) { setMarketFormOpen(false); setMarketForm({ name: "", location: "", start_date: "", end_date: "" }); } }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add Market</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <FormField label="Market Name" required>
+              <Input
+                value={marketForm.name}
+                onChange={(e) => setMarketForm({ ...marketForm, name: e.target.value })}
+                placeholder="Market Name"
+              />
+            </FormField>
+            <FormField label="Location">
+              <Input
+                value={marketForm.location}
+                onChange={(e) => setMarketForm({ ...marketForm, location: e.target.value })}
+                placeholder="Location"
+              />
+            </FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Start Date">
+                <Input
+                  type="date"
+                  value={marketForm.start_date}
+                  onChange={(e) => setMarketForm({ ...marketForm, start_date: e.target.value })}
+                />
+              </FormField>
+              <FormField label="End Date">
+                <Input
+                  type="date"
+                  value={marketForm.end_date}
+                  onChange={(e) => setMarketForm({ ...marketForm, end_date: e.target.value })}
+                />
+              </FormField>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setMarketFormOpen(false)}>Cancel</Button>
+            <Button onClick={submitMarketForm} disabled={marketSubmitting}>
+              {marketSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+              Add Market
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Add / edit sheet ────────────────────────────────────────────────── */}
       <Sheet open={formOpen} onOpenChange={(o) => { if (!o) { setFormOpen(false); setEditingId(null); setForm(emptyForm()); } }}>
@@ -1055,5 +1152,299 @@ function FormField({ label, required, children }: { label: string; required?: bo
       <Label>{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
       {children}
     </div>
+  );
+}
+
+// ── Calendar view (month grid) ────────────────────────────────────────────────
+
+const CAL_DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function CalendarView({
+  appointments, showRepCol, managers, onEdit, onStatusChange, selectedAppt, onSelectAppt,
+}: {
+  appointments: MarketAppt[];
+  showRepCol: boolean;
+  managers: ManagerInfo[];
+  onEdit: (a: MarketAppt) => void;
+  onStatusChange: (id: string, s: ApptStatus) => void;
+  selectedAppt: MarketAppt | null;
+  onSelectAppt: (a: MarketAppt | null) => void;
+}) {
+  const confirmed = appointments.filter((a) => a.status !== "Target");
+  const scheduled = confirmed.filter((a) => a.appointment_day);
+  const unscheduled = confirmed.filter((a) => !a.appointment_day);
+
+  // Default to the month of the earliest appointment, or current month
+  const defaultDate = (() => {
+    if (scheduled.length === 0) return new Date();
+    const earliest = [...scheduled].sort((a, b) =>
+      a.appointment_day!.localeCompare(b.appointment_day!)
+    )[0];
+    return new Date(earliest.appointment_day! + "T00:00:00");
+  })();
+
+  const [year, setYear]   = useState(defaultDate.getFullYear());
+  const [month, setMonth] = useState(defaultDate.getMonth());
+
+  const prevMonth = () => {
+    if (month === 0) { setYear((y) => y - 1); setMonth(11); }
+    else setMonth((m) => m - 1);
+  };
+  const nextMonth = () => {
+    if (month === 11) { setYear((y) => y + 1); setMonth(0); }
+    else setMonth((m) => m + 1);
+  };
+
+  // Group scheduled appointments by ISO date string
+  const dayMap = useMemo(() => {
+    const map = new Map<string, MarketAppt[]>();
+    for (const a of scheduled) {
+      const list = map.get(a.appointment_day!) ?? [];
+      list.push(a);
+      map.set(a.appointment_day!, list);
+    }
+    for (const [k, list] of map) {
+      map.set(k, list.sort((a, b) => (a.appointment_time ?? "").localeCompare(b.appointment_time ?? "")));
+    }
+    return map;
+  }, [scheduled]);
+
+  // Build day cells for the grid (nulls = padding days)
+  const startDow    = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = [
+    ...Array(startDow).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const today = new Date();
+  const isToday   = (d: number) => today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
+  const dayKey    = (d: number) => `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const monthLabel = new Date(year, month, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  if (confirmed.length === 0) {
+    return (
+      <EmptyState
+        icon={<CalendarDays className="h-8 w-8 text-muted-foreground/40" />}
+        title="No confirmed appointments yet"
+        description="Appointments appear here once leads are moved to Confirmed, Showed, or No-Show."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Month navigation */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={prevMonth}
+          className="h-7 w-7 rounded-md border flex items-center justify-center hover:bg-muted transition-colors"
+          aria-label="Previous month"
+        >
+          <ChevronDown className="h-3.5 w-3.5 rotate-90" />
+        </button>
+        <span className="text-sm font-medium">{monthLabel}</span>
+        <button
+          onClick={nextMonth}
+          className="h-7 w-7 rounded-md border flex items-center justify-center hover:bg-muted transition-colors"
+          aria-label="Next month"
+        >
+          <ChevronDown className="h-3.5 w-3.5 -rotate-90" />
+        </button>
+      </div>
+
+      {/* Day-of-week headers */}
+      <div className="grid grid-cols-7">
+        {CAL_DOW.map((d) => (
+          <div key={d} className="text-center text-[10px] font-medium uppercase tracking-wide text-muted-foreground pb-1.5">
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Month grid */}
+      <div className="grid grid-cols-7 border-t border-l rounded-lg overflow-hidden">
+        {cells.map((day, i) => {
+          if (!day) {
+            return <div key={i} className="border-b border-r bg-muted/20 min-h-[100px] sm:min-h-[120px]" />;
+          }
+          const key   = dayKey(day);
+          const appts = dayMap.get(key) ?? [];
+          return (
+            <div
+              key={i}
+              className={cn(
+                "border-b border-r min-h-[100px] sm:min-h-[120px] p-1.5",
+                isToday(day) ? "bg-primary/5" : "bg-background"
+              )}
+            >
+              {/* Day number */}
+              <div className={cn(
+                "text-xs w-6 h-6 flex items-center justify-center rounded-full mb-1 ml-auto font-medium",
+                isToday(day)
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground"
+              )}>
+                {day}
+              </div>
+
+              {/* Appointment chips */}
+              <div className="space-y-1">
+                {appts.slice(0, 2).map((a) => {
+                  const managerName = managers.find((m) => m.id === a.sales_reps?.manager_id)?.name;
+                  return (
+                    <button
+                      key={a.id}
+                      onClick={() => onSelectAppt(a)}
+                      className={cn(
+                        "w-full text-left px-1.5 py-1 rounded font-medium",
+                        "hover:opacity-75 transition-opacity",
+                        STATUS_CONFIG[a.status].pill
+                      )}
+                    >
+                      {/* Line 1: time + dealer */}
+                      <p className="text-[10px] leading-tight truncate">
+                        {a.appointment_time && (
+                          <span className="opacity-60">{fmtTime(a.appointment_time)} </span>
+                        )}
+                        {a.dealer || a.buyer_name || "—"}
+                      </p>
+                      {/* Line 2: rep · manager */}
+                      {(a.sales_reps?.name || managerName) && (
+                        <p className="text-[9px] leading-tight opacity-65 truncate mt-0.5">
+                          {[a.sales_reps?.name, managerName].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
+                {appts.length > 2 && (
+                  <p className="text-[10px] text-muted-foreground px-1 pt-0.5">
+                    +{appts.length - 2} more
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Unscheduled confirmed appointments */}
+      {unscheduled.length > 0 && (
+        <div className="pt-2">
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+            No date scheduled ({unscheduled.length})
+          </h4>
+          <div className="flex flex-wrap gap-1.5">
+            {unscheduled.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => onSelectAppt(a)}
+                className={cn(
+                  "text-left text-xs px-2.5 py-1 rounded-md border font-medium hover:opacity-75 transition-opacity",
+                  STATUS_CONFIG[a.status].pill
+                )}
+              >
+                {a.dealer || a.buyer_name || "—"}
+                {showRepCol && a.sales_reps?.name && (
+                  <span className="opacity-60 ml-1">· {a.sales_reps.name}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Appointment detail sheet */}
+      <Sheet open={!!selectedAppt} onOpenChange={(o) => { if (!o) onSelectAppt(null); }}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          {selectedAppt && (
+            <ApptDetailContent
+              appt={selectedAppt}
+              showRepCol={showRepCol}
+              onEdit={() => { onSelectAppt(null); onEdit(selectedAppt); }}
+              onStatusChange={(s) => {
+                onStatusChange(selectedAppt.id, s);
+                onSelectAppt({ ...selectedAppt, status: s });
+              }}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+function ApptDetailContent({ appt, showRepCol, onEdit, onStatusChange }: {
+  appt: MarketAppt;
+  showRepCol: boolean;
+  onEdit: () => void;
+  onStatusChange: (s: ApptStatus) => void;
+}) {
+  return (
+    <>
+      <SheetHeader className="text-left mb-5">
+        <SheetTitle className="text-lg">{appt.dealer || appt.buyer_name || "Appointment"}</SheetTitle>
+        {appt.buyer_name && appt.dealer && (
+          <SheetDescription>{appt.buyer_name}</SheetDescription>
+        )}
+      </SheetHeader>
+
+      <div className="space-y-4 text-sm">
+        {/* Status */}
+        <div className="flex items-center justify-between">
+          <span className="text-muted-foreground text-xs uppercase tracking-wide">Status</span>
+          <StatusButton status={appt.status} onStatusChange={onStatusChange} />
+        </div>
+
+        {/* Date / time */}
+        {(appt.appointment_day || appt.appointment_time) && (
+          <div className="flex items-start gap-3 border rounded-md px-3 py-2.5 bg-muted/30">
+            <CalendarDays className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+            <div>
+              {appt.appointment_day && (
+                <p className="font-medium">{fmtDay(appt.appointment_day)}</p>
+              )}
+              {appt.appointment_time && (
+                <p className="text-muted-foreground text-xs">{fmtTime(appt.appointment_time)}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Rep */}
+        {showRepCol && appt.sales_reps?.name && (
+          <div className="flex items-center gap-3">
+            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span>{appt.sales_reps.name}</span>
+          </div>
+        )}
+
+        {/* Email */}
+        {appt.buyer_email && (
+          <div className="flex items-center gap-3">
+            <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+            <a href={`mailto:${appt.buyer_email}`} className="text-primary hover:underline truncate">
+              {appt.buyer_email}
+            </a>
+          </div>
+        )}
+
+        {/* Notes */}
+        {appt.notes && (
+          <div className="border rounded-md px-3 py-2.5 bg-muted/20">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Notes</p>
+            <p className="text-sm leading-relaxed">{appt.notes}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 pt-4 border-t">
+        <Button className="w-full" variant="outline" onClick={onEdit}>
+          <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit Appointment
+        </Button>
+      </div>
+    </>
   );
 }

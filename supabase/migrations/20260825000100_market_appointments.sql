@@ -1,13 +1,51 @@
 
 -- ══════════════════════════════════════════════════════════════════════════════
+-- market_appointment_events
+-- Standalone event list for HP Appointments — separate from trade_show_markets.
+-- Admins and managers can create events; all authenticated users can read.
+-- ══════════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE public.market_appointment_events (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  name       TEXT        NOT NULL,
+  location   TEXT,
+  start_date DATE,
+  end_date   DATE,
+  created_by UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.market_appointment_events ENABLE ROW LEVEL SECURITY;
+
+-- All authenticated users can read events (reps need the event selector)
+CREATE POLICY "Authenticated users read market events"
+  ON public.market_appointment_events FOR SELECT TO authenticated
+  USING (true);
+
+-- Admins: full access
+CREATE POLICY "Admins manage market events"
+  ON public.market_appointment_events FOR ALL TO authenticated
+  USING    (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+-- Managers: can create and update events
+CREATE POLICY "Managers insert market events"
+  ON public.market_appointment_events FOR INSERT TO authenticated
+  WITH CHECK (public.current_manager_id() IS NOT NULL);
+
+CREATE POLICY "Managers update market events"
+  ON public.market_appointment_events FOR UPDATE TO authenticated
+  USING    (public.current_manager_id() IS NOT NULL)
+  WITH CHECK (public.current_manager_id() IS NOT NULL);
+
+-- ══════════════════════════════════════════════════════════════════════════════
 -- market_appointments
 -- Trade show appointment lifecycle: Target → Confirmed → Showed / No-Show
--- Used by the High Point Market Appointments module inside Capture Leads.
 -- ══════════════════════════════════════════════════════════════════════════════
 
 CREATE TABLE public.market_appointments (
   id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id          UUID        REFERENCES public.trade_show_markets(id) ON DELETE SET NULL,
+  event_id          UUID        REFERENCES public.market_appointment_events(id) ON DELETE SET NULL,
   phase             TEXT        NOT NULL DEFAULT 'Premarket'
                                 CHECK (phase IN ('Premarket', 'Market')),
   rep_id            UUID        NOT NULL REFERENCES public.sales_reps(id) ON DELETE CASCADE,
@@ -87,9 +125,3 @@ CREATE POLICY "Reps update own market appointments"
 CREATE POLICY "Reps delete own market appointments"
   ON public.market_appointments FOR DELETE TO authenticated
   USING (rep_id = public.current_rep_id());
-
--- ── Allow reps to read trade_show_markets (needed for the event selector) ────
-
-CREATE POLICY "Reps read trade show markets"
-  ON public.trade_show_markets FOR SELECT TO authenticated
-  USING (public.current_rep_id() IS NOT NULL);

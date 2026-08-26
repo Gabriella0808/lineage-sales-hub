@@ -817,7 +817,7 @@ export function HighPointAppointmentsModule() {
               <Input
                 value={form.dealer}
                 onChange={(e) => setForm({ ...form, dealer: e.target.value })}
-                placeholder="e.g. Hudson's Furniture"
+                placeholder="Account Name"
               />
             </FormField>
 
@@ -825,7 +825,7 @@ export function HighPointAppointmentsModule() {
               <Input
                 value={form.buyer_name}
                 onChange={(e) => setForm({ ...form, buyer_name: e.target.value })}
-                placeholder="Full name"
+                placeholder="Buyer / Contact"
               />
             </FormField>
 
@@ -834,7 +834,7 @@ export function HighPointAppointmentsModule() {
                 type="email"
                 value={form.buyer_email}
                 onChange={(e) => setForm({ ...form, buyer_email: e.target.value })}
-                placeholder="buyer@dealer.com"
+                placeholder="Email Address"
               />
             </FormField>
 
@@ -869,7 +869,7 @@ export function HighPointAppointmentsModule() {
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 rows={3}
-                placeholder="Any details about this appointment…"
+                placeholder="Notes"
               />
             </FormField>
           </div>

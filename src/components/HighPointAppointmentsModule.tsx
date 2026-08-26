@@ -192,17 +192,24 @@ export function HighPointAppointmentsModule() {
   };
 
   const loadReps = async () => {
+    // Join manager name so we can derive the managers filter from the same source
     const { data, error } = await supabase
       .from("sales_reps")
-      .select("id, name, manager_id")
+      .select("id, name, manager_id, managers(id, name)")
       .order("name");
-    if (!error) setReps((data ?? []) as RepInfo[]);
-  };
-
-  const loadManagers = async () => {
-    if (!isAdmin) return;
-    const { data, error } = await supabase.from("managers").select("id, name").order("name");
-    if (!error) setManagers((data ?? []) as ManagerInfo[]);
+    if (error) return;
+    const repList = (data ?? []) as (RepInfo & { managers: { id: string; name: string } | null })[];
+    setReps(repList);
+    // Derive unique managers from reps — same source of truth as Sales Reps page
+    if (isAdmin) {
+      const seen = new Map<string, ManagerInfo>();
+      for (const r of repList) {
+        if (r.manager_id && r.managers) {
+          seen.set(r.manager_id, { id: r.manager_id, name: (r.managers as any).name });
+        }
+      }
+      setManagers([...seen.values()].sort((a, b) => a.name.localeCompare(b.name)));
+    }
   };
 
   const loadAppointments = async (eventId: string, ph: string) => {
@@ -223,7 +230,6 @@ export function HighPointAppointmentsModule() {
     if (roleInfo !== undefined) {
       loadEvents();
       loadReps();
-      loadManagers();
     }
   }, [!!roleInfo, isAdmin]);
 

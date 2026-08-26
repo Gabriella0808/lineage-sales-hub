@@ -191,18 +191,58 @@ export function HighPointAppointmentsModule() {
     if (list.length > 0) setSelectedEventId((id: string) => id || list[0].id);
   };
 
-  const loadReps = async () => {
-    const { data, error } = await supabase
-      .from("sales_reps")
-      .select("id, name, manager_id")
-      .order("name");
-    if (!error) setReps((data ?? []) as RepInfo[]);
-  };
+  const loadRepData = async () => {
+    const [mgrResult, repResult] = await Promise.all([
+      supabase.from("managers").select("id, name, email").order("created_at"),
+      supabase.from("sales_reps").select("id, name, manager_id").order("name"),
+    ]);
 
-  const loadManagers = async () => {
-    if (!isAdmin) return;
-    const { data, error } = await supabase.from("managers").select("id, name").order("name");
-    if (!error) setManagers((data ?? []) as ManagerInfo[]);
+    if (!repResult.error) setReps((repResult.data ?? []) as RepInfo[]);
+
+    if (!mgrResult.error && isAdmin) {
+      const allMgrs = (mgrResult.data ?? []) as { id: string; name: string; email: string | null }[];
+      const allReps = (repResult.data ?? []) as RepInfo[];
+
+      // Mirror ManagersPage exclusions
+      const filtered = allMgrs.filter((m) => {
+        const n = m.name.trim().toLowerCase();
+        const e = m.email?.trim().toLowerCase();
+        if (n === "sales" || e === "sales@lineage-collections.com") return false;
+        if (n === "scott grisack") return false;
+        return true;
+      });
+
+      // Mirror ManagersPage deduplication: group by first-name token,
+      // keep the record with the most reps, display the longest full name
+      const repCountByMgr = new Map<string, number>();
+      allReps.forEach((r) => {
+        if (!r.manager_id) return;
+        repCountByMgr.set(r.manager_id, (repCountByMgr.get(r.manager_id) ?? 0) + 1);
+      });
+
+      const groups = new Map<string, typeof filtered>();
+      filtered.forEach((m) => {
+        const key = m.name.trim().split(/\s+/)[0].toLowerCase();
+        const arr = groups.get(key) ?? [];
+        arr.push(m);
+        groups.set(key, arr);
+      });
+
+      const deduped: ManagerInfo[] = [];
+      groups.forEach((arr) => {
+        const winner = [...arr].sort(
+          (a, b) => (repCountByMgr.get(b.id) ?? 0) - (repCountByMgr.get(a.id) ?? 0)
+        )[0];
+        const bestName = [...arr]
+          .map((m) => m.name.trim())
+          .sort((a, b) =>
+            b.split(/\s+/).length - a.split(/\s+/).length || b.length - a.length
+          )[0];
+        deduped.push({ id: winner.id, name: bestName });
+      });
+
+      setManagers(deduped.sort((a, b) => a.name.localeCompare(b.name)));
+    }
   };
 
   const loadAppointments = async (eventId: string, ph: string) => {
@@ -222,8 +262,7 @@ export function HighPointAppointmentsModule() {
   useEffect(() => {
     if (roleInfo !== undefined) {
       loadEvents();
-      loadReps();
-      loadManagers();
+      loadRepData();
     }
   }, [!!roleInfo, isAdmin]);
 

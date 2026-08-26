@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
@@ -8,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import EmailGuard from "@/components/EmailGuard";
 import AppLayout from "@/components/AppLayout";
 import SalesRepsAcctivatePage from "@/pages/SalesRepsAcctivatePage";
+import HighPointAppointmentsPage from "@/pages/HighPointAppointmentsPage";
 
 import DealersPage from "@/pages/DealersPage";
 import DirectoryPage from "@/pages/DirectoryPage";
@@ -57,6 +59,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
+      <SonnerToaster richColors position="bottom-right" />
       <BrowserRouter>
         <AuthProvider>
           <CartProvider>
@@ -98,6 +101,7 @@ const App = () => (
                       <Route path="/travel-log" element={<ProtectedRoute allow={["admin", "manager"]}><TravelLogPage /></ProtectedRoute>} />
                       <Route path="/trade-show-leads" element={<ProtectedRoute allow={["admin", "manager"]}><TradeShowLeadsPage /></ProtectedRoute>} />
                       <Route path="/trade-show-leads/capture" element={<ProtectedRoute allow={["admin", "manager"]}><CaptureLeadsPage /></ProtectedRoute>} />
+                      <Route path="/trade-show-leads/hp-appointments" element={<ProtectedRoute allow={["admin", "manager", "rep"]}><HighPointAppointmentsPage /></ProtectedRoute>} />
                       <Route path="/clearance" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceProductsPage /></ProtectedRoute>} />
                       <Route path="/clearance/analytics" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceAnalyticsPage /></ProtectedRoute>} />
                       <Route path="/meeting-intelligence" element={<ProtectedRoute allowEmails={["gmaccioni0808@gmail.com"]}><MeetingIntelligencePage /></ProtectedRoute>} />

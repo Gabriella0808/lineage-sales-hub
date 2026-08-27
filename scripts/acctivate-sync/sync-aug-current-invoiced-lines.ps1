@@ -120,6 +120,7 @@ WITH src AS (
         -- ProductClassID code so the portal can group by collection automatically.
         CAST(COALESCE(NULLIF(RTRIM(pc.Description), ''), NULLIF(RTRIM(prod.ProductClassID), ''), '') AS NVARCHAR(128)) AS product_class,
         CAST('aug_direct_pull'                  AS NVARCHAR(50))   AS source,
+        CAST(ISNULL(inv.Type,            '')    AS NVARCHAR(10))   AS invoice_type,
         ROW_NUMBER() OVER (
             PARTITION BY
                 inv.InvoiceNumber,
@@ -255,7 +256,7 @@ $CsvColumns = @(
     'order_number', 'product_id', 'description', 'qty_invoiced',
     'line_discount_pct', 'sales_account_id', 'price',
     'invoice_detail_amount', 'formula_net_amount',
-    'product_sales_category', 'product_class', 'source'
+    'product_sales_category', 'product_class', 'source', 'invoice_type'
 )
 
 function Log-FailedRow {
@@ -504,6 +505,30 @@ foreach ($cat in $ReconCategories) {
     Write-Host ('  ' + $cat.PadRight(10) + $amt.ToString('N2').PadLeft(14) + '  ' + $lines.ToString().PadLeft(4) + ' lines   ' + $verdict + '  (exp ' + $expAmt.ToString('N2') + ' / ' + $expLn + ' lines)') -ForegroundColor $color
 }
 Write-Host ('  ' + 'Total'.PadRight(10) + $reconTotal.ToString('N2').PadLeft(14) + '  ' + $reconLines.ToString().PadLeft(4) + ' lines')
+
+# ── Invoice type breakdown (O = Invoice, C = CreditMemo) ────────────────────
+# Andrew includes all types.  Credit memos are negative and must be present.
+Write-Host ''
+Write-Host ' Credit memo validation (by invoice_type, Andrew exclude filter applied):' -ForegroundColor Cyan
+$typeAmts   = @{ 'O' = 0.0; 'C' = 0.0; 'other' = 0.0 }
+$typeCounts = @{ 'O' = 0;   'C' = 0;   'other' = 0   }
+$excludedCats = @('FREIGHTO', 'MISC', 'SALESTAX', 'TARIFF')
+foreach ($row in $allRows) {
+    $cat = if ($null -ne $row['product_sales_category']) { $row['product_sales_category'].ToString() } else { '' }
+    if ($excludedCats -contains $cat) { continue }
+    $it  = if ($null -ne $row['invoice_type']) { $row['invoice_type'].ToString().Trim() } else { '' }
+    $v   = if ($null -ne $row['formula_net_amount']) { [double]$row['formula_net_amount'] } else { 0.0 }
+    $bucket = if ($it -eq 'O' -or $it -eq 'C') { $it } else { 'other' }
+    $typeAmts[$bucket]   += $v
+    $typeCounts[$bucket] += 1
+}
+$typeGrand = $typeAmts['O'] + $typeAmts['C'] + $typeAmts['other']
+Write-Host ('  O  Invoice    ' + $typeAmts['O'].ToString('N2').PadLeft(14) + '  ' + $typeCounts['O'].ToString().PadLeft(5) + ' lines') -ForegroundColor DarkCyan
+Write-Host ('  C  CreditMemo ' + $typeAmts['C'].ToString('N2').PadLeft(14) + '  ' + $typeCounts['C'].ToString().PadLeft(5) + ' lines') -ForegroundColor DarkCyan
+if ($typeCounts['other'] -gt 0) {
+    Write-Host ('  ?  Other      ' + $typeAmts['other'].ToString('N2').PadLeft(14) + '  ' + $typeCounts['other'].ToString().PadLeft(5) + ' lines') -ForegroundColor Yellow
+}
+Write-Host ('     Grand total ' + $typeGrand.ToString('N2').PadLeft(14) + '  ' + ($typeCounts['O'] + $typeCounts['C'] + $typeCounts['other']).ToString().PadLeft(5) + ' lines') -ForegroundColor Green
 
 Write-Host ''
 Write-Host ' Spot checks:' -ForegroundColor Cyan

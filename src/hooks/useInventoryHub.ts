@@ -116,6 +116,7 @@ export interface InventorySummaryRow {
   available: number;
   inventory_value: number;
   unit_cost: number | null;
+  discontinued: boolean | null;
 }
 
 export interface CloseoutRow {
@@ -191,7 +192,7 @@ export function useInventoryHub() {
       while (true) {
         const { data, error } = await supabase
           .from("v_portal_inventory_summary")
-          .select("guid_product_warehouse, sku, product, warehouse, collection, on_hand, available, inventory_value, unit_cost")
+          .select("guid_product_warehouse, sku, product, warehouse, collection, on_hand, available, inventory_value, unit_cost, discontinued")
           .order("inventory_value", { ascending: false })
           .range(from, from + pageSize - 1);
         if (error) { console.error("[useInventoryHub] v_portal_inventory_summary:", error); break; }
@@ -206,6 +207,7 @@ export function useInventoryHub() {
         available: Number(r.available),
         inventory_value: Number(r.inventory_value),
         unit_cost: r.unit_cost != null ? Number(r.unit_cost) : null,
+        discontinued: r.discontinued != null ? Boolean(r.discontinued) : null,
       })) as InventorySummaryRow[];
     };
 

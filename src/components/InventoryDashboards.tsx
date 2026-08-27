@@ -133,7 +133,12 @@ function ReportInventoryValue({ rows, total }: { rows: InventorySummaryRow[]; to
             : (onHand > 0 ? invValue / onHand : null);
           return (
             <tr key={r.guid_product_warehouse} className="border-t border-border hover:bg-muted/30">
-              <td className="px-3 py-2 font-mono text-xs">{r.sku}</td>
+              <td className="px-3 py-2 font-mono text-xs">
+                {r.sku}
+                {r.discontinued && (
+                  <span className="ml-1.5 inline-block px-1 py-px text-[9px] font-medium rounded bg-muted text-muted-foreground leading-tight">DISC</span>
+                )}
+              </td>
               <td className="px-3 py-2 max-w-[260px] truncate">{r.product ?? "-"}</td>
               <td className="px-3 py-2 text-xs text-muted-foreground">{r.collection ?? "-"}</td>
               <td className="px-3 py-2 text-xs">{r.warehouse ?? "-"}</td>
@@ -914,7 +919,9 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     const openPoValue = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_amount), 0);
     const openPoCount = new Set(hub.openPOs.map((p) => p.po_number)).size;
     const openPoUnits = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_qty), 0);
-    const closeoutValue = hub.clearanceInventoryValue;
+    const closeoutValue = hub.inventorySummary
+      .filter((r) => r.discontinued === true)
+      .reduce((s, r) => s + Number(r.inventory_value), 0);
     const prepaidValue = hub.purchaseOrders
       .filter((p) => p.is_prepaid)
       .reduce((s, p) => s + Number(p.prepaid_amount ?? 0), 0);

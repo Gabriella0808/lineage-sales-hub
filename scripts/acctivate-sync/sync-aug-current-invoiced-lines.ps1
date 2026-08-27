@@ -189,7 +189,11 @@ function Clean-Value {
     param($Val)
     if ($null -eq $Val) { return $null }
     if ($Val -is [string]) {
-        return ($Val -replace '[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', '')
+        # Strip C0 control chars (except tab/LF/CR) and DEL
+        $s = $Val -replace '[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]', ''
+        # Strip lone UTF-16 surrogate code points (D800-DFFF) — invalid in JSON
+        $s = [System.Text.RegularExpressions.Regex]::Replace($s, '[\uD800-\uDFFF]', '')
+        return $s
     }
     if ($Val -is [datetime]) {
         return $Val.ToString('yyyy-MM-dd')
@@ -415,9 +419,45 @@ foreach ($ac in $AndrewCategories) {
 }
 Write-Host ('  ' + 'Total'.PadRight(16) + $reconTotal.ToString('N2').PadLeft(14) + '  ' + $reconLines.ToString().PadLeft(4) + ' lines') -ForegroundColor Green
 
+# ── DELETE stale rows before upload ─────────────────────────────────────────
+# Upsert-only syncs leave orphaned rows when Acctivate voids or removes an
+# invoice line mid-month.  Delete all existing 'aug_direct_pull' rows for the
+# current month window first, then insert the authoritative pull from above.
+
+$monthStart  = (Get-Date -Day 1).ToString('yyyy-MM-dd')
+$DeleteUrl   = $SupabaseUrl + '/rest/v1/acctivate_invoice_lines_2026_direct' `
+             + '?invoice_date=gte.' + $monthStart `
+             + '&source=eq.aug_direct_pull'
+$DeleteHeaders = @{
+    'apikey'        = $ServiceKey
+    'Authorization' = 'Bearer ' + $ServiceKey
+    'Content-Type'  = 'application/json'
+    'Prefer'        = 'return=minimal'
+}
+
+Write-Host ''
+Write-Host ('Deleting existing aug_direct_pull rows on/after ' + $monthStart + '...') -ForegroundColor Yellow
+$deleteOk = $false
+for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
+    try {
+        $delResp = Invoke-WebRequest -Method Delete -Uri $DeleteUrl -Headers $DeleteHeaders `
+                   -TimeoutSec $RequestTimeout -UseBasicParsing
+        Write-Host ('  DELETE returned HTTP ' + [int]$delResp.StatusCode) -ForegroundColor Green
+        $deleteOk = $true
+        break
+    } catch {
+        $msg = $_.Exception.Message
+        if ($attempt -ge $MaxRetries) {
+            throw ('DELETE stale rows failed after ' + $MaxRetries + ' attempts: ' + $msg)
+        }
+        Write-Warning ('  DELETE attempt ' + $attempt + '/' + $MaxRetries + ' failed (' + $msg + ') — retrying in ' + $RetryDelay + 's')
+        Start-Sleep -Seconds $RetryDelay
+    }
+}
+
 # Upload
 Write-Host ''
-Write-Host ('Uploading in batches of ' + $BatchSize + ' (conflict key: natural_key)...') -ForegroundColor Cyan
+Write-Host ('Uploading ' + $pulled + ' rows (batch size: ' + $BatchSize + ', conflict key: natural_key)...') -ForegroundColor Cyan
 
 $uploaded   = 0
 $batchFails = 0

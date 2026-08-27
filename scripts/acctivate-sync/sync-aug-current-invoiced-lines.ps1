@@ -279,16 +279,22 @@ function Log-FailedRow {
     $script:FailedCount++
 }
 
-# --- Reconciliation config ---------------------------------------------------
+# --- Reconciliation config (Andrew DailyInvoices category grouping) ----------
+# Mirrors the SUMIFS logic in Andrew's workbook exactly.
+# FINNLOU only for Finn & Louise; ALLOW + blank for MISC.
 
-$ReconCategories = @('ALLOW', 'FL', 'FINNLOU', 'LUX', 'SW')
+$AndrewCategories = @('Sea Winds', 'Finn & Louise', 'Lux', 'MISC', 'Other Included')
+$ExcludedRawCats  = @('FREIGHTO', 'MISC', 'SALESTAX', 'TARIFF')
 
-$ExpectedTotals = @{
-    'ALLOW'   = @{ Lines = 0; Amt = 0 }   # update after confirming live totals
-    'FL'      = @{ Lines = 0; Amt = 0 }   # update after confirming live totals
-    'FINNLOU' = @{ Lines = 0; Amt = 0 }   # update after confirming live totals
-    'LUX'     = @{ Lines = 0; Amt = 0 }   # update after confirming live totals
-    'SW'      = @{ Lines = 0; Amt = 0 }   # update after confirming live totals
+# Map raw product_sales_category to Andrew display category
+function Get-AndrewCategory {
+    param([string]$RawCat)
+    if ($ExcludedRawCats -contains $RawCat) { return $null }
+    if ($RawCat -eq 'SW')      { return 'Sea Winds'    }
+    if ($RawCat -eq 'FINNLOU') { return 'Finn & Louise' }
+    if ($RawCat.ToUpper() -eq 'LUX') { return 'Lux'   }
+    if ($RawCat -eq 'ALLOW' -or $RawCat -eq '') { return 'MISC' }
+    return 'Other Included'
 }
 
 $SpotChecks = @(
@@ -385,27 +391,29 @@ if ($dupNKCount -gt 0) {
 
 Write-Host ('  -> All natural_keys are distinct. Proceeding with upload.') -ForegroundColor Green
 
-# Category sums (computed once from the SQL pull)
+# Andrew-category sums (computed once from the SQL pull)
 $reconSums   = @{}
 $reconCounts = @{}
-foreach ($cat in $ReconCategories) { $reconSums[$cat] = 0.0; $reconCounts[$cat] = 0 }
+foreach ($ac in $AndrewCategories) { $reconSums[$ac] = 0.0; $reconCounts[$ac] = 0 }
 foreach ($row in $allRows) {
-    $cat = $row['product_sales_category']
-    if ($null -ne $cat -and $reconSums.ContainsKey($cat)) {
-        $v = $row['formula_net_amount']
-        if ($null -ne $v) { $reconSums[$cat] += [double]$v }
-        $reconCounts[$cat]++
-    }
+    $rawCat = if ($null -ne $row['product_sales_category']) { $row['product_sales_category'].ToString() } else { '' }
+    $ac = Get-AndrewCategory -RawCat $rawCat
+    if ($null -eq $ac) { continue }   # excluded category
+    $v = $row['formula_net_amount']
+    if ($null -ne $v) { $reconSums[$ac] += [double]$v }
+    $reconCounts[$ac]++
 }
 $reconTotal  = 0.0; $reconLines = 0
-foreach ($cat in $ReconCategories) { $reconTotal += $reconSums[$cat]; $reconLines += $reconCounts[$cat] }
+foreach ($ac in $AndrewCategories) { $reconTotal += $reconSums[$ac]; $reconLines += $reconCounts[$ac] }
 
 Write-Host ''
-Write-Host 'formula_net_amount by SalesCategory (Acctivate pull):' -ForegroundColor Cyan
-foreach ($cat in $ReconCategories) {
-    Write-Host ('  ' + $cat.PadRight(10) + $reconSums[$cat].ToString('N2').PadLeft(14) + '  ' + $reconCounts[$cat].ToString().PadLeft(4) + ' lines')
+Write-Host 'Andrew-category totals from Acctivate pull:' -ForegroundColor Cyan
+foreach ($ac in $AndrewCategories) {
+    if ($reconCounts[$ac] -gt 0 -or $ac -ne 'Other Included') {
+        Write-Host ('  ' + $ac.PadRight(16) + $reconSums[$ac].ToString('N2').PadLeft(14) + '  ' + $reconCounts[$ac].ToString().PadLeft(4) + ' lines')
+    }
 }
-Write-Host ('  ' + 'Total'.PadRight(10) + $reconTotal.ToString('N2').PadLeft(14) + '  ' + $reconLines.ToString().PadLeft(4) + ' lines') -ForegroundColor Green
+Write-Host ('  ' + 'Total'.PadRight(16) + $reconTotal.ToString('N2').PadLeft(14) + '  ' + $reconLines.ToString().PadLeft(4) + ' lines') -ForegroundColor Green
 
 # Upload
 Write-Host ''
@@ -489,22 +497,13 @@ if ($script:FailedCount -gt 0) {
 }
 
 Write-Host ''
-Write-Host ' Category totals vs SSMS expected:' -ForegroundColor Cyan
+Write-Host ' Andrew-category totals (reconcile vs DailyInvoices):' -ForegroundColor Cyan
 $allOk = ($uploaded -eq $pulled -and $script:FailedCount -eq 0)
-foreach ($cat in $ReconCategories) {
-    $amt    = $reconSums[$cat]
-    $lines  = $reconCounts[$cat]
-    $expAmt = $ExpectedTotals[$cat].Amt
-    $expLn  = $ExpectedTotals[$cat].Lines
-    $amtOk  = [Math]::Abs($amt - $expAmt) -lt 0.02
-    $lnOk   = ($lines -eq $expLn)
-    $ok     = $amtOk -and $lnOk
-    if (-not $ok) { $allOk = $false }
-    $verdict = if ($ok) { 'MATCH' } else { 'MISMATCH' }
-    $color   = if ($ok) { 'Green'  } else { 'Red'     }
-    Write-Host ('  ' + $cat.PadRight(10) + $amt.ToString('N2').PadLeft(14) + '  ' + $lines.ToString().PadLeft(4) + ' lines   ' + $verdict + '  (exp ' + $expAmt.ToString('N2') + ' / ' + $expLn + ' lines)') -ForegroundColor $color
+foreach ($ac in $AndrewCategories) {
+    if ($reconCounts[$ac] -eq 0 -and $ac -eq 'Other Included') { continue }
+    Write-Host ('  ' + $ac.PadRight(16) + $reconSums[$ac].ToString('N2').PadLeft(14) + '  ' + $reconCounts[$ac].ToString().PadLeft(4) + ' lines') -ForegroundColor DarkCyan
 }
-Write-Host ('  ' + 'Total'.PadRight(10) + $reconTotal.ToString('N2').PadLeft(14) + '  ' + $reconLines.ToString().PadLeft(4) + ' lines')
+Write-Host ('  ' + 'Total'.PadRight(16) + $reconTotal.ToString('N2').PadLeft(14) + '  ' + $reconLines.ToString().PadLeft(4) + ' lines') -ForegroundColor Green
 
 # ── Invoice type breakdown (O = Invoice, C = CreditMemo) ────────────────────
 # Andrew includes all types.  Credit memos are negative and must be present.

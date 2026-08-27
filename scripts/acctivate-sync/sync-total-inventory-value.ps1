@@ -260,7 +260,7 @@ $totalOnHand      = 0.0
 $totalSkusSet     = [System.Collections.Generic.HashSet[string]]::new()
 
 foreach ($r in $allRows) {
-    $pid   = if ($null -ne $r['product_id'])   { [string]$r['product_id'] } else { '' }
+    $productIdValue = if ($null -ne $r['product_id'])   { [string]$r['product_id'] } else { '' }
     $ohv   = if ($null -ne $r['on_hand_value']) { [double]$r['on_hand_value'] } else { 0.0 }
     $oh    = if ($null -ne $r['on_hand'])        { [double]$r['on_hand'] }       else { 0.0 }
     $disc  = $false
@@ -270,7 +270,7 @@ foreach ($r in $allRows) {
 
     $totalOnHandValue += $ohv
     $totalOnHand      += $oh
-    $totalSkusSet.Add($pid) | Out-Null
+    $totalSkusSet.Add($productIdValue) | Out-Null
     if ($disc) { $discOnHandValue += $ohv }
 }
 
@@ -310,7 +310,7 @@ function ConvertTo-NullableDouble {
 function Clean-Row {
     param([hashtable]$Row)
 
-    $pid = if ($null -ne $Row['product_id']) { ([string]$Row['product_id']).Trim() } else { '' }
+    $productIdValue = if ($null -ne $Row['product_id']) { ([string]$Row['product_id']).Trim() } else { '' }
     $wh  = if ($null -ne $Row['warehouse'])  { ([string]$Row['warehouse']).Trim() }  else { 'Warehouse' }
     if (-not $wh) { $wh = 'Warehouse' }
 
@@ -322,7 +322,7 @@ function Clean-Row {
     $lp  = ConvertTo-NullableDouble $Row['list_price']
 
     $cleaned = [ordered]@{
-        'product_id'    = $pid
+        'product_id'    = $productIdValue
         'warehouse'     = $wh
         'description'   = if ($null -ne $Row['description'])  { [string]$Row['description'] }  else { $null }
         'collection'    = if ($null -ne $Row['collection'])   { [string]$Row['collection'] }   else { $null }

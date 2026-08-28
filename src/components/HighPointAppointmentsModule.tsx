@@ -232,21 +232,17 @@ export function HighPointAppointmentsModule() {
       })
       .filter((r) => r.buyer_name || r.dealer);
 
-  const downloadSampleCsv = () => {
+  const downloadSampleXlsx = () => {
     const repName = reps[0]?.name ?? "Mike Durham";
     const rows = [
       ["FIRST", "LAST", "COMPANY", "ADDRESS", "CITY", "STATE", "ZIP", "Status", "Notes", "REP", "PHASE"],
-      ["John",  "Smith", "Smith Furniture",        "123 Main St", "Charlotte", "NC", "28202", "",          "Likes Chatham collection", repName, "Premarket"],
-      ["Jane",  "Doe",   "Doe Home Furnishings",   "456 Oak Ave", "Raleigh",   "NC", "27601", "Confirmed", "",                         repName, "Market"],
+      ["John",  "Smith", "Smith Furniture",      "123 Main St", "Charlotte", "NC", "28202", "",          "Likes Chatham collection", repName, "Premarket"],
+      ["Jane",  "Doe",   "Doe Home Furnishings", "456 Oak Ave", "Raleigh",   "NC", "27601", "Confirmed", "",                         repName, "Market"],
     ];
-    const csv  = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = "market_appointments_template.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    const ws  = XLSX.utils.aoa_to_sheet(rows);
+    const wb  = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Appointments");
+    XLSX.writeFile(wb, "market_appointments_template.xlsx");
   };
 
   const handleImportFile = (file: File) => {
@@ -1142,8 +1138,8 @@ export function HighPointAppointmentsModule() {
                   Fill in your leads then save the file. Columns: FIRST · LAST · COMPANY · ADDRESS · CITY · STATE · ZIP · Status · Notes · REP · PHASE
                 </p>
               </div>
-              <Button size="sm" variant="outline" type="button" className="shrink-0 ml-4" onClick={downloadSampleCsv}>
-                Download CSV template
+              <Button size="sm" variant="outline" type="button" className="shrink-0 ml-4" onClick={downloadSampleXlsx}>
+                Download XLSX template
               </Button>
             </div>
 

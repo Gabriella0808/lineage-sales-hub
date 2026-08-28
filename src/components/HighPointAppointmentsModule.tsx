@@ -1130,10 +1130,10 @@ export function HighPointAppointmentsModule() {
 
           <div className="space-y-4 overflow-y-auto flex-1 pr-1">
 
-            {/* Step 1 — download template */}
+            {/* Step 1 - download template */}
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div>
-                <p className="text-sm font-medium">Step 1 — Download the template</p>
+                <p className="text-sm font-medium">Step 1 - Download the template</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Fill in your leads then save the file. Columns: FIRST · LAST · COMPANY · ADDRESS · CITY · STATE · ZIP · Status · Notes · REP · PHASE
                 </p>
@@ -1143,9 +1143,9 @@ export function HighPointAppointmentsModule() {
               </Button>
             </div>
 
-            {/* Step 2 — upload */}
+            {/* Step 2 - upload */}
             <div className="rounded-lg border p-4 space-y-3">
-              <p className="text-sm font-medium">Step 2 — Upload your completed file</p>
+              <p className="text-sm font-medium">Step 2 - Upload your completed file</p>
               <Input
                 ref={fileInputRef}
                 type="file"

@@ -153,7 +153,9 @@ export function HighPointAppointmentsModule() {
     rep_error: boolean;
     phase: "Premarket" | "Market";
     buyer_name: string | null;
+    buyer_email: string | null;
     dealer: string | null;
+    appointment_day: string | null;
     notes: string | null;
     status: ApptStatus;
     _preview_address: string;
@@ -199,6 +201,8 @@ export function HighPointAppointmentsModule() {
         const rawRep   = col(["rep", "rep name", "sales rep"]);
         const rawNote  = col(["notes", "note"]);
         const rawPhase = col(["phase"]);
+        const rawEmail = col(["email", "company email", "buyer email", "email address"]);
+        const rawDate  = col(["appointment date", "appt date", "date"]);
 
         // Match rep by name (case-insensitive, partial match)
         let matchedRepId: string | null = null;
@@ -217,26 +221,38 @@ export function HighPointAppointmentsModule() {
         const addrParts = [address, city, state ? (zip ? `${state} ${zip}` : state) : zip].filter(Boolean);
         const addrStr   = addrParts.join(", ");
 
+        // Normalise appointment date to YYYY-MM-DD if parseable
+        let apptDay: string | null = null;
+        if (rawDate) {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) apptDay = d.toISOString().slice(0, 10);
+          else apptDay = rawDate; // pass through as-is; PostgREST will reject bad dates
+        }
+
         return {
-          rep_id:           matchedRepId,
-          rep_name:         rawRep,
-          rep_error:        repError,
-          phase:            mapPhase(rawPhase),
-          buyer_name:       nameParts.length ? nameParts.join(" ") : null,
-          dealer:           company || null,
-          notes:            rawNote || null,
-          status:           mapStatus(rawSt),
+          rep_id:          matchedRepId,
+          rep_name:        rawRep,
+          rep_error:       repError,
+          phase:           mapPhase(rawPhase),
+          buyer_name:      nameParts.length ? nameParts.join(" ") : null,
+          buyer_email:     rawEmail || null,
+          dealer:          company || null,
+          appointment_day: apptDay,
+          notes:           rawNote || null,
+          status:          mapStatus(rawSt),
           _preview_address: addrStr,
         } as ImportRow;
       })
       .filter((r) => r.buyer_name || r.dealer);
 
   const downloadSampleXlsx = () => {
-    const repName = reps[0]?.name ?? "Mike Durham";
+    const rep     = reps[0];
+    const repName = rep?.name ?? "Mike Durham";
+    const mgrName = rep ? (managers.find((m) => m.id === rep.manager_id)?.name ?? "") : "";
     const rows = [
-      ["FIRST", "LAST", "COMPANY", "ADDRESS", "CITY", "STATE", "ZIP", "Status", "Notes", "REP", "PHASE"],
-      ["John",  "Smith", "Smith Furniture",      "123 Main St", "Charlotte", "NC", "28202", "",          "Likes Chatham collection", repName, "Premarket"],
-      ["Jane",  "Doe",   "Doe Home Furnishings", "456 Oak Ave", "Raleigh",   "NC", "27601", "Confirmed", "",                         repName, "Market"],
+      ["FIRST", "LAST", "COMPANY", "ADDRESS", "CITY", "STATE", "ZIP", "Appointment Date", "Company Email", "Status", "Notes", "REP", "MANAGER", "PHASE"],
+      ["John",  "Smith", "Smith Furniture",      "123 Main St", "Charlotte", "NC", "28202", "2026-09-14", "john@smithfurniture.com",  "",          "Likes Chatham collection", repName, mgrName, "Premarket"],
+      ["Jane",  "Doe",   "Doe Home Furnishings", "456 Oak Ave", "Raleigh",   "NC", "27601", "2026-09-15", "jane@doehome.com",         "Confirmed", "",                         repName, mgrName, "Market"],
     ];
     const ws  = XLSX.utils.aoa_to_sheet(rows);
     const wb  = XLSX.utils.book_new();
@@ -281,14 +297,16 @@ export function HighPointAppointmentsModule() {
 
       setImporting(true);
       const payload = valid.map((r) => ({
-        event_id:   selectedEventId,
-        phase:      r.phase,
-        rep_id:     r.rep_id,
-        dealer:     r.dealer,
-        buyer_name: r.buyer_name,
-        notes:      r.notes,
-        status:     r.status,
-        created_by: user?.id ?? null,
+        event_id:        selectedEventId,
+        phase:           r.phase,
+        rep_id:          r.rep_id,
+        dealer:          r.dealer,
+        buyer_name:      r.buyer_name,
+        buyer_email:     r.buyer_email,
+        appointment_day: r.appointment_day,
+        notes:           r.notes,
+        status:          r.status,
+        created_by:      user?.id ?? null,
       }));
       const BATCH = 50;
       let totalInserted = 0;

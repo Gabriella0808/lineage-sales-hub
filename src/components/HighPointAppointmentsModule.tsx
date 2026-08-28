@@ -280,33 +280,46 @@ export function HighPointAppointmentsModule() {
   };
 
   const submitImport = async () => {
-    if (!selectedEventId) return toast.error("Select a market first");
-    if (!importRows.length) return toast.error("No rows to import");
-    const badRep = importRows.find((r) => r.rep_error);
-    if (badRep) return toast.error(`Rep not found: "${badRep.rep_name}". Fix the REP column and re-upload.`);
-    const noRepCol = importRows.every((r) => !r.rep_name);
-    if (noRepCol && !isRep && !importFallbackRepId) return toast.error("Select a rep to assign these leads to");
-    setImporting(true);
-    const fallback = isRep ? (currentRepId ?? "") : importFallbackRepId;
-    const payload = importRows.map((r) => ({
-      event_id:   selectedEventId,
-      phase:      importPhase,
-      rep_id:     r.rep_id ?? fallback,
-      dealer:     r.dealer,
-      buyer_name: r.buyer_name,
-      notes:      r.notes,
-      status:     r.status,
-      created_by: user?.id ?? null,
-    }));
-    const { error } = await supabase.from("market_appointments" as any).insert(payload);
-    setImporting(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success(`${payload.length} leads imported`);
-    setImportOpen(false);
-    setImportRows([]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    loadAppointments(selectedEventId, importPhase);
-    if (importPhase !== phase) setPhase(importPhase);
+    try {
+      if (!selectedEventId) { toast.error("Select a market first"); return; }
+      if (!importRows.length) { toast.error("No rows to import"); return; }
+      const badRep = importRows.find((r) => r.rep_error);
+      if (badRep) { toast.error(`Rep not found: "${badRep.rep_name}". Fix the REP column and re-upload.`); return; }
+      const noRepCol = importRows.every((r) => !r.rep_name);
+      const fallback = isRep ? (currentRepId ?? null) : (importFallbackRepId || null);
+      if (noRepCol && !fallback) { toast.error("Select a rep to assign these leads to"); return; }
+      setImporting(true);
+      const payload = importRows.map((r) => ({
+        event_id:   selectedEventId,
+        phase:      importPhase,
+        rep_id:     r.rep_id ?? fallback,
+        dealer:     r.dealer,
+        buyer_name: r.buyer_name,
+        notes:      r.notes,
+        status:     r.status,
+        created_by: user?.id ?? null,
+      }));
+      const BATCH = 50;
+      let totalInserted = 0;
+      for (let i = 0; i < payload.length; i += BATCH) {
+        const batch = payload.slice(i, i + BATCH);
+        const { error } = await (supabase as any).from("market_appointments").insert(batch);
+        if (error) { toast.error(`Import error: ${error.message}`); setImporting(false); return; }
+        totalInserted += batch.length;
+      }
+      setImporting(false);
+      toast.success(`${totalInserted} leads imported`);
+      setImportOpen(false);
+      setImportRows([]);
+      setImportFallbackRepId("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      loadAppointments(selectedEventId, importPhase);
+      if (importPhase !== phase) setPhase(importPhase);
+    } catch (err: any) {
+      setImporting(false);
+      toast.error(err?.message ?? "Import failed — check console for details");
+      console.error("[submitImport]", err);
+    }
   };
 
   // New market form

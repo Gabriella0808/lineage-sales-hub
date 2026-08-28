@@ -158,15 +158,11 @@ export function HighPointAppointmentsModule() {
     _preview_address: string;
     _preview_raw_status: string;
   };
-  const [importOpen, setImportOpen]         = useState(false);
-  const [importPhase, setImportPhase]       = useState<"Premarket" | "Market">("Premarket");
-  const [importRows, setImportRows]         = useState<ImportRow[]>([]);
-  const [importFallbackRepId, setImportFallbackRepId] = useState<string>("");
-  const [importing, setImporting]           = useState(false);
-  const fileInputRef                        = useRef<HTMLInputElement>(null);
-
-  // True when the uploaded file has no REP column at all (all rawRep values empty)
-  const importNoRepColumn = importRows.length > 0 && importRows.every((r) => !r.rep_name);
+  const [importOpen, setImportOpen]   = useState(false);
+  const [importPhase, setImportPhase] = useState<"Premarket" | "Market">("Premarket");
+  const [importRows, setImportRows]   = useState<ImportRow[]>([]);
+  const [importing, setImporting]     = useState(false);
+  const fileInputRef                  = useRef<HTMLInputElement>(null);
 
   const mapStatus = (raw: string): ApptStatus => {
     const s = raw.trim().toLowerCase();
@@ -283,15 +279,17 @@ export function HighPointAppointmentsModule() {
     try {
       if (!selectedEventId) { toast.error("Select a market first"); return; }
       if (!importRows.length) { toast.error("No rows to import"); return; }
-      const badRep = importRows.find((r) => r.rep_error);
-      if (badRep) { toast.error(`Rep not found: "${badRep.rep_name}". Fix the REP column and re-upload.`); return; }
-      const fallback = isRep ? (currentRepId ?? null) : (importFallbackRepId || null);
-      if (!fallback && importRows.some((r) => !r.rep_id)) { toast.error("Select a rep to assign these leads to"); return; }
+
+      // Rows with a resolved rep_id go in; unmatched are skipped with a warning
+      const valid   = importRows.filter((r) => r.rep_id);
+      const skipped = importRows.length - valid.length;
+      if (!valid.length) { toast.error("No rows with a recognised REP name — check the REP column matches rep names in the portal."); return; }
+
       setImporting(true);
-      const payload = importRows.map((r) => ({
+      const payload = valid.map((r) => ({
         event_id:   selectedEventId,
         phase:      importPhase,
-        rep_id:     r.rep_id ?? fallback,
+        rep_id:     r.rep_id,
         dealer:     r.dealer,
         buyer_name: r.buyer_name,
         notes:      r.notes,
@@ -307,10 +305,13 @@ export function HighPointAppointmentsModule() {
         totalInserted += batch.length;
       }
       setImporting(false);
-      toast.success(`${totalInserted} leads imported`);
+      if (skipped > 0) {
+        toast.success(`${totalInserted} leads imported · ${skipped} skipped (unrecognised REP)`);
+      } else {
+        toast.success(`${totalInserted} leads imported`);
+      }
       setImportOpen(false);
       setImportRows([]);
-      setImportFallbackRepId("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       loadAppointments(selectedEventId, importPhase);
       if (importPhase !== phase) setPhase(importPhase);
@@ -1127,7 +1128,7 @@ export function HighPointAppointmentsModule() {
       </AlertDialog>
 
       {/* ── Import dialog ────────────────────────────────────────────────────── */}
-      <Dialog open={importOpen} onOpenChange={(o) => { if (!o) { setImportOpen(false); setImportRows([]); setImportFallbackRepId(""); if (fileInputRef.current) fileInputRef.current.value = ""; } }}>
+      <Dialog open={importOpen} onOpenChange={(o) => { if (!o) { setImportOpen(false); setImportRows([]); if (fileInputRef.current) fileInputRef.current.value = ""; } }}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Bulk Import Leads</DialogTitle>
@@ -1146,18 +1147,6 @@ export function HighPointAppointmentsModule() {
                   </SelectContent>
                 </Select>
               </FormField>
-
-              {/* Rep — always shown for admin/manager (required before or after file load) */}
-              {!isRep && (isAdmin || isManager) && (
-                <FormField label="Assign to Rep" required>
-                  <Select value={importFallbackRepId} onValueChange={setImportFallbackRepId}>
-                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select rep…" /></SelectTrigger>
-                    <SelectContent>
-                      {visibleReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              )}
 
               {/* File picker */}
               <FormField label="File (CSV or Excel)">
@@ -1241,18 +1230,13 @@ export function HighPointAppointmentsModule() {
           </div>
 
           <DialogFooter className="gap-2 pt-2 border-t shrink-0">
-            <Button variant="outline" onClick={() => { setImportOpen(false); setImportRows([]); setImportFallbackRepId(""); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
+            <Button variant="outline" onClick={() => { setImportOpen(false); setImportRows([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
               Cancel
             </Button>
             <Button
               type="button"
               onClick={submitImport}
-              disabled={
-                importing ||
-                importRows.length === 0 ||
-                importRows.some((r) => r.rep_error) ||
-                (!isRep && (isAdmin || isManager) && !importFallbackRepId)
-              }
+              disabled={importing || importRows.length === 0}
             >
               {importing ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Upload className="h-4 w-4 mr-1.5" />}
               Import {importRows.length > 0 ? importRows.length : ""} Lead{importRows.length !== 1 ? "s" : ""}

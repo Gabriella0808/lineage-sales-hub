@@ -1,4 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import * as XLSX from "xlsx";
+import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,7 +29,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Plus, Search, ChevronDown, CalendarDays, Clock, Building2, Mail,
-  Pencil, Trash2, Loader2, Users, TrendingUp, User,
+  Pencil, Trash2, Loader2, Users, TrendingUp, User, Upload,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -143,6 +145,118 @@ export function HighPointAppointmentsModule() {
 
   // Calendar detail
   const [calDetail, setCalDetail]         = useState<MarketAppt | null>(null);
+
+  // Import
+  type ImportRow = {
+    buyer_name: string | null;
+    dealer: string | null;
+    notes: string | null;
+    status: ApptStatus;
+    _preview_address: string;
+    _preview_raw_status: string;
+  };
+  const [importOpen, setImportOpen]         = useState(false);
+  const [importPhase, setImportPhase]       = useState<"Premarket" | "Market">("Premarket");
+  const [importRepId, setImportRepId]       = useState<string>("");
+  const [importRows, setImportRows]         = useState<ImportRow[]>([]);
+  const [importing, setImporting]           = useState(false);
+  const fileInputRef                        = useRef<HTMLInputElement>(null);
+
+  const mapStatus = (raw: string): ApptStatus => {
+    const s = raw.trim().toLowerCase();
+    if (!s) return "Target";
+    if (s === "confirmed") return "Confirmed";
+    if (s === "showed" || s === "show") return "Showed";
+    if (s === "no-show" || s === "noshow" || s === "no show") return "No-Show";
+    return "Target";
+  };
+
+  const parseRows = (records: Record<string, string>[]): ImportRow[] =>
+    records
+      .map((r) => {
+        const col = (names: string[]) => {
+          for (const n of names) {
+            const key = Object.keys(r).find((k) => k.trim().toLowerCase() === n.toLowerCase());
+            if (key !== undefined) return (r[key] ?? "").trim();
+          }
+          return "";
+        };
+        const first   = col(["first", "first name"]);
+        const last    = col(["last", "last name"]);
+        const company = col(["company"]);
+        const address = col(["address"]);
+        const city    = col(["city"]);
+        const state   = col(["state"]);
+        const zip     = col(["zip", "zip code", "postal code"]);
+        const rawSt   = col(["status"]);
+
+        const nameParts = [first, last].filter(Boolean);
+        const addrParts = [address, city, state ? (zip ? `${state} ${zip}` : state) : zip].filter(Boolean);
+        const addrStr   = addrParts.join(", ");
+        const noteParts = [addrStr, rawSt && mapStatus(rawSt) === "Target" && rawSt ? `Status: ${rawSt}` : ""].filter(Boolean);
+
+        return {
+          buyer_name:          nameParts.length ? nameParts.join(" ") : null,
+          dealer:              company || null,
+          notes:               noteParts.length ? noteParts.join(" | ") : null,
+          status:              mapStatus(rawSt),
+          _preview_address:    addrStr,
+          _preview_raw_status: rawSt,
+        } as ImportRow;
+      })
+      .filter((r) => r.buyer_name || r.dealer);
+
+  const handleImportFile = (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext === "csv" || ext === "txt") {
+      Papa.parse<Record<string, string>>(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (res) => setImportRows(parseRows(res.data)),
+        error: (e) => toast.error("CSV parse error: " + e.message),
+      });
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const wb    = XLSX.read(e.target?.result, { type: "array" });
+          const ws    = wb.Sheets[wb.SheetNames[0]];
+          const data  = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
+          setImportRows(parseRows(data));
+        } catch (err: any) {
+          toast.error("Excel parse error: " + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  };
+
+  const submitImport = async () => {
+    if (!selectedEventId) return toast.error("Select a market first");
+    const repId = isRep ? (currentRepId ?? "") : importRepId;
+    if (!repId) return toast.error("Select a rep");
+    if (!importRows.length) return toast.error("No rows to import");
+    setImporting(true);
+    const payload = importRows.map((r) => ({
+      event_id:   selectedEventId,
+      phase:      importPhase,
+      rep_id:     repId,
+      dealer:     r.dealer,
+      buyer_name: r.buyer_name,
+      notes:      r.notes,
+      status:     r.status,
+      created_by: user?.id ?? null,
+    }));
+    const { error } = await supabase.from("market_appointments" as any).insert(payload);
+    setImporting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`${payload.length} leads imported`);
+    setImportOpen(false);
+    setImportRows([]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    loadAppointments(selectedEventId, importPhase);
+    if (importPhase !== phase) setPhase(importPhase);
+  };
 
   // New market form
   const [marketFormOpen, setMarketFormOpen] = useState(false);
@@ -502,6 +616,10 @@ export function HighPointAppointmentsModule() {
               </button>
             ))}
           </div>
+
+          <Button size="sm" variant="outline" className="h-8" onClick={() => { setImportPhase(phase); setImportRepId(isRep ? (currentRepId ?? "") : ""); setImportOpen(true); }}>
+            <Upload className="h-3.5 w-3.5 mr-1" /> Import
+          </Button>
 
           <Button size="sm" onClick={openNew} className="h-8">
             <Plus className="h-3.5 w-3.5 mr-1.5" /> Add Lead
@@ -944,6 +1062,116 @@ export function HighPointAppointmentsModule() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Import dialog ────────────────────────────────────────────────────── */}
+      <Dialog open={importOpen} onOpenChange={(o) => { if (!o) { setImportOpen(false); setImportRows([]); if (fileInputRef.current) fileInputRef.current.value = ""; } }}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Bulk Import Leads</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 overflow-y-auto flex-1 pr-1">
+            {/* Controls row */}
+            <div className="flex flex-wrap gap-3 items-end">
+              {/* Phase */}
+              <FormField label="Phase">
+                <Select value={importPhase} onValueChange={(v) => setImportPhase(v as "Premarket" | "Market")}>
+                  <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Premarket">Premarket</SelectItem>
+                    <SelectItem value="Market">Market</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+
+              {/* Rep — admin/manager pick; rep sees their own */}
+              {(isAdmin || isManager) && (
+                <FormField label="Assign to Rep" required>
+                  <Select value={importRepId} onValueChange={setImportRepId}>
+                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select rep…" /></SelectTrigger>
+                    <SelectContent>
+                      {visibleReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              )}
+
+              {/* File picker */}
+              <FormField label="File (CSV or Excel)">
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  className="w-[260px] h-9 cursor-pointer"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleImportFile(f);
+                    else setImportRows([]);
+                  }}
+                />
+              </FormField>
+            </div>
+
+            {/* Column format hint */}
+            <p className="text-xs text-muted-foreground">
+              Expected columns: <span className="font-mono">FIRST · LAST · COMPANY · ADDRESS · CITY · STATE · ZIP · Status</span>.
+              All are optional but at least one of First/Last or Company must be present per row.
+              Status values Confirmed / Showed / No-Show are mapped directly; anything else defaults to Target and is preserved in notes.
+            </p>
+
+            {/* Preview */}
+            {importRows.length > 0 && (
+              <div>
+                <p className="text-sm font-medium mb-2">{importRows.length} lead{importRows.length !== 1 ? "s" : ""} ready to import</p>
+                <div className="rounded-md border overflow-hidden overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50">
+                      <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                        <th className="text-left px-3 py-2 font-medium">Name</th>
+                        <th className="text-left px-3 py-2 font-medium">Company</th>
+                        <th className="text-left px-3 py-2 font-medium">Address</th>
+                        <th className="text-left px-3 py-2 font-medium">Status</th>
+                        <th className="text-left px-3 py-2 font-medium">Original Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importRows.map((r, i) => (
+                        <tr key={i} className="border-t hover:bg-muted/20">
+                          <td className="px-3 py-1.5">{r.buyer_name ?? <span className="text-muted-foreground">—</span>}</td>
+                          <td className="px-3 py-1.5">{r.dealer ?? <span className="text-muted-foreground">—</span>}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{r._preview_address || "—"}</td>
+                          <td className="px-3 py-1.5">
+                            <span className={cn("px-1.5 py-0.5 rounded text-[11px] font-medium", STATUS_CONFIG[r.status].pill)}>
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{r._preview_raw_status || "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {importRows.length === 0 && !fileInputRef.current?.value && (
+              <div className="border-2 border-dashed rounded-lg p-8 text-center text-muted-foreground text-sm">
+                Select a CSV or Excel file to preview leads before importing
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 pt-2 border-t shrink-0">
+            <Button variant="outline" onClick={() => { setImportOpen(false); setImportRows([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
+              Cancel
+            </Button>
+            <Button onClick={submitImport} disabled={importing || importRows.length === 0}>
+              {importing ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Upload className="h-4 w-4 mr-1.5" />}
+              Import {importRows.length > 0 ? importRows.length : ""} Lead{importRows.length !== 1 ? "s" : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

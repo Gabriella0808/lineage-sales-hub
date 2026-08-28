@@ -132,6 +132,7 @@ function usePortalBookingLines(from: Date, to: Date, enabled = true) {
 
 interface GroupedRow {
   entity_key:    string;
+  entity_label?: string;   // display name (dealer name or rep name); entity_key is the stable ID
   primary_amt:   number;
   primary_lines: number;
   comp_amt:      number;
@@ -195,6 +196,7 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
       }
       return ((data ?? []) as any[]).map((r) => ({
         entity_key:    String(r.entity_key ?? ""),
+        entity_label:  r.entity_label != null ? String(r.entity_label) : undefined,
         primary_amt:   Number(r.primary_amt)   || 0,
         primary_lines: Number(r.primary_lines) || 0,
         comp_amt:      Number(r.comp_amt)      || 0,
@@ -1171,6 +1173,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           product_class:    r.product_class  ?? null,
           amount:           Number(r.amount) || 0,
           invoice_number:   r.invoice_number ?? null,
+          invoice_type:     r.invoice_type   ?? null,
         }));
       };
     };
@@ -1486,10 +1489,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             ) : useRpcMode ? (
               <TotalTable
                 rows={groupedRows.map((r) => {
-                  // For rep groupBy entity_key is the Acctivate rep_id; map to full name.
+                  // For rep: entity_key is Acctivate rep_id — map to canonical full name.
+                  // For dealer: entity_key is customer_id; entity_label carries dealer display name.
                   const label = groupBy === "rep"
                     ? (repAcIdToCanonical.get(r.entity_key.trim().toLowerCase()) ?? r.entity_key)
-                    : r.entity_key;
+                    : (r.entity_label ?? r.entity_key);
                   return { key: r.entity_key, label, primary: r.primary_amt, comparative: r.comp_amt };
                 })}
                 leftHeader={leftHeader}

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { formatCurrency, useSalesReps } from "@/hooks/usePortalData";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -358,25 +358,32 @@ export function LiveKpiReport({
   const dailyDateStr = format(dailyDate, "yyyy-MM-dd");
   const isToday      = dailyDateStr === todayStr;
 
+  // Invoices are posted in Acctivate on the prior business day; querying today
+  // always returns $0. Bookings = selected date (default today), Invoices = day before.
+  const invoiceDate    = subDays(dailyDate, 1);
+  const invoiceDateStr = format(invoiceDate, "yyyy-MM-dd");
+
   const repQueryKey = JSON.stringify(selectedRepAcIds?.slice().sort() ?? null);
 
-  // Daily actuals — both bookings and invoiced for the selected date.
+  // Daily actuals: bookings use dailyDateStr (default today), invoiced use
+  // invoiceDateStr (day before) because Acctivate invoice sync runs overnight.
+  // Both dates are fetched in one query and split client-side by metric_type.
   const { data: rawDailyRows = [] } = useQuery({
-    queryKey: ["daily_actuals_v2", dailyDateStr, managerId ?? null, repQueryKey],
+    queryKey: ["daily_actuals_v2", dailyDateStr, invoiceDateStr, managerId ?? null, repQueryKey],
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true,
     refetchInterval: 5 * 60_000,
     queryFn: async () => {
       let q = (supabase as any)
         .from("v_companywide_reporting_actuals")
-        .select("metric_type, brand_category, amount, rep_id")
-        .eq("transaction_date", dailyDateStr);
+        .select("metric_type, brand_category, amount, rep_id, transaction_date")
+        .in("transaction_date", [dailyDateStr, invoiceDateStr]);
       if (managerId && !(selectedRepAcIds && selectedRepAcIds.length > 0)) {
         q = q.eq("manager_id", managerId);
       }
       const { data, error } = await q;
       if (error) { console.error("[daily] actuals error:", error.message); return []; }
-      let rows = (data ?? []) as Array<{ metric_type: string; brand_category: string | null; amount: string | number; rep_id: string | null }>;
+      let rows = (data ?? []) as Array<{ metric_type: string; brand_category: string | null; amount: string | number; rep_id: string | null; transaction_date: string | null }>;
       if (selectedRepAcIds && selectedRepAcIds.length > 0) {
         const idSet = new Set(selectedRepAcIds.map((id) => id.trim().toLowerCase()));
         rows = rows.filter((r) => r.rep_id && idSet.has(r.rep_id.trim().toLowerCase()));
@@ -600,11 +607,15 @@ export function LiveKpiReport({
     for (const row of rawDailyRows) {
       const coll = classifyCollection(row.brand_category);
       const amt = Number(row.amount) || 0;
-      if (row.metric_type === "invoiced")  { inv[coll] += amt; totalInv += amt; }
-      else if (row.metric_type === "bookings") { bkg[coll] += amt; totalBkg += amt; }
+      // Invoices: use the prior-day date. Bookings: use the selected date (today).
+      if (row.metric_type === "invoiced" && row.transaction_date === invoiceDateStr) {
+        inv[coll] += amt; totalInv += amt;
+      } else if (row.metric_type === "bookings" && row.transaction_date === dailyDateStr) {
+        bkg[coll] += amt; totalBkg += amt;
+      }
     }
     return { inv, bkg, totalInv, totalBkg };
-  }, [rawDailyRows]);
+  }, [rawDailyRows, dailyDateStr, invoiceDateStr]);
 
   const scaledLine = useMemo(() => baseLine.map((r) => ({
     ...r,
@@ -765,9 +776,12 @@ export function LiveKpiReport({
               </div>
             </div>
           </div>
-          {/* Invoice card */}
+          {/* Invoice card — always shows prior day; Acctivate sync runs overnight */}
           <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold mb-3">Daily Invoices</h3>
+            <h3 className="text-sm font-semibold mb-1">Daily Invoices</h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              {isToday ? `Yesterday · ${format(invoiceDate, "MMM d")}` : format(invoiceDate, "MMM d, yyyy")}
+            </p>
             <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalInv)}</p>
             <div className="space-y-1.5 text-xs">
               {(["SW", "FIN", "LUX", "ALLOW"] as CollKey[]).map((coll) => (

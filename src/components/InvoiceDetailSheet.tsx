@@ -27,6 +27,7 @@ export interface ViewLine {
   product_class:    string | null;
   amount:           number;
   invoice_number:   string | null;
+  invoice_type:     string | null;
 }
 
 type FetchFn = (params: { limit: number; offset: number }) => Promise<ViewLine[]>;

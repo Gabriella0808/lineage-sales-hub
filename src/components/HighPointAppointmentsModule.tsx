@@ -199,7 +199,7 @@ export function HighPointAppointmentsModule() {
 
     if (!repResult.error) setReps((repResult.data ?? []) as RepInfo[]);
 
-    if (!mgrResult.error && isAdmin) {
+    if (!mgrResult.error) {
       const allMgrs = (mgrResult.data ?? []) as { id: string; name: string; email: string | null }[];
       const allReps = (repResult.data ?? []) as RepInfo[];
 
@@ -264,7 +264,7 @@ export function HighPointAppointmentsModule() {
       loadEvents();
       loadRepData();
     }
-  }, [!!roleInfo, isAdmin]);
+  }, [!!roleInfo]);
 
   useEffect(() => {
     if (selectedEventId && roleInfo !== undefined) {
@@ -276,10 +276,10 @@ export function HighPointAppointmentsModule() {
 
   const filtered = useMemo(() => {
     let list = [...appointments];
-    if (isAdmin && managerFilter !== "all") {
+    if (managerFilter !== "all") {
       list = list.filter((a) => a.sales_reps?.manager_id === managerFilter);
     }
-    if ((isAdmin || isManager) && repFilter !== "all") {
+    if (repFilter !== "all") {
       list = list.filter((a) => a.rep_id === repFilter);
     }
     if (statusFilter !== "all") {
@@ -352,7 +352,7 @@ export function HighPointAppointmentsModule() {
   // ── Per-manager stats (admin) ─────────────────────────────────────────────
 
   const byManagerStats = useMemo(() => {
-    if (!isAdmin) return [];
+    if (!isAdmin && !isManager && !isRep) return [];
     const map = new Map<string, { managerId: string; managerName: string; targets: number; confirmed: number; showed: number; noShow: number; repCount: number }>();
     for (const r of byRepStats) {
       const mid  = r.managerId ?? "__none__";
@@ -371,10 +371,8 @@ export function HighPointAppointmentsModule() {
   // ── Visible reps for form dropdown ───────────────────────────────────────
 
   const visibleReps = useMemo(() => {
-    if (isAdmin)   return reps;
-    if (isManager) return reps.filter((r) => r.manager_id === currentManagerId);
-    return [];
-  }, [reps, isAdmin, isManager, currentManagerId]);
+    return reps;
+  }, [reps]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -457,7 +455,7 @@ export function HighPointAppointmentsModule() {
     setDeleteTarget(null);
   };
 
-  const showRepCol = isAdmin || isManager;
+  const showRepCol = true;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -545,7 +543,7 @@ export function HighPointAppointmentsModule() {
             </SelectContent>
           </Select>
         )}
-        {isAdmin && managers.length > 0 && (
+        {managers.length > 0 && (
           <Select value={managerFilter} onValueChange={setManagerFilter}>
             <SelectTrigger className="h-8 text-sm w-[160px]"><SelectValue placeholder="All managers" /></SelectTrigger>
             <SelectContent>
@@ -840,8 +838,8 @@ export function HighPointAppointmentsModule() {
           </SheetHeader>
 
           <div className="mt-5 space-y-4">
-            {/* Rep selector — managers/admins only */}
-            {showRepCol && (
+            {/* Rep selector — managers/admins only; reps always submit as themselves */}
+            {(isAdmin || isManager) && (
               <FormField label="Rep" required>
                 <Select value={form.rep_id} onValueChange={(v) => setForm({ ...form, rep_id: v })}>
                   <SelectTrigger><SelectValue placeholder="Select rep…" /></SelectTrigger>

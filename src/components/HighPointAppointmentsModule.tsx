@@ -285,9 +285,8 @@ export function HighPointAppointmentsModule() {
       if (!importRows.length) { toast.error("No rows to import"); return; }
       const badRep = importRows.find((r) => r.rep_error);
       if (badRep) { toast.error(`Rep not found: "${badRep.rep_name}". Fix the REP column and re-upload.`); return; }
-      const noRepCol = importRows.every((r) => !r.rep_name);
       const fallback = isRep ? (currentRepId ?? null) : (importFallbackRepId || null);
-      if (noRepCol && !fallback) { toast.error("Select a rep to assign these leads to"); return; }
+      if (!fallback && importRows.some((r) => !r.rep_id)) { toast.error("Select a rep to assign these leads to"); return; }
       setImporting(true);
       const payload = importRows.map((r) => ({
         event_id:   selectedEventId,
@@ -1148,6 +1147,18 @@ export function HighPointAppointmentsModule() {
                 </Select>
               </FormField>
 
+              {/* Rep — always shown for admin/manager (required before or after file load) */}
+              {!isRep && (isAdmin || isManager) && (
+                <FormField label="Assign to Rep" required>
+                  <Select value={importFallbackRepId} onValueChange={setImportFallbackRepId}>
+                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select rep…" /></SelectTrigger>
+                    <SelectContent>
+                      {visibleReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </FormField>
+              )}
+
               {/* File picker */}
               <FormField label="File (CSV or Excel)">
                 <Input
@@ -1162,18 +1173,6 @@ export function HighPointAppointmentsModule() {
                   }}
                 />
               </FormField>
-
-              {/* Fallback rep selector — shown when file has no REP column */}
-              {importNoRepColumn && !isRep && (isAdmin || isManager) && (
-                <FormField label="Assign all to Rep" required>
-                  <Select value={importFallbackRepId} onValueChange={setImportFallbackRepId}>
-                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select rep…" /></SelectTrigger>
-                    <SelectContent>
-                      {visibleReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              )}
             </div>
 
             {/* Column format hint + sample download */}
@@ -1246,12 +1245,13 @@ export function HighPointAppointmentsModule() {
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={submitImport}
               disabled={
                 importing ||
                 importRows.length === 0 ||
                 importRows.some((r) => r.rep_error) ||
-                (importNoRepColumn && !isRep && !importFallbackRepId)
+                (!isRep && (isAdmin || isManager) && !importFallbackRepId)
               }
             >
               {importing ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Upload className="h-4 w-4 mr-1.5" />}

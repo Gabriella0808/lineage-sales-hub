@@ -151,18 +151,17 @@ export function HighPointAppointmentsModule() {
     rep_id: string | null;
     rep_name: string;
     rep_error: boolean;
+    phase: "Premarket" | "Market";
     buyer_name: string | null;
     dealer: string | null;
     notes: string | null;
     status: ApptStatus;
     _preview_address: string;
-    _preview_raw_status: string;
   };
-  const [importOpen, setImportOpen]   = useState(false);
-  const [importPhase, setImportPhase] = useState<"Premarket" | "Market">("Premarket");
-  const [importRows, setImportRows]   = useState<ImportRow[]>([]);
-  const [importing, setImporting]     = useState(false);
-  const fileInputRef                  = useRef<HTMLInputElement>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState<ImportRow[]>([]);
+  const [importing, setImporting]   = useState(false);
+  const fileInputRef                = useRef<HTMLInputElement>(null);
 
   const mapStatus = (raw: string): ApptStatus => {
     const s = raw.trim().toLowerCase();
@@ -171,6 +170,12 @@ export function HighPointAppointmentsModule() {
     if (s === "showed" || s === "show") return "Showed";
     if (s === "no-show" || s === "noshow" || s === "no show") return "No-Show";
     return "Target";
+  };
+
+  const mapPhase = (raw: string): "Premarket" | "Market" => {
+    const s = raw.trim().toLowerCase();
+    if (s === "market") return "Market";
+    return "Premarket"; // default
   };
 
   const parseRows = (records: Record<string, string>[]): ImportRow[] =>
@@ -183,52 +188,46 @@ export function HighPointAppointmentsModule() {
           }
           return "";
         };
-        const first   = col(["first", "first name"]);
-        const last    = col(["last", "last name"]);
-        const company = col(["company"]);
-        const address = col(["address"]);
-        const city    = col(["city"]);
-        const state   = col(["state"]);
-        const zip     = col(["zip", "zip code", "postal code"]);
-        const rawSt   = col(["status"]);
-        const rawRep  = col(["rep", "rep name", "sales rep"]);
-        const rawNote = col(["notes", "note"]);
+        const first    = col(["first", "first name"]);
+        const last     = col(["last", "last name"]);
+        const company  = col(["company"]);
+        const address  = col(["address"]);
+        const city     = col(["city"]);
+        const state    = col(["state"]);
+        const zip      = col(["zip", "zip code", "postal code"]);
+        const rawSt    = col(["status"]);
+        const rawRep   = col(["rep", "rep name", "sales rep"]);
+        const rawNote  = col(["notes", "note"]);
+        const rawPhase = col(["phase"]);
 
-        // Match rep by name (case-insensitive, partial OK).
-        // If no REP column exists in the file at all (rawRep empty), rep_error stays
-        // false — importNoRepColumn will show a fallback dropdown instead.
+        // Match rep by name (case-insensitive, partial match)
         let matchedRepId: string | null = null;
         let repError = false;
         if (isRep) {
           matchedRepId = currentRepId ?? null;
         } else if (rawRep) {
           const q = rawRep.toLowerCase();
-          const exact = reps.find((r2) => r2.name.toLowerCase() === q);
+          const exact   = reps.find((r2) => r2.name.toLowerCase() === q);
           const partial = exact ?? reps.find((r2) => r2.name.toLowerCase().includes(q) || q.includes(r2.name.toLowerCase()));
           matchedRepId = partial?.id ?? null;
           repError = !matchedRepId;
         }
-        // rawRep empty → leave rep_id null, repError false; fallback dropdown resolves it
 
         const nameParts = [first, last].filter(Boolean);
         const addrParts = [address, city, state ? (zip ? `${state} ${zip}` : state) : zip].filter(Boolean);
         const addrStr   = addrParts.join(", ");
-        const noteParts = [
-          rawNote,
-          addrStr,
-          rawSt && mapStatus(rawSt) === "Target" && rawSt ? `Status: ${rawSt}` : "",
-        ].filter(Boolean);
+        const noteParts = [rawNote, addrStr, rawSt && mapStatus(rawSt) === "Target" && rawSt ? `Status: ${rawSt}` : ""].filter(Boolean);
 
         return {
-          rep_id:              matchedRepId,
-          rep_name:            rawRep,
-          rep_error:           repError,
-          buyer_name:          nameParts.length ? nameParts.join(" ") : null,
-          dealer:              company || null,
-          notes:               noteParts.length ? noteParts.join(" | ") : null,
-          status:              mapStatus(rawSt),
-          _preview_address:    addrStr,
-          _preview_raw_status: rawSt,
+          rep_id:           matchedRepId,
+          rep_name:         rawRep,
+          rep_error:        repError,
+          phase:            mapPhase(rawPhase),
+          buyer_name:       nameParts.length ? nameParts.join(" ") : null,
+          dealer:           company || null,
+          notes:            noteParts.length ? noteParts.join(" | ") : null,
+          status:           mapStatus(rawSt),
+          _preview_address: addrStr,
         } as ImportRow;
       })
       .filter((r) => r.buyer_name || r.dealer);
@@ -236,11 +235,11 @@ export function HighPointAppointmentsModule() {
   const downloadSampleCsv = () => {
     const repName = reps[0]?.name ?? "Mike Durham";
     const rows = [
-      ["FIRST", "LAST", "COMPANY", "ADDRESS", "CITY", "STATE", "ZIP", "Status", "Notes", "REP"],
-      ["John", "Smith", "Smith Furniture", "123 Main St", "Charlotte", "NC", "28202", "", "Likes Chatham collection", repName],
-      ["Jane", "Doe", "Doe Home Furnishings", "456 Oak Ave", "Raleigh", "NC", "27601", "Confirmed", "", repName],
+      ["FIRST", "LAST", "COMPANY", "ADDRESS", "CITY", "STATE", "ZIP", "Status", "Notes", "REP", "PHASE"],
+      ["John",  "Smith", "Smith Furniture",        "123 Main St", "Charlotte", "NC", "28202", "",          "Likes Chatham collection", repName, "Premarket"],
+      ["Jane",  "Doe",   "Doe Home Furnishings",   "456 Oak Ave", "Raleigh",   "NC", "27601", "Confirmed", "",                         repName, "Market"],
     ];
-    const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\r\n");
+    const csv  = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\r\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
@@ -288,7 +287,7 @@ export function HighPointAppointmentsModule() {
       setImporting(true);
       const payload = valid.map((r) => ({
         event_id:   selectedEventId,
-        phase:      importPhase,
+        phase:      r.phase,
         rep_id:     r.rep_id,
         dealer:     r.dealer,
         buyer_name: r.buyer_name,
@@ -313,8 +312,7 @@ export function HighPointAppointmentsModule() {
       setImportOpen(false);
       setImportRows([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      loadAppointments(selectedEventId, importPhase);
-      if (importPhase !== phase) setPhase(importPhase);
+      loadAppointments(selectedEventId, phase);
     } catch (err: any) {
       setImporting(false);
       toast.error(err?.message ?? "Import failed — check console for details");
@@ -1135,55 +1133,48 @@ export function HighPointAppointmentsModule() {
           </DialogHeader>
 
           <div className="space-y-4 overflow-y-auto flex-1 pr-1">
-            {/* Controls row */}
-            <div className="flex flex-wrap gap-3 items-end">
-              {/* Phase */}
-              <FormField label="Phase">
-                <Select value={importPhase} onValueChange={(v) => setImportPhase(v as "Premarket" | "Market")}>
-                  <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Premarket">Premarket</SelectItem>
-                    <SelectItem value="Market">Market</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormField>
 
-              {/* File picker */}
-              <FormField label="File (CSV or Excel)">
-                <Input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv,.xlsx,.xls"
-                  className="w-[260px] h-9 cursor-pointer"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) handleImportFile(f);
-                    else setImportRows([]);
-                  }}
-                />
-              </FormField>
+            {/* Step 1 — download template */}
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div>
+                <p className="text-sm font-medium">Step 1 — Download the template</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Fill in your leads then save the file. Columns: FIRST · LAST · COMPANY · ADDRESS · CITY · STATE · ZIP · Status · Notes · REP · PHASE
+                </p>
+              </div>
+              <Button size="sm" variant="outline" type="button" className="shrink-0 ml-4" onClick={downloadSampleCsv}>
+                Download CSV template
+              </Button>
             </div>
 
-            {/* Column format hint + sample download */}
-            <div className="flex items-start justify-between gap-4">
+            {/* Step 2 — upload */}
+            <div className="rounded-lg border p-4 space-y-3">
+              <p className="text-sm font-medium">Step 2 — Upload your completed file</p>
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                className="cursor-pointer"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleImportFile(f);
+                  else setImportRows([]);
+                }}
+              />
               <p className="text-xs text-muted-foreground">
-                Required columns: <span className="font-mono">FIRST · LAST · COMPANY · ADDRESS · CITY · STATE · ZIP · Status · Notes · REP</span>.
-                At least one of First/Last or Company must be present per row. REP must match a rep's name exactly.
-                Status values Confirmed / Showed / No-Show map directly; anything else defaults to Target and is preserved in notes.
+                REP must match a rep's name in the portal. PHASE must be <span className="font-mono">Premarket</span> or <span className="font-mono">Market</span> (defaults to Premarket if blank).
+                Rows with unrecognised REPs are skipped; matched rows import.
               </p>
-              <Button size="sm" variant="outline" className="shrink-0 h-7 text-xs" onClick={downloadSampleCsv}>
-                Download sample CSV
-              </Button>
             </div>
 
             {/* Preview */}
             {importRows.length > 0 && (
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <p className="text-sm font-medium">{importRows.length} lead{importRows.length !== 1 ? "s" : ""} parsed</p>
+                <div className="flex items-center gap-3 mb-2">
+                  <p className="text-sm font-medium">{importRows.length} row{importRows.length !== 1 ? "s" : ""} ready</p>
                   {importRows.some((r) => r.rep_error) && (
                     <span className="text-xs text-destructive font-medium">
-                      {importRows.filter((r) => r.rep_error).length} row{importRows.filter((r) => r.rep_error).length !== 1 ? "s" : ""} have unrecognised REP — fix before importing
+                      {importRows.filter((r) => r.rep_error).length} unrecognised REP — those rows will be skipped
                     </span>
                   )}
                 </div>
@@ -1191,16 +1182,17 @@ export function HighPointAppointmentsModule() {
                   <table className="w-full text-xs">
                     <thead className="bg-muted/50">
                       <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                        <th className="text-left px-3 py-2 font-medium">Phase</th>
                         <th className="text-left px-3 py-2 font-medium">Rep</th>
                         <th className="text-left px-3 py-2 font-medium">Name</th>
                         <th className="text-left px-3 py-2 font-medium">Company</th>
-                        <th className="text-left px-3 py-2 font-medium">Address</th>
                         <th className="text-left px-3 py-2 font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {importRows.map((r, i) => (
                         <tr key={i} className={cn("border-t", r.rep_error ? "bg-destructive/5" : "hover:bg-muted/20")}>
+                          <td className="px-3 py-1.5 text-muted-foreground">{r.phase}</td>
                           <td className="px-3 py-1.5">
                             {r.rep_error
                               ? <span className="text-destructive font-medium">{r.rep_name || "(blank)"} ✗</span>
@@ -1208,7 +1200,6 @@ export function HighPointAppointmentsModule() {
                           </td>
                           <td className="px-3 py-1.5">{r.buyer_name ?? <span className="text-muted-foreground">—</span>}</td>
                           <td className="px-3 py-1.5">{r.dealer ?? <span className="text-muted-foreground">—</span>}</td>
-                          <td className="px-3 py-1.5 text-muted-foreground">{r._preview_address || "—"}</td>
                           <td className="px-3 py-1.5">
                             <span className={cn("px-1.5 py-0.5 rounded text-[11px] font-medium", STATUS_CONFIG[r.status].pill)}>
                               {r.status}
@@ -1219,12 +1210,6 @@ export function HighPointAppointmentsModule() {
                     </tbody>
                   </table>
                 </div>
-              </div>
-            )}
-
-            {importRows.length === 0 && (
-              <div className="border-2 border-dashed rounded-lg p-8 text-center text-muted-foreground text-sm">
-                Select a CSV or Excel file to preview leads before importing
               </div>
             )}
           </div>

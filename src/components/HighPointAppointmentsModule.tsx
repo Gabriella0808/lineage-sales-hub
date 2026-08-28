@@ -216,7 +216,6 @@ export function HighPointAppointmentsModule() {
         const nameParts = [first, last].filter(Boolean);
         const addrParts = [address, city, state ? (zip ? `${state} ${zip}` : state) : zip].filter(Boolean);
         const addrStr   = addrParts.join(", ");
-        const noteParts = [rawNote, addrStr, rawSt && mapStatus(rawSt) === "Target" && rawSt ? `Status: ${rawSt}` : ""].filter(Boolean);
 
         return {
           rep_id:           matchedRepId,
@@ -225,7 +224,7 @@ export function HighPointAppointmentsModule() {
           phase:            mapPhase(rawPhase),
           buyer_name:       nameParts.length ? nameParts.join(" ") : null,
           dealer:           company || null,
-          notes:            noteParts.length ? noteParts.join(" | ") : null,
+          notes:            rawNote || null,
           status:           mapStatus(rawSt),
           _preview_address: addrStr,
         } as ImportRow;

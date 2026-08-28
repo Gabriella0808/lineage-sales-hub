@@ -50,6 +50,7 @@ import CrmNewAccountPage from "@/pages/crm/CrmNewAccountPage";
 import CrmGuard from "@/components/CrmGuard";
 import ClearanceProductsPage from "@/pages/ClearanceProductsPage";
 import ClearanceAnalyticsPage from "@/pages/ClearanceAnalyticsPage";
+import LaborDayPromoPage from "@/pages/LaborDayPromoPage";
 import MeetingIntelligencePage from "@/pages/MeetingIntelligencePage";
 
 
@@ -104,6 +105,7 @@ const App = () => (
                       <Route path="/trade-show-leads/hp-appointments" element={<ProtectedRoute allow={["admin", "manager", "rep"]}><HighPointAppointmentsPage /></ProtectedRoute>} />
                       <Route path="/clearance" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceProductsPage /></ProtectedRoute>} />
                       <Route path="/clearance/analytics" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceAnalyticsPage /></ProtectedRoute>} />
+                      <Route path="/promotions/labor-day-promo" element={<ProtectedRoute allow={["admin","manager"]}><LaborDayPromoPage /></ProtectedRoute>} />
                       <Route path="/meeting-intelligence" element={<ProtectedRoute allowEmails={["gmaccioni0808@gmail.com"]}><MeetingIntelligencePage /></ProtectedRoute>} />
                       <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]} denyEmails={["andrew@lineage-collections.com"]}><OrgChartPage /></ProtectedRoute>} />
                       <Route path="/crm/accounts" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsPage /></CrmGuard></ProtectedRoute>} />

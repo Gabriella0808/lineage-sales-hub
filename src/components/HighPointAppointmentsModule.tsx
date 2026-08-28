@@ -1135,7 +1135,7 @@ export function HighPointAppointmentsModule() {
               <div>
                 <p className="text-sm font-medium">Step 1 - Download the template</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Fill in your leads then save the file. Columns: FIRST · LAST · COMPANY · ADDRESS · CITY · STATE · ZIP · Status · Notes · REP · PHASE
+                  Fill in your leads then save the file.
                 </p>
               </div>
               <Button size="sm" variant="outline" type="button" className="shrink-0 ml-4" onClick={downloadSampleXlsx}>

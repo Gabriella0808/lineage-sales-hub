@@ -1139,7 +1139,7 @@ export function HighPointAppointmentsModule() {
                 </p>
               </div>
               <Button size="sm" variant="outline" type="button" className="shrink-0 ml-4" onClick={downloadSampleXlsx}>
-                Download XLSX template
+                Download Template
               </Button>
             </div>
 

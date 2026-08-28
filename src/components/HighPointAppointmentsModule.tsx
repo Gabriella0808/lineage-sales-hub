@@ -148,6 +148,9 @@ export function HighPointAppointmentsModule() {
 
   // Import
   type ImportRow = {
+    rep_id: string | null;
+    rep_name: string;
+    rep_error: boolean;
     buyer_name: string | null;
     dealer: string | null;
     notes: string | null;
@@ -155,12 +158,11 @@ export function HighPointAppointmentsModule() {
     _preview_address: string;
     _preview_raw_status: string;
   };
-  const [importOpen, setImportOpen]         = useState(false);
-  const [importPhase, setImportPhase]       = useState<"Premarket" | "Market">("Premarket");
-  const [importRepId, setImportRepId]       = useState<string>("");
-  const [importRows, setImportRows]         = useState<ImportRow[]>([]);
-  const [importing, setImporting]           = useState(false);
-  const fileInputRef                        = useRef<HTMLInputElement>(null);
+  const [importOpen, setImportOpen]   = useState(false);
+  const [importPhase, setImportPhase] = useState<"Premarket" | "Market">("Premarket");
+  const [importRows, setImportRows]   = useState<ImportRow[]>([]);
+  const [importing, setImporting]     = useState(false);
+  const fileInputRef                  = useRef<HTMLInputElement>(null);
 
   const mapStatus = (raw: string): ApptStatus => {
     const s = raw.trim().toLowerCase();
@@ -189,13 +191,37 @@ export function HighPointAppointmentsModule() {
         const state   = col(["state"]);
         const zip     = col(["zip", "zip code", "postal code"]);
         const rawSt   = col(["status"]);
+        const rawRep  = col(["rep", "rep name", "sales rep"]);
+        const rawNote = col(["notes", "note"]);
+
+        // Match rep by name (case-insensitive, partial OK)
+        let matchedRepId: string | null = null;
+        let repError = false;
+        if (isRep) {
+          matchedRepId = currentRepId ?? null;
+        } else if (rawRep) {
+          const q = rawRep.toLowerCase();
+          const exact = reps.find((r2) => r2.name.toLowerCase() === q);
+          const partial = exact ?? reps.find((r2) => r2.name.toLowerCase().includes(q) || q.includes(r2.name.toLowerCase()));
+          matchedRepId = partial?.id ?? null;
+          repError = !matchedRepId;
+        } else {
+          repError = true;
+        }
 
         const nameParts = [first, last].filter(Boolean);
         const addrParts = [address, city, state ? (zip ? `${state} ${zip}` : state) : zip].filter(Boolean);
         const addrStr   = addrParts.join(", ");
-        const noteParts = [addrStr, rawSt && mapStatus(rawSt) === "Target" && rawSt ? `Status: ${rawSt}` : ""].filter(Boolean);
+        const noteParts = [
+          rawNote,
+          addrStr,
+          rawSt && mapStatus(rawSt) === "Target" && rawSt ? `Status: ${rawSt}` : "",
+        ].filter(Boolean);
 
         return {
+          rep_id:              matchedRepId,
+          rep_name:            rawRep,
+          rep_error:           repError,
           buyer_name:          nameParts.length ? nameParts.join(" ") : null,
           dealer:              company || null,
           notes:               noteParts.length ? noteParts.join(" | ") : null,
@@ -205,6 +231,23 @@ export function HighPointAppointmentsModule() {
         } as ImportRow;
       })
       .filter((r) => r.buyer_name || r.dealer);
+
+  const downloadSampleCsv = () => {
+    const repName = reps[0]?.name ?? "Mike Durham";
+    const rows = [
+      ["FIRST", "LAST", "COMPANY", "ADDRESS", "CITY", "STATE", "ZIP", "Status", "Notes", "REP"],
+      ["John", "Smith", "Smith Furniture", "123 Main St", "Charlotte", "NC", "28202", "", "Likes Chatham collection", repName],
+      ["Jane", "Doe", "Doe Home Furnishings", "456 Oak Ave", "Raleigh", "NC", "27601", "Confirmed", "", repName],
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = "market_appointments_template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const handleImportFile = (file: File) => {
     const ext = file.name.split(".").pop()?.toLowerCase();
@@ -219,9 +262,9 @@ export function HighPointAppointmentsModule() {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const wb    = XLSX.read(e.target?.result, { type: "array" });
-          const ws    = wb.Sheets[wb.SheetNames[0]];
-          const data  = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
+          const wb   = XLSX.read(e.target?.result, { type: "array" });
+          const ws   = wb.Sheets[wb.SheetNames[0]];
+          const data = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
           setImportRows(parseRows(data));
         } catch (err: any) {
           toast.error("Excel parse error: " + err.message);
@@ -233,14 +276,14 @@ export function HighPointAppointmentsModule() {
 
   const submitImport = async () => {
     if (!selectedEventId) return toast.error("Select a market first");
-    const repId = isRep ? (currentRepId ?? "") : importRepId;
-    if (!repId) return toast.error("Select a rep");
     if (!importRows.length) return toast.error("No rows to import");
+    const badRep = importRows.find((r) => r.rep_error);
+    if (badRep) return toast.error(`Rep not found: "${badRep.rep_name}". Fix the REP column and re-upload.`);
     setImporting(true);
     const payload = importRows.map((r) => ({
       event_id:   selectedEventId,
       phase:      importPhase,
-      rep_id:     repId,
+      rep_id:     r.rep_id,
       dealer:     r.dealer,
       buyer_name: r.buyer_name,
       notes:      r.notes,
@@ -1084,18 +1127,6 @@ export function HighPointAppointmentsModule() {
                 </Select>
               </FormField>
 
-              {/* Rep — admin/manager pick; rep sees their own */}
-              {(isAdmin || isManager) && (
-                <FormField label="Assign to Rep" required>
-                  <Select value={importRepId} onValueChange={setImportRepId}>
-                    <SelectTrigger className="w-[200px]"><SelectValue placeholder="Select rep…" /></SelectTrigger>
-                    <SelectContent>
-                      {visibleReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </FormField>
-              )}
-
               {/* File picker */}
               <FormField label="File (CSV or Excel)">
                 <Input
@@ -1112,31 +1143,48 @@ export function HighPointAppointmentsModule() {
               </FormField>
             </div>
 
-            {/* Column format hint */}
-            <p className="text-xs text-muted-foreground">
-              Expected columns: <span className="font-mono">FIRST · LAST · COMPANY · ADDRESS · CITY · STATE · ZIP · Status</span>.
-              All are optional but at least one of First/Last or Company must be present per row.
-              Status values Confirmed / Showed / No-Show are mapped directly; anything else defaults to Target and is preserved in notes.
-            </p>
+            {/* Column format hint + sample download */}
+            <div className="flex items-start justify-between gap-4">
+              <p className="text-xs text-muted-foreground">
+                Required columns: <span className="font-mono">FIRST · LAST · COMPANY · ADDRESS · CITY · STATE · ZIP · Status · Notes · REP</span>.
+                At least one of First/Last or Company must be present per row. REP must match a rep's name exactly.
+                Status values Confirmed / Showed / No-Show map directly; anything else defaults to Target and is preserved in notes.
+              </p>
+              <Button size="sm" variant="outline" className="shrink-0 h-7 text-xs" onClick={downloadSampleCsv}>
+                Download sample CSV
+              </Button>
+            </div>
 
             {/* Preview */}
             {importRows.length > 0 && (
               <div>
-                <p className="text-sm font-medium mb-2">{importRows.length} lead{importRows.length !== 1 ? "s" : ""} ready to import</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-sm font-medium">{importRows.length} lead{importRows.length !== 1 ? "s" : ""} parsed</p>
+                  {importRows.some((r) => r.rep_error) && (
+                    <span className="text-xs text-destructive font-medium">
+                      {importRows.filter((r) => r.rep_error).length} row{importRows.filter((r) => r.rep_error).length !== 1 ? "s" : ""} have unrecognised REP — fix before importing
+                    </span>
+                  )}
+                </div>
                 <div className="rounded-md border overflow-hidden overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead className="bg-muted/50">
                       <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                        <th className="text-left px-3 py-2 font-medium">Rep</th>
                         <th className="text-left px-3 py-2 font-medium">Name</th>
                         <th className="text-left px-3 py-2 font-medium">Company</th>
                         <th className="text-left px-3 py-2 font-medium">Address</th>
                         <th className="text-left px-3 py-2 font-medium">Status</th>
-                        <th className="text-left px-3 py-2 font-medium">Original Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {importRows.map((r, i) => (
-                        <tr key={i} className="border-t hover:bg-muted/20">
+                        <tr key={i} className={cn("border-t", r.rep_error ? "bg-destructive/5" : "hover:bg-muted/20")}>
+                          <td className="px-3 py-1.5">
+                            {r.rep_error
+                              ? <span className="text-destructive font-medium">{r.rep_name || "(blank)"} ✗</span>
+                              : <span>{reps.find((rep) => rep.id === r.rep_id)?.name ?? r.rep_name}</span>}
+                          </td>
                           <td className="px-3 py-1.5">{r.buyer_name ?? <span className="text-muted-foreground">—</span>}</td>
                           <td className="px-3 py-1.5">{r.dealer ?? <span className="text-muted-foreground">—</span>}</td>
                           <td className="px-3 py-1.5 text-muted-foreground">{r._preview_address || "—"}</td>
@@ -1145,7 +1193,6 @@ export function HighPointAppointmentsModule() {
                               {r.status}
                             </span>
                           </td>
-                          <td className="px-3 py-1.5 text-muted-foreground">{r._preview_raw_status || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1154,7 +1201,7 @@ export function HighPointAppointmentsModule() {
               </div>
             )}
 
-            {importRows.length === 0 && !fileInputRef.current?.value && (
+            {importRows.length === 0 && (
               <div className="border-2 border-dashed rounded-lg p-8 text-center text-muted-foreground text-sm">
                 Select a CSV or Excel file to preview leads before importing
               </div>
@@ -1165,7 +1212,10 @@ export function HighPointAppointmentsModule() {
             <Button variant="outline" onClick={() => { setImportOpen(false); setImportRows([]); if (fileInputRef.current) fileInputRef.current.value = ""; }}>
               Cancel
             </Button>
-            <Button onClick={submitImport} disabled={importing || importRows.length === 0}>
+            <Button
+              onClick={submitImport}
+              disabled={importing || importRows.length === 0 || importRows.some((r) => r.rep_error)}
+            >
               {importing ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Upload className="h-4 w-4 mr-1.5" />}
               Import {importRows.length > 0 ? importRows.length : ""} Lead{importRows.length !== 1 ? "s" : ""}
             </Button>

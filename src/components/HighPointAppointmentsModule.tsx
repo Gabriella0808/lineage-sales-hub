@@ -679,7 +679,7 @@ export function HighPointAppointmentsModule() {
             ))}
           </div>
 
-          <Button size="sm" variant="outline" className="h-8" onClick={() => { setImportPhase(phase); setImportRepId(isRep ? (currentRepId ?? "") : ""); setImportOpen(true); }}>
+          <Button size="sm" variant="outline" className="h-8" onClick={() => setImportOpen(true)}>
             <Upload className="h-3.5 w-3.5 mr-1" /> Import
           </Button>
 

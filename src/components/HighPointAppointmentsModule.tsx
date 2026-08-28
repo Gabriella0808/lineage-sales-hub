@@ -250,7 +250,7 @@ export function HighPointAppointmentsModule() {
     const repName = rep?.name ?? "Mike Durham";
     const mgrName = rep ? (managers.find((m) => m.id === rep.manager_id)?.name ?? "") : "";
     const rows = [
-      ["FIRST", "LAST", "COMPANY", "ADDRESS", "CITY", "STATE", "ZIP", "Appointment Date", "Company Email", "Status", "Notes", "REP", "MANAGER", "PHASE"],
+      ["first", "last", "company", "address", "city", "state", "zip", "appointment date", "company email", "status", "notes", "rep", "manager", "phase"],
     ];
     const ws  = XLSX.utils.aoa_to_sheet(rows);
     const wb  = XLSX.utils.book_new();

@@ -186,7 +186,7 @@ export function HighPointAppointmentsModule() {
         const col = (names: string[]) => {
           for (const n of names) {
             const key = Object.keys(r).find((k) => k.trim().toLowerCase() === n.toLowerCase());
-            if (key !== undefined) return (r[key] ?? "").trim();
+            if (key !== undefined) return String(r[key] ?? "").trim();
           }
           return "";
         };
@@ -275,7 +275,7 @@ export function HighPointAppointmentsModule() {
         try {
           const wb   = XLSX.read(e.target?.result, { type: "array" });
           const ws   = wb.Sheets[wb.SheetNames[0]];
-          const data = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
+          const data = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "", raw: false });
           setImportRows(parseRows(data));
         } catch (err: any) {
           toast.error("Excel parse error: " + err.message);

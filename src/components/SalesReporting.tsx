@@ -1503,7 +1503,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   // For rep: entity_key is Acctivate rep_id — map to canonical full name.
                   // For dealer: entity_key is customer_id; entity_label carries dealer display name.
                   const label = groupBy === "rep"
-                    ? (repAcIdToCanonical.get(r.entity_key.trim().toLowerCase()) ?? r.entity_key)
+                    ? (repAcIdToCanonical.get(r.entity_key.trim().toLowerCase()) ?? r.entity_label ?? r.entity_key)
                     : (r.entity_label ?? r.entity_key);
                   return { key: r.entity_key, label, primary: r.primary_amt, comparative: r.comp_amt, ...(groupBy === "rep" ? { container: r.container_amt, warehouse: r.warehouse_amt } : {}) };
                 })}

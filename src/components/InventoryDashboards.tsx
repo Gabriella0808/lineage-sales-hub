@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { weeksOfSupply, weeksTone, LEAD_TIME_WEEKS } from "@/lib/inventoryMath";
 import ComparePeriodsReport from "@/components/ComparePeriodsReport";
 import { BacklogSummary, BACKLOG_SUMMARY_TOTAL } from "@/components/BacklogSummary";
+import { OpenOrdersCalendar } from "@/components/OpenOrdersCalendar";
 
 const fmtMoney = (n: number) =>
   n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` :
@@ -1907,12 +1908,21 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             </div>
             <Button size="sm" variant="ghost" className="h-8" onClick={() => setDrilldown(null)}>Close</Button>
           </div>
-          <div className={cn("overflow-auto", drilldown === "openpo" ? "max-h-[88vh]" : drilldown === "closeout" ? "max-h-[80vh]" : "max-h-[60vh]")}>
+          <div className={cn("overflow-auto", drilldown === "openpo" ? "max-h-[88vh]" : drilldown === "closeout" ? "max-h-[80vh]" : drilldown === "backlog" ? "max-h-[90vh]" : "max-h-[60vh]")}>
             {drilldown === "value" && <ReportInventoryValue rows={hub.inventorySummary} total={summary.value} />}
             {drilldown === "closeout" && <ReportCloseout />}
             {drilldown === "openpo" && <ReportOpenPOs pos={hub.openPOs} lines={hub.openPOLines} />}
             {drilldown === "prepaid" && <ReportPOs pos={hub.purchaseOrders.filter((p) => p.is_prepaid)} prepaidMode />}
-            {drilldown === "backlog" && <BacklogSummary />}
+            {drilldown === "backlog" && (
+              <Tabs defaultValue="table">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="table">Backlog Table</TabsTrigger>
+                  <TabsTrigger value="calendar">Calendar View</TabsTrigger>
+                </TabsList>
+                <TabsContent value="table"><BacklogSummary /></TabsContent>
+                <TabsContent value="calendar"><OpenOrdersCalendar /></TabsContent>
+              </Tabs>
+            )}
             {drilldown === "lost" && <ReportLost allItems={items} items={items.filter((it) => {
               if (!isOutOfStockSku(it)) return false;
               if (isInventoryExcludedSku(it)) return false;

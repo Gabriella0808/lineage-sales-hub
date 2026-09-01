@@ -57,6 +57,7 @@ type DealerRepLine = {
   product_class:    string | null;
   amount:           number;
   invoice_number:   string | null;
+  fulfillment_type: string | null;
 };
 
 // ── Data hooks ────────────────────────────────────────────────────────────────
@@ -79,7 +80,7 @@ async function fetchPortalLinesByType(
   while (true) {
     const { data, error } = await (supabase as any)
       .from("v_portal_dealer_rep_reporting_lines")
-      .select("metric_type, transaction_date, year, month_number, dealer_name, customer_id, rep_name, rep_id, sku, description, brand_category, product_class, amount, invoice_number")
+      .select("metric_type, transaction_date, year, month_number, dealer_name, customer_id, rep_name, rep_id, sku, description, brand_category, product_class, amount, invoice_number, fulfillment_type")
       .eq("metric_type", metricType)
       .gte("transaction_date", fromStr)
       .lt("transaction_date", toExcl)
@@ -90,9 +91,10 @@ async function fetchPortalLinesByType(
     }
     const batch = ((data ?? []) as any[]).map((r) => ({
       ...r,
-      amount:       Number(r.amount) || 0,
-      year:         Number(r.year),
-      month_number: Number(r.month_number),
+      amount:           Number(r.amount) || 0,
+      year:             Number(r.year),
+      month_number:     Number(r.month_number),
+      fulfillment_type: r.fulfillment_type ?? null,
     })) as DealerRepLine[];
     rows.push(...batch);
     if (batch.length < PAGE_SIZE) break;
@@ -137,6 +139,8 @@ interface GroupedRow {
   primary_lines: number;
   comp_amt:      number;
   comp_lines:    number;
+  container_amt: number;
+  warehouse_amt: number;
 }
 
 interface GroupedRowsParams {
@@ -201,6 +205,8 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
         primary_lines: Number(r.primary_lines) || 0,
         comp_amt:      Number(r.comp_amt)      || 0,
         comp_lines:    Number(r.comp_lines)    || 0,
+        container_amt: Number(r.container_amt) || 0,
+        warehouse_amt: Number(r.warehouse_amt) || 0,
       }));
     },
   });
@@ -877,7 +883,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     const targetMetric = metric === "bookings" ? "bookings" : "invoiced";
 
     type Key = string;
-    const rows = new Map<Key, { primary: number; comparative: number; byMonth: Map<string, number> }>();
+    const rows = new Map<Key, { primary: number; comparative: number; byMonth: Map<string, number>; container: number; warehouse: number }>();
 
     for (const line of repLines) {
       if (line.metric_type !== targetMetric) continue;
@@ -940,8 +946,12 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
       const monthKey = `${d.getFullYear()}-${MONTH_NAMES[d.getMonth()]}`;
       let row = rows.get(k);
-      if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map() }; rows.set(k, row); }
-      if (inPrim) row.primary += val;
+      if (!row) { row = { primary: 0, comparative: 0, byMonth: new Map(), container: 0, warehouse: 0 }; rows.set(k, row); }
+      if (inPrim) {
+        row.primary += val;
+        if (line.fulfillment_type === "container") row.container += val;
+        else if (line.fulfillment_type === "warehouse") row.warehouse += val;
+      }
       if (inComp) row.comparative += val;
       row.byMonth.set(monthKey, (row.byMonth.get(monthKey) ?? 0) + val);
     }
@@ -1494,7 +1504,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   const label = groupBy === "rep"
                     ? (repAcIdToCanonical.get(r.entity_key.trim().toLowerCase()) ?? r.entity_key)
                     : (r.entity_label ?? r.entity_key);
-                  return { key: r.entity_key, label, primary: r.primary_amt, comparative: r.comp_amt };
+                  return { key: r.entity_key, label, primary: r.primary_amt, comparative: r.comp_amt, container: r.container_amt, warehouse: r.warehouse_amt };
                 })}
                 leftHeader={leftHeader}
                 showComparison={compareMode !== "none"}
@@ -1550,17 +1560,25 @@ function fmtGoalPct(v: number | null) {
   return `${v.toFixed(0)}%`;
 }
 
+function fmtFulfillPct(amount: number, primary: number): string {
+  if (primary <= 0) return "—";
+  return `${((amount / primary) * 100).toFixed(1)}%`;
+}
+
 function TotalTable({
   rows, leftHeader, showComparison, onRowClick, goalData,
 }: {
-  rows: { key: string; label: string; primary: number; comparative: number }[];
+  rows: { key: string; label: string; primary: number; comparative: number; container?: number; warehouse?: number }[];
   leftHeader: string;
   showComparison?: boolean;
   onRowClick?: (key: string, label: string) => void;
   goalData?: Map<string, { mtdPct: number | null; ytdPct: number | null }>;
 }) {
-  const totalP = rows.reduce((s, r) => s + r.primary, 0);
-  const totalC = rows.reduce((s, r) => s + r.comparative, 0);
+  const totalP         = rows.reduce((s, r) => s + r.primary, 0);
+  const totalC         = rows.reduce((s, r) => s + r.comparative, 0);
+  const totalContainer = rows.reduce((s, r) => s + (r.container ?? 0), 0);
+  const totalWarehouse = rows.reduce((s, r) => s + (r.warehouse ?? 0), 0);
+  const hasContainerData = rows.some((r) => r.container !== undefined);
 
   return (
     <table className="w-full text-sm">
@@ -1582,6 +1600,16 @@ function TotalTable({
           <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Primary
           </th>
+          {hasContainerData && (
+            <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              % Cont.
+            </th>
+          )}
+          {hasContainerData && (
+            <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              % Whse.
+            </th>
+          )}
           {showComparison && (
             <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               Comparative
@@ -1631,6 +1659,16 @@ function TotalTable({
                 </td>
               )}
               <td className="px-5 py-3 text-right tabular-nums font-medium">{formatCurrency(r.primary)}</td>
+              {hasContainerData && (
+                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground text-sm">
+                  {fmtFulfillPct(r.container ?? 0, r.primary)}
+                </td>
+              )}
+              {hasContainerData && (
+                <td className="px-4 py-3 text-right tabular-nums text-muted-foreground text-sm">
+                  {fmtFulfillPct(r.warehouse ?? 0, r.primary)}
+                </td>
+              )}
               {showComparison && (
                 <td className="px-5 py-3 text-right tabular-nums text-muted-foreground">{formatCurrency(r.comparative)}</td>
               )}
@@ -1649,7 +1687,7 @@ function TotalTable({
         })}
         {rows.length === 0 && (
           <tr>
-            <td colSpan={(showComparison ? 5 : 2) + (goalData ? 2 : 0)} className="px-5 py-10 text-center text-sm text-muted-foreground">
+            <td colSpan={(showComparison ? 5 : 2) + (goalData ? 2 : 0) + (hasContainerData ? 2 : 0)} className="px-5 py-10 text-center text-sm text-muted-foreground">
               No results for the selected filters.
             </td>
           </tr>
@@ -1660,6 +1698,16 @@ function TotalTable({
             {goalData && <td className="px-4 py-3" />}
             {goalData && <td className="px-4 py-3" />}
             <td className="px-5 py-3 text-right tabular-nums font-semibold">{formatCurrency(totalP)}</td>
+            {hasContainerData && (
+              <td className="px-4 py-3 text-right tabular-nums font-semibold text-muted-foreground">
+                {fmtFulfillPct(totalContainer, totalP)}
+              </td>
+            )}
+            {hasContainerData && (
+              <td className="px-4 py-3 text-right tabular-nums font-semibold text-muted-foreground">
+                {fmtFulfillPct(totalWarehouse, totalP)}
+              </td>
+            )}
             {showComparison && (
               <td className="px-5 py-3 text-right tabular-nums font-semibold text-muted-foreground">{formatCurrency(totalC)}</td>
             )}

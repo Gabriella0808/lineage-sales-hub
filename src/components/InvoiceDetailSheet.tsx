@@ -28,6 +28,7 @@ export interface ViewLine {
   amount:           number;
   invoice_number:   string | null;
   invoice_type:     string | null;
+  fulfillment_type?: string | null;
 }
 
 type FetchFn = (params: { limit: number; offset: number }) => Promise<ViewLine[]>;
@@ -484,6 +485,24 @@ export function InvoiceDetailSheet({
   const displayInvoicedAmt = makeFetchLines && metric === "invoices" && lazyTotal !== null
     ? lazyTotal : (makeFetchLines ? primaryInvoicedAmt : primInvoicedTotal);
 
+  const containerAmt = useMemo(
+    () => primActive.reduce((s, l) => s + (l.fulfillment_type === "container" ? Number(l.amount) : 0), 0),
+    [primActive],
+  );
+  const warehouseAmt = useMemo(
+    () => primActive.reduce((s, l) => s + (l.fulfillment_type === "warehouse" ? Number(l.amount) : 0), 0),
+    [primActive],
+  );
+  const hasFulfillmentData = useMemo(
+    () => primActive.some((l) => l.fulfillment_type != null),
+    [primActive],
+  );
+  function fmtFulfillPct(amt: number, total: number): string {
+    if (!hasFulfillmentData || loadingAll) return "…";
+    if (total <= 0) return "—";
+    return `${((amt / total) * 100).toFixed(1)}%`;
+  }
+
   const noData = makeFetchLines
     ? (!loadingAll && allLines.length === 0 && (bookingRangeValid || metric !== "bookings"))
     : (primInvoiced.length === 0 && primBookings.length === 0);
@@ -593,15 +612,25 @@ export function InvoiceDetailSheet({
 
         {/* ── Stat cards ── */}
         {makeFetchLines ? (
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <StatCard label="Invoiced"
-              value={displayInvoicedAmt != null ? formatCurrency(displayInvoicedAmt) : (loadingAll ? "…" : "—")} />
-            <StatCard label="Bookings"
-              value={displayBookingsAmt != null ? formatCurrency(displayBookingsAmt) : (loadingAll ? "…" : "—")} />
+          <div className="mt-4 grid grid-cols-4 gap-2">
+            <StatCard
+              label={metric === "bookings" ? "Bookings" : "Invoiced"}
+              value={metric === "bookings"
+                ? (displayBookingsAmt != null ? formatCurrency(displayBookingsAmt) : (loadingAll ? "…" : "—"))
+                : (displayInvoicedAmt != null ? formatCurrency(displayInvoicedAmt) : (loadingAll ? "…" : "—"))}
+            />
+            <StatCard
+              label="% Container"
+              value={fmtFulfillPct(containerAmt, grandTotal)}
+            />
+            <StatCard
+              label="% Warehouse"
+              value={fmtFulfillPct(warehouseAmt, grandTotal)}
+            />
             <StatCard label="Lines" value={loadingAll ? "…" : allLines.length.toLocaleString()} />
           </div>
         ) : (
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2">
             <StatCard
               label="Invoiced"
               value={formatCurrency(primInvoicedTotal)}
@@ -616,6 +645,14 @@ export function InvoiceDetailSheet({
               compLabel={compLabel ?? undefined}
               delta={hasCompare && localTo >= BOOKING_CUTOFF && compareTo! >= BOOKING_CUTOFF
                 ? pctDelta(primBookingsTotal, compBookingsTotal) : undefined}
+            />
+            <StatCard
+              label="% Container"
+              value={fmtFulfillPct(containerAmt, grandTotal)}
+            />
+            <StatCard
+              label="% Warehouse"
+              value={fmtFulfillPct(warehouseAmt, grandTotal)}
             />
             <StatCard
               label="Lines"

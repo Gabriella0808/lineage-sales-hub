@@ -1182,8 +1182,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           brand_category:   r.brand_category ?? null,
           product_class:    r.product_class  ?? null,
           amount:           Number(r.amount) || 0,
-          invoice_number:   r.invoice_number ?? null,
-          invoice_type:     r.invoice_type   ?? null,
+          invoice_number:   r.invoice_number   ?? null,
+          invoice_type:     r.invoice_type     ?? null,
+          fulfillment_type: r.fulfillment_type ?? null,
         }));
       };
     };

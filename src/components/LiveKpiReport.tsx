@@ -138,7 +138,7 @@ const LINE_BOOK = [
 
 
 const fmtPct = (n: number) => (!isFinite(n) || n === 0) ? "-" : `${(n * 100).toFixed(1)}%`;
-// Like fmtPct but never returns "-" for 0 — used when we know classified data exists
+// Like fmtPct but never returns "-" for 0 — used for branch percentages (0.0% is meaningful)
 // and a zero share is meaningful (e.g. container=0 while warehouse>0).
 const fmtPctRaw = (n: number) => `${(n * 100).toFixed(1)}%`;
 
@@ -662,10 +662,61 @@ export function LiveKpiReport({
   const sumI25 = sum(monthly, "i25");
   const sumI26P = sum(monthly, "i26p");
   const sumYtdI = sum(monthly, "ytdI");
-  const sumYtdICont = monthly.reduce((s, r: any) => s + (r.ytdIContainer ?? 0), 0);
-  const sumYtdIWh = monthly.reduce((s, r: any) => s + (r.ytdIWarehouse ?? 0), 0);
-  const sumYtdBCont = monthly.reduce((s, r: any) => s + (r.ytdBContainer ?? 0), 0);
-  const sumYtdBWh = monthly.reduce((s, r: any) => s + (r.ytdBWarehouse ?? 0), 0);
+  // Column-sum % values for the TOTAL row — sum of the per-month displayed percentages,
+  // matching Excel SUM behavior (not weighted by amount).
+  // Months that show "—" (bkVisible=false) or "-" (zero/undefined) are excluded.
+  const sumBGoalPct = monthly.reduce((s, r) => {
+    const mIdx = MONTHLY.findIndex((m) => m.m === r.m);
+    if (mIdx < 0 || !isBookingVisible(2026, mIdx + 1) || r.b26p <= 0) return s;
+    const pct = r.ytdB / r.b26p;
+    return isFinite(pct) && pct > 0 ? s + pct : s;
+  }, 0);
+  const sumBContPct = monthly.reduce((s, r: any) => {
+    const mIdx = MONTHLY.findIndex((m) => m.m === r.m);
+    if (mIdx < 0 || !isBookingVisible(2026, mIdx + 1)) return s;
+    const cont = r.ytdBContainer ?? 0;
+    const wh   = r.ytdBWarehouse  ?? 0;
+    if (cont + wh === 0 || r.ytdB <= 0) return s;
+    return s + cont / r.ytdB;
+  }, 0);
+  const sumBWhPct = monthly.reduce((s, r: any) => {
+    const mIdx = MONTHLY.findIndex((m) => m.m === r.m);
+    if (mIdx < 0 || !isBookingVisible(2026, mIdx + 1)) return s;
+    const cont = r.ytdBContainer ?? 0;
+    const wh   = r.ytdBWarehouse  ?? 0;
+    if (cont + wh === 0 || r.ytdB <= 0) return s;
+    return s + wh / r.ytdB;
+  }, 0);
+  const sumBUnclassPct = monthly.reduce((s, r: any) => {
+    const mIdx = MONTHLY.findIndex((m) => m.m === r.m);
+    if (mIdx < 0 || !isBookingVisible(2026, mIdx + 1) || r.ytdB <= 0) return s;
+    const cont = r.ytdBContainer ?? 0;
+    const wh   = r.ytdBWarehouse  ?? 0;
+    return s + Math.max(0, r.ytdB - cont - wh) / r.ytdB;
+  }, 0);
+  const sumIGoalPct = monthly.reduce((s, r) => {
+    if (r.i26p <= 0) return s;
+    const pct = r.ytdI / r.i26p;
+    return isFinite(pct) && pct > 0 ? s + pct : s;
+  }, 0);
+  const sumIContPct = monthly.reduce((s, r: any) => {
+    const cont = r.ytdIContainer ?? 0;
+    const wh   = r.ytdIWarehouse  ?? 0;
+    if (cont + wh === 0 || r.ytdI <= 0) return s;
+    return s + cont / r.ytdI;
+  }, 0);
+  const sumIWhPct = monthly.reduce((s, r: any) => {
+    const cont = r.ytdIContainer ?? 0;
+    const wh   = r.ytdIWarehouse  ?? 0;
+    if (cont + wh === 0 || r.ytdI <= 0) return s;
+    return s + wh / r.ytdI;
+  }, 0);
+  const sumIUnclassPct = monthly.reduce((s, r: any) => {
+    if (r.ytdI <= 0) return s;
+    const cont = r.ytdIContainer ?? 0;
+    const wh   = r.ytdIWarehouse  ?? 0;
+    return s + Math.max(0, r.ytdI - cont - wh) / r.ytdI;
+  }, 0);
 
   // For bookings, only count goals for months where bookings are actually visible
   // (Aug 2026+). The TOTAL row would otherwise show $15.8M goal vs $856K actuals
@@ -1095,8 +1146,8 @@ export function LiveKpiReport({
             <thead>
               <tr className="border-b">
                 <th rowSpan={2} className="text-left p-2 font-medium text-muted-foreground align-bottom">Month</th>
-                {showB && <th colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 6 : 5} className="text-center p-2 font-semibold border-l bg-muted/30">Bookings</th>}
-                {showI && <th colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 6 : 5} className="text-center p-2 font-semibold border-l bg-muted/30">Invoiced</th>}
+                {showB && <th colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 7 : 6} className="text-center p-2 font-semibold border-l bg-muted/30">Bookings</th>}
+                {showI && <th colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 7 : 6} className="text-center p-2 font-semibold border-l bg-muted/30">Invoiced</th>}
               </tr>
               <tr className="border-b text-muted-foreground">
                 {showB && <>
@@ -1106,6 +1157,7 @@ export function LiveKpiReport({
                   {SHOW_PRIOR_YEAR_ACTUALS && <th className="text-right p-2 font-medium">25 Act</th>}
                   <th className="text-right p-2 font-medium">% Container</th>
                   <th className="text-right p-2 font-medium">% Warehouse</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground">% Unclass</th>
                 </>}
                 {showI && <>
                   <th className="text-right p-2 font-medium border-l">26 Act</th>
@@ -1114,6 +1166,7 @@ export function LiveKpiReport({
                   {SHOW_PRIOR_YEAR_ACTUALS && <th className="text-right p-2 font-medium">25 Act</th>}
                   <th className="text-right p-2 font-medium">% Container</th>
                   <th className="text-right p-2 font-medium">% Warehouse</th>
+                  <th className="text-right p-2 font-medium text-muted-foreground">% Unclass</th>
                 </>}
               </tr>
             </thead>
@@ -1127,10 +1180,12 @@ export function LiveKpiReport({
                   ytdBContainer?: number; ytdBWarehouse?: number;
                   b25Container?: number; b25Warehouse?: number;
                 };
-                const ytdBCont = rAny.ytdBContainer ?? 0;
-                const ytdBWh  = rAny.ytdBWarehouse  ?? 0;
-                const ytdICont = rAny.ytdIContainer ?? 0;
-                const ytdIWh   = rAny.ytdIWarehouse  ?? 0;
+                const ytdBCont   = rAny.ytdBContainer ?? 0;
+                const ytdBWh     = rAny.ytdBWarehouse  ?? 0;
+                const ytdBUnclass = Math.max(0, r.ytdB - ytdBCont - ytdBWh);
+                const ytdICont   = rAny.ytdIContainer ?? 0;
+                const ytdIWh     = rAny.ytdIWarehouse  ?? 0;
+                const ytdIUnclass = Math.max(0, r.ytdI - ytdICont - ytdIWh);
                 // Booking actuals are only visible from Aug 2026 onwards.
                 const bkVisible = isBookingVisible(2026, idx + 1);
                 return (
@@ -1151,6 +1206,9 @@ export function LiveKpiReport({
                       <td className="p-2 text-right">
                         {bkVisible ? (ytdBCont + ytdBWh === 0 ? "-" : fmtPctRaw(ytdBWh  / Math.max(r.ytdB, 1))) : "—"}
                       </td>
+                      <td className="p-2 text-right text-muted-foreground">
+                        {bkVisible ? (r.ytdB <= 0 ? "-" : fmtPctRaw(ytdBUnclass / r.ytdB)) : "—"}
+                      </td>
                     </>}
                     {showI && <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
@@ -1159,6 +1217,7 @@ export function LiveKpiReport({
                       {SHOW_PRIOR_YEAR_ACTUALS && <td className="p-2 text-right">{formatCurrency(r.i25)}</td>}
                       <td className="p-2 text-right">{ytdICont + ytdIWh === 0 ? "-" : fmtPctRaw(ytdICont / Math.max(r.ytdI, 1))}</td>
                       <td className="p-2 text-right">{ytdICont + ytdIWh === 0 ? "-" : fmtPctRaw(ytdIWh   / Math.max(r.ytdI, 1))}</td>
+                      <td className="p-2 text-right text-muted-foreground">{r.ytdI <= 0 ? "-" : fmtPctRaw(ytdIUnclass / r.ytdI)}</td>
                     </>}
                   </tr>
                 );
@@ -1168,18 +1227,20 @@ export function LiveKpiReport({
                 {showB && <>
                   <td className="p-2 text-right border-l">{formatCurrency(sumYtdB)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumB26P)}</td>
-                  <td className="p-2 text-right">{fmtPct(sumYtdB / sumB26P)}</td>
+                  <td className="p-2 text-right">{sumBGoalPct <= 0 ? "-" : fmtPctRaw(sumBGoalPct)}</td>
                   {SHOW_PRIOR_YEAR_ACTUALS && <td className="p-2 text-right">{formatCurrency(sumB25)}</td>}
-                  <td className="p-2 text-right">{sumYtdBCont + sumYtdBWh === 0 ? "-" : fmtPctRaw(sumYtdBCont / Math.max(sumYtdB, 1))}</td>
-                  <td className="p-2 text-right">{sumYtdBCont + sumYtdBWh === 0 ? "-" : fmtPctRaw(sumYtdBWh  / Math.max(sumYtdB, 1))}</td>
+                  <td className="p-2 text-right">{sumBContPct <= 0 && sumBWhPct <= 0 ? "-" : fmtPctRaw(sumBContPct)}</td>
+                  <td className="p-2 text-right">{sumBContPct <= 0 && sumBWhPct <= 0 ? "-" : fmtPctRaw(sumBWhPct)}</td>
+                  <td className="p-2 text-right text-muted-foreground">{sumBUnclassPct <= 0 ? "-" : fmtPctRaw(sumBUnclassPct)}</td>
                 </>}
                 {showI && <>
                   <td className="p-2 text-right border-l">{formatCurrency(sumYtdI)}</td>
                   <td className="p-2 text-right">{formatCurrency(sumI26P)}</td>
-                  <td className="p-2 text-right">{fmtPct(sumYtdI / sumI26P)}</td>
+                  <td className="p-2 text-right">{sumIGoalPct <= 0 ? "-" : fmtPctRaw(sumIGoalPct)}</td>
                   {SHOW_PRIOR_YEAR_ACTUALS && <td className="p-2 text-right">{formatCurrency(sumI25)}</td>}
-                  <td className="p-2 text-right">{sumYtdICont + sumYtdIWh === 0 ? "-" : fmtPctRaw(sumYtdICont / Math.max(sumYtdI, 1))}</td>
-                  <td className="p-2 text-right">{sumYtdICont + sumYtdIWh === 0 ? "-" : fmtPctRaw(sumYtdIWh  / Math.max(sumYtdI, 1))}</td>
+                  <td className="p-2 text-right">{sumIContPct <= 0 && sumIWhPct <= 0 ? "-" : fmtPctRaw(sumIContPct)}</td>
+                  <td className="p-2 text-right">{sumIContPct <= 0 && sumIWhPct <= 0 ? "-" : fmtPctRaw(sumIWhPct)}</td>
+                  <td className="p-2 text-right text-muted-foreground">{sumIUnclassPct <= 0 ? "-" : fmtPctRaw(sumIUnclassPct)}</td>
                 </>}
               </tr>
             </tbody>

@@ -79,6 +79,7 @@ SELECT
     CAST(ISNULL(o.CustomerID,      '')              AS NVARCHAR(100))                 AS customer_id,
     CAST(ISNULL(o.SoldToName,      '')              AS NVARCHAR(255))                 AS sold_to_name,
     CAST(ISNULL(o.ShipToDescription,'')             AS NVARCHAR(255))                 AS ship_to_description,
+    CAST(ISNULL(o.BranchID,        '')              AS NVARCHAR(50))                  AS branch_id,
     CAST('$SourceTag'                               AS NVARCHAR(50))                  AS source
 FROM dbo.[Order] o
 WHERE o.OrderDate >= '$RangeStart'
@@ -109,6 +110,7 @@ WITH src AS (
         LOWER(REPLACE(REPLACE(CAST(od.GUIDOrderDetail  AS NVARCHAR(64)),'{',''),'}',''))  AS source_guid_order_detail,
         CAST(o.OrderDate                               AS date)                           AS order_date,
         CAST(COALESCE(NULLIF(RTRIM(pc.Description),''), NULLIF(RTRIM(prod.ProductClassID),''),'') AS NVARCHAR(128)) AS product_class,
+        $discCodeExpr                                                                     AS discount_code,
         CAST('$SourceTag'                              AS NVARCHAR(50))                   AS source,
         ROW_NUMBER() OVER (
             PARTITION BY od.GUIDOrder, od.LineNumber, od.SubLineNumber,
@@ -137,6 +139,7 @@ $OrderAllowedCols = @{
     'guid_salesperson'    = 1; 'rep1'               = 1; 'rep2'              = 1
     'subtotal'            = 1; 'synced_at'          = 1; 'customer_id'       = 1
     'sold_to_name'        = 1; 'ship_to_description'= 1; 'source'            = 1
+    'branch_id'           = 1
 }
 
 $LineAllowedCols = @{
@@ -151,7 +154,7 @@ $LineAllowedCols = @{
     'component_level'          = 1; 'duplicate_row_ordinal' = 1
     'natural_key'              = 1; 'source'                = 1
     'order_date'               = 1; 'synced_at'             = 1
-    'product_class'            = 1
+    'product_class'            = 1; 'discount_code'         = 1
 }
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -256,6 +259,11 @@ function Post-Json {
 
 $ExcludedCats = @('FREIGHTO','MISC','SALESTAX','TARIFF')
 $MonthNames   = @{ 1='Jan';2='Feb';3='Mar';4='Apr';5='May';6='Jun';7='Jul' }
+
+# ── Discount code field ───────────────────────────────────────────────────────
+# Confirmed in SSMS: dbo.OrderDetail._DiscType holds the Acctivate Disc Code.
+# Labor Day promo lines have _DiscType = 'LD26'. PriceCode ('NS'/'SD') is unrelated.
+$discCodeExpr = "CAST(NULLIF(RTRIM(ISNULL(od._DiscType, '')), '') AS NVARCHAR(50))"
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -420,7 +428,7 @@ Write-Host ('  '+$uploadedOrders+' of '+$pulledOrders+' orders uploaded') -Foreg
 
 # ─── Phase 2: Upload order lines ─────────────────────────────────────────────
 
-$LinesUrl = $SupabaseUrl+'/rest/v1/portal_acctivate_order_lines?on_conflict=natural_key'
+$LinesUrl = $SupabaseUrl+'/rest/v1/portal_acctivate_order_lines?on_conflict=guid_order_detail'
 
 foreach ($row in $allLines) { $row['synced_at'] = $now }
 

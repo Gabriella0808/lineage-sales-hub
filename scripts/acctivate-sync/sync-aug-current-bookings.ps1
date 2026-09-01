@@ -64,6 +64,36 @@ if ($cfg.sql.integratedSecurity) {
 $connStr += 'Encrypt=False;TrustServerCertificate=True;'
 
 # ---------------------------------------------------------------------------
+# SQL execution helper  (must be defined before Test-ColumnExists and any
+# schema-discovery calls that happen at script load time)
+# ---------------------------------------------------------------------------
+
+function Invoke-Sql {
+    param([string]$SqlQuery)
+    $conn = New-Object System.Data.SqlClient.SqlConnection($connStr)
+    $conn.Open()
+    try {
+        $cmd             = $conn.CreateCommand()
+        $cmd.CommandText = $SqlQuery
+        $cmd.CommandTimeout = $SqlTimeout
+        $reader = $cmd.ExecuteReader()
+        $rows = New-Object System.Collections.Generic.List[hashtable]
+        while ($reader.Read()) {
+            $row = @{}
+            for ($i = 0; $i -lt $reader.FieldCount; $i++) {
+                $name = $reader.GetName($i)
+                $val  = $reader.GetValue($i)
+                $row[$name] = if ($val -is [System.DBNull]) { $null } else { $val }
+            }
+            $rows.Add($row) | Out-Null
+        }
+        return ,$rows.ToArray()
+    } finally {
+        $conn.Close()
+    }
+}
+
+# ---------------------------------------------------------------------------
 # SQL: Orders — schema discovery
 #
 # CustomerID is confirmed present in dbo.Orders (same value as dbo_Orders."CustomerID").
@@ -94,6 +124,11 @@ $shipToDescExpr = if ($hasShipToDesc) {
     "CAST('' AS NVARCHAR(500))"
 }
 
+# ── Discount code field ───────────────────────────────────────────────────────
+# Confirmed in SSMS: dbo.OrderDetail._DiscType holds the Acctivate Disc Code.
+# Labor Day promo lines have _DiscType = 'LD26'. PriceCode ('NS'/'SD') is unrelated.
+$discCodeExpr = "CAST(NULLIF(RTRIM(ISNULL(od._DiscType, '')), '') AS NVARCHAR(50))"
+
 # ---------------------------------------------------------------------------
 # SQL: Orders
 #
@@ -120,7 +155,8 @@ SELECT
     CAST(CAST(COALESCE(o.SubTotal, 0) AS decimal(18,2)) AS NVARCHAR(30))               AS subtotal,
     CAST(ISNULL(o.CustomerID, '')     AS NVARCHAR(100))                                 AS customer_id,
     $soldToNameExpr                                                                     AS sold_to_name,
-    $shipToDescExpr                                                                     AS ship_to_description
+    $shipToDescExpr                                                                     AS ship_to_description,
+    CAST(ISNULL(o.BranchID, '')      AS NVARCHAR(50))                                  AS branch_id
 FROM dbo.Orders o
 WHERE o.OrderDate >= '2026-08-01'
   AND o.OrderDate <  DATEADD(day, 1, CAST(GETDATE() AS date))
@@ -167,6 +203,7 @@ WITH src AS (
         CAST(COALESCE(NULLIF(RTRIM(pc.Description), ''), NULLIF(RTRIM(prod.ProductClassID), ''), '') AS NVARCHAR(128)) AS product_class,
         CAST(CASE WHEN od.LineCancelled = 1 THEN 1 ELSE 0 END AS bit)                      AS line_cancelled,
         CAST(CASE WHEN od.Freight       = 1 THEN 1 ELSE 0 END AS bit)                      AS freight,
+        $discCodeExpr                                                                       AS discount_code,
         CAST('aug_direct_pull' AS NVARCHAR(50))                                             AS source,
         ROW_NUMBER() OVER (
             PARTITION BY
@@ -185,35 +222,6 @@ WITH src AS (
 SELECT * FROM src
 ORDER BY order_date, order_number, line_number, sub_line_number, component_level
 "@
-
-# ---------------------------------------------------------------------------
-# SQL execution helper
-# ---------------------------------------------------------------------------
-
-function Invoke-Sql {
-    param([string]$SqlQuery)
-    $conn = New-Object System.Data.SqlClient.SqlConnection($connStr)
-    $conn.Open()
-    try {
-        $cmd             = $conn.CreateCommand()
-        $cmd.CommandText = $SqlQuery
-        $cmd.CommandTimeout = $SqlTimeout
-        $reader = $cmd.ExecuteReader()
-        $rows = New-Object System.Collections.Generic.List[hashtable]
-        while ($reader.Read()) {
-            $row = @{}
-            for ($i = 0; $i -lt $reader.FieldCount; $i++) {
-                $name = $reader.GetName($i)
-                $val  = $reader.GetValue($i)
-                $row[$name] = if ($val -is [System.DBNull]) { $null } else { $val }
-            }
-            $rows.Add($row) | Out-Null
-        }
-        return ,$rows.ToArray()
-    } finally {
-        $conn.Close()
-    }
-}
 
 # ---------------------------------------------------------------------------
 # Value cleaning
@@ -296,6 +304,7 @@ $OrderAllowedCols = @{
     'guid_salesperson'    = 1; 'rep1'                = 1; 'rep2'                = 1
     'subtotal'            = 1; 'synced_at'           = 1
     'customer_id'         = 1; 'sold_to_name'        = 1; 'ship_to_description' = 1
+    'branch_id'           = 1
 }
 
 $LineAllowedCols = @{
@@ -310,7 +319,7 @@ $LineAllowedCols = @{
     'component_level'          = 1; 'duplicate_row_ordinal'= 1
     'natural_key'              = 1; 'source'               = 1
     'order_date'               = 1; 'synced_at'            = 1
-    'product_class'            = 1
+    'product_class'            = 1; 'discount_code'        = 1
 }
 
 function Strip-Row {
@@ -403,7 +412,7 @@ $CsvColumns = @(
     'guid_order', 'order_date', 'line_number', 'sub_line_number', 'component_level',
     'product_id', 'description', 'qty_ordered', 'original_price', 'line_discount_pct',
     'amount', 'tariff_amount', 'freight_amount', 'sales_category',
-    'line_cancelled', 'freight', 'source', 'duplicate_row_ordinal'
+    'line_cancelled', 'freight', 'discount_code', 'source', 'duplicate_row_ordinal'
 )
 
 function Log-FailedRow {
@@ -632,7 +641,7 @@ $linePayloads = @($lineRows | ForEach-Object {
     $row
 })
 
-$LinesUpsertUrl = $SupabaseUrl + '/rest/v1/portal_acctivate_order_lines?on_conflict=natural_key'
+$LinesUpsertUrl = $SupabaseUrl + '/rest/v1/portal_acctivate_order_lines?on_conflict=guid_order_detail'
 
 Write-Host ''
 Write-Host ('Uploading ' + $pulledLines + ' lines in batches of ' + $BatchSize + '...') -ForegroundColor Cyan

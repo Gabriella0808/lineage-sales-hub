@@ -1504,7 +1504,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   const label = groupBy === "rep"
                     ? (repAcIdToCanonical.get(r.entity_key.trim().toLowerCase()) ?? r.entity_key)
                     : (r.entity_label ?? r.entity_key);
-                  return { key: r.entity_key, label, primary: r.primary_amt, comparative: r.comp_amt, container: r.container_amt, warehouse: r.warehouse_amt };
+                  return { key: r.entity_key, label, primary: r.primary_amt, comparative: r.comp_amt, ...(groupBy === "rep" ? { container: r.container_amt, warehouse: r.warehouse_amt } : {}) };
                 })}
                 leftHeader={leftHeader}
                 showComparison={compareMode !== "none"}
@@ -1522,7 +1522,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               />
             ) : (
               <TotalTable
-                rows={aggregation.rows}
+                rows={groupBy === "rep" ? aggregation.rows : aggregation.rows.map((r) => ({ ...r, container: undefined, warehouse: undefined }))}
                 leftHeader={leftHeader}
                 showComparison={compareMode !== "none"}
                 onRowClick={(key, label) => setDrillRow({ key, label })}

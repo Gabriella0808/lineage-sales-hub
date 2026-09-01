@@ -29,7 +29,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Plus, Search, ChevronDown, CalendarDays, Clock, Building2, Mail,
-  Pencil, Trash2, Loader2, Users, TrendingUp, User, Upload,
+  Pencil, Trash2, Loader2, Users, TrendingUp, User, Upload, ArrowRightLeft,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -104,11 +104,13 @@ type FormData = {
   appointment_time: string;
   notes: string;
   status: ApptStatus;
+  phase: "Premarket" | "Market";
 };
 
-const emptyForm = (): FormData => ({
+const emptyForm = (currentPhase: "Premarket" | "Market" = "Premarket"): FormData => ({
   rep_id: "", dealer: "", buyer_name: "", buyer_email: "",
   appointment_day: "", appointment_time: "", notes: "", status: "Target",
+  phase: currentPhase,
 });
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -136,7 +138,7 @@ export function HighPointAppointmentsModule() {
   // Form
   const [formOpen, setFormOpen]           = useState(false);
   const [editingId, setEditingId]         = useState<string | null>(null);
-  const [form, setForm]                   = useState<FormData>(emptyForm());
+  const [form, setForm]                   = useState<FormData>(emptyForm(phase));
   const [submitting, setSubmitting]       = useState(false);
 
   // Delete
@@ -567,7 +569,7 @@ export function HighPointAppointmentsModule() {
 
   const openNew = () => {
     setEditingId(null);
-    setForm({ ...emptyForm(), rep_id: isRep ? (currentRepId ?? "") : "" });
+    setForm({ ...emptyForm(phase), rep_id: isRep ? (currentRepId ?? "") : "" });
     setFormOpen(true);
   };
 
@@ -582,6 +584,7 @@ export function HighPointAppointmentsModule() {
       appointment_time: a.appointment_time?.slice(0, 5) ?? "",
       notes:            a.notes            ?? "",
       status:           a.status,
+      phase:            a.phase as "Premarket" | "Market",
     });
     setFormOpen(true);
   };
@@ -598,7 +601,7 @@ export function HighPointAppointmentsModule() {
 
     const payload = {
       event_id:         selectedEventId,
-      phase,
+      phase:            form.phase,
       rep_id:           repId,
       dealer:           form.dealer.trim()           || null,
       buyer_name:       form.buyer_name.trim()       || null,
@@ -613,7 +616,13 @@ export function HighPointAppointmentsModule() {
     if (editingId) {
       const { error } = await supabase.from("market_appointments").update(payload).eq("id", editingId);
       if (error) { toast.error(error.message); setSubmitting(false); return; }
-      toast.success("Lead updated");
+      const phaseChanged = form.phase !== phase;
+      if (phaseChanged) {
+        toast.success(`Lead moved to ${form.phase}`);
+        setAppointments((prev) => prev.filter((a) => a.id !== editingId));
+      } else {
+        toast.success("Lead updated");
+      }
     } else {
       const { error } = await supabase.from("market_appointments").insert({ ...payload, created_by: user?.id ?? null });
       if (error) { toast.error(error.message); setSubmitting(false); return; }
@@ -623,8 +632,20 @@ export function HighPointAppointmentsModule() {
     setSubmitting(false);
     setFormOpen(false);
     setEditingId(null);
-    setForm(emptyForm());
-    loadAppointments(selectedEventId, phase);
+    setForm(emptyForm(phase));
+    if (!editingId || form.phase === phase) loadAppointments(selectedEventId, phase);
+  };
+
+  const movePhase = async (id: string) => {
+    const targetPhase = phase === "Premarket" ? "Market" : "Premarket";
+    setAppointments((prev) => prev.filter((a) => a.id !== id));
+    const { error } = await supabase.from("market_appointments").update({ phase: targetPhase }).eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      loadAppointments(selectedEventId, phase);
+    } else {
+      toast.success(`Lead moved to ${targetPhase}`);
+    }
   };
 
   const updateStatus = async (id: string, status: ApptStatus) => {
@@ -822,6 +843,13 @@ export function HighPointAppointmentsModule() {
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-0.5 justify-end">
+                            <Button
+                              size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              title={`Move to ${phase === "Premarket" ? "Market" : "Premarket"}`}
+                              onClick={() => movePhase(a.id)}
+                            >
+                              <ArrowRightLeft className="h-3.5 w-3.5" />
+                            </Button>
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(a)}>
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
@@ -858,6 +886,9 @@ export function HighPointAppointmentsModule() {
                     </div>
                     {a.notes && <p className="text-xs text-muted-foreground leading-relaxed">{a.notes}</p>}
                     <div className="flex gap-1 pt-1 border-t">
+                      <Button size="sm" variant="ghost" className="h-7 text-xs flex-1 text-muted-foreground" onClick={() => movePhase(a.id)}>
+                        <ArrowRightLeft className="h-3 w-3 mr-1" /> {phase === "Premarket" ? "→ Market" : "→ Premarket"}
+                      </Button>
                       <Button size="sm" variant="ghost" className="h-7 text-xs flex-1" onClick={() => openEdit(a)}>
                         <Pencil className="h-3 w-3 mr-1" /> Edit
                       </Button>
@@ -1019,7 +1050,7 @@ export function HighPointAppointmentsModule() {
       </Dialog>
 
       {/* ── Add / edit sheet ────────────────────────────────────────────────── */}
-      <Sheet open={formOpen} onOpenChange={(o) => { if (!o) { setFormOpen(false); setEditingId(null); setForm(emptyForm()); } }}>
+      <Sheet open={formOpen} onOpenChange={(o) => { if (!o) { setFormOpen(false); setEditingId(null); setForm(emptyForm(phase)); } }}>
         <SheetContent className="sm:max-w-md overflow-y-auto">
           <SheetHeader className="text-left">
             <SheetTitle>{editingId ? "Edit Lead" : "Add Trade Show Lead"}</SheetTitle>
@@ -1085,14 +1116,26 @@ export function HighPointAppointmentsModule() {
               </FormField>
             </div>
 
-            <FormField label="Status">
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as ApptStatus })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </FormField>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Phase">
+                <Select value={form.phase} onValueChange={(v) => setForm({ ...form, phase: v as "Premarket" | "Market" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Premarket">Premarket</SelectItem>
+                    <SelectItem value="Market">Market</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+
+              <FormField label="Status">
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as ApptStatus })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
 
             <FormField label="Notes">
               <Textarea
@@ -1105,7 +1148,7 @@ export function HighPointAppointmentsModule() {
           </div>
 
           <div className="flex gap-2 mt-6">
-            <Button variant="outline" className="flex-1" onClick={() => { setFormOpen(false); setEditingId(null); setForm(emptyForm()); }}>
+            <Button variant="outline" className="flex-1" onClick={() => { setFormOpen(false); setEditingId(null); setForm(emptyForm(phase)); }}>
               Cancel
             </Button>
             <Button className="flex-1" onClick={submitForm} disabled={submitting}>

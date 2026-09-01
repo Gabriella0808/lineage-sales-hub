@@ -513,12 +513,8 @@ export function OpenOrdersCalendar() {
         <div className="py-8 text-center text-sm text-destructive">Failed to load calendar: {error}</div>
       )}
       {isEmpty && !loading && (
-        <div className="py-10 text-center space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">No data yet for {year}</p>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Run <code className="font-mono bg-muted px-1 rounded">sync-open-sales-orders.ps1</code> and{" "}
-            <code className="font-mono bg-muted px-1 rounded">sync-open-purchase-orders.ps1</code> on the VM to populate this calendar.
-          </p>
+        <div className="py-10 text-center">
+          <p className="text-sm text-muted-foreground">No open orders for {year}</p>
         </div>
       )}
 

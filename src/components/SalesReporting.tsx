@@ -1575,11 +1575,12 @@ function TotalTable({
   onRowClick?: (key: string, label: string) => void;
   goalData?: Map<string, { mtdPct: number | null; ytdPct: number | null }>;
 }) {
-  const totalP         = rows.reduce((s, r) => s + r.primary, 0);
-  const totalC         = rows.reduce((s, r) => s + r.comparative, 0);
-  const totalContainer = rows.reduce((s, r) => s + (r.container ?? 0), 0);
-  const totalWarehouse = rows.reduce((s, r) => s + (r.warehouse ?? 0), 0);
+  const totalP           = rows.reduce((s, r) => s + r.primary, 0);
+  const totalC           = rows.reduce((s, r) => s + r.comparative, 0);
   const hasContainerData = rows.some((r) => r.container !== undefined);
+  // Column-sum of per-row percentages (same as Live KPI TOTAL row behavior)
+  const sumContainerPct  = rows.reduce((s, r) => r.primary > 0 ? s + (r.container ?? 0) / r.primary : s, 0);
+  const sumWarehousePct  = rows.reduce((s, r) => r.primary > 0 ? s + (r.warehouse ?? 0) / r.primary : s, 0);
 
   return (
     <table className="w-full text-sm">
@@ -1701,12 +1702,12 @@ function TotalTable({
             <td className="px-5 py-3 text-right tabular-nums font-semibold">{formatCurrency(totalP)}</td>
             {hasContainerData && (
               <td className="px-4 py-3 text-right tabular-nums font-semibold text-muted-foreground">
-                {fmtFulfillPct(totalContainer, totalP)}
+                {sumContainerPct <= 0 ? "—" : `${(sumContainerPct * 100).toFixed(1)}%`}
               </td>
             )}
             {hasContainerData && (
               <td className="px-4 py-3 text-right tabular-nums font-semibold text-muted-foreground">
-                {fmtFulfillPct(totalWarehouse, totalP)}
+                {sumWarehousePct <= 0 ? "—" : `${(sumWarehousePct * 100).toFixed(1)}%`}
               </td>
             )}
             {showComparison && (

@@ -427,7 +427,7 @@ export default function LaborDayPromoPage() {
                     <XAxis
                       type="number"
                       domain={[0, Math.max(110, ...repChartData.map(d => d.pct + 10))]}
-                      tickFormatter={v => `${v}%`}
+                      tickFormatter={v => `${Math.round(v)}%`}
                       tick={{ fontSize: 10 }} tickLine={false}
                     />
                     <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} />

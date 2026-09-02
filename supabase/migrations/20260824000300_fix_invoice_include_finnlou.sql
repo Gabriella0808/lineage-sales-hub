@@ -22,6 +22,7 @@ SELECT
   o.guid_salesperson::text                                      AS guid_salesperson,
   date(o.order_date)                                            AS booking_date,
   o.sold_to_name::text                                          AS dealer_name,
+  NULLIF(TRIM(o.customer_id::text), '')                         AS customer_id,
   o.rep1::text                                                  AS rep1,
   o.rep2::text                                                  AS rep2,
   l.product_id::text                                            AS sku,
@@ -307,9 +308,18 @@ SELECT
   f.booking_date::date                                                           AS transaction_date,
   EXTRACT(YEAR  FROM f.booking_date)::int                                        AS year,
   EXTRACT(MONTH FROM f.booking_date)::int                                        AS month_number,
-  COALESCE(f.dealer_name::text, o."CustomerID"::text, cl.customer_id,
-           udl.acctivate_id)                                                     AS dealer_name,
-  COALESCE(o."CustomerID"::text, cl.customer_id, udl.acctivate_id)              AS customer_id,
+  COALESCE(
+    NULLIF(TRIM(f.dealer_name::text), ''),
+    NULLIF(TRIM(o."CustomerID"::text), ''),
+    cl.customer_id,
+    udl.acctivate_id
+  )                                                                              AS dealer_name,
+  COALESCE(
+    f.customer_id,
+    NULLIF(TRIM(o."CustomerID"::text), ''),
+    cl.customer_id,
+    udl.acctivate_id
+  )                                                                              AS customer_id,
   COALESCE(
     osl.salesperson_name,
     NULLIF(o."SalespersonName"::text, ''),

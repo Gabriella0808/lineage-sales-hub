@@ -1,24 +1,24 @@
 -- ══════════════════════════════════════════════════════════════════════════════
--- Add fulfillment_type to Dealer/Rep Reporting chain.
+-- Restore discount_code on v_portal_dealer_rep_reporting_lines /
+-- v_companywide_reporting_actuals.
 --
--- Surfaces fulfillment_type (container / warehouse / unclassified) in every
--- layer of the dealer/rep reporting stack so the table can show % Container
--- and % Warehouse per rep/dealer row.
+-- Root cause: 20260831000300_discount_code_bookings.sql added discount_code
+-- to this view chain. 20260902000300_add_fulfillment_type_to_dealer_rep_reporting.sql
+-- later rebuilt the same chain (DROP VIEW + CREATE VIEW, not CREATE OR REPLACE)
+-- to add fulfillment_type, and its SELECT list omitted discount_code — silently
+-- dropping the column (no error, since DROP+CREATE doesn't check for column
+-- loss the way CREATE OR REPLACE VIEW does).
 --
--- Sources:
---   Invoiced : acctivate_invoice_lines_2026_direct.fulfillment_type (generated column)
---   Bookings : v_portal_bookings_line_facts.fulfillment_type (CASE expression added in 20260902000100)
+-- This is purely additive: discount_code is added back to
+-- get_portal_invoiced_lines(), v_portal_dealer_rep_reporting_lines, and
+-- v_companywide_reporting_actuals (NULL for invoiced rows — invoices don't
+-- carry a discount code). Every other column and every RPC's logic is
+-- reproduced byte-for-byte from the currently-live definitions (the
+-- fulfillment_type work from 20260902000100/200/300 and the entity_label fix
+-- from 20260902000400) — nothing else changes.
 --
--- Branch mapping (applied upstream in source tables):
---   MIXED / DIRECT → container
---   WHSALES        → warehouse
---   blank/null     → unclassified
---
--- New columns exposed by get_sales_reporting_grouped_rows():
---   container_amt  — sum(amount) where fulfillment_type = 'container', primary period
---   warehouse_amt  — sum(amount) where fulfillment_type = 'warehouse', primary period
---
--- Does NOT change: invoice totals, booking totals, Live KPI, Labor Day Promo.
+-- Does NOT change: invoice reporting, Live KPI, booking/invoice formulas,
+-- sync schedules, or any RPC behavior other than re-exposing discount_code.
 -- ══════════════════════════════════════════════════════════════════════════════
 
 -- ─── Drop dependency chain (outermost first) ──────────────────────────────────
@@ -26,66 +26,11 @@
 DROP FUNCTION IF EXISTS public.get_sales_reporting_detail_lines(text,text,text,date,date,text[],text[],text[],text[],int,int,uuid) CASCADE;
 DROP FUNCTION IF EXISTS public.get_sales_reporting_grouped_rows(text,text,date,date,date,date,text[],text[],text[],text[],uuid) CASCADE;
 DROP FUNCTION IF EXISTS public.get_manager_reporting_monthly(uuid,text[],int[]) CASCADE;
-DROP VIEW      IF EXISTS public.v_companywide_reporting_actuals CASCADE;
-DROP VIEW      IF EXISTS public.v_portal_dealer_rep_reporting_lines CASCADE;
+DROP VIEW      IF EXISTS public.v_companywide_reporting_actuals;
+DROP VIEW      IF EXISTS public.v_portal_dealer_rep_reporting_lines;
 DROP FUNCTION  IF EXISTS public.get_portal_invoiced_lines() CASCADE;
 
--- ─── 1. v_portal_invoice_line_facts — add fulfillment_type ───────────────────
--- Uses d.fulfillment_type generated column from acctivate_invoice_lines_2026_direct
--- (corrected to DIRECT → 'container' in migration 20260902000200).
-
-CREATE OR REPLACE VIEW public.v_portal_invoice_line_facts AS
-SELECT
-  d.invoice_date,
-  d.invoice_number,
-  d.customer_id,
-  COALESCE(
-    NULLIF(TRIM(dl.name::text), ''),
-    d.customer_id
-  )                                                         AS dealer_name,
-  COALESCE(
-    NULLIF(TRIM(asr.name::text),           ''),
-    NULLIF(TRIM(pai.sales_rep_name::text), ''),
-    NULLIF(TRIM(pai.sales_rep_id::text),   ''),
-    NULLIF(TRIM(d.sales_rep_id),           ''),
-    'Unassigned'
-  )                                                         AS salesperson_name,
-  COALESCE(NULLIF(TRIM(d.sales_rep_id), ''), '')            AS salesperson_id,
-  d.product_id,
-  d.description,
-  d.product_sales_category                                  AS sales_category,
-  CASE
-    WHEN d.product_sales_category = 'SW'                    THEN 'Sea Winds'
-    WHEN d.product_sales_category IN ('FL', 'FINNLOU')      THEN 'Finn & Lou'
-    WHEN d.product_sales_category = 'LUX'                   THEN 'Lux'
-    WHEN d.product_sales_category = 'ALLOW'                 THEN 'ALLOW'
-    ELSE NULL
-  END                                                       AS display_category,
-  d.product_class::text                                     AS product_class,
-  COALESCE(d.price,             0)::numeric                 AS price,
-  COALESCE(d.qty_invoiced,      0)::numeric                 AS qty_invoiced,
-  COALESCE(d.line_discount_pct, 0)::numeric                 AS line_discount_pct,
-  COALESCE(d.formula_net_amount,0)::numeric                 AS net_invoice_amount,
-  COALESCE(d.invoice_type, '')::text                        AS invoice_type,
-  CASE COALESCE(d.invoice_type, '')
-    WHEN 'C' THEN 'Credit Memo'
-    ELSE COALESCE(d.invoice_type, '')
-  END                                                       AS invoice_type_label,
-  d.fulfillment_type::text                                  AS fulfillment_type
-FROM public.acctivate_invoice_lines_2026_direct d
-LEFT JOIN public.dealers dl
-  ON dl.acctivate_id = d.customer_id
-LEFT JOIN public.portal_acctivate_invoices pai
-  ON pai.guid_invoice::text = d.guid_invoice
-LEFT JOIN public.acctivate_sales_reps asr
-  ON LOWER(TRIM(asr.acctivate_id)) = LOWER(TRIM(d.sales_rep_id))
-WHERE d.invoice_date IS NOT NULL
-  AND d.invoice_date >= '2026-01-01'
-  AND COALESCE(d.product_sales_category, 'NULL') IN ('NULL', 'SW', 'ALLOW', 'FL', 'FINNLOU', 'LUX');
-
-GRANT SELECT ON public.v_portal_invoice_line_facts TO authenticated, anon, service_role;
-
--- ─── 2. get_portal_invoiced_lines() — expose fulfillment_type ────────────────
+-- ─── 1. get_portal_invoiced_lines() — add discount_code (NULL for invoiced) ──
 
 CREATE FUNCTION public.get_portal_invoiced_lines()
 RETURNS TABLE (
@@ -104,7 +49,8 @@ RETURNS TABLE (
   amount           numeric,
   invoice_number   text,
   invoice_type     text,
-  fulfillment_type text
+  fulfillment_type text,
+  discount_code    text
 )
 LANGUAGE sql
 SECURITY DEFINER
@@ -126,14 +72,15 @@ AS $$
     f.net_invoice_amount                          AS amount,
     f.invoice_number,
     f.invoice_type,
-    f.fulfillment_type
+    f.fulfillment_type,
+    NULL::text                                    AS discount_code
   FROM public.v_portal_invoice_line_facts f
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_portal_invoiced_lines()
   TO authenticated, anon, service_role;
 
--- ─── 3. v_portal_dealer_rep_reporting_lines — add fulfillment_type ────────────
+-- ─── 2. v_portal_dealer_rep_reporting_lines — add discount_code back ─────────
 
 CREATE VIEW public.v_portal_dealer_rep_reporting_lines AS
 
@@ -189,7 +136,8 @@ SELECT
   f.net_booking_amount::numeric                                                  AS amount,
   NULL::text                                                                     AS invoice_number,
   NULL::text                                                                     AS invoice_type,
-  f.fulfillment_type::text                                                       AS fulfillment_type
+  f.fulfillment_type::text                                                       AS fulfillment_type,
+  f.discount_code::text                                                          AS discount_code
 FROM public.v_portal_bookings_line_facts f
 LEFT JOIN public."dbo_Orders" o
   ON TRIM(BOTH '{}' FROM LOWER(o."GUIDOrder"::text)) = LOWER(f.guid_order)
@@ -207,12 +155,12 @@ SELECT
   metric_type, transaction_date, year, month_number,
   dealer_name, customer_id, rep_name, rep_id,
   sku, description, brand_category, product_class, amount, invoice_number,
-  invoice_type, fulfillment_type
+  invoice_type, fulfillment_type, discount_code
 FROM public.get_portal_invoiced_lines();
 
 GRANT SELECT ON public.v_portal_dealer_rep_reporting_lines TO anon, authenticated;
 
--- ─── 4. v_companywide_reporting_actuals — pass fulfillment_type through ───────
+-- ─── 3. v_companywide_reporting_actuals — pass discount_code through ─────────
 
 CREATE VIEW public.v_companywide_reporting_actuals AS
 WITH real_reps AS (
@@ -246,6 +194,7 @@ SELECT
   rl.invoice_number,
   rl.invoice_type,
   rl.fulfillment_type,
+  rl.discount_code,
   rr.portal_rep_id,
   rr.canonical_rep_name,
   rr.canonical_rep_key,
@@ -259,7 +208,7 @@ LEFT JOIN public.managers m ON m.id = rr.manager_id;
 
 GRANT SELECT ON public.v_companywide_reporting_actuals TO anon, authenticated;
 
--- ─── 5. get_manager_reporting_monthly() — unchanged; rebuild required ─────────
+-- ─── 4. get_manager_reporting_monthly() — rebuild required, body unchanged ───
 
 CREATE FUNCTION public.get_manager_reporting_monthly(
   p_manager_id uuid     DEFAULT NULL,
@@ -305,7 +254,8 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_manager_reporting_monthly(uuid, text[], int[])
   TO anon, authenticated, service_role;
 
--- ─── 6. get_sales_reporting_grouped_rows() — add container_amt, warehouse_amt ─
+-- ─── 5. get_sales_reporting_grouped_rows() — rebuild required, body unchanged ─
+--        (carries forward the entity_label fix from 20260902000400)
 
 CREATE FUNCTION public.get_sales_reporting_grouped_rows(
   p_metric       text,
@@ -345,7 +295,13 @@ AS $$
       CASE
         WHEN p_group_by = 'dealer'
         THEN COALESCE(NULLIF(TRIM(a.dealer_name::text), ''), a.customer_id::text, 'Unknown')
-        ELSE COALESCE(NULLIF(TRIM(a.rep_id::text), ''), NULLIF(TRIM(a.rep_name::text), ''), 'Unassigned')
+        -- For reps: prefer canonical name, then raw rep_name, then rep_id as last resort
+        ELSE COALESCE(
+          NULLIF(TRIM(a.canonical_rep_name::text), ''),
+          NULLIF(TRIM(a.rep_name::text),           ''),
+          NULLIF(TRIM(a.rep_id::text),             ''),
+          'Unassigned'
+        )
       END AS entity_label,
       a.amount,
       a.fulfillment_type,
@@ -387,7 +343,7 @@ GRANT EXECUTE ON FUNCTION public.get_sales_reporting_grouped_rows(
   text, text, date, date, date, date, text[], text[], text[], text[], uuid
 ) TO authenticated, anon, service_role;
 
--- ─── 7. get_sales_reporting_detail_lines() — expose fulfillment_type ──────────
+-- ─── 6. get_sales_reporting_detail_lines() — rebuild required, body unchanged ─
 
 CREATE FUNCTION public.get_sales_reporting_detail_lines(
   p_metric       text,
@@ -470,25 +426,11 @@ GRANT EXECUTE ON FUNCTION public.get_sales_reporting_detail_lines(
 NOTIFY pgrst, 'reload schema';
 
 -- ══════════════════════════════════════════════════════════════════════════════
--- VALIDATION — run after applying in Supabase SQL Editor
+-- VALIDATION
 -- ══════════════════════════════════════════════════════════════════════════════
 
--- 1. Rep-level invoice split (validates fulfillment_type in view):
--- SELECT rep_name, rep_id,
---   round(sum(amount),2) AS primary_total,
---   round(sum(case when fulfillment_type='container' then amount else 0 end),2) AS container_amount,
---   round(sum(case when fulfillment_type='warehouse' then amount else 0 end),2) AS warehouse_amount,
---   round(sum(case when fulfillment_type='container' then amount else 0 end)/nullif(sum(amount),0)*100,1) AS container_pct,
---   round(sum(case when fulfillment_type='warehouse' then amount else 0 end)/nullif(sum(amount),0)*100,1) AS warehouse_pct
--- FROM public.v_portal_dealer_rep_reporting_lines
--- WHERE metric_type='invoiced' AND transaction_date BETWEEN '2026-01-01' AND '2026-09-01'
--- GROUP BY rep_name, rep_id ORDER BY primary_total DESC;
-
--- 2. Dealer-level booking split:
--- SELECT dealer_name, customer_id,
---   round(sum(amount),2) AS primary_total,
---   round(sum(case when fulfillment_type='container' then amount else 0 end)/nullif(sum(amount),0)*100,1) AS container_pct,
---   round(sum(case when fulfillment_type='warehouse' then amount else 0 end)/nullif(sum(amount),0)*100,1) AS warehouse_pct
--- FROM public.v_portal_dealer_rep_reporting_lines
--- WHERE metric_type='bookings' AND transaction_date BETWEEN '2026-01-01' AND '2026-09-01'
--- GROUP BY dealer_name, customer_id ORDER BY primary_total DESC;
+-- select count(*), count(discount_code) filter (where discount_code is not null)
+-- from public.v_portal_dealer_rep_reporting_lines
+-- where metric_type = 'bookings';
+-- -- discount_code count should be > 0 (LD26 rows) and total count should match
+-- -- pre-migration row counts for bookings.

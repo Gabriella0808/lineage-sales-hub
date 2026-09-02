@@ -115,6 +115,7 @@ SELECT
   o.guid_salesperson::text                                              AS guid_salesperson,
   date(o.order_date)                                                    AS booking_date,
   o.sold_to_name::text                                                  AS dealer_name,
+  NULLIF(TRIM(o.customer_id::text), '')                                 AS customer_id,
   o.rep1::text                                                          AS rep1,
   o.rep2::text                                                          AS rep2,
   l.product_id::text                                                    AS sku,

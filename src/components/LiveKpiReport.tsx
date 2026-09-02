@@ -374,16 +374,29 @@ export function LiveKpiReport({
     refetchOnWindowFocus: true,
     refetchInterval: 5 * 60_000,
     queryFn: async () => {
-      let q = (supabase as any)
+      // Bookings: selected date, from the canonical companywide view (unchanged).
+      let bkgQ = (supabase as any)
         .from("v_companywide_reporting_actuals")
         .select("metric_type, brand_category, amount, rep_id, transaction_date")
-        .in("transaction_date", [dailyDateStr, invoiceDateStr]);
+        .eq("metric_type", "bookings")
+        .eq("transaction_date", dailyDateStr);
+      // Invoiced: prior day, from the dedicated daily-invoices view (fixes FIN=$0 —
+      // v_companywide_reporting_actuals' display_category mis-routes FINNLOU into SW).
+      let invQ = (supabase as any)
+        .from("v_daily_invoiced_actuals")
+        .select("metric_type, brand_category, amount, rep_id, transaction_date")
+        .eq("transaction_date", invoiceDateStr);
       if (managerId && !(selectedRepAcIds && selectedRepAcIds.length > 0)) {
-        q = q.eq("manager_id", managerId);
+        bkgQ = bkgQ.eq("manager_id", managerId);
+        invQ = invQ.eq("manager_id", managerId);
       }
-      const { data, error } = await q;
-      if (error) { console.error("[daily] actuals error:", error.message); return []; }
-      let rows = (data ?? []) as Array<{ metric_type: string; brand_category: string | null; amount: string | number; rep_id: string | null; transaction_date: string | null }>;
+      const [bkgRes, invRes] = await Promise.all([bkgQ, invQ]);
+      if (bkgRes.error) console.error("[daily] bookings actuals error:", bkgRes.error.message);
+      if (invRes.error) console.error("[daily] invoiced actuals error:", invRes.error.message);
+      let rows = [
+        ...((bkgRes.data ?? []) as Array<{ metric_type: string; brand_category: string | null; amount: string | number; rep_id: string | null; transaction_date: string | null }>),
+        ...((invRes.data ?? []) as Array<{ metric_type: string; brand_category: string | null; amount: string | number; rep_id: string | null; transaction_date: string | null }>),
+      ];
       if (selectedRepAcIds && selectedRepAcIds.length > 0) {
         const idSet = new Set(selectedRepAcIds.map((id) => id.trim().toLowerCase()));
         rows = rows.filter((r) => r.rep_id && idSet.has(r.rep_id.trim().toLowerCase()));

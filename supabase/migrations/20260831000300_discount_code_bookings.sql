@@ -1,91 +1,41 @@
 -- ══════════════════════════════════════════════════════════════════════════════
--- Add fulfillment_type to Dealer/Rep Reporting chain.
+-- Add discount_code to the bookings pipeline so Labor Day Promo (LD26)
+-- and any future discount-code-driven promos can be filtered at query time.
 --
--- Surfaces fulfillment_type (container / warehouse / unclassified) in every
--- layer of the dealer/rep reporting stack so the table can show % Container
--- and % Warehouse per rep/dealer row.
+-- Changes:
+--   1. portal_acctivate_order_lines: ADD COLUMN discount_code text
+--   2. get_portal_invoiced_lines():  add discount_code text (NULL) to return set
+--   3. v_portal_bookings_line_facts: expose l.discount_code
+--   4. v_portal_dealer_rep_reporting_lines: pass discount_code through both arms
+--   5. v_companywide_reporting_actuals: rebuilt (dependency chain was dropped)
+--   6. get_manager_reporting_monthly / get_sales_reporting_grouped_rows /
+--      get_sales_reporting_detail_lines: rebuilt unchanged (dependency chain)
 --
--- Sources:
---   Invoiced : acctivate_invoice_lines_2026_direct.fulfillment_type (generated column)
---   Bookings : v_portal_bookings_line_facts.fulfillment_type (CASE expression added in 20260902000100)
+-- After this migration:
+--   SELECT discount_code, COUNT(*), SUM(net_booking_amount)
+--   FROM public.v_portal_bookings_line_facts
+--   WHERE discount_code IS NOT NULL
+--   GROUP BY discount_code;
 --
--- Branch mapping (applied upstream in source tables):
---   MIXED / DIRECT → container
---   WHSALES        → warehouse
---   blank/null     → unclassified
---
--- New columns exposed by get_sales_reporting_grouped_rows():
---   container_amt  — sum(amount) where fulfillment_type = 'container', primary period
---   warehouse_amt  — sum(amount) where fulfillment_type = 'warehouse', primary period
---
--- Does NOT change: invoice totals, booking totals, Live KPI, Labor Day Promo.
+-- Do NOT change: booking formulas, locked KPI MV, Aug source tag,
+--               invoice logic, category filters, goals calculations.
 -- ══════════════════════════════════════════════════════════════════════════════
+
+-- ─── 1. Schema ────────────────────────────────────────────────────────────────
+
+ALTER TABLE public.portal_acctivate_order_lines
+  ADD COLUMN IF NOT EXISTS discount_code text;
 
 -- ─── Drop dependency chain (outermost first) ──────────────────────────────────
 
-DROP FUNCTION IF EXISTS public.get_sales_reporting_detail_lines(text,text,text,date,date,text[],text[],text[],text[],int,int,uuid) CASCADE;
-DROP FUNCTION IF EXISTS public.get_sales_reporting_grouped_rows(text,text,date,date,date,date,text[],text[],text[],text[],uuid) CASCADE;
-DROP FUNCTION IF EXISTS public.get_manager_reporting_monthly(uuid,text[],int[]) CASCADE;
-DROP VIEW      IF EXISTS public.v_companywide_reporting_actuals CASCADE;
-DROP VIEW      IF EXISTS public.v_portal_dealer_rep_reporting_lines CASCADE;
+DROP FUNCTION  IF EXISTS public.get_sales_reporting_detail_lines(text,text,text,date,date,text[],text[],text[],text[],int,int,uuid) CASCADE;
+DROP FUNCTION  IF EXISTS public.get_sales_reporting_grouped_rows(text,text,date,date,date,date,text[],text[],text[],text[],uuid) CASCADE;
+DROP FUNCTION  IF EXISTS public.get_manager_reporting_monthly(uuid,text[],int[]) CASCADE;
+DROP VIEW      IF EXISTS public.v_companywide_reporting_actuals;
+DROP VIEW      IF EXISTS public.v_portal_dealer_rep_reporting_lines;
 DROP FUNCTION  IF EXISTS public.get_portal_invoiced_lines() CASCADE;
 
--- ─── 1. v_portal_invoice_line_facts — add fulfillment_type ───────────────────
--- Uses d.fulfillment_type generated column from acctivate_invoice_lines_2026_direct
--- (corrected to DIRECT → 'container' in migration 20260902000200).
-
-CREATE OR REPLACE VIEW public.v_portal_invoice_line_facts AS
-SELECT
-  d.invoice_date,
-  d.invoice_number,
-  d.customer_id,
-  COALESCE(
-    NULLIF(TRIM(dl.name::text), ''),
-    d.customer_id
-  )                                                         AS dealer_name,
-  COALESCE(
-    NULLIF(TRIM(asr.name::text),           ''),
-    NULLIF(TRIM(pai.sales_rep_name::text), ''),
-    NULLIF(TRIM(pai.sales_rep_id::text),   ''),
-    NULLIF(TRIM(d.sales_rep_id),           ''),
-    'Unassigned'
-  )                                                         AS salesperson_name,
-  COALESCE(NULLIF(TRIM(d.sales_rep_id), ''), '')            AS salesperson_id,
-  d.product_id,
-  d.description,
-  d.product_sales_category                                  AS sales_category,
-  CASE
-    WHEN d.product_sales_category = 'SW'                    THEN 'Sea Winds'
-    WHEN d.product_sales_category IN ('FL', 'FINNLOU')      THEN 'Finn & Lou'
-    WHEN d.product_sales_category = 'LUX'                   THEN 'Lux'
-    WHEN d.product_sales_category = 'ALLOW'                 THEN 'ALLOW'
-    ELSE NULL
-  END                                                       AS display_category,
-  d.product_class::text                                     AS product_class,
-  COALESCE(d.price,             0)::numeric                 AS price,
-  COALESCE(d.qty_invoiced,      0)::numeric                 AS qty_invoiced,
-  COALESCE(d.line_discount_pct, 0)::numeric                 AS line_discount_pct,
-  COALESCE(d.formula_net_amount,0)::numeric                 AS net_invoice_amount,
-  COALESCE(d.invoice_type, '')::text                        AS invoice_type,
-  CASE COALESCE(d.invoice_type, '')
-    WHEN 'C' THEN 'Credit Memo'
-    ELSE COALESCE(d.invoice_type, '')
-  END                                                       AS invoice_type_label,
-  d.fulfillment_type::text                                  AS fulfillment_type
-FROM public.acctivate_invoice_lines_2026_direct d
-LEFT JOIN public.dealers dl
-  ON dl.acctivate_id = d.customer_id
-LEFT JOIN public.portal_acctivate_invoices pai
-  ON pai.guid_invoice::text = d.guid_invoice
-LEFT JOIN public.acctivate_sales_reps asr
-  ON LOWER(TRIM(asr.acctivate_id)) = LOWER(TRIM(d.sales_rep_id))
-WHERE d.invoice_date IS NOT NULL
-  AND d.invoice_date >= '2026-01-01'
-  AND COALESCE(d.product_sales_category, 'NULL') IN ('NULL', 'SW', 'ALLOW', 'FL', 'FINNLOU', 'LUX');
-
-GRANT SELECT ON public.v_portal_invoice_line_facts TO authenticated, anon, service_role;
-
--- ─── 2. get_portal_invoiced_lines() — expose fulfillment_type ────────────────
+-- ─── 2. get_portal_invoiced_lines() — add discount_code (NULL for invoiced) ──
 
 CREATE FUNCTION public.get_portal_invoiced_lines()
 RETURNS TABLE (
@@ -104,7 +54,7 @@ RETURNS TABLE (
   amount           numeric,
   invoice_number   text,
   invoice_type     text,
-  fulfillment_type text
+  discount_code    text
 )
 LANGUAGE sql
 SECURITY DEFINER
@@ -126,14 +76,56 @@ AS $$
     f.net_invoice_amount                          AS amount,
     f.invoice_number,
     f.invoice_type,
-    f.fulfillment_type
+    NULL::text                                    AS discount_code
   FROM public.v_portal_invoice_line_facts f
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_portal_invoiced_lines()
   TO authenticated, anon, service_role;
 
--- ─── 3. v_portal_dealer_rep_reporting_lines — add fulfillment_type ────────────
+-- ─── 3. v_portal_bookings_line_facts — expose discount_code ──────────────────
+
+CREATE OR REPLACE VIEW public.v_portal_bookings_line_facts AS
+SELECT
+  o.guid_order::text                                            AS guid_order,
+  o.guid_customer::text                                         AS guid_customer,
+  o.guid_salesperson::text                                      AS guid_salesperson,
+  date(o.order_date)                                            AS booking_date,
+  o.sold_to_name::text                                          AS dealer_name,
+  NULLIF(TRIM(o.customer_id::text), '')                         AS customer_id,
+  o.rep1::text                                                  AS rep1,
+  o.rep2::text                                                  AS rep2,
+  l.product_id::text                                            AS sku,
+  l.description::text                                           AS description,
+  CASE l.sales_category
+    WHEN 'SW'      THEN 'Sea Winds'
+    WHEN 'FINNLOU' THEN 'Finn & Lou'
+    WHEN 'LUX'     THEN 'Lux'
+    WHEN 'ALLOW'   THEN 'MISC'
+    ELSE l.sales_category
+  END::text                                                     AS brand_category,
+  CASE
+    WHEN COALESCE(NULLIF(l.original_price, '')::numeric, 0) <> 0
+    THEN
+        COALESCE(l.qty_ordered::numeric,      0)
+      * NULLIF(l.original_price, '')::numeric
+      * (1.0 - COALESCE(l.line_discount_pct::numeric, 0) / 100.0)
+    ELSE
+        COALESCE(l.amount::numeric,           0)
+      - COALESCE(l.tariff_amount::numeric,    0)
+      - COALESCE(l.freight_amount::numeric,   0)
+  END::numeric                                                  AS net_booking_amount,
+  l.product_class::text                                         AS product_class,
+  l.discount_code::text                                         AS discount_code
+FROM public.portal_acctivate_orders o
+JOIN public.portal_acctivate_order_lines l
+  ON l.guid_order = o.guid_order
+WHERE COALESCE(l.line_cancelled, false) = false
+  AND l.sales_category IN ('SW', 'FINNLOU', 'LUX', 'HOSP', 'ALLOW', 'MISC');
+
+GRANT SELECT ON public.v_portal_bookings_line_facts TO anon, authenticated;
+
+-- ─── 4. v_portal_dealer_rep_reporting_lines — discount_code in both arms ─────
 
 CREATE VIEW public.v_portal_dealer_rep_reporting_lines AS
 
@@ -168,9 +160,18 @@ SELECT
   f.booking_date::date                                                           AS transaction_date,
   EXTRACT(YEAR  FROM f.booking_date)::int                                        AS year,
   EXTRACT(MONTH FROM f.booking_date)::int                                        AS month_number,
-  COALESCE(f.dealer_name::text, o."CustomerID"::text, cl.customer_id,
-           udl.acctivate_id)                                                     AS dealer_name,
-  COALESCE(o."CustomerID"::text, cl.customer_id, udl.acctivate_id)              AS customer_id,
+  COALESCE(
+    NULLIF(TRIM(f.dealer_name::text), ''),
+    NULLIF(TRIM(o."CustomerID"::text), ''),
+    cl.customer_id,
+    udl.acctivate_id
+  )                                                                              AS dealer_name,
+  COALESCE(
+    f.customer_id,
+    NULLIF(TRIM(o."CustomerID"::text), ''),
+    cl.customer_id,
+    udl.acctivate_id
+  )                                                                              AS customer_id,
   COALESCE(
     osl.salesperson_name,
     NULLIF(o."SalespersonName"::text, ''),
@@ -189,7 +190,7 @@ SELECT
   f.net_booking_amount::numeric                                                  AS amount,
   NULL::text                                                                     AS invoice_number,
   NULL::text                                                                     AS invoice_type,
-  f.fulfillment_type::text                                                       AS fulfillment_type
+  f.discount_code::text                                                          AS discount_code
 FROM public.v_portal_bookings_line_facts f
 LEFT JOIN public."dbo_Orders" o
   ON TRIM(BOTH '{}' FROM LOWER(o."GUIDOrder"::text)) = LOWER(f.guid_order)
@@ -207,12 +208,13 @@ SELECT
   metric_type, transaction_date, year, month_number,
   dealer_name, customer_id, rep_name, rep_id,
   sku, description, brand_category, product_class, amount, invoice_number,
-  invoice_type, fulfillment_type
+  invoice_type, discount_code
 FROM public.get_portal_invoiced_lines();
 
 GRANT SELECT ON public.v_portal_dealer_rep_reporting_lines TO anon, authenticated;
 
--- ─── 4. v_companywide_reporting_actuals — pass fulfillment_type through ───────
+-- ─── 5. v_companywide_reporting_actuals — rebuilt (discount_code excluded; ────
+--        downstream RPCs don't need it; Labor Day Promo queries the view direct)
 
 CREATE VIEW public.v_companywide_reporting_actuals AS
 WITH real_reps AS (
@@ -245,7 +247,6 @@ SELECT
   rl.amount,
   rl.invoice_number,
   rl.invoice_type,
-  rl.fulfillment_type,
   rr.portal_rep_id,
   rr.canonical_rep_name,
   rr.canonical_rep_key,
@@ -259,7 +260,7 @@ LEFT JOIN public.managers m ON m.id = rr.manager_id;
 
 GRANT SELECT ON public.v_companywide_reporting_actuals TO anon, authenticated;
 
--- ─── 5. get_manager_reporting_monthly() — unchanged; rebuild required ─────────
+-- ─── 6. get_manager_reporting_monthly() ──────────────────────────────────────
 
 CREATE FUNCTION public.get_manager_reporting_monthly(
   p_manager_id uuid     DEFAULT NULL,
@@ -305,7 +306,7 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_manager_reporting_monthly(uuid, text[], int[])
   TO anon, authenticated, service_role;
 
--- ─── 6. get_sales_reporting_grouped_rows() — add container_amt, warehouse_amt ─
+-- ─── 7. get_sales_reporting_grouped_rows() ───────────────────────────────────
 
 CREATE FUNCTION public.get_sales_reporting_grouped_rows(
   p_metric       text,
@@ -326,9 +327,7 @@ RETURNS TABLE (
   primary_amt   numeric,
   primary_lines bigint,
   comp_amt      numeric,
-  comp_lines    bigint,
-  container_amt numeric,
-  warehouse_amt numeric
+  comp_lines    bigint
 )
 LANGUAGE sql
 SECURITY DEFINER
@@ -348,7 +347,6 @@ AS $$
         ELSE COALESCE(NULLIF(TRIM(a.rep_id::text), ''), NULLIF(TRIM(a.rep_name::text), ''), 'Unassigned')
       END AS entity_label,
       a.amount,
-      a.fulfillment_type,
       a.transaction_date
     FROM public.v_companywide_reporting_actuals a
     WHERE a.metric_type = p_metric
@@ -368,13 +366,11 @@ AS $$
   )
   SELECT
     entity_key,
-    MAX(entity_label)::text                                                                      AS entity_label,
+    MAX(entity_label)::text                                                              AS entity_label,
     COALESCE(SUM(amount) FILTER (WHERE transaction_date BETWEEN p_from AND p_to), 0)::numeric   AS primary_amt,
     COALESCE(COUNT(*)    FILTER (WHERE transaction_date BETWEEN p_from AND p_to), 0)::bigint    AS primary_lines,
     COALESCE(SUM(amount) FILTER (WHERE p_comp_from IS NOT NULL AND transaction_date BETWEEN p_comp_from AND p_comp_to), 0)::numeric AS comp_amt,
-    COALESCE(COUNT(*)    FILTER (WHERE p_comp_from IS NOT NULL AND transaction_date BETWEEN p_comp_from AND p_comp_to), 0)::bigint  AS comp_lines,
-    COALESCE(SUM(amount) FILTER (WHERE transaction_date BETWEEN p_from AND p_to AND fulfillment_type = 'container'), 0)::numeric   AS container_amt,
-    COALESCE(SUM(amount) FILTER (WHERE transaction_date BETWEEN p_from AND p_to AND fulfillment_type = 'warehouse'), 0)::numeric   AS warehouse_amt
+    COALESCE(COUNT(*)    FILTER (WHERE p_comp_from IS NOT NULL AND transaction_date BETWEEN p_comp_from AND p_comp_to), 0)::bigint  AS comp_lines
   FROM src
   GROUP BY entity_key
   HAVING
@@ -387,7 +383,7 @@ GRANT EXECUTE ON FUNCTION public.get_sales_reporting_grouped_rows(
   text, text, date, date, date, date, text[], text[], text[], text[], uuid
 ) TO authenticated, anon, service_role;
 
--- ─── 7. get_sales_reporting_detail_lines() — expose fulfillment_type ──────────
+-- ─── 8. get_sales_reporting_detail_lines() ───────────────────────────────────
 
 CREATE FUNCTION public.get_sales_reporting_detail_lines(
   p_metric       text,
@@ -415,8 +411,7 @@ RETURNS TABLE (
   brand_category   text,
   product_class    text,
   amount           numeric,
-  invoice_type     text,
-  fulfillment_type text
+  invoice_type     text
 )
 LANGUAGE sql
 SECURITY DEFINER
@@ -435,8 +430,7 @@ AS $$
     a.brand_category::text,
     a.product_class::text,
     a.amount::numeric,
-    a.invoice_type::text,
-    a.fulfillment_type::text
+    a.invoice_type::text
   FROM public.v_companywide_reporting_actuals a
   WHERE a.metric_type = p_metric
     AND a.transaction_date BETWEEN p_from AND p_to
@@ -470,25 +464,49 @@ GRANT EXECUTE ON FUNCTION public.get_sales_reporting_detail_lines(
 NOTIFY pgrst, 'reload schema';
 
 -- ══════════════════════════════════════════════════════════════════════════════
--- VALIDATION — run after applying in Supabase SQL Editor
+-- VALIDATION QUERIES — run after sync scripts have pushed discount_code data
 -- ══════════════════════════════════════════════════════════════════════════════
 
--- 1. Rep-level invoice split (validates fulfillment_type in view):
--- SELECT rep_name, rep_id,
---   round(sum(amount),2) AS primary_total,
---   round(sum(case when fulfillment_type='container' then amount else 0 end),2) AS container_amount,
---   round(sum(case when fulfillment_type='warehouse' then amount else 0 end),2) AS warehouse_amount,
---   round(sum(case when fulfillment_type='container' then amount else 0 end)/nullif(sum(amount),0)*100,1) AS container_pct,
---   round(sum(case when fulfillment_type='warehouse' then amount else 0 end)/nullif(sum(amount),0)*100,1) AS warehouse_pct
--- FROM public.v_portal_dealer_rep_reporting_lines
--- WHERE metric_type='invoiced' AND transaction_date BETWEEN '2026-01-01' AND '2026-09-01'
--- GROUP BY rep_name, rep_id ORDER BY primary_total DESC;
+-- A. Confirm discount_code exists and LD26 rows are syncing:
+-- SELECT discount_code, COUNT(*) AS lines,
+--        ROUND(SUM(net_booking_amount), 2) AS total_bookings
+-- FROM public.v_portal_bookings_line_facts
+-- WHERE discount_code IS NOT NULL
+-- GROUP BY discount_code ORDER BY total_bookings DESC;
 
--- 2. Dealer-level booking split:
--- SELECT dealer_name, customer_id,
---   round(sum(amount),2) AS primary_total,
---   round(sum(case when fulfillment_type='container' then amount else 0 end)/nullif(sum(amount),0)*100,1) AS container_pct,
---   round(sum(case when fulfillment_type='warehouse' then amount else 0 end)/nullif(sum(amount),0)*100,1) AS warehouse_pct
--- FROM public.v_portal_dealer_rep_reporting_lines
--- WHERE metric_type='bookings' AND transaction_date BETWEEN '2026-01-01' AND '2026-09-01'
--- GROUP BY dealer_name, customer_id ORDER BY primary_total DESC;
+-- B. Total LD26 bookings:
+-- SELECT COUNT(*) AS lines,
+--        COUNT(DISTINCT customer_id) AS dealers,
+--        COUNT(DISTINCT rep_id) AS reps,
+--        ROUND(SUM(net_booking_amount), 2) AS total_ld26_bookings
+-- FROM public.v_portal_bookings_line_facts
+-- WHERE discount_code = 'LD26';
+
+-- C. LD26 by rep:
+-- SELECT rep_name, rep_id,
+--        COUNT(DISTINCT customer_id) AS dealers,
+--        ROUND(SUM(net_booking_amount), 2) AS total_sales,
+--        COUNT(DISTINCT customer_id) * 5000 AS total_goal,
+--        ROUND((SUM(net_booking_amount) / NULLIF(COUNT(DISTINCT customer_id) * 5000, 0)) * 100, 1) AS pct_to_goal
+-- FROM public.v_portal_bookings_line_facts
+-- WHERE discount_code = 'LD26'
+-- GROUP BY rep_name, rep_id ORDER BY total_sales DESC;
+
+-- D. LD26 by rep / dealer:
+-- SELECT rep_name, rep_id, dealer_name, customer_id,
+--        ROUND(SUM(net_booking_amount), 2) AS total_sales,
+--        5000 AS dealer_goal,
+--        ROUND((SUM(net_booking_amount) / 5000) * 100, 1) AS pct_to_goal,
+--        COUNT(DISTINCT sku) AS skus, COUNT(*) AS lines
+-- FROM public.v_portal_bookings_line_facts
+-- WHERE discount_code = 'LD26'
+-- GROUP BY rep_name, rep_id, dealer_name, customer_id
+-- ORDER BY rep_name, total_sales DESC;
+
+-- E. LD26 by rep / dealer / SKU:
+-- SELECT rep_name, dealer_name, customer_id, sku, description, brand_category,
+--        ROUND(SUM(net_booking_amount), 2) AS total_sales, COUNT(*) AS lines
+-- FROM public.v_portal_bookings_line_facts
+-- WHERE discount_code = 'LD26'
+-- GROUP BY rep_name, dealer_name, customer_id, sku, description, brand_category
+-- ORDER BY rep_name, dealer_name, total_sales DESC;

@@ -10,6 +10,14 @@
 --
 -- v_companywide_reporting_actuals and all RPCs already reference rl.product_class
 -- so they pick up the real value automatically once this migration runs.
+--
+-- Note: as originally authored, this migration's CREATE OR REPLACE VIEW for
+-- v_portal_bookings_line_facts dropped the customer_id column that
+-- 20260821000200_fix_booking_customer_fields.sql had just added (CREATE OR
+-- REPLACE VIEW cannot drop/reorder existing columns, only append). Restored
+-- customer_id in its original position here, and restored the f.customer_id
+-- preference in v_portal_dealer_rep_reporting_lines's customer_id/dealer_name
+-- COALESCE chains so this migration doesn't silently undo that earlier fix.
 
 -- ── 1. Schema ─────────────────────────────────────────────────────────────────
 
@@ -25,6 +33,7 @@ SELECT
   o.guid_salesperson::text                                      AS guid_salesperson,
   date(o.order_date)                                            AS booking_date,
   o.sold_to_name::text                                          AS dealer_name,
+  NULLIF(TRIM(o.customer_id::text), '')                         AS customer_id,
   o.rep1::text                                                  AS rep1,
   o.rep2::text                                                  AS rep2,
   l.product_id::text                                            AS sku,
@@ -91,9 +100,18 @@ SELECT
   f.booking_date::date                                                           AS transaction_date,
   EXTRACT(YEAR  FROM f.booking_date)::int                                        AS year,
   EXTRACT(MONTH FROM f.booking_date)::int                                        AS month_number,
-  COALESCE(f.dealer_name::text, o."CustomerID"::text, cl.customer_id,
-           udl.acctivate_id)                                                     AS dealer_name,
-  COALESCE(o."CustomerID"::text, cl.customer_id, udl.acctivate_id)              AS customer_id,
+  COALESCE(
+    NULLIF(TRIM(f.dealer_name::text), ''),
+    NULLIF(TRIM(o."CustomerID"::text), ''),
+    cl.customer_id,
+    udl.acctivate_id
+  )                                                                              AS dealer_name,
+  COALESCE(
+    f.customer_id,
+    NULLIF(TRIM(o."CustomerID"::text), ''),
+    cl.customer_id,
+    udl.acctivate_id
+  )                                                                              AS customer_id,
   COALESCE(
     osl.salesperson_name,
     NULLIF(o."SalespersonName"::text, ''),

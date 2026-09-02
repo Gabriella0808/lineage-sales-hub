@@ -140,34 +140,38 @@ export default function LaborDayPromoPage() {
       if (config?.start_date) setDateFrom(config.start_date);
       if (config?.end_date)   setDateTo(config.end_date);
 
-      const { data, error } = await (supabase as any)
-        .from("v_portal_dealer_rep_reporting_lines")
-        .select("transaction_date,dealer_name,customer_id,rep_name,rep_id,sku,description,product_class,amount")
-        .eq("metric_type", "bookings")
-        .eq("discount_code", DISCOUNT_CODE);
+      try {
+        const { data, error } = await (supabase as any)
+          .from("v_portal_dealer_rep_reporting_lines")
+          .select("transaction_date,dealer_name,customer_id,rep_name,rep_id,sku,description,product_class,amount")
+          .eq("metric_type", "bookings")
+          .eq("discount_code", DISCOUNT_CODE);
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      if (error) {
-        setLoadError(true);
-        setLoading(false);
-        return;
+        if (error) {
+          setLoadError(true);
+          return;
+        }
+
+        const rows: RawLine[] = ((data ?? []) as any[]).map((r: any) => ({
+          transaction_date: String(r.transaction_date ?? ""),
+          dealer_name:      r.dealer_name ?? r.customer_id ?? "Unknown",
+          customer_id:      r.customer_id ?? "unknown",
+          rep_name:         r.rep_name ?? "Unassigned",
+          rep_id:           r.rep_id ?? "unassigned",
+          sku:              r.sku ?? "—",
+          description:      r.description ?? null,
+          product_class:    r.product_class ?? null,
+          amount:           toNum(r.amount),
+        }));
+
+        setRawLines(rows);
+      } catch {
+        if (!cancelled) setLoadError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-
-      const rows: RawLine[] = ((data ?? []) as any[]).map((r: any) => ({
-        transaction_date: String(r.transaction_date ?? ""),
-        dealer_name:      r.dealer_name ?? r.customer_id ?? "Unknown",
-        customer_id:      r.customer_id ?? "unknown",
-        rep_name:         r.rep_name ?? "Unassigned",
-        rep_id:           r.rep_id ?? "unassigned",
-        sku:              r.sku ?? "—",
-        description:      r.description ?? null,
-        product_class:    r.product_class ?? null,
-        amount:           toNum(r.amount),
-      }));
-
-      setRawLines(rows);
-      setLoading(false);
     }
 
     void load();

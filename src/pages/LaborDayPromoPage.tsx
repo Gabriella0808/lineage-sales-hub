@@ -412,7 +412,7 @@ export default function LaborDayPromoPage() {
                     <XAxis type="number" tickFormatter={v => fmtMoney(v)} tick={{ fontSize: 10 }} tickLine={false} />
                     <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} />
                     <RTooltip formatter={(v: number, _, item: any) => [fmtMoneyFull(v), item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="sales" fill="#6366f1" radius={[0, 3, 3, 0]} />
+                    <Bar dataKey="sales" fill="hsl(var(--chart-2))" radius={[0, 3, 3, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
@@ -431,9 +431,9 @@ export default function LaborDayPromoPage() {
                       tick={{ fontSize: 10 }} tickLine={false}
                     />
                     <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} />
-                    <ReferenceLine x={100} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1.5} />
+                    <ReferenceLine x={100} stroke="hsl(var(--destructive))" strokeDasharray="4 3" strokeWidth={1.5} />
                     <RTooltip formatter={(v: number, _, item: any) => [`${v.toFixed(1)}%`, item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="pct" fill="#22c55e" radius={[0, 3, 3, 0]} />
+                    <Bar dataKey="pct" fill="hsl(var(--chart-3))" radius={[0, 3, 3, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
@@ -447,9 +447,9 @@ export default function LaborDayPromoPage() {
                     <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} horizontal={false} />
                     <XAxis type="number" tickFormatter={v => fmtMoney(v)} tick={{ fontSize: 10 }} tickLine={false} />
                     <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10 }} tickLine={false} />
-                    <ReferenceLine x={DEALER_GOAL} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1.5} />
+                    <ReferenceLine x={DEALER_GOAL} stroke="hsl(var(--destructive))" strokeDasharray="4 3" strokeWidth={1.5} />
                     <RTooltip formatter={(v: number, _, item: any) => [fmtMoneyFull(v), item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="sales" fill="#f59e0b" radius={[0, 3, 3, 0]} />
+                    <Bar dataKey="sales" fill="hsl(var(--chart-4))" radius={[0, 3, 3, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
@@ -492,7 +492,7 @@ export default function LaborDayPromoPage() {
                           <td className="px-4 py-3 text-right text-xs text-muted-foreground">{rep.dealer_count} dealer{rep.dealer_count !== 1 ? "s" : ""}</td>
                           <td className="px-4 py-3 text-right tabular-nums font-semibold">{fmtMoneyFull(rep.total_sales)}</td>
                           <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{fmtMoneyFull(rep.goal)}</td>
-                          <td className={cn("px-4 py-3 text-right tabular-nums font-semibold", rep.pct_to_goal >= 100 ? "text-green-600" : "")}>{fmtPct(rep.pct_to_goal)}</td>
+                          <td className={cn("px-4 py-3 text-right tabular-nums font-semibold", rep.pct_to_goal >= 100 ? "text-success" : "")}>{fmtPct(rep.pct_to_goal)}</td>
                           <td />
                         </tr>
 
@@ -514,7 +514,7 @@ export default function LaborDayPromoPage() {
                                 <td className="px-4 py-2.5 text-right text-[11px] text-muted-foreground">{dealer.collections.length} collection{dealer.collections.length !== 1 ? "s" : ""}</td>
                                 <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmtMoneyFull(dealer.total_sales)}</td>
                                 <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground text-xs">{fmtMoneyFull(dealer.goal)}</td>
-                                <td className={cn("px-4 py-2.5 text-right tabular-nums font-medium", dealer.pct_to_goal >= 100 ? "text-green-600" : "")}>{fmtPct(dealer.pct_to_goal)}</td>
+                                <td className={cn("px-4 py-2.5 text-right tabular-nums font-medium", dealer.pct_to_goal >= 100 ? "text-success" : "")}>{fmtPct(dealer.pct_to_goal)}</td>
                                 <td />
                               </tr>
 

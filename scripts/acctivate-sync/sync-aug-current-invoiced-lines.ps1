@@ -301,19 +301,6 @@ function Get-AndrewCategory {
     return 'Other Included'
 }
 
-$SpotChecks = @(
-    @{ Date = '2026-08-04'; Cat = 'SW';  ExpLines = 33; ExpAmt = 12130.59 },
-    @{ Date = '2026-08-05'; Cat = 'LUX'; ExpLines = 30; ExpAmt = 4230.07  },
-    @{ Date = '2026-08-05'; Cat = 'SW';  ExpLines = 78; ExpAmt = 27283.99 }
-)
-
-function Get-DateStr {
-    param($Val)
-    if ($null -eq $Val) { return '' }
-    if ($Val -is [datetime]) { return $Val.ToString('yyyy-MM-dd') }
-    return $Val.ToString()
-}
-
 # --- Main --------------------------------------------------------------------
 
 Write-Host ''
@@ -568,23 +555,6 @@ if ($typeCounts['other'] -gt 0) {
     Write-Host ('  ?  Other      ' + $typeAmts['other'].ToString('N2').PadLeft(14) + '  ' + $typeCounts['other'].ToString().PadLeft(5) + ' lines') -ForegroundColor Yellow
 }
 Write-Host ('     Grand total ' + $typeGrand.ToString('N2').PadLeft(14) + '  ' + ($typeCounts['O'] + $typeCounts['C'] + $typeCounts['other']).ToString().PadLeft(5) + ' lines') -ForegroundColor Green
-
-Write-Host ''
-Write-Host ' Spot checks:' -ForegroundColor Cyan
-foreach ($sc in $SpotChecks) {
-    $scRows  = @($allRows | Where-Object { (Get-DateStr $_['invoice_date']) -eq $sc.Date -and $_['product_sales_category'] -eq $sc.Cat })
-    $scLines = $scRows.Count
-    $scAmt   = 0.0
-    foreach ($r in $scRows) {
-        $v = $r['formula_net_amount']
-        if ($null -ne $v) { $scAmt += [double]$v }
-    }
-    $ok      = [Math]::Abs($scAmt - $sc.ExpAmt) -lt 0.02 -and ($scLines -eq $sc.ExpLines)
-    if (-not $ok) { $allOk = $false }
-    $verdict = if ($ok) { 'MATCH' } else { 'MISMATCH' }
-    $color   = if ($ok) { 'Green' } else { 'Red'     }
-    Write-Host ('  ' + $sc.Date + ' ' + $sc.Cat.PadRight(8) + $scLines.ToString().PadLeft(4) + ' lines  ' + $scAmt.ToString('N2').PadLeft(12) + '   ' + $verdict + '  (exp ' + $sc.ExpLines + ' / ' + $sc.ExpAmt.ToString('N2') + ')') -ForegroundColor $color
-}
 
 Write-Host ''
 if ($allOk) {

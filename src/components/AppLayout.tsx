@@ -91,7 +91,7 @@ const NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
-        title: "Promotions", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager"],
+        title: "Sales Initiatives", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager"],
         children: [
           { title: "Labor Day Promo", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager"] },
           { title: "Discontinued Products", url: "/clearance", icon: Tag, roles: ["admin", "manager"] },

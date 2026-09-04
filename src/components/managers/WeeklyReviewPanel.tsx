@@ -194,7 +194,7 @@ export function WeeklyReviewPanel({
         supabase.from("dealers").select("id,rep_id,rep_owner"),
         supabase
           .from("dealer_check_ins")
-          .select("id,new_placement,visit_date,user_id,dealer_id")
+          .select("id,new_placement,visit_date,user_id,dealer_id,log_type")
           .gte("visit_date", start)
           .lte("visit_date", end),
       ]);
@@ -242,7 +242,14 @@ export function WeeklyReviewPanel({
         }
       });
 
+      // Meetings only — matches the Visit Analytics filter. log_type can be a
+      // comma-joined multi-select (e.g. "meeting,follow_up"), so membership is
+      // checked per-value rather than with strict equality.
+      const isMeeting = (c: any) =>
+        ((c.log_type ?? "") as string).split(",").map((v) => v.trim()).includes("meeting");
+
       const rows = (checkIns ?? []).filter((c: any) => {
+        if (!isMeeting(c)) return false;
         if (c.user_id && userIds.has(c.user_id)) return true;
         // If the user belongs to any other manager, don't override via dealer — same as
         // Visit Analytics where user attribution always takes priority over dealer.

@@ -3,14 +3,16 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
-import { ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
+import { ChevronDown, ChevronRight, AlertTriangle, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 // ── Config ─────────────────────────────────────────────────────────────────────
@@ -121,11 +123,23 @@ function toNum(v: unknown): number {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function LaborDayPromoPage() {
+  const { toast } = useToast();
   const [promoConfig, setPromoConfig]   = useState<PromoConfig | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [rawLines, setRawLines]         = useState<RawLine[]>([]);
   const [loading, setLoading]           = useState(true);
   const [loadError, setLoadError]       = useState(false);
+
+  // Manual "add participant" form
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [submitting, setSubmitting]   = useState(false);
+  const [newCustId, setNewCustId]         = useState("");
+  const [newDealerName, setNewDealerName] = useState("");
+  const [newTerritory, setNewTerritory]   = useState("");
+  const [newSalesManager, setNewSalesManager] = useState("");
+  const [newRepMode, setNewRepMode]       = useState<"existing" | "new">("existing");
+  const [newRepId, setNewRepId]           = useState("");
+  const [newRepName, setNewRepName]       = useState("");
 
   // Filters
   const [repFilter, setRepFilter]       = useState("all");
@@ -230,6 +244,71 @@ export default function LaborDayPromoPage() {
     setUsingPromoRange(true);
     setDateFrom(promoConfig?.start_date ?? "");
     setDateTo(promoConfig?.end_date ?? "");
+  }
+
+  function resetAddForm() {
+    setNewCustId("");
+    setNewDealerName("");
+    setNewTerritory("");
+    setNewSalesManager("");
+    setNewRepMode("existing");
+    setNewRepId("");
+    setNewRepName("");
+  }
+
+  async function handleAddParticipant() {
+    const custId = newCustId.trim();
+    const dealerName = newDealerName.trim();
+    const repId = newRepId.trim();
+    const repName = newRepName.trim();
+
+    if (!custId || !dealerName || !repId) {
+      toast({ title: "Missing info", description: "Dealer ID, dealer name, and rep are required.", variant: "destructive" });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { error } = await (supabase as any)
+        .from("labor_day_2026_participants")
+        .insert({
+          promo_slug: PROMO_SLUG,
+          cust_id: custId,
+          company_name: dealerName,
+          dealer_name: dealerName,
+          territory: newTerritory.trim() || null,
+          sales_manager: newSalesManager.trim() || null,
+          salesperson_id: repId,
+          salesperson_name: repName || repId,
+          active: true,
+        });
+
+      if (error) {
+        const duplicate = (error as any).code === "23505";
+        toast({
+          title: duplicate ? "Already in the roster" : "Couldn't add participant",
+          description: duplicate
+            ? "This dealer is already assigned to that rep in the LD26 roster."
+            : error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setParticipants(prev => [...prev, {
+        cust_id: custId,
+        company_name: dealerName,
+        dealer_name: dealerName,
+        territory: newTerritory.trim() || null,
+        sales_manager: newSalesManager.trim() || null,
+        salesperson_id: repId,
+        salesperson_name: repName || repId,
+      }]);
+      toast({ title: "Participant added", description: `${dealerName} added to the LD26 roster.` });
+      resetAddForm();
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   // ── Match sales lines to the participant roster (normalized customer_id) ─────
@@ -481,6 +560,79 @@ export default function LaborDayPromoPage() {
               )}
             </Card>
           )}
+
+          {/* ── Manually add a participant ───────────────────────────────────── */}
+          <Card className="p-3">
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 text-xs text-left"
+              onClick={() => setShowAddForm(v => !v)}
+            >
+              <UserPlus className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="font-medium">Add a participant</span>
+              <span className="text-muted-foreground">Manually add a dealer/rep to the LD26 roster</span>
+              {showAddForm ? <ChevronDown className="h-3.5 w-3.5 ml-auto" /> : <ChevronRight className="h-3.5 w-3.5 ml-auto" />}
+            </button>
+
+            {showAddForm && (
+              <div className="mt-3 pt-3 border-t border-border/50 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="ld26-cust-id" className="text-[11px] text-muted-foreground">Dealer / Customer ID *</Label>
+                  <Input id="ld26-cust-id" value={newCustId} onChange={e => setNewCustId(e.target.value)} className="h-8 text-xs" placeholder="e.g. ROYALFURNKEY" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ld26-dealer-name" className="text-[11px] text-muted-foreground">Dealer Name *</Label>
+                  <Input id="ld26-dealer-name" value={newDealerName} onChange={e => setNewDealerName(e.target.value)} className="h-8 text-xs" placeholder="e.g. Royal Furniture" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ld26-territory" className="text-[11px] text-muted-foreground">Territory</Label>
+                  <Input id="ld26-territory" value={newTerritory} onChange={e => setNewTerritory(e.target.value)} className="h-8 text-xs" placeholder="Optional" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ld26-sales-manager" className="text-[11px] text-muted-foreground">Sales Manager</Label>
+                  <Input id="ld26-sales-manager" value={newSalesManager} onChange={e => setNewSalesManager(e.target.value)} className="h-8 text-xs" placeholder="Optional" />
+                </div>
+
+                <div className="space-y-1 sm:col-span-2 lg:col-span-2">
+                  <Label className="text-[11px] text-muted-foreground">Rep *</Label>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={newRepMode === "existing" ? (newRepId || "__pick") : "__new"}
+                      onValueChange={v => {
+                        if (v === "__new") { setNewRepMode("new"); setNewRepId(""); setNewRepName(""); return; }
+                        const found = repOptions.find(([id]) => id === v);
+                        setNewRepMode("existing");
+                        setNewRepId(v);
+                        setNewRepName(found ? found[1] : "");
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Choose a rep" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__pick" disabled>Choose an existing rep…</SelectItem>
+                        {repOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                        <SelectItem value="__new">+ New rep…</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {newRepMode === "new" && (
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <Input value={newRepId} onChange={e => setNewRepId(e.target.value)} className="h-8 text-xs" placeholder="Rep ID (salesperson_id)" />
+                      <Input value={newRepName} onChange={e => setNewRepName(e.target.value)} className="h-8 text-xs" placeholder="Rep name" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2 lg:col-span-4 flex justify-end gap-2">
+                  <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={resetAddForm} disabled={submitting}>
+                    Clear
+                  </Button>
+                  <Button size="sm" className="h-8 text-xs" onClick={handleAddParticipant} disabled={submitting}>
+                    {submitting ? "Adding…" : "Add participant"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
 
           {/* ── Filters ──────────────────────────────────────────────────────── */}
           <div className="flex flex-wrap items-center gap-2">

@@ -43,6 +43,13 @@ interface CheckInRow {
   dealer_id: string | null;
   visit_date: string;
   new_placement: string | null;
+  log_type: string | null;
+}
+
+// log_type can be a comma-joined multi-select (e.g. "meeting,follow_up"),
+// so membership must be checked per-value rather than with strict equality.
+function isMeetingCheckIn(row: { log_type: string | null }): boolean {
+  return (row.log_type ?? "").split(",").map((v) => v.trim()).includes("meeting");
 }
 
 interface UserManagerRow {
@@ -224,7 +231,7 @@ export default function CheckInAnalyticsPage() {
         fetchAllAnalyticsRows<CheckInRow>((from, to) =>
           supabase
             .from("dealer_check_ins")
-            .select("id,user_id,dealer_id,visit_date,new_placement")
+            .select("id,user_id,dealer_id,visit_date,new_placement,log_type")
             .order("visit_date", { ascending: false })
             .range(from, to) as unknown as Promise<{ data: CheckInRow[] | null; error: unknown }>,
         ),
@@ -278,7 +285,7 @@ export default function CheckInAnalyticsPage() {
 
       setUserToTeam(uMap);
       setDealerToTeam(dMap);
-      setCheckIns(cis ?? []);
+      setCheckIns((cis ?? []).filter(isMeetingCheckIn));
       setCurrentUserId(userRes?.user?.id ?? null);
       setLoading(false);
     })();

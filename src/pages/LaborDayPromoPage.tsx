@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,13 +14,28 @@ import {
 import { cn } from "@/lib/utils";
 
 // ── Config ─────────────────────────────────────────────────────────────────────
+//
+// promo_slug ('ld26') is the portal's internal identifier for the participant
+// roster/config below. It is intentionally distinct from discount_code
+// ('LD26'), which is the Acctivate OrderDetail._DiscType value used to pull
+// actual bookings from v_portal_dealer_rep_reporting_lines.
 
+const PROMO_SLUG    = "ld26";
 const DISCOUNT_CODE = "LD26";
-const PROMO_SLUG = "labor-day-promo";
-const DEALER_GOAL = 5000;
-const UNCLASSIFIED = "Unclassified Collection";
+const DEALER_GOAL   = 5000;
+const UNCLASSIFIED  = "Unclassified Collection";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+interface Participant {
+  cust_id: string;
+  company_name: string | null;
+  dealer_name: string | null;
+  territory: string | null;
+  sales_manager: string | null;
+  salesperson_id: string;
+  salesperson_name: string | null;
+}
 
 interface PromoConfig {
   start_date: string | null;
@@ -54,7 +69,7 @@ interface CollectionNode {
 }
 
 interface DealerNode {
-  customer_id: string;
+  cust_id: string;
   dealer_name: string;
   total_sales: number;
   goal: number;
@@ -63,7 +78,7 @@ interface DealerNode {
 }
 
 interface RepNode {
-  rep_id: string;
+  salesperson_id: string;
   rep_name: string;
   dealer_count: number;
   total_sales: number;
@@ -72,7 +87,18 @@ interface RepNode {
   dealers: DealerNode[];
 }
 
+interface UnmatchedRow {
+  rep_name: string;
+  rep_id: string;
+  customer_id: string;
+  dealer_name: string;
+  total_sales: number;
+  line_count: number;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────────
+
+const norm = (s: string | null | undefined): string => (s ?? "").trim().toUpperCase();
 
 function fmtMoney(n: number): string {
   const abs = Math.abs(n);
@@ -95,10 +121,11 @@ function toNum(v: unknown): number {
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function LaborDayPromoPage() {
-  const [promoConfig, setPromoConfig] = useState<PromoConfig | null>(null);
-  const [rawLines, setRawLines]       = useState<RawLine[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [loadError, setLoadError]     = useState(false);
+  const [promoConfig, setPromoConfig]   = useState<PromoConfig | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [rawLines, setRawLines]         = useState<RawLine[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [loadError, setLoadError]       = useState(false);
 
   // Filters
   const [repFilter, setRepFilter]       = useState("all");
@@ -107,10 +134,11 @@ export default function LaborDayPromoPage() {
   const [dateTo, setDateTo]             = useState("");
   const [search, setSearch]             = useState("");
   const [usingPromoRange, setUsingPromoRange] = useState(true);
+  const [showUnmatched, setShowUnmatched]     = useState(false);
 
   // Table expansion
-  const [expandedReps, setExpandedReps]             = useState<Set<string>>(new Set());
-  const [expandedDealers, setExpandedDealers]       = useState<Set<string>>(new Set());
+  const [expandedReps, setExpandedReps]               = useState<Set<string>>(new Set());
+  const [expandedDealers, setExpandedDealers]         = useState<Set<string>>(new Set());
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set());
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -128,7 +156,7 @@ export default function LaborDayPromoPage() {
         const { data } = await (supabase as any)
           .from("promotions")
           .select("start_date,end_date")
-          .eq("slug", PROMO_SLUG)
+          .eq("slug", "labor-day-promo")
           .single();
         if (data && (data.start_date || data.end_date)) {
           config = { start_date: data.start_date ?? null, end_date: data.end_date ?? null };
@@ -141,20 +169,37 @@ export default function LaborDayPromoPage() {
       if (config?.end_date)   setDateTo(config.end_date);
 
       try {
-        const { data, error } = await (supabase as any)
-          .from("v_portal_dealer_rep_reporting_lines")
-          .select("transaction_date,dealer_name,customer_id,rep_name,rep_id,sku,description,product_class,amount")
-          .eq("metric_type", "bookings")
-          .eq("discount_code", DISCOUNT_CODE);
+        const [participantsRes, salesRes] = await Promise.all([
+          (supabase as any)
+            .from("labor_day_2026_participants")
+            .select("cust_id,company_name,dealer_name,territory,sales_manager,salesperson_id,salesperson_name")
+            .eq("promo_slug", PROMO_SLUG)
+            .eq("active", true),
+          (supabase as any)
+            .from("v_portal_dealer_rep_reporting_lines")
+            .select("transaction_date,dealer_name,customer_id,rep_name,rep_id,sku,description,product_class,amount")
+            .eq("metric_type", "bookings")
+            .eq("discount_code", DISCOUNT_CODE),
+        ]);
 
         if (cancelled) return;
 
-        if (error) {
+        if (participantsRes.error || salesRes.error) {
           setLoadError(true);
           return;
         }
 
-        const rows: RawLine[] = ((data ?? []) as any[]).map((r: any) => ({
+        const parts: Participant[] = ((participantsRes.data ?? []) as any[]).map((r: any) => ({
+          cust_id:          String(r.cust_id ?? ""),
+          company_name:     r.company_name ?? null,
+          dealer_name:      r.dealer_name ?? null,
+          territory:        r.territory ?? null,
+          sales_manager:    r.sales_manager ?? null,
+          salesperson_id:   String(r.salesperson_id ?? ""),
+          salesperson_name: r.salesperson_name ?? null,
+        }));
+
+        const rows: RawLine[] = ((salesRes.data ?? []) as any[]).map((r: any) => ({
           transaction_date: String(r.transaction_date ?? ""),
           dealer_name:      r.dealer_name ?? r.customer_id ?? "Unknown",
           customer_id:      r.customer_id ?? "unknown",
@@ -166,6 +211,7 @@ export default function LaborDayPromoPage() {
           amount:           toNum(r.amount),
         }));
 
+        setParticipants(parts);
         setRawLines(rows);
       } catch {
         if (!cancelled) setLoadError(true);
@@ -186,84 +232,118 @@ export default function LaborDayPromoPage() {
     setDateTo(promoConfig?.end_date ?? "");
   }
 
-  // ── Filter raw lines ─────────────────────────────────────────────────────────
+  // ── Match sales lines to the participant roster (normalized customer_id) ─────
 
-  const filteredLines = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return rawLines.filter(line => {
-      if (repFilter !== "all" && line.rep_id !== repFilter) return false;
-      if (dealerFilter !== "all" && line.customer_id !== dealerFilter) return false;
+  const { matchedByCustId, unmatchedLines } = useMemo(() => {
+    const dateFiltered = rawLines.filter(line => {
       if (dateFrom && line.transaction_date < dateFrom) return false;
       if (dateTo && line.transaction_date > dateTo) return false;
-      if (q) {
-        const hay = `${line.dealer_name} ${line.sku} ${line.description ?? ""}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
       return true;
     });
-  }, [rawLines, repFilter, dealerFilter, dateFrom, dateTo, search]);
 
-  // ── Aggregate Rep → Dealer → Collection → SKU ───────────────────────────────
+    const participantKeys = new Set(participants.map(p => norm(p.cust_id)));
+    const matched = new Map<string, RawLine[]>();
+    const unmatched: RawLine[] = [];
+
+    for (const line of dateFiltered) {
+      const key = norm(line.customer_id);
+      if (participantKeys.has(key)) {
+        if (!matched.has(key)) matched.set(key, []);
+        matched.get(key)!.push(line);
+      } else {
+        unmatched.push(line);
+      }
+    }
+
+    // Roll unmatched lines up by dealer/rep for the audit panel.
+    const unmatchedMap = new Map<string, UnmatchedRow>();
+    for (const line of unmatched) {
+      const k = `${line.rep_id}::${line.customer_id}`;
+      if (!unmatchedMap.has(k)) {
+        unmatchedMap.set(k, {
+          rep_name: line.rep_name, rep_id: line.rep_id,
+          customer_id: line.customer_id, dealer_name: line.dealer_name,
+          total_sales: 0, line_count: 0,
+        });
+      }
+      const u = unmatchedMap.get(k)!;
+      u.total_sales += line.amount;
+      u.line_count  += 1;
+    }
+
+    return {
+      matchedByCustId: matched,
+      unmatchedLines: [...unmatchedMap.values()].sort((a, b) => b.total_sales - a.total_sales),
+    };
+  }, [rawLines, participants, dateFrom, dateTo]);
+
+  // ── Filter roster (rep / dealer / search) ────────────────────────────────────
+
+  const filteredParticipants = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    return participants.filter(p => {
+      if (repFilter !== "all" && p.salesperson_id !== repFilter) return false;
+      if (dealerFilter !== "all" && p.cust_id !== dealerFilter) return false;
+      if (!q) return true;
+
+      const nameHay = `${p.company_name ?? ""} ${p.dealer_name ?? ""} ${p.cust_id}`.toLowerCase();
+      if (nameHay.includes(q)) return true;
+
+      const lines = matchedByCustId.get(norm(p.cust_id)) ?? [];
+      return lines.some(l => `${l.sku} ${l.description ?? ""}`.toLowerCase().includes(q));
+    });
+  }, [participants, repFilter, dealerFilter, search, matchedByCustId]);
+
+  // ── Build Rep → Dealer → Collection → SKU from the roster ───────────────────
 
   const repRows = useMemo<RepNode[]>(() => {
-    const repMap = new Map<string, {
-      rep_name: string;
-      dealers: Map<string, {
-        dealer_name: string;
-        collections: Map<string, Map<string, { description: string | null; amount: number; count: number }>>;
-      }>;
-    }>();
-
-    for (const line of filteredLines) {
-      const collectionName = line.product_class && line.product_class.trim() ? line.product_class.trim() : UNCLASSIFIED;
-
-      if (!repMap.has(line.rep_id)) repMap.set(line.rep_id, { rep_name: line.rep_name, dealers: new Map() });
-      const re = repMap.get(line.rep_id)!;
-
-      if (!re.dealers.has(line.customer_id)) {
-        re.dealers.set(line.customer_id, { dealer_name: line.dealer_name, collections: new Map() });
+    const repMap = new Map<string, { rep_name: string; dealers: Participant[] }>();
+    for (const p of filteredParticipants) {
+      if (!repMap.has(p.salesperson_id)) {
+        repMap.set(p.salesperson_id, { rep_name: p.salesperson_name || p.salesperson_id, dealers: [] });
       }
-      const de = re.dealers.get(line.customer_id)!;
-
-      if (!de.collections.has(collectionName)) de.collections.set(collectionName, new Map());
-      const co = de.collections.get(collectionName)!;
-
-      if (!co.has(line.sku)) co.set(line.sku, { description: line.description, amount: 0, count: 0 });
-      const sk = co.get(line.sku)!;
-      sk.amount += line.amount;
-      sk.count  += 1;
+      repMap.get(p.salesperson_id)!.dealers.push(p);
     }
 
     const reps: RepNode[] = [];
-    for (const [repId, re] of repMap.entries()) {
-      const dealers: DealerNode[] = [];
-      for (const [customerId, de] of re.dealers.entries()) {
-        const collections: CollectionNode[] = [];
-        for (const [collName, skuMap] of de.collections.entries()) {
+    for (const [salespersonId, re] of repMap.entries()) {
+      const dealers: DealerNode[] = re.dealers.map(p => {
+        const lines = matchedByCustId.get(norm(p.cust_id)) ?? [];
+
+        const collMap = new Map<string, Map<string, { description: string | null; amount: number; count: number }>>();
+        for (const line of lines) {
+          const collName = line.product_class && line.product_class.trim() ? line.product_class.trim() : UNCLASSIFIED;
+          if (!collMap.has(collName)) collMap.set(collName, new Map());
+          const skuMap = collMap.get(collName)!;
+          if (!skuMap.has(line.sku)) skuMap.set(line.sku, { description: line.description, amount: 0, count: 0 });
+          const sk = skuMap.get(line.sku)!;
+          sk.amount += line.amount;
+          sk.count  += 1;
+        }
+
+        const collections: CollectionNode[] = [...collMap.entries()].map(([name, skuMap]) => {
           const skus: SkuNode[] = [...skuMap.entries()]
             .map(([sku, s]) => ({ sku, description: s.description, total_sales: s.amount, line_count: s.count }))
             .sort((a, b) => b.total_sales - a.total_sales);
-          const collTotal = skus.reduce((sum, s) => sum + s.total_sales, 0);
-          collections.push({ name: collName, total_sales: collTotal, sku_count: skus.length, skus });
-        }
-        collections.sort((a, b) => b.total_sales - a.total_sales);
+          const total = skus.reduce((sum, s) => sum + s.total_sales, 0);
+          return { name, total_sales: total, sku_count: skus.length, skus };
+        }).sort((a, b) => b.total_sales - a.total_sales);
 
         const dealerTotal = collections.reduce((sum, c) => sum + c.total_sales, 0);
-        dealers.push({
-          customer_id: customerId,
-          dealer_name: de.dealer_name,
+        return {
+          cust_id: p.cust_id,
+          dealer_name: p.company_name || p.dealer_name || p.cust_id,
           total_sales: dealerTotal,
           goal: DEALER_GOAL,
-          pct_to_goal: DEALER_GOAL > 0 ? (dealerTotal / DEALER_GOAL) * 100 : 0,
+          pct_to_goal: (dealerTotal / DEALER_GOAL) * 100,
           collections,
-        });
-      }
-      dealers.sort((a, b) => b.total_sales - a.total_sales);
+        };
+      }).sort((a, b) => b.total_sales - a.total_sales);
 
       const repTotal = dealers.reduce((sum, d) => sum + d.total_sales, 0);
       const repGoal  = dealers.length * DEALER_GOAL;
       reps.push({
-        rep_id: repId,
+        salesperson_id: salespersonId,
         rep_name: re.rep_name,
         dealer_count: dealers.length,
         total_sales: repTotal,
@@ -272,24 +352,25 @@ export default function LaborDayPromoPage() {
         dealers,
       });
     }
-    return reps.sort((a, b) => b.total_sales - a.total_sales);
-  }, [filteredLines]);
+    return reps.sort((a, b) => b.total_sales - a.total_sales || a.rep_name.localeCompare(b.rep_name));
+  }, [filteredParticipants, matchedByCustId]);
 
   const pageTotal = useMemo(() => repRows.reduce((sum, r) => sum + r.total_sales, 0), [repRows]);
+  const unmatchedTotal = useMemo(() => unmatchedLines.reduce((sum, u) => sum + u.total_sales, 0), [unmatchedLines]);
 
-  // ── Filter option lists (from full unfiltered dataset) ──────────────────────
+  // ── Filter option lists (from the full roster, not just filtered rows) ──────
 
   const repOptions = useMemo(() => {
     const m = new Map<string, string>();
-    for (const l of rawLines) m.set(l.rep_id, l.rep_name);
+    for (const p of participants) m.set(p.salesperson_id, p.salesperson_name || p.salesperson_id);
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [rawLines]);
+  }, [participants]);
 
   const dealerOptions = useMemo(() => {
     const m = new Map<string, string>();
-    for (const l of rawLines) m.set(l.customer_id, l.dealer_name);
+    for (const p of participants) m.set(p.cust_id, p.company_name || p.dealer_name || p.cust_id);
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [rawLines]);
+  }, [participants]);
 
   // ── Chart data ────────────────────────────────────────────────────────────────
 
@@ -333,7 +414,7 @@ export default function LaborDayPromoPage() {
     return <div className="py-20 text-center text-muted-foreground text-sm">Loading LD26 booking data…</div>;
   }
 
-  const noDataAtAll = !loadError && rawLines.length === 0;
+  const noParticipants = !loadError && participants.length === 0;
 
   return (
     <div className="space-y-6">
@@ -343,19 +424,64 @@ export default function LaborDayPromoPage() {
       </div>
 
       {/* ── Empty / error state ─────────────────────────────────────────────── */}
-      {(loadError || noDataAtAll) && (
+      {(loadError || noParticipants) && (
         <Card className="py-14">
           <div className="text-center space-y-2">
             <p className="text-sm font-medium text-muted-foreground">No LD26 bookings found yet.</p>
             <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Confirm the booking sync has pulled OrderDetail._DiscType into discount_code.
+              Confirm the booking sync has pulled OrderDetail._DiscType into discount_code, and that the
+              labor_day_2026_participants roster is loaded.
             </p>
           </div>
         </Card>
       )}
 
-      {!loadError && !noDataAtAll && (
+      {!loadError && !noParticipants && (
         <>
+          {/* ── Unmatched sales audit ────────────────────────────────────────── */}
+          {unmatchedLines.length > 0 && (
+            <Card className="p-3 border-warning/40 bg-warning/5">
+              <button
+                type="button"
+                className="w-full flex items-center gap-2 text-xs text-left"
+                onClick={() => setShowUnmatched(v => !v)}
+              >
+                <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0" />
+                <span className="font-medium">
+                  {unmatchedLines.length} dealer{unmatchedLines.length !== 1 ? "s" : ""} with LD26 bookings not in the participant roster
+                </span>
+                <span className="text-muted-foreground">
+                  ({fmtMoneyFull(unmatchedTotal)} excluded from official totals)
+                </span>
+                {showUnmatched ? <ChevronDown className="h-3.5 w-3.5 ml-auto" /> : <ChevronRight className="h-3.5 w-3.5 ml-auto" />}
+              </button>
+              {showUnmatched && (
+                <div className="mt-2 overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="font-medium py-1 pr-4">Dealer</th>
+                        <th className="font-medium py-1 pr-4">Rep</th>
+                        <th className="font-medium py-1 pr-4 text-right">Sales</th>
+                        <th className="font-medium py-1 text-right">Lines</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {unmatchedLines.map(u => (
+                        <tr key={`${u.rep_id}::${u.customer_id}`} className="border-t border-border/30">
+                          <td className="py-1 pr-4">{u.dealer_name} <span className="text-muted-foreground">({u.customer_id})</span></td>
+                          <td className="py-1 pr-4">{u.rep_name}</td>
+                          <td className="py-1 pr-4 text-right tabular-nums">{fmtMoneyFull(u.total_sales)}</td>
+                          <td className="py-1 text-right tabular-nums">{u.line_count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          )}
+
           {/* ── Filters ──────────────────────────────────────────────────────── */}
           <div className="flex flex-wrap items-center gap-2">
             <Input
@@ -410,7 +536,7 @@ export default function LaborDayPromoPage() {
                   <BarChart data={repChartData} layout="vertical" margin={{ left: 4, right: 36, top: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} horizontal={false} />
                     <XAxis type="number" tickFormatter={v => fmtMoney(v)} tick={{ fontSize: 10 }} tickLine={false} />
-                    <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} />
+                    <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} reversed />
                     <RTooltip formatter={(v: number, _, item: any) => [fmtMoneyFull(v), item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
                     <Bar dataKey="sales" fill="hsl(var(--chart-2))" radius={[0, 3, 3, 0]} />
                   </BarChart>
@@ -430,7 +556,7 @@ export default function LaborDayPromoPage() {
                       tickFormatter={v => `${Math.round(v)}%`}
                       tick={{ fontSize: 10 }} tickLine={false}
                     />
-                    <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} />
+                    <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} reversed />
                     <ReferenceLine x={100} stroke="hsl(var(--destructive))" strokeDasharray="4 3" strokeWidth={1.5} />
                     <RTooltip formatter={(v: number, _, item: any) => [`${v.toFixed(1)}%`, item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
                     <Bar dataKey="pct" fill="hsl(var(--chart-3))" radius={[0, 3, 3, 0]} />
@@ -446,7 +572,7 @@ export default function LaborDayPromoPage() {
                   <BarChart data={dealerChartData} layout="vertical" margin={{ left: 4, right: 36, top: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} horizontal={false} />
                     <XAxis type="number" tickFormatter={v => fmtMoney(v)} tick={{ fontSize: 10 }} tickLine={false} />
-                    <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10 }} tickLine={false} />
+                    <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10 }} tickLine={false} reversed />
                     <ReferenceLine x={DEALER_GOAL} stroke="hsl(var(--destructive))" strokeDasharray="4 3" strokeWidth={1.5} />
                     <RTooltip formatter={(v: number, _, item: any) => [fmtMoneyFull(v), item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
                     <Bar dataKey="sales" fill="hsl(var(--chart-4))" radius={[0, 3, 3, 0]} />
@@ -456,7 +582,7 @@ export default function LaborDayPromoPage() {
             </div>
           ) : (
             <Card className="py-10">
-              <p className="text-center text-sm text-muted-foreground">No LD26 bookings match the current filters.</p>
+              <p className="text-center text-sm text-muted-foreground">No participants match the current filters.</p>
             </Card>
           )}
 
@@ -477,15 +603,15 @@ export default function LaborDayPromoPage() {
                   </thead>
                   <tbody>
                     {repRows.map(rep => (
-                      <Fragment key={rep.rep_id}>
+                      <Fragment key={rep.salesperson_id}>
                         {/* Rep row */}
                         <tr
                           className="border-b border-border/50 hover:bg-muted/20 cursor-pointer transition-colors"
-                          onClick={() => toggleRep(rep.rep_id)}
+                          onClick={() => toggleRep(rep.salesperson_id)}
                         >
                           <td className="px-4 py-3 font-semibold text-foreground">
                             <span className="inline-flex items-center gap-1.5">
-                              {expandedReps.has(rep.rep_id) ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                              {expandedReps.has(rep.salesperson_id) ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
                               {rep.rep_name}
                             </span>
                           </td>
@@ -497,8 +623,9 @@ export default function LaborDayPromoPage() {
                         </tr>
 
                         {/* Dealer rows */}
-                        {expandedReps.has(rep.rep_id) && rep.dealers.map(dealer => {
-                          const dk = `${rep.rep_id}::${dealer.customer_id}`;
+                        {expandedReps.has(rep.salesperson_id) && rep.dealers.map(dealer => {
+                          const dk = `${rep.salesperson_id}::${dealer.cust_id}`;
+                          const hasSales = dealer.collections.length > 0;
                           return (
                             <Fragment key={dk}>
                               <tr
@@ -506,17 +633,28 @@ export default function LaborDayPromoPage() {
                                 onClick={() => toggleDealer(dk)}
                               >
                                 <td className="pl-10 pr-4 py-2.5 text-sm">
-                                  <span className="inline-flex items-center gap-1.5 font-medium">
+                                  <span className={cn("inline-flex items-center gap-1.5 font-medium", !hasSales && "text-muted-foreground")}>
                                     {expandedDealers.has(dk) ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
                                     {dealer.dealer_name}
                                   </span>
                                 </td>
-                                <td className="px-4 py-2.5 text-right text-[11px] text-muted-foreground">{dealer.collections.length} collection{dealer.collections.length !== 1 ? "s" : ""}</td>
+                                <td className="px-4 py-2.5 text-right text-[11px] text-muted-foreground">
+                                  {hasSales ? `${dealer.collections.length} collection${dealer.collections.length !== 1 ? "s" : ""}` : "—"}
+                                </td>
                                 <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmtMoneyFull(dealer.total_sales)}</td>
                                 <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground text-xs">{fmtMoneyFull(dealer.goal)}</td>
                                 <td className={cn("px-4 py-2.5 text-right tabular-nums font-medium", dealer.pct_to_goal >= 100 ? "text-success" : "")}>{fmtPct(dealer.pct_to_goal)}</td>
                                 <td />
                               </tr>
+
+                              {/* No-sales placeholder */}
+                              {expandedDealers.has(dk) && !hasSales && (
+                                <tr className="border-b border-border/20 bg-muted/5">
+                                  <td className="pl-16 pr-4 py-2 text-xs text-muted-foreground italic" colSpan={6}>
+                                    No LD26 bookings yet
+                                  </td>
+                                </tr>
+                              )}
 
                               {/* Collection rows */}
                               {expandedDealers.has(dk) && dealer.collections.map(coll => {

@@ -10,16 +10,22 @@
 -- Open-order definition now matches Andrew's SSMS-validated query exactly:
 --   Header:  WorkflowStatus IN ('Not Ready to Pick','Ready to Pick',
 --                                'Pick In Progress','Partially Invoiced')
---   Line:    LineCancelled = 0 OR NULL, ProductID IS NOT NULL, trim <> ''
+--   Line:    LineCancelled = 0 OR NULL, ProductID IS NOT NULL, trim <> '',
+--            QtyOutstanding > 0
 --   Qty:     qty_open       = QtyOutstanding
 --   Amount:  open_so_amount = Price * QtyOutstanding
--- No QtyOrdered-QtyShipped, no _OriginalPrice, no discount adjustment.
+-- No QtyOrdered-QtyShipped, no _OriginalPrice, no discount adjustment, no
+-- order-date bound — Open SO is a current-state backlog metric, not scoped
+-- to any booking date range.
 --
 -- workflow_status / qty_outstanding / price columns already exist on
 -- portal_acctivate_orders / portal_acctivate_order_lines (added in an earlier
--- session) but were 100% unpopulated — sync-aug-current-bookings.ps1 has been
--- updated separately to pull them. This view will return 0 rows until that
--- updated script actually runs on the VM.
+-- session) but were 100% unpopulated. Populating them for ALL currently-open
+-- orders (any order date) is sync-open-sales-orders.ps1's job (rewritten
+-- alongside this migration) — sync-aug-current-bookings.ps1 only covers
+-- Aug-2026+ orders and was never sufficient on its own for full Open SO
+-- coverage. This view will return 0 rows until that sync actually runs on
+-- the VM.
 -- ══════════════════════════════════════════════════════════════════════════════
 
 -- Safety net — no-op if these already exist (confirmed present via
@@ -112,6 +118,7 @@ lines AS (
     AND (ol.line_cancelled = false OR ol.line_cancelled IS NULL)
     AND ol.product_id IS NOT NULL
     AND TRIM(ol.product_id) <> ''
+    AND ol.qty_outstanding > 0
 )
 SELECT
   LOWER(REPLACE(REPLACE(raw_guid_order::text, '{', ''), '}', ''))            AS guid_order,

@@ -105,7 +105,7 @@ Register-SyncTask `
     -ScriptFile 'sync-open-sales-orders.ps1' `
     -Hour1      '05' `
     -Hour2      '17' `
-    -Description 'Syncs open Sales Orders from Acctivate SQL Server into Supabase (acctivate_open_sales_orders + lines). Feeds Inventory Backlog calendar.'
+    -Description 'Syncs open Sales Orders from Acctivate SQL Server into Supabase (portal_acctivate_orders + lines, no date bound). Feeds Inventory Backlog / Open SO.'
 
 Register-SyncTask `
     -TaskName   'Daily Direct Acctivate Open PO Sync' `

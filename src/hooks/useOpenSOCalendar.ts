@@ -93,15 +93,6 @@ export function useOpenSOCalendar(year: number) {
       }));
 
       setEvents(rows);
-      // Attempt to read last synced_at from the underlying table
-      const { data: ts } = await (supabase as any)
-        .from("acctivate_open_sales_order_lines")
-        .select("source_synced_at")
-        .order("source_synced_at", { ascending: false })
-        .limit(1);
-      if (!cancelled && ts && ts.length > 0) {
-        setSyncedAt(ts[0].source_synced_at ?? null);
-      }
       setLoading(false);
     }
     void load();

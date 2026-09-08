@@ -139,6 +139,14 @@ $discCodeExpr = "CAST(NULLIF(RTRIM(ISNULL(od._DiscType, '')), '') AS NVARCHAR(50
 #                dealers.acctivate_id).  Confirmed present in all versions.
 # sold_to_name = dbo.Orders.SoldToName  (checked above; empty string if absent).
 # ship_to_description = dbo.Orders.ShipToDescription (checked above).
+#
+# rep1 = dbo.Orders.SalespersonID (NOT _Rep1 — confirmed via direct query that
+# _Rep1 is blank on every live order while SalespersonID is 100% populated and
+# is the field the canonical rep-mapping chain already resolves against
+# elsewhere in this app). rep2 stays _Rep2 as the existing secondary fallback.
+#
+# workflow_status = dbo.Orders.WorkFlowStatus (native Acctivate field; drives
+# the Open SO definition in v_portal_open_sales_order_line_facts).
 # ---------------------------------------------------------------------------
 
 $OrdersQuery = @"
@@ -148,9 +156,10 @@ SELECT
     CONVERT(nvarchar(30), o.OrderDate, 126)                                             AS order_date,
     CONVERT(nvarchar(30), ISNULL(o.EntryDate, o.OrderDate), 126)                        AS entry_date,
     CAST(ISNULL(o.OrderStatus, '')    AS NVARCHAR(100))                                 AS order_status,
+    CAST(ISNULL(o.WorkFlowStatus, '') AS NVARCHAR(100))                                 AS workflow_status,
     LOWER(CAST(o.GUIDCustomer         AS NVARCHAR(64)))                                 AS guid_customer,
     LOWER(REPLACE(REPLACE(CAST(o.GUIDSalesperson AS NVARCHAR(64)), '{', ''), '}', '')) AS guid_salesperson,
-    CAST(ISNULL(o._Rep1, '')          AS NVARCHAR(100))                                 AS rep1,
+    CAST(ISNULL(o.SalespersonID, '')  AS NVARCHAR(100))                                 AS rep1,
     CAST(ISNULL(o._Rep2, '')          AS NVARCHAR(100))                                 AS rep2,
     CAST(CAST(COALESCE(o.SubTotal, 0) AS decimal(18,2)) AS NVARCHAR(30))               AS subtotal,
     CAST(ISNULL(o.CustomerID, '')     AS NVARCHAR(100))                                 AS customer_id,
@@ -195,6 +204,12 @@ WITH src AS (
         CAST(CAST(COALESCE(od.QtyOrdered,      0) AS decimal(18,4)) AS NVARCHAR(30))       AS qty_ordered,
         CAST(CAST(COALESCE(od._OriginalPrice,  0) AS decimal(18,4)) AS NVARCHAR(30))       AS original_price,
         CAST(CAST(COALESCE(od.LineDiscountPct, 0) AS decimal(18,4)) AS NVARCHAR(30))       AS line_discount_pct,
+        -- qty_outstanding / price: NUMERIC (not NVARCHAR) — matches the
+        -- numeric column types already on portal_acctivate_order_lines.
+        -- Drives Andrew's validated Open SO formula: qty_open = QtyOutstanding,
+        -- open_so_amount = Price * QtyOutstanding.
+        CAST(od.QtyOutstanding AS decimal(18,4))                                           AS qty_outstanding,
+        CAST(od.Price          AS decimal(18,4))                                           AS price,
         CAST(CAST(COALESCE(od.Amount,          0) AS decimal(18,2)) AS NVARCHAR(30))       AS amount,
         CAST(CAST(COALESCE(od._TariffAmt,      0) AS decimal(18,2)) AS NVARCHAR(30))       AS tariff_amount,
         CAST(CAST(COALESCE(od._FreightAmt,     0) AS decimal(18,2)) AS NVARCHAR(30))       AS freight_amount,
@@ -300,7 +315,8 @@ function Get-NetBookingAmount {
 
 $OrderAllowedCols = @{
     'guid_order'          = 1; 'order_number'        = 1; 'order_date'          = 1
-    'entry_date'          = 1; 'order_status'        = 1; 'guid_customer'       = 1
+    'entry_date'          = 1; 'order_status'        = 1; 'workflow_status'     = 1
+    'guid_customer'       = 1
     'guid_salesperson'    = 1; 'rep1'                = 1; 'rep2'                = 1
     'subtotal'            = 1; 'synced_at'           = 1
     'customer_id'         = 1; 'sold_to_name'        = 1; 'ship_to_description' = 1
@@ -315,6 +331,7 @@ $LineAllowedCols = @{
     'amount'                   = 1; 'freight_amount'       = 1
     'tariff_amount'            = 1; 'sales_category'       = 1
     'original_price'           = 1; 'line_discount_pct'    = 1
+    'qty_outstanding'          = 1; 'price'                = 1
     'source_guid_order_detail' = 1; 'sub_line_number'      = 1
     'component_level'          = 1; 'duplicate_row_ordinal'= 1
     'natural_key'              = 1; 'source'               = 1

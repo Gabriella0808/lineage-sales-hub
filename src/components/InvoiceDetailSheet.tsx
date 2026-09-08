@@ -3,14 +3,42 @@ import {
   format, startOfDay, startOfMonth, endOfMonth, subMonths,
 } from "date-fns";
 import Papa from "papaparse";
-import { ChevronRight, Download, Printer } from "lucide-react";
+import { ChevronRight, Download, Printer, Info } from "lucide-react";
 import { isBookingVisibleDate, BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { formatCurrency } from "@/hooks/usePortalData";
+
+// ── Open Sales Orders (backlog) — matches get_open_sales_order_lines RPC ──────
+
+export interface OpenOrderLine {
+  guid_order:          string;
+  order_number:        string | null;
+  order_date:           string | null;
+  requested_ship_date:  string | null;
+  customer_id:          string | null;
+  dealer_name:          string | null;
+  rep_id:               string | null;
+  rep_name:             string | null;
+  fulfillment_type:     string | null;
+  warehouse:             string | null;
+  sku:                   string | null;
+  description:           string | null;
+  product_class:         string | null;
+  brand_category:        string | null;
+  qty_ordered:            number;
+  qty_shipped:            number;
+  qty_open:               number;
+  unit_price:             number;
+  line_discount_pct:      number;
+  net_open_amount:        number;
+}
+
+type FetchOpenOrdersFn = (params: { limit: number; offset: number }) => Promise<OpenOrderLine[]>;
 
 // ── Shared line type (matches v_portal_dealer_rep_reporting_lines columns) ────
 
@@ -56,6 +84,13 @@ interface Props {
   makeFetchLines?: (from: Date, to: Date) => FetchFn;
   primaryBookingsAmt?: number;
   primaryInvoicedAmt?: number;
+  /**
+   * RPC mode only: fetches the current open-sales-order backlog for this
+   * rep/dealer. Not date-scoped — open orders are a live snapshot,
+   * independent of the report's date range. When provided, the "Lines" stat
+   * card is replaced with a clickable "Open Sales Orders" card.
+   */
+  makeFetchOpenOrders?: FetchOpenOrdersFn;
 }
 
 type PeriodPreset = "report" | "today" | "yesterday" | "this_month" | "last_month" | "custom";
@@ -296,12 +331,74 @@ function pctDelta(cur: number, prev: number): number | null {
   return ((cur - prev) / prev) * 100;
 }
 
+// ── Open Sales Orders — grouped by Sales Order ─────────────────────────────────
+
+type OpenOrderEntry = {
+  guid_order:   string;
+  order_number: string;
+  order_date:   string | null;
+  dealer_name:  string;
+  customer_id:  string | null;
+  rep_name:     string;
+  total:        number;
+  lines:        OpenOrderLine[];
+};
+
+function buildOpenOrdersHierarchy(lines: OpenOrderLine[]): OpenOrderEntry[] {
+  const map = new Map<string, OpenOrderEntry>();
+  for (const l of lines) {
+    if (!map.has(l.guid_order)) {
+      map.set(l.guid_order, {
+        guid_order:   l.guid_order,
+        order_number: l.order_number ?? l.guid_order,
+        order_date:   l.order_date,
+        dealer_name:  l.dealer_name ?? l.customer_id ?? "Unknown",
+        customer_id:  l.customer_id,
+        rep_name:     l.rep_name ?? "Unassigned",
+        total:        0,
+        lines:        [],
+      });
+    }
+    const entry = map.get(l.guid_order)!;
+    entry.total += Number(l.net_open_amount);
+    entry.lines.push(l);
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
+}
+
+function sumOpenAmount(lines: OpenOrderLine[]): number {
+  return lines.reduce((s, l) => s + Number(l.net_open_amount), 0);
+}
+
 // ── Print / PDF ───────────────────────────────────────────────────────────────
+
+const PRINT_STYLE = `
+  body{font-family:system-ui,sans-serif;font-size:11px;margin:20px;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  h1{font-size:15px;margin:0 0 2px}p{margin:0 0 12px;color:#555}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:3px 6px;text-align:left;border-bottom:1px solid #eee}
+  th{font-weight:600;border-bottom:2px solid #ccc;background:#f9f9f9}
+  .brand-row{background-color:#d0d0d0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .class-row{background-color:#ebebeb !important;color:#333;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .so-row{background-color:#ebebeb !important;color:#333;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sku-row td{color:#333}
+  .line-row td{font-size:10px;color:#666;border-bottom:1px dotted #ddd}
+  .amt{text-align:right;font-variant-numeric:tabular-nums}
+  tfoot td{font-weight:600;border-top:2px solid #ccc}
+  .summary{margin:0 0 14px;border:1px solid #ddd;border-radius:4px;padding:8px 12px;display:flex;gap:24px;flex-wrap:wrap}
+  .summary div{font-size:11px}
+  .summary strong{display:block;font-size:13px;margin-top:2px}
+`;
+
+function summaryBlockHtml(summary: Array<[string, string]>): string {
+  return `<div class="summary">${summary.map(([k, v]) => `<div>${k}<strong>${v}</strong></div>`).join("")}</div>`;
+}
 
 function generatePrintHTML(
   rowLabel: string, metric: string,
   fromDate: Date, toDate: Date,
   hierarchy: BrandEntry[], grandTotal: number,
+  summary: Array<[string, string]>,
 ) {
   const dateRange = `${format(fromDate, "MMM d, yyyy")} – ${format(toDate, "MMM d, yyyy")}`;
   let rows = "";
@@ -323,26 +420,44 @@ function generatePrintHTML(
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/>
 <title>${rowLabel} — ${metric} — ${dateRange}</title>
-<style>
-  body{font-family:system-ui,sans-serif;font-size:11px;margin:20px;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  h1{font-size:15px;margin:0 0 2px}p{margin:0 0 12px;color:#555}
-  table{width:100%;border-collapse:collapse}
-  th,td{padding:3px 6px;text-align:left;border-bottom:1px solid #eee}
-  th{font-weight:600;border-bottom:2px solid #ccc;background:#f9f9f9}
-  .brand-row{background-color:#d0d0d0 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .class-row{background-color:#ebebeb !important;color:#333;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .sku-row td{color:#333}
-  .line-row td{font-size:10px;color:#666;border-bottom:1px dotted #ddd}
-  .amt{text-align:right;font-variant-numeric:tabular-nums}
-  tfoot td{font-weight:600;border-top:2px solid #ccc}
-</style></head>
+<style>${PRINT_STYLE}</style></head>
 <body>
 <h1>${rowLabel}</h1>
 <p>${metric.charAt(0).toUpperCase() + metric.slice(1)} · ${dateRange}</p>
+${summaryBlockHtml(summary)}
 <table>
 <thead><tr><th></th><th>Date</th><th>Invoice/Order</th><th>Description</th><th>Rep</th><th class="amt">Amount</th></tr></thead>
 <tbody>${rows}</tbody>
 <tfoot><tr><td colspan="5">Total</td><td class="amt">${formatCurrency(grandTotal)}</td></tr></tfoot>
+</table>
+</body></html>`;
+}
+
+function generateOpenOrdersPrintHTML(
+  rowLabel: string,
+  orders: OpenOrderEntry[],
+  total: number,
+  summary: Array<[string, string]>,
+) {
+  let rows = "";
+  for (const so of orders) {
+    rows += `<tr class="so-row"><td colspan="6"><strong>${so.order_number}</strong> — ${so.dealer_name} (${so.rep_name})${so.order_date ? ` · ${so.order_date}` : ""}</td><td class="amt"><strong>${formatCurrency(so.total)}</strong></td></tr>`;
+    for (const l of so.lines) {
+      rows += `<tr class="line-row"><td style="padding-left:12px;font-family:monospace;font-size:10px">${l.sku ?? "—"}</td><td>${l.description ?? ""}</td><td>${l.brand_category ?? ""}</td><td>${l.warehouse ?? l.fulfillment_type ?? ""}</td><td class="amt">${Number(l.qty_ordered).toLocaleString()}</td><td class="amt">${Number(l.qty_open).toLocaleString()}</td><td class="amt">${formatCurrency(Number(l.net_open_amount))}</td></tr>`;
+    }
+  }
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"/>
+<title>${rowLabel} — Open Sales Orders</title>
+<style>${PRINT_STYLE}</style></head>
+<body>
+<h1>${rowLabel}</h1>
+<p>Open Sales Orders — current backlog as of the latest Acctivate sync</p>
+${summaryBlockHtml(summary)}
+<table>
+<thead><tr><th>SKU</th><th>Product</th><th>Brand</th><th>Warehouse</th><th class="amt">Ordered</th><th class="amt">Open Qty</th><th class="amt">Open Value</th></tr></thead>
+<tbody>${rows}</tbody>
+<tfoot><tr><td colspan="6">Total</td><td class="amt">${formatCurrency(total)}</td></tr></tfoot>
 </table>
 </body></html>`;
 }
@@ -353,6 +468,7 @@ export function InvoiceDetailSheet({
   open, onOpenChange, groupBy, rowKey, rowLabel,
   from, to, compareFrom, compareTo, viewLines, repAcIdToCanonical,
   makeFetchLines, metric, primaryBookingsAmt, primaryInvoicedAmt,
+  makeFetchOpenOrders,
 }: Props) {
   // ── Period filter ─────────────────────────────────────────────────────────────
   const [preset,     setPreset]     = useState<PeriodPreset>("report");
@@ -364,6 +480,12 @@ export function InvoiceDetailSheet({
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
   const [expandedSkus,    setExpandedSkus]    = useState<Set<string>>(new Set());
 
+  // Open Sales Orders — separate snapshot dataset, not date-scoped
+  const [openOrderLines,      setOpenOrderLines]      = useState<OpenOrderLine[]>([]);
+  const [loadingOpenOrders,   setLoadingOpenOrders]   = useState(false);
+  const [showOpenOrdersDetail, setShowOpenOrdersDetail] = useState(false);
+  const [expandedOpenOrders,  setExpandedOpenOrders]  = useState<Set<string>>(new Set());
+
   useEffect(() => {
     if (open) {
       setPreset("report");
@@ -372,9 +494,43 @@ export function InvoiceDetailSheet({
       setExpandedBrands(new Set());
       setExpandedClasses(new Set());
       setExpandedSkus(new Set());
+      setShowOpenOrdersDetail(false);
+      setExpandedOpenOrders(new Set());
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !makeFetchOpenOrders) {
+      if (!open) setOpenOrderLines([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingOpenOrders(true);
+    setOpenOrderLines([]);
+    (async () => {
+      const acc: OpenOrderLine[] = [];
+      let offset = 0;
+      while (true) {
+        const rows = await makeFetchOpenOrders({ limit: BATCH, offset });
+        if (cancelled) return;
+        acc.push(...rows);
+        if (rows.length < BATCH) break;
+        offset += BATCH;
+      }
+      setOpenOrderLines(acc);
+      setLoadingOpenOrders(false);
+    })().catch(() => { if (!cancelled) setLoadingOpenOrders(false); });
+    return () => { cancelled = true; };
+  }, [open, makeFetchOpenOrders]);
+
+  const openOrdersTotal     = useMemo(() => sumOpenAmount(openOrderLines), [openOrderLines]);
+  const openOrdersHierarchy = useMemo(() => buildOpenOrdersHierarchy(openOrderLines), [openOrderLines]);
+  const openOrdersCount     = openOrdersHierarchy.length;
+  const openOrdersUnits     = useMemo(
+    () => openOrderLines.reduce((s, l) => s + Number(l.qty_open), 0),
+    [openOrderLines],
+  );
 
   const today     = useMemo(() => startOfDay(new Date()), []);
   const yesterday = useMemo(() => startOfDay(new Date(Date.now() - 86400000)), []);
@@ -519,33 +675,72 @@ export function InvoiceDetailSheet({
   }
 
   // ── Exports ───────────────────────────────────────────────────────────────────
+  // Shared summary block — always includes Open Sales Orders, whichever
+  // dataset (metric detail or open-orders detail) the export body is showing.
+  const exportSummary: Array<[string, string]> = [
+    [metric === "bookings" ? "Bookings" : "Invoiced",
+      formatCurrency((metric === "bookings" ? displayBookingsAmt : displayInvoicedAmt) ?? 0)],
+    ["% Container", fmtFulfillPct(containerAmt, grandTotal)],
+    ["% Warehouse", fmtFulfillPct(warehouseAmt, grandTotal)],
+    ["Open Sales Orders", formatCurrency(openOrdersTotal)],
+  ];
+
   const exportCSV = () => {
-    const rows = primActive.map((l) => ({
-      Date:          l.transaction_date,
-      "Invoice #":   l.invoice_number ?? "",
-      Dealer:        l.dealer_name ?? "",
-      "Customer ID": l.customer_id ?? "",
-      Rep:           l.rep_name ?? "",
-      SKU:           l.sku ?? "",
-      Description:   l.description ?? "",
-      Brand:         l.brand_category ?? "",
-      Collection:    toCollectionDisplayName(l.product_class) ?? "",
-      Amount:        Number(l.amount),
-      Metric:        l.metric_type,
-    }));
-    const csv  = Papa.unparse(rows);
+    const summaryCsv = ["Summary", ...exportSummary.map(([k, v]) => `${k},${v}`), ""].join("\n");
+
+    let detailCsv: string;
+    let filenameSuffix: string;
+    if (showOpenOrdersDetail) {
+      const rows = openOrderLines.map((l) => ({
+        "Sales Order #":       l.order_number ?? "",
+        Dealer:                l.dealer_name ?? "",
+        "Customer ID":         l.customer_id ?? "",
+        Rep:                   l.rep_name ?? "",
+        "Order Date":          l.order_date ?? "",
+        SKU:                   l.sku ?? "",
+        Product:               l.description ?? "",
+        "Ordered Qty":         Number(l.qty_ordered),
+        "Remaining Qty":       Number(l.qty_open),
+        "Unit Price":          Number(l.unit_price),
+        "Remaining Open Value": Number(l.net_open_amount),
+        Brand:                 l.brand_category ?? "",
+        Warehouse:             l.warehouse ?? l.fulfillment_type ?? "",
+      }));
+      detailCsv = Papa.unparse(rows);
+      filenameSuffix = "open-sales-orders";
+    } else {
+      const rows = primActive.map((l) => ({
+        Date:          l.transaction_date,
+        "Invoice #":   l.invoice_number ?? "",
+        Dealer:        l.dealer_name ?? "",
+        "Customer ID": l.customer_id ?? "",
+        Rep:           l.rep_name ?? "",
+        SKU:           l.sku ?? "",
+        Description:   l.description ?? "",
+        Brand:         l.brand_category ?? "",
+        Collection:    toCollectionDisplayName(l.product_class) ?? "",
+        Amount:        Number(l.amount),
+        Metric:        l.metric_type,
+      }));
+      detailCsv = Papa.unparse(rows);
+      filenameSuffix = metric;
+    }
+
+    const csv  = summaryCsv + detailCsv;
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url;
-    a.download = `${rowLabel.replace(/\s+/g, "-")}_${metric}_${format(effectiveFrom, "yyyy-MM-dd")}_${format(localTo, "yyyy-MM-dd")}.csv`;
+    a.download = `${rowLabel.replace(/\s+/g, "-")}_${filenameSuffix}_${format(effectiveFrom, "yyyy-MM-dd")}_${format(localTo, "yyyy-MM-dd")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const exportPDF = () => {
-    const html = generatePrintHTML(rowLabel, metric, effectiveFrom, localTo, hierarchy, grandTotal);
-    const win  = window.open("", "_blank", "width=900,height=700");
+    const html = showOpenOrdersDetail
+      ? generateOpenOrdersPrintHTML(rowLabel, openOrdersHierarchy, openOrdersTotal, exportSummary)
+      : generatePrintHTML(rowLabel, metric, effectiveFrom, localTo, hierarchy, grandTotal, exportSummary);
+    const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
     win.document.write(html);
     win.document.close();
@@ -627,7 +822,40 @@ export function InvoiceDetailSheet({
               label="% Warehouse"
               value={fmtFulfillPct(warehouseAmt, grandTotal)}
             />
-            <StatCard label="Lines" value={loadingAll ? "…" : allLines.length.toLocaleString()} />
+            {makeFetchOpenOrders ? (
+              <Card
+                role="button"
+                tabIndex={0}
+                onClick={() => setShowOpenOrdersDetail((v) => !v)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setShowOpenOrdersDetail((v) => !v); }}
+                className="cursor-pointer hover:bg-muted/40 transition-colors"
+              >
+                <CardContent className="p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    Open Sales Orders
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info
+                          className="h-3 w-3 text-muted-foreground/70"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[220px] text-xs">
+                        Current open sales-order backlog as of the latest Acctivate sync.
+                      </TooltipContent>
+                    </Tooltip>
+                  </p>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {loadingOpenOrders ? "…" : formatCurrency(openOrdersTotal)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
+                    {loadingOpenOrders ? "" : `${openOrdersCount.toLocaleString()} open order${openOrdersCount !== 1 ? "s" : ""} · ${openOrdersUnits.toLocaleString()} units`}
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <StatCard label="Lines" value={loadingAll ? "…" : allLines.length.toLocaleString()} />
+            )}
           </div>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -776,6 +1004,95 @@ export function InvoiceDetailSheet({
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* ── Open Sales Orders drill-down ── */}
+            {makeFetchOpenOrders && showOpenOrdersDetail && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold">Open Sales Orders</h3>
+                  <span className="text-xs tabular-nums font-semibold text-muted-foreground">
+                    {formatCurrency(openOrdersTotal)}
+                  </span>
+                </div>
+                {loadingOpenOrders ? (
+                  <p className="text-sm text-muted-foreground">Loading open sales orders…</p>
+                ) : openOrderLines.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No open sales orders for this selection.</p>
+                ) : (
+                  <>
+                    <div className="flex gap-4 mb-2 text-[11px] text-muted-foreground">
+                      <span><strong className="text-foreground">{openOrdersCount}</strong> open order{openOrdersCount !== 1 ? "s" : ""}</span>
+                      <span><strong className="text-foreground">{openOrderLines.length}</strong> open line{openOrderLines.length !== 1 ? "s" : ""}</span>
+                      <span><strong className="text-foreground">{openOrdersUnits.toLocaleString()}</strong> open units</span>
+                    </div>
+                    <div className="border rounded-md overflow-hidden divide-y">
+                      {openOrdersHierarchy.map((so) => {
+                        const isOpen = expandedOpenOrders.has(so.guid_order);
+                        return (
+                          <div key={so.guid_order}>
+                            <button
+                              type="button"
+                              onClick={() => toggle(expandedOpenOrders, setExpandedOpenOrders, so.guid_order)}
+                              className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-muted/40 transition-colors"
+                            >
+                              <span className="flex items-center gap-1.5 min-w-0">
+                                <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 text-muted-foreground transition-transform duration-150 ${isOpen ? "rotate-90" : ""}`} />
+                                <span className="font-mono font-medium">{so.order_number}</span>
+                                <span className="truncate text-muted-foreground">{so.dealer_name}</span>
+                                {groupBy !== "rep" && (
+                                  <Badge variant="secondary" className="text-[9px] h-4 px-1 font-normal flex-shrink-0">
+                                    {so.rep_name}
+                                  </Badge>
+                                )}
+                                {so.order_date && (
+                                  <span className="text-[10px] text-muted-foreground flex-shrink-0">{so.order_date}</span>
+                                )}
+                                <Badge variant="secondary" className="text-[9px] h-4 px-1 font-normal flex-shrink-0">
+                                  {so.lines.length} line{so.lines.length !== 1 ? "s" : ""}
+                                </Badge>
+                              </span>
+                              <span className="tabular-nums flex-shrink-0 ml-2">{formatCurrency(so.total)}</span>
+                            </button>
+                            {isOpen && (
+                              <div className="px-3 py-2 bg-background border-t overflow-x-auto">
+                                <table className="w-full text-[10px]">
+                                  <thead>
+                                    <tr className="border-b text-muted-foreground">
+                                      <th className="pb-1 text-left font-normal">SKU</th>
+                                      <th className="pb-1 text-left font-normal">Product</th>
+                                      <th className="pb-1 text-left font-normal">Brand</th>
+                                      <th className="pb-1 text-left font-normal">Warehouse</th>
+                                      <th className="pb-1 text-right font-normal">Ordered</th>
+                                      <th className="pb-1 text-right font-normal">Open Qty</th>
+                                      <th className="pb-1 text-right font-normal">Unit Price</th>
+                                      <th className="pb-1 text-right font-normal">Open Value</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {so.lines.map((l, i) => (
+                                      <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
+                                        <td className="py-1 font-mono">{l.sku ?? "—"}</td>
+                                        <td className="py-1 max-w-[160px] truncate">{l.description ?? "—"}</td>
+                                        <td className="py-1">{l.brand_category ?? "—"}</td>
+                                        <td className="py-1">{l.warehouse ?? l.fulfillment_type ?? "—"}</td>
+                                        <td className="py-1 text-right tabular-nums">{Number(l.qty_ordered).toLocaleString()}</td>
+                                        <td className="py-1 text-right tabular-nums">{Number(l.qty_open).toLocaleString()}</td>
+                                        <td className="py-1 text-right tabular-nums">{formatCurrency(Number(l.unit_price))}</td>
+                                        <td className="py-1 text-right tabular-nums font-medium">{formatCurrency(Number(l.net_open_amount))}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

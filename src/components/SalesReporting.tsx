@@ -28,7 +28,7 @@ import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCuto
 // Booking data is only trusted from this date onwards.
 // Used to clamp query start dates before any fetch — not applied post-aggregation.
 const BOOKING_CUTOFF_DATE = new Date(BOOKINGS_VISIBLE_FROM + "T00:00:00");
-import { InvoiceDetailSheet, type ViewLine } from "@/components/InvoiceDetailSheet";
+import { InvoiceDetailSheet, type ViewLine, type OpenOrderLine } from "@/components/InvoiceDetailSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -1191,6 +1191,63 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useRpcMode, drillRow?.key, metric, groupBy, rpcCustomerIds, selectedRepAcIds, brandCategories, skus, managerId]);
 
+  // Open Sales Orders — current backlog snapshot for the drilled-into rep/dealer.
+  // Not date-scoped (unlike drillMakeFetch above): the report's invoice date
+  // range must not remove currently-open orders placed before that range.
+  const drillMakeFetchOpenOrders = useMemo(() => {
+    if (!useRpcMode || !drillRow) return undefined;
+    const entityKey = drillRow.key;
+    const cids      = rpcCustomerIds;
+    const rids      = selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null;
+    const bcs       = brandCategories.length > 0 ? brandCategories : null;
+    const sks       = skus.length > 0 ? skus : null;
+    const gbStr     = groupBy === "territory" ? "dealer" : groupBy;
+    const mgr       = managerId ?? null;
+    return async ({ limit, offset }: { limit: number; offset: number }): Promise<OpenOrderLine[]> => {
+      const { data, error } = await (supabase as any).rpc(
+        "get_open_sales_order_lines",
+        {
+          p_group_by:     gbStr,
+          p_entity_key:   entityKey,
+          p_customer_ids: cids,
+          p_brand_cats:   bcs,
+          p_skus:         sks,
+          p_rep_ids:      rids,
+          p_manager_id:   mgr,
+          p_limit:        limit,
+          p_offset:       offset,
+        },
+      );
+      if (error) {
+        console.error("[sales-reporting] open sales order lines fetch failed:", error.message, error);
+        return [];
+      }
+      return ((data ?? []) as any[]).map((r): OpenOrderLine => ({
+        guid_order:          String(r.guid_order),
+        order_number:        r.order_number ?? null,
+        order_date:          r.order_date ?? null,
+        requested_ship_date: r.requested_ship_date ?? null,
+        customer_id:         r.customer_id ?? null,
+        dealer_name:         r.dealer_name ?? null,
+        rep_id:              r.rep_id ?? null,
+        rep_name:            r.rep_name ?? null,
+        fulfillment_type:    r.fulfillment_type ?? null,
+        warehouse:           r.warehouse ?? null,
+        sku:                 r.sku ?? null,
+        description:         r.description ?? null,
+        product_class:       r.product_class ?? null,
+        brand_category:      r.brand_category ?? null,
+        qty_ordered:         Number(r.qty_ordered) || 0,
+        qty_shipped:         Number(r.qty_shipped) || 0,
+        qty_open:            Number(r.qty_open) || 0,
+        unit_price:          Number(r.unit_price) || 0,
+        line_discount_pct:   Number(r.line_discount_pct) || 0,
+        net_open_amount:     Number(r.net_open_amount) || 0,
+      }));
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useRpcMode, drillRow?.key, groupBy, rpcCustomerIds, selectedRepAcIds, brandCategories, skus, managerId]);
+
   // ── Render helpers ────────────────────────────────────────────────────────
 
   const leftHeader = groupBy === "dealer" ? "Dealer" : groupBy === "rep" ? "Rep" : "Territory";
@@ -1546,6 +1603,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         viewLines={useRpcMode ? [] : repLines}
         repAcIdToCanonical={repAcIdToCanonical}
         makeFetchLines={drillMakeFetch}
+        makeFetchOpenOrders={drillMakeFetchOpenOrders}
         metric={metric}
         primaryBookingsAmt={drillBookings}
         primaryInvoicedAmt={drillInvoiced}

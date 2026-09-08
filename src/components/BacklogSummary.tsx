@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import backlogData from "@/data/backlogSummary.json";
 import { useOpenSalesOrders } from "@/hooks/useOpenSalesOrders";
 
 type DetailRow = {
@@ -24,38 +23,17 @@ type DetailRow = {
   stockClass: string | null;
 };
 
-const data = backlogData as {
-  asOf: string;
-  stockClasses: { code: string; description: string; total: number }[];
-  problemOrders: { customer: string; amount: number; notes: string }[];
-  discussionPoints: { customer: string; notes: string }[];
-  detail: DetailRow[];
-};
-
-// Human-friendly descriptions for Acctivate ProductClass codes.
-const STOCK_CLASS_DESCRIPTIONS: Record<string, string> = {
-  "New": "New Product (Unavail)",
-  "Discs-Sur": "Discounts and Surcharges",
-  "OOS": "Out of Stock",
-  "Avail": "Available",
-  "DC": "Direct Container",
-  "MC": "Mixed Container",
-  "Contract": "Contract",
-  "N/A": "Other / Non-Inventory",
-};
-
+const UNCLASSIFIED = "Unclassified";
 
 const fmtMoney = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
+// Generic badge tone — product_class values are actual Acctivate collection
+// codes (Geneva, Islamorada, etc.), not a small fixed vocabulary, so there's
+// no per-code color mapping; everything gets the same neutral treatment
+// except the synthetic "Unclassified" bucket.
 const STOCK_CLASS_TONE: Record<string, string> = {
-  OOS: "bg-destructive/10 text-destructive border border-destructive/20",
-  New: "bg-warning/15 text-warning-foreground border border-warning/30",
-  Avail: "bg-success/10 text-success border border-success/25",
-  "Discs-Sur": "bg-muted text-muted-foreground border border-border",
-  MC: "bg-accent/15 text-accent-foreground border border-accent/30",
-  DC: "bg-primary/10 text-primary border border-primary/20",
-  Contract: "bg-muted text-foreground border border-border",
+  [UNCLASSIFIED]: "bg-muted text-muted-foreground border border-border",
 };
 
 // Rep -  territory mapping (from DB). Falls back to rep name if unknown.
@@ -108,34 +86,27 @@ export function BacklogSummary() {
   const { rows: liveOrders, loading: liveLoading } = useOpenSalesOrders();
 
   // Prefer live Acctivate open sales orders when available; otherwise fall back
-  // to the static snapshot. Live rows are mapped into the same DetailRow shape
-  // the existing UI expects so all filters/drill-downs keep working.
+  // Sole source: public.v_portal_open_sales_order_line_facts, the same
+  // canonical view backing the Dealer/Rep Reporting Open SOs card. No more
+  // static-snapshot fallback — while the live fetch is in flight, render
+  // nothing rather than flash a stale pre-sync figure.
   const detailWithTerritory = useMemo(() => {
-    // While the live fetch is in flight, render nothing rather than the
-    // pre-sync static snapshot - we don't want stale figures flashing in.
-    let source: (DetailRow & { __live?: boolean })[];
-    if (liveLoading) {
-      source = [];
-    } else if (liveOrders.length > 0) {
-      source = liveOrders.map((r) => ({
-        customer: r.dealer_name ?? "-",
-        type: "Sales Order",
-        date: r.order_date,
-        shipDate: r.promised_date,
-        num: r.order_number,
-        name: r.dealer_name,
-        rep: r.rep,
-        item: r.sku,
-        description: null,
-        memo: null,
-        amount: Number(r.extended_value || 0),
-        openBalance: Number(r.extended_value || 0),
-        stockClass: r.stock_class,
-        __live: true,
-      }));
-    } else {
-      source = data.detail;
-    }
+    const source: (DetailRow & { __live?: boolean })[] = liveLoading ? [] : liveOrders.map((r) => ({
+      customer: r.dealer_name ?? "-",
+      type: "Sales Order",
+      date: r.order_date,
+      shipDate: r.requested_ship_date,
+      num: r.order_number,
+      name: r.dealer_name,
+      rep: r.rep_name,
+      item: r.sku,
+      description: r.description,
+      memo: null,
+      amount: r.open_so_amount,
+      openBalance: r.open_so_amount,
+      stockClass: r.product_class ?? null,
+      __live: true,
+    }));
 
     return source.map((r) => ({
       ...r,
@@ -195,10 +166,8 @@ export function BacklogSummary() {
   const filteredStockClasses = useMemo(() => {
     const totals = new Map<string, { code: string; description: string; total: number }>();
     for (const r of filteredDetail) {
-      const code = r.stockClass && r.stockClass !== "N/A" ? r.stockClass : "Unclassified";
-      const desc = STOCK_CLASS_DESCRIPTIONS[code]
-        ?? data.stockClasses.find((s) => s.code === code)?.description
-        ?? (code === "Unclassified" ? "No stock class assigned" : code);
+      const code = r.stockClass && r.stockClass !== "N/A" ? r.stockClass : UNCLASSIFIED;
+      const desc = code === UNCLASSIFIED ? "No product class assigned" : code;
       const entry = totals.get(code) ?? { code, description: desc, total: 0 };
       entry.total += Math.abs(r.openBalance || 0);
       totals.set(code, entry);
@@ -381,16 +350,12 @@ export function BacklogSummary() {
           </Button>
         )}
         <div className="ml-auto text-xs text-muted-foreground">
-          {liveOrders.length > 0 ? (
-            <>Live Acctivate · <span className="font-medium text-foreground">{new Set(liveOrders.map((o) => o.order_number).filter(Boolean)).size.toLocaleString()} open orders</span></>
-          ) : liveLoading ? (
+          {liveLoading ? (
             <>Loading open orders...</>
+          ) : liveOrders.length > 0 ? (
+            <>Live Acctivate · <span className="font-medium text-foreground">{new Set(liveOrders.map((o) => o.order_number).filter(Boolean)).size.toLocaleString()} open orders</span></>
           ) : (
-            <>Snapshot as of{" "}
-              <span className="font-medium text-foreground">
-                {new Date(data.asOf).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
-              </span>
-            </>
+            <>No open sales orders</>
           )}
         </div>
 
@@ -465,8 +430,6 @@ export function BacklogSummary() {
     </div>
   );
 }
-
-export const BACKLOG_SUMMARY_TOTAL = data.stockClasses.reduce((s, c) => s + c.total, 0);
 
 type OrderRow = DetailRow & { territory: string; status: string };
 

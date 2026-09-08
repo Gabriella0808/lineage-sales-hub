@@ -168,17 +168,37 @@ export function useInventoryHub() {
       else setOpenPOLines((vpol.data ?? []).map((r: any) => ({ ...r, quantity_ordered: Number(r.quantity_ordered), quantity_received: Number(r.quantity_received), quantity_outstanding: Number(r.quantity_outstanding), amount_open: Number(r.amount_open), days_late: r.days_late != null ? Number(r.days_late) : null })) as OpenPOLine[]);
     };
 
-    const fetchAllOpenOrders = async () => {
+    // Canonical Open SO source — same view backing the Dealer/Rep Reporting
+    // Open SOs card (public.v_portal_open_sales_order_line_facts). Replaces
+    // the old open_sales_orders table, which used a different Acctivate
+    // source (dbo.OrderManagementSummary), never applied line discounts, and
+    // never excluded freight/tariff/misc charge lines — it overstated
+    // backlog by roughly 3x against the canonical, validated figure.
+    const fetchAllOpenOrders = async (): Promise<OpenSalesOrder[]> => {
       const pageSize = 1000;
-      const all: any[] = [];
+      const all: OpenSalesOrder[] = [];
       let from = 0;
+      let index = 0;
       while (true) {
-        const { data, error } = await supabase
-          .from("open_sales_orders")
-          .select("id, order_number, sku, dealer_name, qty_open, unit_price, extended_value, order_date, promised_date, stock_class")
+        const { data, error } = await (supabase as any)
+          .from("v_portal_open_sales_order_line_facts")
+          .select("guid_order, order_number, sku, dealer_name, qty_open, unit_price, open_so_amount, order_date, requested_ship_date")
           .range(from, from + pageSize - 1);
-        if (error || !data || data.length === 0) break;
-        all.push(...data);
+        if (error) { console.error("[useInventoryHub] v_portal_open_sales_order_line_facts:", error); break; }
+        if (!data || data.length === 0) break;
+        for (const r of data as any[]) {
+          all.push({
+            id: `${r.guid_order}::${r.sku ?? ""}::${index++}`,
+            order_number: r.order_number ?? null,
+            sku: r.sku ?? "",
+            dealer_name: r.dealer_name ?? null,
+            qty_open: Number(r.qty_open) || 0,
+            unit_price: Number(r.unit_price) || 0,
+            extended_value: Number(r.open_so_amount) || 0,
+            order_date: r.order_date ?? null,
+            promised_date: r.requested_ship_date ?? null,
+          });
+        }
         if (data.length < pageSize) break;
         from += pageSize;
       }

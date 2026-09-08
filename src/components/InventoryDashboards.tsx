@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { weeksOfSupply, weeksTone, LEAD_TIME_WEEKS } from "@/lib/inventoryMath";
 import ComparePeriodsReport from "@/components/ComparePeriodsReport";
-import { BacklogSummary, BACKLOG_SUMMARY_TOTAL } from "@/components/BacklogSummary";
+import { BacklogSummary } from "@/components/BacklogSummary";
 import { OpenOrdersCalendar } from "@/components/OpenOrdersCalendar";
 
 const fmtMoney = (n: number) =>
@@ -915,8 +915,12 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       }
       void lineValue; // closeoutValue now comes from the Supabase view
     }
+    // Sourced from public.v_portal_open_sales_order_line_facts (see
+    // useInventoryHub's fetchAllOpenOrders) — the same canonical Open SO view
+    // backing the Dealer/Rep Reporting Open SOs card.
     const backlogValue = hub.openOrders.reduce((s, o) => s + Number(o.extended_value ?? 0), 0);
     const backlogUnits = hub.openOrders.reduce((s, o) => s + Number(o.qty_open ?? 0), 0);
+    const backlogOrders = new Set(hub.openOrders.map((o) => o.order_number)).size;
     const openPoValue = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_amount), 0);
     const openPoCount = new Set(hub.openPOs.map((p) => p.po_number)).size;
     const openPoUnits = hub.openPOs.reduce((s, p) => s + Number(p.outstanding_qty), 0);
@@ -928,7 +932,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       .reduce((s, p) => s + Number(p.prepaid_amount ?? 0), 0);
     const salesToInv = value > 0 ? monthlySales / value : 0;
     const turnover = value > 0 ? (monthlySales * 12) / value : 0;
-    return { value, units, monthlySales, backlogValue, backlogUnits, openPoValue, openPoCount, openPoUnits, prepaidValue, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
+    return { value, units, monthlySales, backlogValue, backlogUnits, backlogOrders, openPoValue, openPoCount, openPoUnits, prepaidValue, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
   }, [items, hub.openOrders, hub.purchaseOrders, hub.openPOs, hub.inventorySummary, hub.closeoutInventory, hub.clearanceInventoryValue]);
 
 
@@ -1892,7 +1896,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         <KPI label="Total Inventory Value" value={fmtMoney(summary.value)} hint={`${fmtNum(summary.units)} units`} icon={DollarSign} onClick={() => toggleDrill("value")} active={drilldown === "value"} />
         <KPI label="Total Open POs" value={fmtMoney(summary.openPoValue)} hint={`${summary.openPoCount} POs · ${fmtNum(summary.openPoUnits)} units`} icon={Truck} onClick={() => toggleDrill("openpo")} active={drilldown === "openpo"} />
         <KPI label="Prepaid Inventory" value={fmtMoney(summary.prepaidValue)} icon={DollarSign} onClick={() => toggleDrill("prepaid")} active={drilldown === "prepaid"} />
-        <KPI label="Backlog (Open Orders)" value={hub.loading ? "-" : fmtMoney(summary.backlogValue)} hint={hub.loading ? "loading..." : `${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} onClick={() => toggleDrill("backlog")} active={drilldown === "backlog"} />
+        <KPI label="Backlog (Open Orders)" value={hub.loading ? "-" : fmtMoney(summary.backlogValue)} hint={hub.loading ? "loading..." : `${summary.backlogOrders.toLocaleString()} orders · ${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} onClick={() => toggleDrill("backlog")} active={drilldown === "backlog"} />
         <KPI label="Discontinued Inventory" value={fmtMoney(summary.closeoutValue)} hint={`${new Set(hub.closeoutInventory.map((r) => r.sku)).size} SKUs · ${fmtNum(hub.closeoutInventory.reduce((s, r) => s + Number(r.on_hand), 0))} units`} icon={Tag} onClick={() => toggleDrill("closeout")} active={drilldown === "closeout"} />
         <KPI label="OUT OF STOCK - LOST SALES" value={fmtMoney(summary.lostSales)} hint="per month" icon={AlertCircle} accent="text-destructive" onClick={() => toggleDrill("lost")} active={drilldown === "lost"} />
         <KPI label="Sales / Inv Ratio" value={summary.salesToInv.toFixed(2)} hint={summary.salesToInv > 0.5 ? "healthy" : summary.salesToInv > 0.2 ? "OK" : "carrying too much"} icon={Activity} accent={summary.salesToInv < 0.2 ? "text-warning-foreground" : undefined} />

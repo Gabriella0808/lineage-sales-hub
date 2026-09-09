@@ -28,6 +28,13 @@ import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCuto
 // Booking data is only trusted from this date onwards.
 // Used to clamp query start dates before any fetch — not applied post-aggregation.
 const BOOKING_CUTOFF_DATE = new Date(BOOKINGS_VISIBLE_FROM + "T00:00:00");
+
+// Invoiced actuals before this date are Acctivate import/migration-transition
+// data and are excluded from all reporting (enforced server-side in
+// get_portal_invoiced_lines() — this constant only drives the UI note below;
+// no query clamping is needed for correctness since the RPC already excludes
+// pre-cutoff invoiced rows regardless of the requested date range).
+const INVOICE_CUTOFF_DATE = new Date("2026-07-01T00:00:00");
 import { InvoiceDetailSheet, type ViewLine, type OpenOrderLine } from "@/components/InvoiceDetailSheet";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1531,6 +1538,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 {metric === "invoices" ? "Invoices" : "Bookings"} by {leftHeader}
               </CardTitle>
               <p className="text-[11px] text-muted-foreground mt-0.5">{tableRangeLabel}</p>
+              {metric === "invoices" && primary.from < INVOICE_CUTOFF_DATE && (
+                <p className="text-[11px] text-muted-foreground/70 italic mt-1">
+                  Invoice actuals before July 2026 are excluded due to Acctivate import-transition data.
+                </p>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
               <Badge variant="secondary" className="text-[11px] font-medium">

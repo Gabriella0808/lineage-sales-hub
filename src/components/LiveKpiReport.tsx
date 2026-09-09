@@ -898,7 +898,13 @@ export function LiveKpiReport({
             <p className="text-xs text-muted-foreground mb-3">
               {isToday ? `Yesterday · ${format(invoiceDate, "MMM d")}` : format(invoiceDate, "MMM d, yyyy")}
             </p>
-            <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalInv)}</p>
+            {invoiceDateStr < "2026-07-01" ? (
+              <p className="text-sm text-muted-foreground italic mb-3">
+                Excluded — import-transition data before July 2026.
+              </p>
+            ) : (
+              <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalInv)}</p>
+            )}
             <div className="space-y-1.5 text-xs">
               {(["SW", "FIN", "LUX", "ALLOW"] as CollKey[]).map((coll) => (
                 <div key={coll} className="flex justify-between">
@@ -1197,13 +1203,17 @@ export function LiveKpiReport({
       {/* Monthly Results */}
       <div className="glass-card p-5">
         <h3 className="text-base font-semibold mb-1">Monthly Results</h3>
-        <p className="text-xs text-muted-foreground mb-4">
+        <p className="text-xs text-muted-foreground mb-1">
           Bookings & Invoiced - 2025 actual vs 2026 projection vs YTD
           {hasRepSelection
             ? <span className="ml-1">· live data from <span className="font-medium text-foreground">{repFilter.length === 1 ? `${repFilter[0]} tab` : `${repFilter.length} reps`}</span></span>
             : <> · all reps</>}
         </p>
-
+        {showI && (
+          <p className="text-[11px] text-muted-foreground/70 italic mb-3">
+            Invoice actuals before July 2026 are excluded due to Acctivate import-transition data.
+          </p>
+        )}
 
 
         <div className="overflow-x-auto">
@@ -1253,6 +1263,9 @@ export function LiveKpiReport({
                 const ytdIUnclass = Math.max(0, r.ytdI - ytdICont - ytdIWh);
                 // Booking actuals are only visible from Aug 2026 onwards.
                 const bkVisible = isBookingVisible(2026, idx + 1);
+                // Invoiced actuals before July 2026 are excluded — skewed
+                // Acctivate import/migration-transition data. idx 0-5 = Jan-Jun.
+                const invExcluded = idx < 6;
                 return (
                   <tr key={r.m} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
@@ -1275,7 +1288,15 @@ export function LiveKpiReport({
                         {bkVisible ? (r.ytdB <= 0 ? "-" : fmtPctRaw(ytdBUnclass / r.ytdB)) : "—"}
                       </td>
                     </>}
-                    {showI && <>
+                    {showI && (invExcluded ? (
+                      <td
+                        colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 7 : 6}
+                        className="p-2 text-center border-l text-muted-foreground/60 line-through italic cursor-help"
+                        title="Excluded — import-transition data before July 2026"
+                      >
+                        Excluded — import-transition data before July 2026
+                      </td>
+                    ) : <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>
                       <td className="p-2 text-right">{formatCurrency(r.i26p)}</td>
                       <td className="p-2 text-right">{fmtPct(r.ytdI / r.i26p)}</td>
@@ -1283,7 +1304,7 @@ export function LiveKpiReport({
                       <td className="p-2 text-right">{ytdICont + ytdIWh === 0 ? "-" : fmtPctRaw(ytdICont / Math.max(r.ytdI, 1))}</td>
                       <td className="p-2 text-right">{ytdICont + ytdIWh === 0 ? "-" : fmtPctRaw(ytdIWh   / Math.max(r.ytdI, 1))}</td>
                       <td className="p-2 text-right text-muted-foreground">{r.ytdI <= 0 ? "-" : fmtPctRaw(ytdIUnclass / r.ytdI)}</td>
-                    </>}
+                    </>)}
                   </tr>
                 );
               })}

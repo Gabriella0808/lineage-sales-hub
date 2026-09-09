@@ -131,17 +131,23 @@ function Invoke-Sql {
     $cmd.CommandText    = $Query
     $cmd.CommandTimeout = $SqlTimeout
     $reader = $cmd.ExecuteReader()
-    $rows   = [System.Collections.Generic.List[hashtable]]::new()
+    $rows   = [System.Collections.Generic.List[pscustomobject]]::new()
     while ($reader.Read()) {
-      $row = @{}
+      $row = [ordered]@{}
       for ($i = 0; $i -lt $reader.FieldCount; $i++) {
         $col = $reader.GetName($i)
         $val = $reader.GetValue($i)
         $row[$col] = if ($val -is [System.DBNull]) { $null } else { $val }
       }
-      $rows.Add($row) | Out-Null
+      # [pscustomobject] (not a plain hashtable) so downstream Group-Object /
+      # Measure-Object -Property calls can actually resolve column names as
+      # properties - hashtable keys are not exposed via PSObject.Properties,
+      # only dot/bracket access on the hashtable itself works. Bracket-style
+      # access ($_['ColumnName']) used throughout this script still works
+      # identically on a pscustomobject, so no other code needed to change.
+      $rows.Add([pscustomobject]$row) | Out-Null
     }
-    return , [hashtable[]]$rows
+    return , [pscustomobject[]]$rows
   } finally {
     $conn.Close()
   }
@@ -296,7 +302,7 @@ function Get-NumberOrZero {
 
 function Export-Summary {
   param(
-    [hashtable[]]$Rows,
+    [pscustomobject[]]$Rows,
     [string]$GroupKey,
     [string]$OutFile,
     [string]$Label

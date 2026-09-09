@@ -228,6 +228,26 @@ Deno.serve(async (req) => {
 
     console.log(`[ld26-email] mode=${mode} todayET=${todayET} cutoff=${CUTOFF_DATE_ET}`);
 
+    // ── 0. Auto-enroll dealers with LD26 bookings not yet on the roster —
+    //        participant-driven, but the roster itself now self-maintains.
+    //        Attribution comes from the actual booking line's rep, not a
+    //        manual assignment. Skipped in dryRun to keep it side-effect-free;
+    //        runs for real cron sends and test sends (safe/idempotent either
+    //        way — only inserts rows that don't already exist). ─────────────
+    if (!dryRun) {
+      const { data: syncedRows, error: syncErr } = await supabase.rpc("sync_labor_day_participants");
+      if (syncErr) {
+        console.error(`[ld26-email] participant auto-sync failed (continuing with existing roster): ${syncErr.message}`);
+      } else if (syncedRows && syncedRows.length > 0) {
+        console.log(
+          `[ld26-email] auto-enrolled ${syncedRows.length} new participant(s): ` +
+          syncedRows.map((r: any) => `${r.added_dealer_name} → ${r.added_rep_name}`).join(", "),
+        );
+      } else {
+        console.log(`[ld26-email] auto-sync: no new LD26 dealers to enroll`);
+      }
+    }
+
     // ── 1. Fetch participant roster + LD26 booking lines (same source as the
     //        portal page) + optional promo date range ──────────────────────
     const [participantsRes, salesRes, promoRes] = await Promise.all([

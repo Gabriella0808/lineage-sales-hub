@@ -7,19 +7,19 @@
  *
  * No source rows are deleted — this is a display-only filter.
  */
-export const BOOKINGS_VISIBLE_FROM = "2026-08-01";
+export const BOOKINGS_VISIBLE_FROM = "2026-07-01";
 
 /**
  * Returns true when booking actuals for the given year + 1-based month
  * should be shown in the portal.
  *
- * @example isBookingVisible(2026, 7) → false  (July 2026 — hidden)
- * @example isBookingVisible(2026, 8) → true   (August 2026 — visible)
+ * @example isBookingVisible(2026, 6) → false  (June 2026 — hidden)
+ * @example isBookingVisible(2026, 7) → true   (July 2026 — visible)
  * @example isBookingVisible(2027, 1) → true   (future year — visible)
  */
 export function isBookingVisible(year: number, month: number): boolean {
   if (year > 2026) return true;
-  if (year === 2026 && month >= 8) return true;
+  if (year === 2026 && month >= 7) return true;
   return false;
 }
 

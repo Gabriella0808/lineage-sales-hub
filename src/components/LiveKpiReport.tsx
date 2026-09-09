@@ -677,7 +677,7 @@ export function LiveKpiReport({
   // own per-row cells hide, same as sumB26P already does for the booking
   // goal below — otherwise the TOTAL row silently includes raw underlying
   // amounts for months the table itself displays as "—" / "Excluded".
-  // Booking actuals: visible Aug 2026 onwards only.
+  // Booking actuals: visible Jul 2026 onwards only.
   const sumYtdB = monthly
     .filter((r) => {
       const idx = MONTH_NAMES_ALL.indexOf(r.m);
@@ -752,8 +752,8 @@ export function LiveKpiReport({
   }, 0);
 
   // For bookings, only count goals for months where bookings are actually visible
-  // (Aug 2026+). The TOTAL row would otherwise show $15.8M goal vs $856K actuals
-  // because Jan–Jul goal values exist in rep_targets even though their rows show "—".
+  // (Jul 2026+). The TOTAL row would otherwise show inflated goal $ vs actuals
+  // because Jan-Jun goal values exist in rep_targets even though their rows show "—".
   const sumB26P = monthly
     .filter((r) => {
       const idx = MONTH_NAMES_ALL.indexOf(r.m);
@@ -1281,7 +1281,7 @@ export function LiveKpiReport({
                 const ytdICont   = rAny.ytdIContainer ?? 0;
                 const ytdIWh     = rAny.ytdIWarehouse  ?? 0;
                 const ytdIUnclass = Math.max(0, r.ytdI - ytdICont - ytdIWh);
-                // Booking actuals are only visible from Aug 2026 onwards.
+                // Booking actuals are only visible from Jul 2026 onwards.
                 const bkVisible = isBookingVisible(2026, idx + 1);
                 // Invoiced actuals before July 2026 are excluded — skewed
                 // Acctivate import/migration-transition data. idx 0-5 = Jan-Jun.
@@ -1293,9 +1293,9 @@ export function LiveKpiReport({
                       <td
                         colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 7 : 6}
                         className="p-2 text-center border-l text-muted-foreground/60 line-through italic cursor-help"
-                        title="Excluded before August 2026"
+                        title="Excluded before July 2026"
                       >
-                        Excluded before August 2026
+                        Excluded before July 2026
                       </td>
                     ) : <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdB)}</td>

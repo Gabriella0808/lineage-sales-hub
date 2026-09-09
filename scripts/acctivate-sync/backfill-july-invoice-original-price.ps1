@@ -15,28 +15,38 @@
   Skyvia dbo_InvoiceDetail mirror in Supabase, which died 2026-07-08 and
   only covers July 1-8.
 
-  It then updates ONLY the original_price column on rows that ALREADY EXIST
-  in acctivate_invoice_lines_2026_direct, keyed by guid_invoice_detail
-  (matched case-insensitively - Acctivate returns lowercase GUIDs, Supabase
-  stores them hyphenated-UPPERCASE - but every write uses the original
-  Supabase-cased value, never the lowercased Acctivate one, so the update
-  always hits the existing row instead of missing it or creating a
-  differently-cased duplicate).
-  It never inserts new rows and never touches formula_net_amount, price,
+  The write goes through the public.backfill_july_2026_invoice_original_price
+  RPC (see supabase/migrations/20260913000900_backfill_july_original_price_rpc.sql)
+  - a plain UPDATE, never an upsert. acctivate_invoice_lines_2026_direct has
+  no unique constraint/index on guid_invoice_detail (only on natural_key), so
+  a POST upsert with on_conflict=guid_invoice_detail is invalid from
+  Postgres's side and always fails with 400. The RPC matches rows by a
+  normalized (lowercase, dashes/braces stripped) comparison against
+  guid_invoice_detail - case-insensitive on both sides, since Acctivate
+  returns lowercase GUIDs and Supabase stores them hyphenated-UPPERCASE - and
+  its WHERE clause hard-codes the July 2026 date range itself, so the RPC
+  physically cannot insert a row or touch a row outside July no matter what
+  is sent to it. It never touches formula_net_amount, price,
   invoice_detail_amount, or any other column. Any Acctivate row whose
   guid_invoice_detail has no matching row in Supabase is skipped and
-  reported, not inserted - that would mean the base direct-sync pull is
-  missing that line, a separate problem.
+  reported before the write even happens - that would mean the base
+  direct-sync pull is missing that line, a separate problem.
+  On any write failure the script prints the full Supabase/PostgREST error
+  response body (not just the .NET exception message), so real failures are
+  never hidden behind a generic "400 Bad Request".
 
   Scope is hard-limited to July 2026 (invoice_date >= 2026-07-01 AND
-  < 2026-08-01) at both the SQL Server query and the Supabase write. January
-  through June and August onward are never touched. Bookings, Open SO, and
-  Labor Day Promo are untouched - this script only ever writes to the
-  original_price column.
+  < 2026-08-01) at the SQL Server query, the pre-write existence check, AND
+  inside the RPC's own WHERE clause - three independent layers, not just one.
+  January through June and August onward are never touched. Bookings, Open
+  SO, and Labor Day Promo are untouched - this script only ever writes to
+  the original_price column.
 
   Deploy to C:\AcctivateKPI\ on the LineageVM, alongside the existing sync
   scripts and kpi.config.json (same config file/format as
-  pull-2026-invoiced-lines-direct.ps1).
+  pull-2026-invoiced-lines-direct.ps1). Requires migration
+  20260913000900_backfill_july_original_price_rpc.sql to already be applied
+  to Supabase (it grants EXECUTE on the RPC to service_role only).
 
 .PARAMETER ConfigPath
   Path to kpi.config.json. Defaults to .\kpi.config.json next to this script.
@@ -207,19 +217,15 @@ foreach ($r in $acctivateRows) {
 Write-Host "  distinct guid_invoice_detail values: $($byGuid.Count)"
 
 # --- Find which of these guids already exist in Supabase ---------------------
-# Never insert new rows here - only update original_price on rows the main
-# direct-sync pull has already created. Anything not found is skipped and
-# reported, not written.
+# This check is purely for accurate fetched/matched/skipped reporting - the
+# actual write below goes through an UPDATE-only RPC that cannot insert a row
+# regardless of whether this check ran, so it isn't a safety dependency, just
+# visibility into which July Acctivate lines the base direct-sync pull is
+# missing (those are skipped and reported, not written).
 #
 # Matching is done on the normalized (lowercase, no braces) form on both
 # sides, since Supabase stores guid_invoice_detail hyphenated-UPPERCASE while
-# Acctivate's query returns lowercase. The map below keeps the ORIGINAL
-# Supabase-cased value alongside the normalized key, because the update
-# payload must send back that exact original value - guid_invoice_detail is
-# a plain text column, so on_conflict/equality matching is case-sensitive;
-# sending the lowercased Acctivate form would silently miss the match (or
-# worse, insert a duplicate row under different casing) instead of updating
-# the existing row.
+# Acctivate's query returns lowercase.
 
 Write-Section 'CHECK EXISTING ROWS IN SUPABASE (July 2026 scope only)'
 
@@ -255,8 +261,13 @@ $skipped  = [System.Collections.Generic.List[string]]::new()
 
 foreach ($g in $byGuid.Keys) {
   if ($existingGuidMap.ContainsKey($g)) {
-    $supabaseGuid = $existingGuidMap[$g]
-    $toUpdate.Add(@{ guid_invoice_detail = $supabaseGuid; original_price = [double]$byGuid[$g]['original_price'] }) | Out-Null
+    # $g is already the normalized (lowercase, no braces) form built above -
+    # this is exactly what backfill_july_2026_invoice_original_price expects
+    # as normalized_guid; the RPC does its own dash-stripped matching against
+    # guid_invoice_detail server-side, so no lookup of the original
+    # Supabase-cased value is needed for the write itself (existingGuidMap is
+    # still used above only to decide what counts as skipped, for reporting).
+    $toUpdate.Add(@{ normalized_guid = $g; original_price = [double]$byGuid[$g]['original_price'] }) | Out-Null
   } else {
     $skipped.Add($g) | Out-Null
   }
@@ -289,45 +300,73 @@ Write-Host "public.acctivate_invoice_lines_2026_direct. No other column, no othe
 $ans = Read-Host "Proceed? (yes/no)"
 if ($ans -notmatch '^y(es)?$') { Write-Host 'Aborted. Nothing changed.' -ForegroundColor Red; exit 1 }
 
-# --- Upload: bulk upsert restricted to a payload of only these two columns ---
-# on_conflict=guid_invoice_detail + resolution=merge-duplicates updates ONLY
-# the columns present in the payload for a matching row. Every guid here was
-# already confirmed to exist above, so this can only ever hit the UPDATE
-# branch - it will never create a new row.
+# --- Upload: UPDATE-only RPC, no upsert, no ON CONFLICT ---------------------
+# acctivate_invoice_lines_2026_direct has NO unique constraint or index on
+# guid_invoice_detail (only on natural_key) - a POST upsert with
+# on_conflict=guid_invoice_detail is invalid from Postgres's side and always
+# returns 400. public.backfill_july_2026_invoice_original_price (see
+# supabase/migrations/20260913000900_backfill_july_original_price_rpc.sql)
+# is a plain UPDATE ... FROM ... WHERE, hard-scoped to July 2026 in its own
+# WHERE clause and writing only original_price - it cannot insert a row
+# regardless of what's passed in, so this is safe even without the
+# pre-existing-row check above (that check is kept only for accurate
+# fetched/matched/skipped reporting).
 
-$upsertHeaders = $headers.Clone()
-$upsertHeaders['Prefer'] = 'resolution=merge-duplicates,return=minimal'
-$upsertUrl = "$SupabaseUrl/rest/v1/acctivate_invoice_lines_2026_direct?on_conflict=guid_invoice_detail"
+function Get-HttpErrorBody {
+  param($ErrorRecord)
+  if ($ErrorRecord.ErrorDetails -and $ErrorRecord.ErrorDetails.Message) {
+    return $ErrorRecord.ErrorDetails.Message
+  }
+  try {
+    $resp = $ErrorRecord.Exception.Response
+    if ($resp) {
+      $stream = $resp.GetResponseStream()
+      $reader = New-Object System.IO.StreamReader($stream)
+      $body   = $reader.ReadToEnd()
+      $reader.Close()
+      if ($body) { return $body }
+    }
+  } catch { }
+  return $ErrorRecord.Exception.Message
+}
+
+$rpcHeaders = $headers.Clone()
+$rpcUrl = "$SupabaseUrl/rest/v1/rpc/backfill_july_2026_invoice_original_price"
 
 function Send-Batch {
   param([hashtable[]]$Rows, [int]$StartIndex, [int]$Total)
-  $payload = $Rows | ConvertTo-Json -Depth 3 -Compress
+  $payload = @{ p_rows = $Rows } | ConvertTo-Json -Depth 4 -Compress
   for ($attempt = 1; $attempt -le $MaxRetries; $attempt++) {
     try {
-      Invoke-RestMethod -Method Post -Uri $upsertUrl -Headers $upsertHeaders -Body $payload -TimeoutSec $RequestTimeout | Out-Null
+      $result = Invoke-RestMethod -Method Post -Uri $rpcUrl -Headers $rpcHeaders -Body $payload -TimeoutSec $RequestTimeout
       $end = [Math]::Min($StartIndex + $Rows.Count, $Total)
-      Write-Host "  updated rows $($StartIndex + 1)-$end of $Total" -ForegroundColor DarkCyan
-      return
+      Write-Host "  updated rows $($StartIndex + 1)-$end of $Total (RPC reports $result row(s) actually updated)" -ForegroundColor DarkCyan
+      return [int]$result
     } catch {
-      $msg = $_.Exception.Message
+      $errorBody = Get-HttpErrorBody $_
+      Write-Warning "  batch at row $($StartIndex + 1): attempt $attempt/$MaxRetries failed - full Supabase response:"
+      Write-Warning "  $errorBody"
       if ($attempt -ge $MaxRetries) {
-        throw "Batch starting row $($StartIndex + 1) failed after $MaxRetries attempts: $msg"
+        throw "Batch starting row $($StartIndex + 1) failed after $MaxRetries attempts. Last response: $errorBody"
       }
-      Write-Warning "  batch at row $($StartIndex + 1): attempt $attempt/$MaxRetries failed ($msg) - retrying in ${RetryDelaySec}s"
       Start-Sleep -Seconds $RetryDelaySec
     }
   }
 }
 
-Write-Section 'UPDATE original_price IN SUPABASE'
+Write-Section 'UPDATE original_price IN SUPABASE (UPDATE-only RPC)'
 $rows  = $toUpdate.ToArray()
 $total = $rows.Count
+$rpcUpdatedTotal = 0
 for ($i = 0; $i -lt $total; $i += $BatchSize) {
   $last  = [Math]::Min($i + $BatchSize - 1, $total - 1)
   $chunk = [hashtable[]]$rows[$i..$last]
-  Send-Batch -Rows $chunk -StartIndex $i -Total $total
+  $rpcUpdatedTotal += (Send-Batch -Rows $chunk -StartIndex $i -Total $total)
 }
-Write-Host "  update complete: $total row(s) upserted" -ForegroundColor Green
+Write-Host "  update complete: RPC updated $rpcUpdatedTotal of $total row(s) sent" -ForegroundColor Green
+if ($rpcUpdatedTotal -ne $total) {
+  Write-Warning "  $($total - $rpcUpdatedTotal) row(s) were sent but not matched by the RPC's own WHERE clause (guid or July date mismatch server-side) - investigate before assuming the backfill is complete."
+}
 
 # --- Validation ------------------------------------------------------------
 

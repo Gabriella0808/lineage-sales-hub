@@ -3,14 +3,13 @@ import {
   format, startOfDay, startOfMonth, endOfMonth, subMonths,
 } from "date-fns";
 import Papa from "papaparse";
-import { ChevronRight, Download, Printer, Info } from "lucide-react";
+import { ChevronRight, Download, Printer } from "lucide-react";
 import { isBookingVisibleDate, BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { formatCurrency } from "@/hooks/usePortalData";
 
 // ── Open Sales Orders (backlog) — matches get_open_sales_order_lines RPC ──────
@@ -833,17 +832,6 @@ export function InvoiceDetailSheet({
                 <CardContent className="p-3">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                     Open Sales Orders
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info
-                          className="h-3 w-3 text-muted-foreground/70"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-[220px] text-xs">
-                        Current open sales-order backlog as of the latest Acctivate sync.
-                      </TooltipContent>
-                    </Tooltip>
                   </p>
                   <p className="text-lg font-semibold tabular-nums">
                     {loadingOpenOrders ? "…" : formatCurrency(openOrdersTotal)}

@@ -920,7 +920,7 @@ export function LiveKpiReport({
             </p>
             {invoiceDateStr < "2026-07-01" ? (
               <p className="text-sm text-muted-foreground italic mb-3">
-                Excluded — import-transition data before July 2026.
+                Excluded import-transition data before July 2026.
               </p>
             ) : (
               <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalInv)}</p>
@@ -1289,32 +1289,36 @@ export function LiveKpiReport({
                 return (
                   <tr key={r.m} className="border-b last:border-0 hover:bg-muted/20">
                     <td className="p-2 font-medium">{idx + 1}. {r.m}</td>
-                    {showB && <>
-                      <td className="p-2 text-right border-l font-medium">
-                        {bkVisible ? formatCurrency(r.ytdB) : "—"}
+                    {showB && (!bkVisible ? (
+                      <td
+                        colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 7 : 6}
+                        className="p-2 text-center border-l text-muted-foreground/60 line-through italic cursor-help"
+                        title="Excluded before August 2026"
+                      >
+                        Excluded before August 2026
                       </td>
-                      <td className="p-2 text-right">{bkVisible ? formatCurrency(r.b26p) : "—"}</td>
-                      <td className="p-2 text-right">
-                        {bkVisible ? fmtPct(r.ytdB / r.b26p) : "—"}
-                      </td>
+                    ) : <>
+                      <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdB)}</td>
+                      <td className="p-2 text-right">{formatCurrency(r.b26p)}</td>
+                      <td className="p-2 text-right">{fmtPct(r.ytdB / r.b26p)}</td>
                       {SHOW_PRIOR_YEAR_ACTUALS && <td className="p-2 text-right">{formatCurrency(r.b25)}</td>}
                       <td className="p-2 text-right">
-                        {bkVisible ? (ytdBCont + ytdBWh === 0 ? "-" : fmtPctRaw(ytdBCont / Math.max(r.ytdB, 1))) : "—"}
+                        {ytdBCont + ytdBWh === 0 ? "-" : fmtPctRaw(ytdBCont / Math.max(r.ytdB, 1))}
                       </td>
                       <td className="p-2 text-right">
-                        {bkVisible ? (ytdBCont + ytdBWh === 0 ? "-" : fmtPctRaw(ytdBWh  / Math.max(r.ytdB, 1))) : "—"}
+                        {ytdBCont + ytdBWh === 0 ? "-" : fmtPctRaw(ytdBWh  / Math.max(r.ytdB, 1))}
                       </td>
                       <td className="p-2 text-right text-muted-foreground">
-                        {bkVisible ? (r.ytdB <= 0 ? "-" : fmtPctRaw(ytdBUnclass / r.ytdB)) : "—"}
+                        {r.ytdB <= 0 ? "-" : fmtPctRaw(ytdBUnclass / r.ytdB)}
                       </td>
-                    </>}
+                    </>)}
                     {showI && (invExcluded ? (
                       <td
                         colSpan={SHOW_PRIOR_YEAR_ACTUALS ? 7 : 6}
                         className="p-2 text-center border-l text-muted-foreground/60 line-through italic cursor-help"
-                        title="Excluded — import-transition data before July 2026"
+                        title="Excluded import-transition data before July 2026"
                       >
-                        Excluded — import-transition data before July 2026
+                        Excluded import-transition data before July 2026
                       </td>
                     ) : <>
                       <td className="p-2 text-right border-l font-medium">{formatCurrency(r.ytdI)}</td>

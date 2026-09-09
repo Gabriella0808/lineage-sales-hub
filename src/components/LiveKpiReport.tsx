@@ -748,22 +748,34 @@ export function LiveKpiReport({
   // ── Open SO Value KPI — canonical source, same view used by Inventory >
   // Backlog and the Dealer/Rep Reporting Open SO card. Company-wide total
   // (unscoped by rep/manager), matching how Inventory > Backlog's own totals
-  // are presented. Lightweight: only the 3 columns needed for the aggregate.
+  // are presented. Paginated via .range() exactly like
+  // useInventoryHub.ts's fetchAllOpenOrders — a single unpaginated request
+  // is silently truncated at the project's row cap (~1000), which is why
+  // this must page through in full rather than rely on .limit().
   const { data: openSoRows = [] } = useQuery({
     queryKey: ["live_kpi_open_so_totals"],
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true,
     refetchInterval: 5 * 60_000,
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("v_portal_open_sales_order_line_facts")
-        .select("order_number, qty_open, open_so_amount")
-        .limit(10000);
-      if (error) {
-        console.error("[live-kpi] open SO totals error:", error.message);
-        return [];
+      const pageSize = 1000;
+      const all: Array<{ order_number: string | null; qty_open: number | string | null; open_so_amount: number | string | null }> = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await (supabase as any)
+          .from("v_portal_open_sales_order_line_facts")
+          .select("order_number, qty_open, open_so_amount")
+          .range(from, from + pageSize - 1);
+        if (error) {
+          console.error("[live-kpi] open SO totals error:", error.message);
+          break;
+        }
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
       }
-      return data as Array<{ order_number: string | null; qty_open: number | string | null; open_so_amount: number | string | null }>;
+      return all;
     },
   });
 

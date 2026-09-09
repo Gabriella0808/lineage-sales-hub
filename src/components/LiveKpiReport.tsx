@@ -745,12 +745,45 @@ export function LiveKpiReport({
   const showB = metricFilter !== "invoiced";
   const showI = metricFilter !== "bookings";
 
+  // ── Open SO Value KPI — canonical source, same view used by Inventory >
+  // Backlog and the Dealer/Rep Reporting Open SO card. Company-wide total
+  // (unscoped by rep/manager), matching how Inventory > Backlog's own totals
+  // are presented. Lightweight: only the 3 columns needed for the aggregate.
+  const { data: openSoRows = [] } = useQuery({
+    queryKey: ["live_kpi_open_so_totals"],
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("v_portal_open_sales_order_line_facts")
+        .select("order_number, qty_open, open_so_amount")
+        .limit(10000);
+      if (error) {
+        console.error("[live-kpi] open SO totals error:", error.message);
+        return [];
+      }
+      return data as Array<{ order_number: string | null; qty_open: number | string | null; open_so_amount: number | string | null }>;
+    },
+  });
+
+  const openSoStats = useMemo(() => {
+    const orderNumbers = new Set<string>();
+    let totalUnits = 0;
+    let totalValue = 0;
+    for (const r of openSoRows) {
+      if (r.order_number) orderNumbers.add(String(r.order_number));
+      totalUnits += Number(r.qty_open) || 0;
+      totalValue += Number(r.open_so_amount) || 0;
+    }
+    return { orderCount: orderNumbers.size, totalUnits, totalValue };
+  }, [openSoRows]);
 
   return (
     <div className="space-y-6">
       {/* ── MTD Summary KPI Row ──────────────────────────────────────── */}
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="glass-card p-5 grid grid-cols-3 divide-x divide-border">
+        <div className="glass-card p-5 grid grid-cols-2 lg:grid-cols-4 divide-x divide-border">
           <div className="flex flex-col gap-1 pr-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">MTD Bookings</p>
             <p className="text-xl font-serif tabular-nums">{mtdBookingVisible ? formatCurrency(mtdB) : "—"}</p>
@@ -761,10 +794,17 @@ export function LiveKpiReport({
             <p className="text-xl font-serif tabular-nums">{mtdBGoal > 0 ? formatCurrency(mtdBGoal) : "—"}</p>
             <p className="text-[10px] text-muted-foreground">Day {daysElapsed} of {daysInMonth} · 2026</p>
           </div>
-          <div className="flex flex-col gap-1 pl-5">
+          <div className="flex flex-col gap-1 px-5">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">% Booking Goal</p>
             <p className="text-xl font-serif tabular-nums">{mtdBookingVisible ? fmtPct(mtdB / mtdBGoal) : "—"}</p>
             <p className="text-[10px] text-muted-foreground">MTD vs Goal</p>
+          </div>
+          <div className="flex flex-col gap-1 pl-5">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Open SO Value</p>
+            <p className="text-xl font-serif tabular-nums">{formatCurrency(openSoStats.totalValue)}</p>
+            <p className="text-[10px] text-muted-foreground">
+              {openSoStats.orderCount.toLocaleString()} open orders · {Math.round(openSoStats.totalUnits).toLocaleString()} units
+            </p>
           </div>
         </div>
         <div className="glass-card p-5 grid grid-cols-3 divide-x divide-border">

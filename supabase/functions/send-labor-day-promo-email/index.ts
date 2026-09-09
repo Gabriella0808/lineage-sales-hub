@@ -34,7 +34,7 @@ const PROMO_SLUG    = "ld26";
 const DISCOUNT_CODE = "LD26";
 const DEALER_GOAL   = 5000;
 const CUTOFF_DATE_ET = "2026-09-15"; // last day this email should send (inclusive)
-const TOP_N_DEALERS  = 20;
+const UNCLASSIFIED   = "Unclassified Collection"; // mirrors LaborDayPromoPage.tsx
 
 // ── Timezone helpers ──────────────────────────────────────────────────────────
 
@@ -189,6 +189,7 @@ interface Participant {
 interface SalesLine {
   transaction_date: string;
   customer_id: string;
+  product_class: string | null;
   amount: number;
 }
 
@@ -237,7 +238,7 @@ Deno.serve(async (req) => {
         .eq("active", true),
       supabase
         .from("v_portal_dealer_rep_reporting_lines")
-        .select("transaction_date,customer_id,amount")
+        .select("transaction_date,customer_id,product_class,amount")
         .eq("metric_type", "bookings")
         .eq("discount_code", DISCOUNT_CODE),
       supabase
@@ -264,53 +265,75 @@ Deno.serve(async (req) => {
     let lines: SalesLine[] = (salesRes.data ?? []).map((r: any) => ({
       transaction_date: String(r.transaction_date ?? ""),
       customer_id:      r.customer_id ?? "",
+      product_class:    r.product_class ?? null,
       amount:            Number(r.amount) || 0,
     }));
     if (dateFrom) lines = lines.filter((l) => l.transaction_date >= dateFrom);
     if (dateTo)   lines = lines.filter((l) => l.transaction_date <= dateTo);
 
     // ── 2. Match sales to the roster (normalized customer_id) — participant-
-    //        driven: every roster row appears, $0 sales included ────────────
-    const salesByCustId = new Map<string, number>();
+    //        driven: every roster row appears, $0 sales included. Grouped by
+    //        collection (product_class) within each dealer, same as the
+    //        portal page's Rep > Dealer > Collection > SKU table (SKU level
+    //        omitted here — too granular for a daily email). ────────────────
+    const salesByCustId = new Map<string, { total: number; collections: Map<string, number> }>();
     for (const l of lines) {
       const key = norm(l.customer_id);
-      salesByCustId.set(key, (salesByCustId.get(key) ?? 0) + l.amount);
+      if (!salesByCustId.has(key)) salesByCustId.set(key, { total: 0, collections: new Map() });
+      const agg = salesByCustId.get(key)!;
+      agg.total += l.amount;
+      const collName = l.product_class && l.product_class.trim() ? l.product_class.trim() : UNCLASSIFIED;
+      agg.collections.set(collName, (agg.collections.get(collName) ?? 0) + l.amount);
     }
 
-    interface DealerAgg { rep_name: string; dealer_name: string; total_sales: number; goal: number; pct_goal: number }
-    interface RepAgg { rep_name: string; participating_dealers: number; dealers_with_sales: number; total_sales: number; goal: number; pct_goal: number }
+    interface CollectionAgg { name: string; total_sales: number }
+    interface DealerAgg {
+      dealer_name: string; total_sales: number; goal: number; pct_goal: number;
+      collections: CollectionAgg[];
+    }
+    interface RepAgg {
+      rep_name: string; participating_dealers: number; dealers_with_sales: number;
+      total_sales: number; goal: number; pct_goal: number; dealers: DealerAgg[];
+    }
 
     const repMap = new Map<string, { rep_name: string; dealers: DealerAgg[] }>();
     for (const p of participants) {
-      const dealerSales = salesByCustId.get(norm(p.cust_id)) ?? 0;
+      const custAgg = salesByCustId.get(norm(p.cust_id));
+      const dealerSales = custAgg?.total ?? 0;
+      const collections: CollectionAgg[] = custAgg
+        ? [...custAgg.collections.entries()]
+            .map(([name, total_sales]) => ({ name, total_sales }))
+            .sort((a, b) => b.total_sales - a.total_sales)
+        : [];
+
       const repKey  = p.salesperson_id;
       const repName = p.salesperson_name || p.salesperson_id;
       if (!repMap.has(repKey)) repMap.set(repKey, { rep_name: repName, dealers: [] });
       repMap.get(repKey)!.dealers.push({
-        rep_name: repName,
         dealer_name: p.company_name || p.dealer_name || p.cust_id,
         total_sales: dealerSales,
         goal: DEALER_GOAL,
         pct_goal: (dealerSales / DEALER_GOAL) * 100,
+        collections,
       });
     }
 
     const repRows: RepAgg[] = [...repMap.values()].map((r) => {
-      const total = r.dealers.reduce((s, d) => s + d.total_sales, 0);
-      const goal  = r.dealers.length * DEALER_GOAL;
+      const dealers = [...r.dealers].sort((a, b) => b.total_sales - a.total_sales);
+      const total = dealers.reduce((s, d) => s + d.total_sales, 0);
+      const goal  = dealers.length * DEALER_GOAL;
       return {
         rep_name: r.rep_name,
-        participating_dealers: r.dealers.length,
-        dealers_with_sales: r.dealers.filter((d) => d.total_sales > 0).length,
+        participating_dealers: dealers.length,
+        dealers_with_sales: dealers.filter((d) => d.total_sales > 0).length,
         total_sales: total,
         goal,
         pct_goal: goal > 0 ? (total / goal) * 100 : 0,
+        dealers,
       };
     }).sort((a, b) => b.total_sales - a.total_sales || a.rep_name.localeCompare(b.rep_name));
 
-    const allDealerRows: DealerAgg[] = [...repMap.values()]
-      .flatMap((r) => r.dealers)
-      .sort((a, b) => b.total_sales - a.total_sales);
+    const allDealerRows = repRows.flatMap((r) => r.dealers.map((d) => ({ ...d, rep_name: r.rep_name })));
 
     const totalSales = repRows.reduce((s, r) => s + r.total_sales, 0);
     const participatingDealers = participants.length;
@@ -321,11 +344,7 @@ Deno.serve(async (req) => {
     const activeSellingReps = repRows.filter((r) => r.total_sales > 0).length;
 
     const topRep = repRows[0] ?? null;
-    const topDealer = allDealerRows[0] ?? null;
-
-    const dealerRowsTop = allDealerRows.slice(0, TOP_N_DEALERS);
-    const zeroInTop = dealerRowsTop.filter((d) => d.total_sales === 0).length;
-    const noSalesDealerCount = Math.max(0, dealersNoSales - zeroInTop);
+    const topDealer = [...allDealerRows].sort((a, b) => b.total_sales - a.total_sales)[0] ?? null;
 
     console.log(
       `[ld26-email] participants=${participatingDealers} withSales=${dealersWithSales} noSales=${dealersNoSales} ` +
@@ -346,8 +365,6 @@ Deno.serve(async (req) => {
       topDealerName: topDealer?.dealer_name ?? "—",
       topDealerSales: topDealer?.total_sales ?? 0,
       repRows,
-      dealerRows: dealerRowsTop,
-      noSalesDealerCount,
       portalUrl: PORTAL_URL,
     };
 

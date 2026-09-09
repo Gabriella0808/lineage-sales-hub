@@ -671,10 +671,30 @@ export function LiveKpiReport({
     arr.reduce((s, r) => s + (r[k] as number), 0);
 
   const sumB25 = sum(monthly, "b25");
-  const sumYtdB = sum(monthly, "ytdB");
   const sumI25 = sum(monthly, "i25");
   const sumI26P = sum(monthly, "i26p");
-  const sumYtdI = sum(monthly, "ytdI");
+  // sumYtdB / sumYtdI (actual $ totals) must exclude the same months their
+  // own per-row cells hide, same as sumB26P already does for the booking
+  // goal below — otherwise the TOTAL row silently includes raw underlying
+  // amounts for months the table itself displays as "—" / "Excluded".
+  // Booking actuals: visible Aug 2026 onwards only.
+  const sumYtdB = monthly
+    .filter((r) => {
+      const idx = MONTH_NAMES_ALL.indexOf(r.m);
+      return idx >= 0 && isBookingVisible(reportingYear, idx + 1);
+    })
+    .reduce((s, r) => s + r.ytdB, 0);
+  // Invoiced actuals: visible July 2026 onwards only (Jan-Jun excluded —
+  // Acctivate import-transition data). The backend already zeroes these out
+  // at the source, so this filter is currently a no-op in practice — kept
+  // explicit so the total stays correct even if that ever changes, and to
+  // mirror sumYtdB's pattern rather than relying on it implicitly.
+  const sumYtdI = monthly
+    .filter((r) => {
+      const idx = MONTH_NAMES_ALL.indexOf(r.m);
+      return idx >= 0 && idx + 1 >= 7;
+    })
+    .reduce((s, r) => s + r.ytdI, 0);
   // Column-sum % values for the TOTAL row — sum of the per-month displayed percentages,
   // matching Excel SUM behavior (not weighted by amount).
   // Months that show "—" (bkVisible=false) or "-" (zero/undefined) are excluded.

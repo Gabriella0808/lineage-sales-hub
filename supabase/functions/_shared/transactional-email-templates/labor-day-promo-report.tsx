@@ -144,7 +144,7 @@ function HierarchyTable({ repRows }: { repRows: RepSummaryRow[] }) {
                   <tr>
                     <td style={{ ...tdDealer, color: hasSales ? '#1a1a1a' : '#999' }}>{dealer.dealer_name}</td>
                     <td style={tdDetail}>
-                      {hasSales ? `${dealer.collections.length} collection${dealer.collections.length !== 1 ? 's' : ''}` : '—'}
+                      {hasSales ? `${dealer.collections.length} collection${dealer.collections.length !== 1 ? 's' : ''}` : '-'}
                     </td>
                     <td style={{ ...tdNum, color: hasSales ? '#1a1a1a' : '#aaa' }}>{fmt(dealer.total_sales)}</td>
                     <td style={{ ...tdNum, fontWeight: 400, color: '#999' }}>{fmt(dealer.goal)}</td>
@@ -160,10 +160,10 @@ function HierarchyTable({ repRows }: { repRows: RepSummaryRow[] }) {
                   {dealer.collections.map((coll) => (
                     <tr key={`${rep.rep_name}::${dealer.dealer_name}::${coll.name}`}>
                       <td style={tdCollection}>{coll.name}</td>
-                      <td style={tdDetail}>—</td>
+                      <td style={tdDetail}>-</td>
                       <td style={{ ...tdNum, fontWeight: 500, fontSize: '12px' }}>{fmt(coll.total_sales)}</td>
-                      <td style={tdDetail}>—</td>
-                      <td style={tdDetail}>—</td>
+                      <td style={tdDetail}>-</td>
+                      <td style={tdDetail}>-</td>
                     </tr>
                   ))}
                 </React.Fragment>
@@ -187,9 +187,9 @@ const LaborDayPromoReportEmail = ({
   dealersWithSales = 0,
   dealersNoSales = 0,
   activeSellingReps = 0,
-  topRepName = '—',
+  topRepName = '-',
   topRepSales = 0,
-  topDealerName = '—',
+  topDealerName = '-',
   topDealerSales = 0,
   repRows = [],
   portalUrl = 'https://lineage-collections-portal.com/promotions/labor-day-promo',
@@ -203,7 +203,7 @@ const LaborDayPromoReportEmail = ({
       <Container style={container}>
         <Text style={eyebrow}>LINEAGE COLLECTIONS · INTERNAL</Text>
         <Heading style={h1}>Labor Day Promo Results</Heading>
-        {updatedAsOf ? <Text style={dateLine}>Updated as of latest Acctivate sync — {updatedAsOf}</Text> : null}
+        {updatedAsOf ? <Text style={dateLine}>Updated as of latest Acctivate sync - {updatedAsOf}</Text> : null}
 
         {/* ── Summary cards (3x3 grid) ────────────────────────────────────── */}
         <CardRow>
@@ -217,13 +217,12 @@ const LaborDayPromoReportEmail = ({
           <SummaryCard label="Dealers with No Sales" value={String(dealersNoSales)} accent="#a35a3a" />
         </CardRow>
         <CardRow>
-          <SummaryCard label="Active Selling Reps" value={String(activeSellingReps)} accent="#c9a44c" />
           <SummaryCard label="Top Rep" value={`${topRepName} (${fmt(topRepSales)})`} accent="#1e2d47" />
           <SummaryCard label="Top Dealer" value={`${topDealerName} (${fmt(topDealerSales)})`} accent="#1e2d47" />
         </CardRow>
 
         {/* ── Rep > Dealer > Collection hierarchy ──────────────────────────── */}
-        <Text style={sectionHeading}>Rep → Dealer → Collection — every participating dealer, including $0</Text>
+        <Text style={sectionHeading}>Rep → Dealer → Collection - every participating dealer, including $0</Text>
         <Section style={hierarchyCard}>
           <HierarchyTable repRows={repRows} />
         </Section>
@@ -243,7 +242,7 @@ const LaborDayPromoReportEmail = ({
 
         <Hr style={hr} />
         <Text style={footer}>
-          Internal only — sent to admin/manager portal users. Sent automatically from the {SITE_NAME} Admin Workspace.
+          Internal only - sent to admin/manager portal users. Sent automatically from the {SITE_NAME} Admin Workspace.
         </Text>
       </Container>
     </Body>
@@ -254,7 +253,7 @@ const LaborDayPromoReportEmail = ({
 
 export const template = {
   component: LaborDayPromoReportEmail,
-  subject: 'Labor Day Promo Results — Daily Update',
+  subject: 'Labor Day Promo Results - Daily Update',
   displayName: 'Labor Day Promo Report',
   previewData: {
     updatedAsOf: 'September 9, 2026, 8:05 PM ET',

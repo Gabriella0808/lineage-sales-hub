@@ -28,7 +28,7 @@ const FROM_DOMAIN   = "lineage-collections.com";
 const SENDER_DOMAIN = "lineage-collections.com";
 const TEMPLATE_LABEL = "labor-day-promo-report";
 const PORTAL_URL     = "https://lineage-collections-portal.com/promotions/labor-day-promo";
-const SUBJECT         = "Labor Day Promo Results — Daily Update";
+const SUBJECT         = "Labor Day Promo Results - Daily Update";
 
 const PROMO_SLUG    = "ld26";
 const DISCOUNT_CODE = "LD26";
@@ -360,9 +360,9 @@ Deno.serve(async (req) => {
       dealersWithSales,
       dealersNoSales,
       activeSellingReps,
-      topRepName: topRep?.rep_name ?? "—",
+      topRepName: topRep?.rep_name ?? "-",
       topRepSales: topRep?.total_sales ?? 0,
-      topDealerName: topDealer?.dealer_name ?? "—",
+      topDealerName: topDealer?.dealer_name ?? "-",
       topDealerSales: topDealer?.total_sales ?? 0,
       repRows,
       portalUrl: PORTAL_URL,

@@ -1,10 +1,8 @@
 import * as React from 'npm:react@18.3.1'
 import {
-  Body, Container, Head, Heading, Hr, Html, Preview, Section, Text,
+  Body, Container, Head, Heading, Html, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
-
-const SITE_NAME = 'Lineage Collections'
 
 interface CollectionRow {
   name: string
@@ -239,11 +237,6 @@ const LaborDayPromoReportEmail = ({
             </tr>
           </tbody>
         </table>
-
-        <Hr style={hr} />
-        <Text style={footer}>
-          Internal only - sent to admin/manager portal users. Sent automatically from the {SITE_NAME} Admin Workspace.
-        </Text>
       </Container>
     </Body>
   </Html>
@@ -355,6 +348,4 @@ const tdNum    = { fontSize: '13px', color: '#1a1a1a', fontWeight: 600, padding:
 const tdDetail = { fontSize: '11px', color: '#999', padding: '6px 0 6px 6px', textAlign: 'right' as const, whiteSpace: 'nowrap' as const }
 const tdNoSales = { fontSize: '11px', fontStyle: 'italic' as const, color: '#aaa', padding: '2px 6px 6px 36px' }
 
-const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
-const footer = { fontSize: '12px', color: '#999999', margin: '0' }
 const ctaButton = { display: 'inline-block' as const, backgroundColor: '#c9a44c', color: '#1a1a1a', fontSize: '14px', fontWeight: 600, textDecoration: 'none', borderRadius: '8px', padding: '12px 28px', fontFamily: '"DM Sans", Arial, sans-serif' }

@@ -1676,9 +1676,13 @@ function TotalTable({
   const totalC           = rows.reduce((s, r) => s + r.comparative, 0);
   const totalOpenSo      = rows.reduce((s, r) => s + (r.openSoValue ?? 0), 0);
   const hasContainerData = rows.some((r) => r.container !== undefined);
-  // Column-sum of per-row percentages (same as Live KPI TOTAL row behavior)
-  const sumContainerPct  = rows.reduce((s, r) => r.primary > 0 ? s + (r.container ?? 0) / r.primary : s, 0);
-  const sumWarehousePct  = rows.reduce((s, r) => r.primary > 0 ? s + (r.warehouse ?? 0) / r.primary : s, 0);
+  // $-weighted total (total container $ / total primary $), NOT a sum of each
+  // row's own percentage — with hundreds of dealer rows, summing per-row
+  // percentages produces nonsense like 578% / 18345% instead of a real total.
+  const totalContainerAmt = rows.reduce((s, r) => s + (r.container ?? 0), 0);
+  const totalWarehouseAmt = rows.reduce((s, r) => s + (r.warehouse ?? 0), 0);
+  const sumContainerPct   = totalP > 0 ? totalContainerAmt / totalP : 0;
+  const sumWarehousePct   = totalP > 0 ? totalWarehouseAmt / totalP : 0;
 
   return (
     <table className="w-full text-sm">

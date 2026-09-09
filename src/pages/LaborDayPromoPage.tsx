@@ -680,56 +680,62 @@ export default function LaborDayPromoPage() {
           {/* ── 3 charts ─────────────────────────────────────────────────────── */}
           {repRows.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <Card className="p-4">
+              <Card className="p-4 flex flex-col">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Sales by Rep
                 </h4>
-                <ResponsiveContainer width="100%" height={Math.max(140, repChartData.length * 34)}>
-                  <BarChart data={repChartData} layout="vertical" margin={{ left: 4, right: 36, top: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} horizontal={false} />
-                    <XAxis type="number" tickFormatter={v => fmtMoney(v)} tick={{ fontSize: 10 }} tickLine={false} />
-                    <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} reversed />
-                    <RTooltip formatter={(v: number, _, item: any) => [fmtMoneyFull(v), item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="sales" fill="hsl(var(--chart-2))" radius={[0, 3, 3, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="flex-1" style={{ minHeight: Math.max(140, repChartData.length * 34) }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={repChartData} layout="vertical" margin={{ left: 4, right: 36, top: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} horizontal={false} />
+                      <XAxis type="number" tickFormatter={v => fmtMoney(v)} tick={{ fontSize: 10 }} tickLine={false} />
+                      <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} reversed />
+                      <RTooltip formatter={(v: number, _, item: any) => [fmtMoneyFull(v), item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
+                      <Bar dataKey="sales" fill="hsl(var(--chart-2))" radius={[0, 3, 3, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </Card>
 
-              <Card className="p-4">
+              <Card className="p-4 flex flex-col">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   % Goal by Rep
                 </h4>
-                <ResponsiveContainer width="100%" height={Math.max(140, repChartData.length * 34)}>
-                  <BarChart data={repChartData} layout="vertical" margin={{ left: 4, right: 36, top: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} horizontal={false} />
-                    <XAxis
-                      type="number"
-                      domain={[0, Math.max(110, ...repChartData.map(d => d.pct + 10))]}
-                      tickFormatter={v => `${Math.round(v)}%`}
-                      tick={{ fontSize: 10 }} tickLine={false}
-                    />
-                    <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} reversed />
-                    <ReferenceLine x={100} stroke="hsl(var(--destructive))" strokeDasharray="4 3" strokeWidth={1.5} />
-                    <RTooltip formatter={(v: number, _, item: any) => [`${v.toFixed(1)}%`, item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="pct" fill="hsl(var(--chart-3))" radius={[0, 3, 3, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="flex-1" style={{ minHeight: Math.max(140, repChartData.length * 34) }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={repChartData} layout="vertical" margin={{ left: 4, right: 36, top: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} horizontal={false} />
+                      <XAxis
+                        type="number"
+                        domain={[0, Math.max(110, ...repChartData.map(d => d.pct + 10))]}
+                        tickFormatter={v => `${Math.round(v)}%`}
+                        tick={{ fontSize: 10 }} tickLine={false}
+                      />
+                      <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 10 }} tickLine={false} reversed />
+                      <ReferenceLine x={100} stroke="hsl(var(--destructive))" strokeDasharray="4 3" strokeWidth={1.5} />
+                      <RTooltip formatter={(v: number, _, item: any) => [`${v.toFixed(1)}%`, item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
+                      <Bar dataKey="pct" fill="hsl(var(--chart-3))" radius={[0, 3, 3, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </Card>
 
-              <Card className="p-4">
+              <Card className="p-4 flex flex-col">
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                   Sales by Dealer
                 </h4>
-                <ResponsiveContainer width="100%" height={Math.max(140, dealerChartData.length * 30)}>
-                  <BarChart data={dealerChartData} layout="vertical" margin={{ left: 4, right: 36, top: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} horizontal={false} />
-                    <XAxis type="number" tickFormatter={v => fmtMoney(v)} tick={{ fontSize: 10 }} tickLine={false} />
-                    <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10 }} tickLine={false} reversed />
-                    <ReferenceLine x={DEALER_GOAL} stroke="hsl(var(--destructive))" strokeDasharray="4 3" strokeWidth={1.5} />
-                    <RTooltip formatter={(v: number, _, item: any) => [fmtMoneyFull(v), item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="sales" fill="hsl(var(--chart-4))" radius={[0, 3, 3, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="flex-1" style={{ minHeight: Math.max(140, dealerChartData.length * 30) }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dealerChartData} layout="vertical" margin={{ left: 4, right: 36, top: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} horizontal={false} />
+                      <XAxis type="number" tickFormatter={v => fmtMoney(v)} tick={{ fontSize: 10 }} tickLine={false} />
+                      <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 10 }} tickLine={false} reversed />
+                      <ReferenceLine x={DEALER_GOAL} stroke="hsl(var(--destructive))" strokeDasharray="4 3" strokeWidth={1.5} />
+                      <RTooltip formatter={(v: number, _, item: any) => [fmtMoneyFull(v), item.payload.fullName]} contentStyle={{ fontSize: 11 }} />
+                      <Bar dataKey="sales" fill="hsl(var(--chart-4))" radius={[0, 3, 3, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </Card>
             </div>
           ) : (

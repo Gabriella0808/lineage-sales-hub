@@ -1,6 +1,6 @@
 import * as React from 'npm:react@18.3.1'
 import {
-  Body, Container, Head, Heading, Hr, Html, Preview, Text,
+  Body, Container, Head, Heading, Hr, Html, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
 import type { TemplateEntry } from './registry.ts'
 
@@ -103,35 +103,11 @@ function CardRow({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ── Section box (mirrors daily-performance-report.tsx) ──────────────────────────
-
-function SectionBox({ headingText, children }: { headingText: string; children: React.ReactNode }) {
-  return (
-    <table
-      cellPadding={0} cellSpacing={0} role="presentation"
-      style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0', border: '2px solid #1e2d47', borderRadius: '8px', marginBottom: '24px' }}
-    >
-      <tbody>
-        <tr>
-          <td style={{ backgroundColor: '#1e2d47', color: '#ffffff', padding: '12px 20px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: '"DM Sans", Arial, sans-serif', borderRadius: '6px 6px 0 0' }}>
-            {headingText}
-          </td>
-        </tr>
-        <tr>
-          <td style={{ backgroundColor: '#ffffff', padding: '6px 20px 18px', borderRadius: '0 0 6px 6px' }}>
-            {children}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  )
-}
-
-// ── Rep table ────────────────────────────────────────────────────────────────────
+// ── Rep table (Summer Special cream-box look) ────────────────────────────────────
 
 function RepTable({ rows }: { rows: RepSummaryRow[] }) {
   return (
-    <table width="100%" cellPadding={0} cellSpacing={0} style={{ borderCollapse: 'collapse', width: '100%' }}>
+    <table style={rowTable} cellPadding={0} cellSpacing={0}>
       <thead>
         <tr>
           <th style={th}>Rep</th>
@@ -143,13 +119,13 @@ function RepTable({ rows }: { rows: RepSummaryRow[] }) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((r) => (
-          <tr key={r.rep_name}>
-            <td style={tdName}>{r.rep_name}</td>
+        {rows.map((r, idx) => (
+          <tr key={r.rep_name} style={idx % 2 === 0 ? {} : altRow}>
+            <td style={tdName}><strong>{r.rep_name}</strong></td>
             <td style={tdNum}>{r.participating_dealers}</td>
             <td style={tdNum}>{r.dealers_with_sales}</td>
-            <td style={tdNum}>{fmt(r.total_sales)}</td>
-            <td style={tdNum}>{fmt(r.goal)}</td>
+            <td style={{ ...tdNum, color: r.total_sales > 0 ? 'hsl(220, 35%, 22%)' : 'hsl(220, 10%, 60%)' }}>{fmt(r.total_sales)}</td>
+            <td style={{ ...tdNum, fontWeight: 400, color: '#555' }}>{fmt(r.goal)}</td>
             <td style={{ ...tdNum, color: r.pct_goal >= 100 ? '#2f7a4f' : '#1a1a1a' }}>{fmtPct(r.pct_goal)}</td>
           </tr>
         ))}
@@ -158,11 +134,11 @@ function RepTable({ rows }: { rows: RepSummaryRow[] }) {
   )
 }
 
-// ── Dealer table ─────────────────────────────────────────────────────────────────
+// ── Dealer table (Summer Special cream-box look) ──────────────────────────────────
 
 function DealerTable({ rows }: { rows: DealerDetailRow[] }) {
   return (
-    <table width="100%" cellPadding={0} cellSpacing={0} style={{ borderCollapse: 'collapse', width: '100%' }}>
+    <table style={rowTable} cellPadding={0} cellSpacing={0}>
       <thead>
         <tr>
           <th style={th}>Rep</th>
@@ -173,13 +149,13 @@ function DealerTable({ rows }: { rows: DealerDetailRow[] }) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((r, i) => (
-          <tr key={`${r.rep_name}::${r.dealer_name}::${i}`}>
-            <td style={tdNameSm}>{r.rep_name}</td>
-            <td style={tdNameSm}>{r.dealer_name}</td>
-            <td style={tdNumSm}>{fmt(r.total_sales)}</td>
-            <td style={tdNumSm}>{fmt(r.goal)}</td>
-            <td style={{ ...tdNumSm, color: r.pct_goal >= 100 ? '#2f7a4f' : '#1a1a1a' }}>{fmtPct(r.pct_goal)}</td>
+        {rows.map((r, idx) => (
+          <tr key={`${r.rep_name}::${r.dealer_name}::${idx}`} style={idx % 2 === 0 ? {} : altRow}>
+            <td style={{ ...tdName, fontWeight: 400, color: '#555' }}>{r.rep_name}</td>
+            <td style={tdName}>{r.dealer_name}</td>
+            <td style={{ ...tdNum, color: r.total_sales > 0 ? 'hsl(220, 35%, 22%)' : 'hsl(220, 10%, 60%)' }}>{fmt(r.total_sales)}</td>
+            <td style={{ ...tdNum, fontWeight: 400, color: '#555' }}>{fmt(r.goal)}</td>
+            <td style={{ ...tdNum, color: r.pct_goal >= 100 ? '#2f7a4f' : '#1a1a1a' }}>{fmtPct(r.pct_goal)}</td>
           </tr>
         ))}
       </tbody>
@@ -236,12 +212,14 @@ const LaborDayPromoReportEmail = ({
         </CardRow>
 
         {/* ── Rep summary table ────────────────────────────────────────────── */}
-        <SectionBox headingText="Rep Summary — sorted by total sales">
+        <Text style={sectionHeading}>Rep Summary — sorted by total sales</Text>
+        <Section style={repSection}>
           <RepTable rows={repRows} />
-        </SectionBox>
+        </Section>
 
         {/* ── Dealer detail table ──────────────────────────────────────────── */}
-        <SectionBox headingText={`Dealer Detail — top ${dealerRows.length} by sales`}>
+        <Text style={sectionHeading}>Dealer Detail — top {dealerRows.length} by sales</Text>
+        <Section style={repSection}>
           <DealerTable rows={dealerRows} />
           {noSalesDealerCount > 0 && (
             <Text style={{ fontSize: '12px', color: '#888', margin: '14px 0 0', fontFamily: '"DM Sans", Arial, sans-serif' }}>
@@ -249,7 +227,7 @@ const LaborDayPromoReportEmail = ({
               Full roster and detail in the portal.
             </Text>
           )}
-        </SectionBox>
+        </Section>
 
         {/* CTA */}
         <table cellPadding={0} cellSpacing={0} role="presentation" style={{ margin: '24px auto 0', borderCollapse: 'collapse' }}>
@@ -313,14 +291,19 @@ const eyebrow = { fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', te
 const h1 = { fontFamily: '"DM Serif Display", Georgia, serif', fontSize: '26px', fontWeight: 400, color: 'hsl(220, 35%, 22%)', margin: '0 0 4px' }
 const dateLine = { fontSize: '13px', color: 'hsl(220, 10%, 50%)', margin: '0 0 24px' }
 
-const th = { fontSize: '10px', textTransform: 'uppercase' as const, letterSpacing: '0.04em', color: '#888888', padding: '8px 6px 8px 0', textAlign: 'left' as const, borderBottom: '1px solid #e4e0da', fontWeight: 600, fontFamily: '"DM Sans", Arial, sans-serif' }
-const thNum: typeof th = { ...th, textAlign: 'right' as const, padding: '8px 0 8px 6px' }
+// Body styling mirrors clearance-weekly-report.tsx ("Summer Special" email) —
+// soft cream section boxes, understated headers, alternating row stripes.
+const sectionHeading = { fontSize: '12px', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.06em', color: 'hsl(220, 10%, 46%)', margin: '20px 0 8px' }
+const repSection = { backgroundColor: 'hsl(40, 15%, 97%)', border: '1px solid hsl(220, 13%, 90%)', borderRadius: '8px', padding: '12px 16px', margin: '12px 0' }
+const rowTable = { width: '100%', borderCollapse: 'collapse' as const }
 
-const tdName = { fontSize: '13px', color: '#1a1a1a', fontWeight: 500, padding: '9px 6px 9px 0', fontFamily: '"DM Sans", Arial, sans-serif' }
-const tdNum = { fontSize: '13px', color: '#1a1a1a', fontWeight: 600, padding: '9px 0 9px 6px', textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums' as const, fontFamily: '"DM Sans", Arial, sans-serif' }
-const tdNameSm = { ...tdName, fontSize: '12px', fontWeight: 400, padding: '6px 6px 6px 0' }
-const tdNumSm = { ...tdNum, fontSize: '12px', padding: '6px 0 6px 6px' }
+const th = { fontSize: '11px', textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: 'hsl(220, 10%, 46%)', padding: '6px 6px 6px 0', textAlign: 'left' as const, borderBottom: '1px solid hsl(220, 13%, 88%)', fontWeight: 600 }
+const thNum: typeof th = { ...th, textAlign: 'right' as const, padding: '6px 0 6px 6px' }
 
-const hr = { borderColor: '#e8e3db', margin: '32px 0 16px' }
+const tdName = { fontSize: '13px', color: '#222', padding: '8px 6px 8px 0' }
+const tdNum  = { fontSize: '13px', color: '#222', fontWeight: 600, padding: '8px 0 8px 6px', textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums' as const, whiteSpace: 'nowrap' as const }
+const altRow = { backgroundColor: 'hsl(220, 15%, 97%)' }
+
+const hr = { borderColor: 'hsl(220, 13%, 90%)', margin: '28px 0 16px' }
 const footer = { fontSize: '12px', color: '#999999', margin: '0' }
 const ctaButton = { display: 'inline-block' as const, backgroundColor: '#c9a44c', color: '#1a1a1a', fontSize: '14px', fontWeight: 600, textDecoration: 'none', borderRadius: '8px', padding: '12px 28px', fontFamily: '"DM Sans", Arial, sans-serif' }

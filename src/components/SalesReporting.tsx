@@ -141,6 +141,12 @@ interface GroupedRow {
   comp_lines:    number;
   container_amt: number;
   warehouse_amt: number;
+  // Dealer mode only (from the roster) — null for rep/territory rows.
+  customer_id?:     string | null;
+  rep_name?:        string | null;
+  territory_name?:  string | null;
+  manager_name?:    string | null;
+  open_so_value?:   number | null;
 }
 
 interface GroupedRowsParams {
@@ -207,6 +213,11 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
         comp_lines:    Number(r.comp_lines)    || 0,
         container_amt: Number(r.container_amt) || 0,
         warehouse_amt: Number(r.warehouse_amt) || 0,
+        customer_id:    r.customer_id ?? null,
+        rep_name:       r.rep_name ?? null,
+        territory_name: r.territory_name ?? null,
+        manager_name:   r.manager_name ?? null,
+        open_so_value:  r.open_so_value != null ? Number(r.open_so_value) || 0 : null,
       }));
     },
   });
@@ -1562,12 +1573,23 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   const label = groupBy === "rep"
                     ? (repAcIdToCanonical.get(r.entity_key.trim().toLowerCase()) ?? r.entity_label ?? r.entity_key)
                     : (r.entity_label ?? r.entity_key);
-                  return { key: r.entity_key, label, primary: r.primary_amt, comparative: r.comp_amt, ...(groupBy === "rep" ? { container: r.container_amt, warehouse: r.warehouse_amt } : {}) };
+                  return {
+                    key: r.entity_key, label, primary: r.primary_amt, comparative: r.comp_amt,
+                    container: r.container_amt, warehouse: r.warehouse_amt,
+                    ...(groupBy === "dealer" ? {
+                      customerId: r.customer_id ?? undefined,
+                      repName: r.rep_name ?? undefined,
+                      territoryName: r.territory_name ?? undefined,
+                      managerName: r.manager_name ?? undefined,
+                      openSoValue: r.open_so_value ?? undefined,
+                    } : {}),
+                  };
                 })}
                 leftHeader={leftHeader}
                 showComparison={compareMode !== "none"}
                 onRowClick={(key, label) => setDrillRow({ key, label })}
                 goalData={groupBy === "rep" ? repGoalMap : undefined}
+                showDealerColumns={groupBy === "dealer"}
               />
             ) : display === "monthly" ? (
               <MonthlyTable
@@ -1625,16 +1647,22 @@ function fmtFulfillPct(amount: number, primary: number): string {
 }
 
 function TotalTable({
-  rows, leftHeader, showComparison, onRowClick, goalData,
+  rows, leftHeader, showComparison, onRowClick, goalData, showDealerColumns,
 }: {
-  rows: { key: string; label: string; primary: number; comparative: number; container?: number; warehouse?: number }[];
+  rows: {
+    key: string; label: string; primary: number; comparative: number; container?: number; warehouse?: number;
+    customerId?: string; repName?: string; territoryName?: string; managerName?: string; openSoValue?: number;
+  }[];
   leftHeader: string;
   showComparison?: boolean;
   onRowClick?: (key: string, label: string) => void;
   goalData?: Map<string, { mtdPct: number | null; ytdPct: number | null }>;
+  /** Dealer mode — renders Customer ID / Rep / Territory / Manager / Open SO Value columns. */
+  showDealerColumns?: boolean;
 }) {
   const totalP           = rows.reduce((s, r) => s + r.primary, 0);
   const totalC           = rows.reduce((s, r) => s + r.comparative, 0);
+  const totalOpenSo      = rows.reduce((s, r) => s + (r.openSoValue ?? 0), 0);
   const hasContainerData = rows.some((r) => r.container !== undefined);
   // Column-sum of per-row percentages (same as Live KPI TOTAL row behavior)
   const sumContainerPct  = rows.reduce((s, r) => r.primary > 0 ? s + (r.container ?? 0) / r.primary : s, 0);
@@ -1647,6 +1675,26 @@ function TotalTable({
           <th className="text-left px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground sticky left-0 bg-card z-20">
             {leftHeader}
           </th>
+          {showDealerColumns && (
+            <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Customer ID
+            </th>
+          )}
+          {showDealerColumns && (
+            <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Rep
+            </th>
+          )}
+          {showDealerColumns && (
+            <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Territory
+            </th>
+          )}
+          {showDealerColumns && (
+            <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Manager
+            </th>
+          )}
           {goalData && (
             <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               MTD %
@@ -1668,6 +1716,11 @@ function TotalTable({
           {hasContainerData && (
             <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               % Whse.
+            </th>
+          )}
+          {showDealerColumns && (
+            <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Open SO
             </th>
           )}
           {showComparison && (
@@ -1708,6 +1761,18 @@ function TotalTable({
                   </button>
                 ) : r.label}
               </td>
+              {showDealerColumns && (
+                <td className="px-4 py-3 text-muted-foreground text-xs truncate max-w-[140px]">{r.customerId ?? "—"}</td>
+              )}
+              {showDealerColumns && (
+                <td className="px-4 py-3 text-sm truncate max-w-[140px]">{r.repName ?? "—"}</td>
+              )}
+              {showDealerColumns && (
+                <td className="px-4 py-3 text-sm truncate max-w-[140px]">{r.territoryName ?? "—"}</td>
+              )}
+              {showDealerColumns && (
+                <td className="px-4 py-3 text-sm truncate max-w-[140px]">{r.managerName ?? "—"}</td>
+              )}
               {goalData && (
                 <td className={cn("px-4 py-3 text-right tabular-nums text-sm", goal?.mtdPct != null && goal.mtdPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
                   {goal ? (fmtGoalPct(goal.mtdPct) ?? "—") : "—"}
@@ -1729,6 +1794,11 @@ function TotalTable({
                   {fmtFulfillPct(r.warehouse ?? 0, r.primary)}
                 </td>
               )}
+              {showDealerColumns && (
+                <td className="px-4 py-3 text-right tabular-nums text-sm">
+                  {r.openSoValue ? formatCurrency(r.openSoValue) : "—"}
+                </td>
+              )}
               {showComparison && (
                 <td className="px-5 py-3 text-right tabular-nums text-muted-foreground">{formatCurrency(r.comparative)}</td>
               )}
@@ -1747,7 +1817,7 @@ function TotalTable({
         })}
         {rows.length === 0 && (
           <tr>
-            <td colSpan={(showComparison ? 5 : 2) + (goalData ? 2 : 0) + (hasContainerData ? 2 : 0)} className="px-5 py-10 text-center text-sm text-muted-foreground">
+            <td colSpan={(showComparison ? 5 : 2) + (goalData ? 2 : 0) + (hasContainerData ? 2 : 0) + (showDealerColumns ? 5 : 0)} className="px-5 py-10 text-center text-sm text-muted-foreground">
               No results for the selected filters.
             </td>
           </tr>
@@ -1755,6 +1825,10 @@ function TotalTable({
         {rows.length > 0 && (
           <tr className="border-t bg-card sticky bottom-0 z-10">
             <td className="px-5 py-3 font-semibold sticky left-0 bg-card z-20">Total</td>
+            {showDealerColumns && <td className="px-4 py-3" />}
+            {showDealerColumns && <td className="px-4 py-3" />}
+            {showDealerColumns && <td className="px-4 py-3" />}
+            {showDealerColumns && <td className="px-4 py-3" />}
             {goalData && <td className="px-4 py-3" />}
             {goalData && <td className="px-4 py-3" />}
             <td className="px-5 py-3 text-right tabular-nums font-semibold">{formatCurrency(totalP)}</td>
@@ -1766,6 +1840,11 @@ function TotalTable({
             {hasContainerData && (
               <td className="px-4 py-3 text-right tabular-nums font-semibold text-muted-foreground">
                 {sumWarehousePct <= 0 ? "—" : `${(sumWarehousePct * 100).toFixed(1)}%`}
+              </td>
+            )}
+            {showDealerColumns && (
+              <td className="px-4 py-3 text-right tabular-nums font-semibold text-muted-foreground">
+                {totalOpenSo > 0 ? formatCurrency(totalOpenSo) : "—"}
               </td>
             )}
             {showComparison && (

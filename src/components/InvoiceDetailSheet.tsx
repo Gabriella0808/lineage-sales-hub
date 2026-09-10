@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/hooks/usePortalData";
 
 // ── Open Sales Orders (backlog) — matches get_open_sales_order_lines RPC ──────
@@ -561,8 +562,11 @@ export function InvoiceDetailSheet({
   const bookingRangeValid = metric !== "bookings" || localTo >= BOOKING_CUTOFF;
 
   // ── RPC mode — auto-load all lines ───────────────────────────────────────────
-  const [allLines,   setAllLines]   = useState<ViewLine[]>([]);
-  const [loadingAll, setLoadingAll] = useState(false);
+  const [allLines,        setAllLines]        = useState<ViewLine[]>([]);
+  const [loadingAll,      setLoadingAll]      = useState(false);
+  const [detailFetchError, setDetailFetchError] = useState<string | null>(null);
+  const [retryNonce,      setRetryNonce]      = useState(0);
+  const retryDetailFetch = () => setRetryNonce((n) => n + 1);
 
   const currentFetchFn = useMemo<FetchFn | undefined>(() => {
     if (!makeFetchLines || !bookingRangeValid) return undefined;
@@ -572,11 +576,12 @@ export function InvoiceDetailSheet({
 
   useEffect(() => {
     if (!open || !currentFetchFn) {
-      if (!open) setAllLines([]);
+      if (!open) { setAllLines([]); setDetailFetchError(null); }
       return;
     }
     let cancelled = false;
     setLoadingAll(true);
+    setDetailFetchError(null);
     setAllLines([]);
     (async () => {
       const acc: ViewLine[] = [];
@@ -588,11 +593,20 @@ export function InvoiceDetailSheet({
         if (rows.length < BATCH) break;
         offset += BATCH;
       }
+      if (cancelled) return;
       setAllLines(acc);
       setLoadingAll(false);
-    })().catch(() => { if (!cancelled) setLoadingAll(false); });
+    })().catch((err) => {
+      if (cancelled) return;
+      // Do not mask the error — log it for debugging and surface an explicit
+      // retryable error state instead of silently leaving allLines empty
+      // (which would otherwise render as a misleading "no data" message).
+      console.error("[booking-detail] fetch failed:", err);
+      setDetailFetchError(err instanceof Error ? err.message : String(err));
+      setLoadingAll(false);
+    });
     return () => { cancelled = true; };
-  }, [open, currentFetchFn]);
+  }, [open, currentFetchFn, retryNonce]);
 
   // ── Line mode (when makeFetchLines is absent) ─────────────────────────────────
   const localFromMs = startOfDay(effectiveFrom).getTime();
@@ -634,11 +648,36 @@ export function InvoiceDetailSheet({
     : (activeMetricType === "bookings" ? primBookings : primInvoiced);
 
   // ── Stat card totals ──────────────────────────────────────────────────────────
-  const lazyTotal        = (makeFetchLines && !loadingAll) ? sumAmount(allLines) : null;
-  const displayBookingsAmt = makeFetchLines && metric === "bookings" && lazyTotal !== null
-    ? lazyTotal : (makeFetchLines ? primaryBookingsAmt : primBookingsTotal);
-  const displayInvoicedAmt = makeFetchLines && metric === "invoices" && lazyTotal !== null
-    ? lazyTotal : (makeFetchLines ? primaryInvoicedAmt : primInvoicedTotal);
+  // CANONICAL SOURCE: in RPC mode, primaryBookingsAmt/primaryInvoicedAmt come
+  // straight from the parent Dealer/Rep Reporting table's own already-fetched
+  // get_sales_reporting_grouped_rows result (bookingRows/invoicedRows in
+  // SalesReporting.tsx) — the exact same query that produces the KPI the user
+  // sees in the report. The drawer's own detail-lines fetch (allLines) is a
+  // SEPARATE RPC call used only to list/break down the qualifying rows; it
+  // must never override the header total. Previously this preferred a
+  // client-recomputed sum of allLines whenever that fetch had settled
+  // (including as an empty array on any transient failure), which could
+  // silently display $0 even though the parent's proven-correct total was
+  // available the whole time. Fixed: the parent total is now authoritative,
+  // full stop — the drawer can only ever agree with it or be visibly broken
+  // (surfaced via detailRowsMismatch below), never silently show a different
+  // number.
+  const displayBookingsAmt = makeFetchLines ? primaryBookingsAmt : primBookingsTotal;
+  const displayInvoicedAmt = makeFetchLines ? primaryInvoicedAmt : primInvoicedTotal;
+
+  // The canonical total for whichever metric is active right now.
+  const canonicalActiveTotal = metric === "bookings" ? displayBookingsAmt : displayInvoicedAmt;
+
+  // Genuine divergence: the canonical (proven-correct, parent-sourced) total
+  // says there IS qualifying activity, but the detail-lines fetch came back
+  // empty after successfully completing (not erroring). This is never a
+  // legitimate "no data" state — it means the detail RPC/query disagrees
+  // with the total RPC and needs investigation, so it must never render the
+  // "No detail found" message.
+  const detailRowsMismatch = makeFetchLines
+    ? (!loadingAll && !detailFetchError && allLines.length === 0
+        && canonicalActiveTotal != null && Math.abs(canonicalActiveTotal) > 0.005)
+    : false;
 
   const containerAmt = useMemo(
     () => primActive.reduce((s, l) => s + (l.fulfillment_type === "container" ? Number(l.amount) : 0), 0),
@@ -658,8 +697,12 @@ export function InvoiceDetailSheet({
     return `${((amt / total) * 100).toFixed(1)}%`;
   }
 
+  // Genuine "nothing here" — excludes detailRowsMismatch (that's an error
+  // state, not an empty one) and excludes the error/loading states, which
+  // render their own messages below.
   const noData = makeFetchLines
-    ? (!loadingAll && allLines.length === 0 && (bookingRangeValid || metric !== "bookings"))
+    ? (!loadingAll && !detailFetchError && !detailRowsMismatch
+        && allLines.length === 0 && (bookingRangeValid || metric !== "bookings"))
     : (primInvoiced.length === 0 && primBookings.length === 0);
 
   // ── Derived breakdowns — all from primActive ──────────────────────────────────
@@ -880,23 +923,40 @@ export function InvoiceDetailSheet({
           </div>
         )}
 
-        {/* ── Loading / empty ── */}
+        {/* ── Loading / error / empty — explicit states, never stuck ── */}
         {loadingAll && (
           <p className="mt-6 text-sm text-muted-foreground">Loading detail…</p>
         )}
-        {!loadingAll && metric === "bookings" && !bookingRangeValid && (
+        {!loadingAll && detailFetchError && (
+          <div className="mt-6 flex flex-col items-start gap-2">
+            <p className="text-sm text-destructive">Unable to load booking detail.</p>
+            <Button variant="outline" size="sm" onClick={retryDetailFetch}>Retry</Button>
+          </div>
+        )}
+        {!loadingAll && !detailFetchError && detailRowsMismatch && (
+          <div className="mt-6 flex flex-col items-start gap-2">
+            <p className="text-sm text-destructive">Unable to load booking detail.</p>
+            <p className="text-xs text-muted-foreground">
+              The summary total ({formatCurrency(canonicalActiveTotal ?? 0)}) does not match the
+              fetched detail rows (0). This is a detail-fetch problem, not an empty period —
+              retrying may resolve it.
+            </p>
+            <Button variant="outline" size="sm" onClick={retryDetailFetch}>Retry</Button>
+          </div>
+        )}
+        {!loadingAll && !detailFetchError && !detailRowsMismatch && metric === "bookings" && !bookingRangeValid && (
           <p className="mt-6 text-sm text-muted-foreground">
             No booking data available before {format(BOOKING_CUTOFF, "MMM d, yyyy")}.
           </p>
         )}
-        {!loadingAll && bookingRangeValid && noData && (
+        {!loadingAll && !detailFetchError && !detailRowsMismatch && bookingRangeValid && noData && (
           <p className="mt-6 text-sm text-muted-foreground">
             No {metric} detail found for this selection and date range.
           </p>
         )}
 
         {/* ── Main content ── */}
-        {!loadingAll && !noData && (
+        {!loadingAll && !detailFetchError && !detailRowsMismatch && !noData && (
           <div className="mt-6 space-y-6">
 
             {/* ── By Brand / Category — 4-level accordion ── */}

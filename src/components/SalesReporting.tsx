@@ -1106,47 +1106,6 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const drillBookings = drillRow ? bookingRows.find((r) => r.entity_key === drillRow.key)?.primary_amt : undefined;
   const drillInvoiced = drillRow ? invoicedRows.find((r) => r.entity_key === drillRow.key)?.primary_amt : undefined;
 
-  // TEMP DEBUG (regression investigation — dealer drill-down bookings mismatch,
-  // remove once resolved): side-by-side of the exact identifiers/date range the
-  // parent aggregation used vs. what the drawer's detail RPC will be called
-  // with, so a runtime mismatch is visible in the console the moment a dealer
-  // row is clicked.
-  useEffect(() => {
-    if (!drillRow) return;
-    console.log("Dealer Reporting comparison", {
-      parent: {
-        dealerName:            drillRow.label,
-        customerId:            drillRow.key,
-        startDate:             format(primary.from, "yyyy-MM-dd"),
-        endDate:               format(primary.to,   "yyyy-MM-dd"),
-        effectiveBookingStart: format(primBkFrom,    "yyyy-MM-dd"),
-        effectiveBookingEnd:   format(primary.to,    "yyyy-MM-dd"),
-        bookingTotal:          drillBookings,
-        source:                "get_sales_reporting_grouped_rows",
-      },
-      drawer: {
-        selectedDealer:        drillRow.label,
-        customerId:            drillRow.key,
-        startDate:             format(primary.from, "yyyy-MM-dd"),
-        endDate:               format(primary.to,   "yyyy-MM-dd"),
-        // effectiveBookingStart/End for the drawer are computed inside
-        // InvoiceDetailSheet (effectiveFrom/localTo) — see the matching
-        // "[drill-fetch]" log for the actual values used in the RPC call.
-        metric,
-        detailQueryParams: {
-          p_metric:       metric === "invoices" ? "invoiced" : "bookings",
-          p_group_by:     groupBy === "territory" ? "dealer" : groupBy,
-          p_entity_key:   drillRow.key,
-          p_customer_ids: rpcCustomerIds,
-          p_rep_ids:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
-          p_manager_id:   managerId ?? null,
-        },
-        source: "get_sales_reporting_detail_lines",
-      },
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [drillRow]);
-
   // ── Active filter chips ───────────────────────────────────────────────────
 
   const activeFilterChips = useMemo((): { label: string; clear: () => void }[] => {
@@ -1222,20 +1181,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           p_offset:       offset,
           p_manager_id:   mgr,
         };
-        // TEMP DEBUG (regression investigation — remove once resolved): the
-        // actual effective date range and full param set sent to Supabase for
-        // this fetch — compare fromStr/toStr here against
-        // effectiveBookingStart/End in the "Dealer Reporting comparison" log.
-        console.log("[drill-fetch] request", rpcParams);
         const { data, error } = await (supabase as any).rpc(
           "get_sales_reporting_detail_lines",
           rpcParams,
         );
-        console.log("[drill-fetch] response", {
-          error: error ?? null,
-          rowCount: data?.length ?? 0,
-          sample: (data ?? []).slice(0, 3),
-        });
         if (error) {
           console.error("[sales-reporting] detail lines fetch failed:", error.message, error);
           return [];

@@ -1055,95 +1055,6 @@ export function InvoiceDetailSheet({
               </div>
             )}
 
-            {/* ── Open Sales Orders drill-down ── */}
-            {makeFetchOpenOrders && showOpenOrdersDetail && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold">Open Sales Orders</h3>
-                  <span className="text-xs tabular-nums font-semibold text-muted-foreground">
-                    {formatCurrency(openOrdersTotal)}
-                  </span>
-                </div>
-                {loadingOpenOrders ? (
-                  <p className="text-sm text-muted-foreground">Loading open sales orders…</p>
-                ) : openOrderLines.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No open sales orders for this selection.</p>
-                ) : (
-                  <>
-                    <div className="flex gap-4 mb-2 text-[11px] text-muted-foreground">
-                      <span><strong className="text-foreground">{openOrdersCount}</strong> open order{openOrdersCount !== 1 ? "s" : ""}</span>
-                      <span><strong className="text-foreground">{openOrderLines.length}</strong> open line{openOrderLines.length !== 1 ? "s" : ""}</span>
-                      <span><strong className="text-foreground">{openOrdersUnits.toLocaleString()}</strong> open units</span>
-                    </div>
-                    <div className="border rounded-md overflow-hidden divide-y">
-                      {openOrdersHierarchy.map((so) => {
-                        const isOpen = expandedOpenOrders.has(so.guid_order);
-                        return (
-                          <div key={so.guid_order}>
-                            <button
-                              type="button"
-                              onClick={() => toggle(expandedOpenOrders, setExpandedOpenOrders, so.guid_order)}
-                              className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-muted/40 transition-colors"
-                            >
-                              <span className="flex items-center gap-1.5 min-w-0">
-                                <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 text-muted-foreground transition-transform duration-150 ${isOpen ? "rotate-90" : ""}`} />
-                                <span className="font-mono font-medium">{so.order_number}</span>
-                                <span className="truncate text-muted-foreground">{so.dealer_name}</span>
-                                {groupBy !== "rep" && (
-                                  <Badge variant="secondary" className="text-[9px] h-4 px-1 font-normal flex-shrink-0">
-                                    {so.rep_name}
-                                  </Badge>
-                                )}
-                                {so.order_date && (
-                                  <span className="text-[10px] text-muted-foreground flex-shrink-0">{so.order_date}</span>
-                                )}
-                                <Badge variant="secondary" className="text-[9px] h-4 px-1 font-normal flex-shrink-0">
-                                  {so.lines.length} line{so.lines.length !== 1 ? "s" : ""}
-                                </Badge>
-                              </span>
-                              <span className="tabular-nums flex-shrink-0 ml-2">{formatCurrency(so.total)}</span>
-                            </button>
-                            {isOpen && (
-                              <div className="px-3 py-2 bg-background border-t overflow-x-auto">
-                                <table className="w-full text-[10px]">
-                                  <thead>
-                                    <tr className="border-b text-muted-foreground">
-                                      <th className="pb-1 text-left font-normal">SKU</th>
-                                      <th className="pb-1 text-left font-normal">Product</th>
-                                      <th className="pb-1 text-left font-normal">Brand</th>
-                                      <th className="pb-1 text-left font-normal">Warehouse</th>
-                                      <th className="pb-1 text-right font-normal">Ordered</th>
-                                      <th className="pb-1 text-right font-normal">Open Qty</th>
-                                      <th className="pb-1 text-right font-normal">Unit Price</th>
-                                      <th className="pb-1 text-right font-normal">Open Value</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {so.lines.map((l, i) => (
-                                      <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
-                                        <td className="py-1 font-mono">{l.sku ?? "—"}</td>
-                                        <td className="py-1 max-w-[160px] truncate">{l.description ?? "—"}</td>
-                                        <td className="py-1">{l.brand_category ?? "—"}</td>
-                                        <td className="py-1">{l.warehouse ?? l.fulfillment_type ?? "—"}</td>
-                                        <td className="py-1 text-right tabular-nums">{Number(l.qty_ordered).toLocaleString()}</td>
-                                        <td className="py-1 text-right tabular-nums">{Number(l.qty_open).toLocaleString()}</td>
-                                        <td className="py-1 text-right tabular-nums">{formatCurrency(Number(l.unit_price))}</td>
-                                        <td className="py-1 text-right tabular-nums font-medium">{formatCurrency(Number(l.net_open_amount))}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
             {/* ── Export buttons ── */}
             {primActive.length > 0 && (
               <div className="flex gap-2 pt-2 border-t">
@@ -1164,6 +1075,99 @@ export function InvoiceDetailSheet({
                   Export PDF
                 </button>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Open Sales Orders drill-down — independent of booking/invoice
+             detail state (loading/error/empty): a dealer or rep can have
+             $0 in bookings or invoices for the period and still have open
+             orders, so this must never be hidden by noData/detailFetchError
+             from the booking/invoice side. ── */}
+        {makeFetchOpenOrders && showOpenOrdersDetail && (
+          <div className="mt-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold">Open Sales Orders</h3>
+              <span className="text-xs tabular-nums font-semibold text-muted-foreground">
+                {formatCurrency(openOrdersTotal)}
+              </span>
+            </div>
+            {loadingOpenOrders ? (
+              <p className="text-sm text-muted-foreground">Loading open sales orders…</p>
+            ) : openOrderLines.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No open sales orders for this selection.</p>
+            ) : (
+              <>
+                <div className="flex gap-4 mb-2 text-[11px] text-muted-foreground">
+                  <span><strong className="text-foreground">{openOrdersCount}</strong> open order{openOrdersCount !== 1 ? "s" : ""}</span>
+                  <span><strong className="text-foreground">{openOrderLines.length}</strong> open line{openOrderLines.length !== 1 ? "s" : ""}</span>
+                  <span><strong className="text-foreground">{openOrdersUnits.toLocaleString()}</strong> open units</span>
+                </div>
+                <div className="border rounded-md overflow-hidden divide-y">
+                  {openOrdersHierarchy.map((so) => {
+                    const isOpen = expandedOpenOrders.has(so.guid_order);
+                    return (
+                      <div key={so.guid_order}>
+                        <button
+                          type="button"
+                          onClick={() => toggle(expandedOpenOrders, setExpandedOpenOrders, so.guid_order)}
+                          className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-muted/40 transition-colors"
+                        >
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 text-muted-foreground transition-transform duration-150 ${isOpen ? "rotate-90" : ""}`} />
+                            <span className="font-mono font-medium">{so.order_number}</span>
+                            <span className="truncate text-muted-foreground">{so.dealer_name}</span>
+                            {groupBy !== "rep" && (
+                              <Badge variant="secondary" className="text-[9px] h-4 px-1 font-normal flex-shrink-0">
+                                {so.rep_name}
+                              </Badge>
+                            )}
+                            {so.order_date && (
+                              <span className="text-[10px] text-muted-foreground flex-shrink-0">{so.order_date}</span>
+                            )}
+                            <Badge variant="secondary" className="text-[9px] h-4 px-1 font-normal flex-shrink-0">
+                              {so.lines.length} line{so.lines.length !== 1 ? "s" : ""}
+                            </Badge>
+                          </span>
+                          <span className="tabular-nums flex-shrink-0 ml-2">{formatCurrency(so.total)}</span>
+                        </button>
+                        {isOpen && (
+                          <div className="px-3 py-2 bg-background border-t overflow-x-auto">
+                            <table className="w-full text-[10px]">
+                              <thead>
+                                <tr className="border-b text-muted-foreground">
+                                  <th className="pb-1 text-left font-normal">SKU</th>
+                                  <th className="pb-1 text-left font-normal">Product</th>
+                                  <th className="pb-1 text-left font-normal">Brand</th>
+                                  <th className="pb-1 text-left font-normal">Warehouse</th>
+                                  <th className="pb-1 text-right font-normal">Ordered</th>
+                                  <th className="pb-1 text-right font-normal">Open Qty</th>
+                                  <th className="pb-1 text-right font-normal">Unit Price</th>
+                                  <th className="pb-1 text-right font-normal">Open Value</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {so.lines.map((l, i) => (
+                                  <tr key={i} className="border-b last:border-0 hover:bg-muted/20">
+                                    <td className="py-1 font-mono">{l.sku ?? "—"}</td>
+                                    <td className="py-1 max-w-[160px] truncate">{l.description ?? "—"}</td>
+                                    <td className="py-1">{l.brand_category ?? "—"}</td>
+                                    <td className="py-1">{l.warehouse ?? l.fulfillment_type ?? "—"}</td>
+                                    <td className="py-1 text-right tabular-nums">{Number(l.qty_ordered).toLocaleString()}</td>
+                                    <td className="py-1 text-right tabular-nums">{Number(l.qty_open).toLocaleString()}</td>
+                                    <td className="py-1 text-right tabular-nums">{formatCurrency(Number(l.unit_price))}</td>
+                                    <td className="py-1 text-right tabular-nums font-medium">{formatCurrency(Number(l.net_open_amount))}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         )}

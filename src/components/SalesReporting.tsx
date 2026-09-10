@@ -29,6 +29,13 @@ import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCuto
 // Used to clamp query start dates before any fetch — not applied post-aggregation.
 const BOOKING_CUTOFF_DATE = new Date(BOOKINGS_VISIBLE_FROM + "T00:00:00");
 
+// Same cutoff, used to keep the primary (reported) date filter itself from
+// ever starting before it — both metrics already exclude pre-cutoff data
+// server-side, so allowing it to be selected only produces a confusing
+// empty/partial period. Does not apply to the comparative ("Compare to")
+// range, which is expected to reference an earlier period by design.
+const REPORT_CUTOFF_DATE = BOOKING_CUTOFF_DATE;
+
 // Invoiced actuals before this date are Acctivate import/migration-transition
 // data and are excluded from all reporting (enforced server-side in
 // get_portal_invoiced_lines() — this constant only drives the UI note below;
@@ -323,7 +330,7 @@ function MultiSelect({
   );
 }
 
-function DateRangePicker({ label, value, onChange, onReset }: { label: string; value: DateRange; onChange: (v: DateRange) => void; onReset?: () => void }) {
+function DateRangePicker({ label, value, onChange, onReset, minDate }: { label: string; value: DateRange; onChange: (v: DateRange) => void; onReset?: () => void; minDate?: Date }) {
   const [draft, setDraft] = useState<{ from?: Date; to?: Date } | undefined>(undefined);
   const [open, setOpen] = useState(false);
   const display = draft ?? { from: value.from, to: value.to };
@@ -353,6 +360,7 @@ function DateRangePicker({ label, value, onChange, onReset }: { label: string; v
             }}
             numberOfMonths={2}
             className={cn("p-3 pointer-events-auto")}
+            disabled={minDate ? { before: minDate } : undefined}
           />
           {onReset && (
             <div className="flex justify-end gap-2 border-t p-2">
@@ -495,8 +503,12 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const today = getReportingToday();
 
   const [groupBy, setGroupBy]         = useState<GroupBy>(initialGroupBy);
-  // Default primary to YTD because Display defaults to "total"
-  const [primary, setPrimary]         = useState<DateRange>({ from: startOfYear(today), to: today });
+  // Default primary to YTD (clamped to the report cutoff) because Display
+  // defaults to "total"
+  const [primary, setPrimary]         = useState<DateRange>({
+    from: startOfYear(today) < REPORT_CUTOFF_DATE ? REPORT_CUTOFF_DATE : startOfYear(today),
+    to:   today,
+  });
   const [comparative, setComparative] = useState<DateRange>({
     from: subYears(startOfYear(today), 1),
     to:   subYears(today, 1),
@@ -518,12 +530,19 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   };
 
   const applyPrimary = (from: Date, to: Date, mode: CompareMode = compareMode) => {
-    setPrimary({ from, to });
+    // The primary (reported) range can never start before the report
+    // cutoff — both metrics already exclude that data server-side, so
+    // allowing an earlier selection would just silently show an empty or
+    // partial period. Comparative dates are unaffected: they intentionally
+    // reference an earlier period.
+    const clampedFrom = from < REPORT_CUTOFF_DATE ? REPORT_CUTOFF_DATE : from;
+    const clampedTo   = to   < clampedFrom          ? clampedFrom       : to;
+    setPrimary({ from: clampedFrom, to: clampedTo });
     if (mode === "prev-year") {
-      setComparative({ from: subYears(from, 1), to: subYears(to, 1) });
+      setComparative({ from: subYears(clampedFrom, 1), to: subYears(clampedTo, 1) });
     } else if (mode === "prev-period") {
-      const days    = differenceInCalendarDays(to, from) + 1;
-      const prevTo  = subDays(from, 1);
+      const days    = differenceInCalendarDays(clampedTo, clampedFrom) + 1;
+      const prevTo  = subDays(clampedFrom, 1);
       setComparative({ from: subDays(prevTo, days - 1), to: prevTo });
     }
   };
@@ -1349,7 +1368,6 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                     case "3m":       from = startOfMonth(subMonths(monthEnd, 2)); to = monthEnd; break;
                     case "6m":       from = startOfMonth(subMonths(monthEnd, 5)); to = monthEnd; break;
                     case "12m":      from = startOfMonth(subMonths(monthEnd, 11)); to = monthEnd; break;
-                    case "lastYear": from = startOfYear(subYears(now, 1)); to = endOfMonth(subMonths(startOfYear(now), 1)); break;
                     default: return;
                   }
                   applyPrimary(from, to);
@@ -1368,7 +1386,6 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   <SelectItem value="3m">Last 3 months</SelectItem>
                   <SelectItem value="6m">Last 6 months</SelectItem>
                   <SelectItem value="12m">Last 12 months</SelectItem>
-                  <SelectItem value="lastYear">Last year (full)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1378,6 +1395,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               value={primary}
               onChange={(r) => applyPrimary(r.from, r.to)}
               onReset={() => { const now = getReportingToday(); applyPrimary(startOfYear(now), endOfMonth(now)); }}
+              minDate={REPORT_CUTOFF_DATE}
             />
 
             <div className="flex flex-col gap-1">
@@ -1426,8 +1444,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 const now = getReportingToday();
                 const fromReset = display === "total" && metric === "invoices" ? startOfYear(now) : startOfMonth(now);
                 setCompareMode("prev-year");
-                setPrimary({ from: fromReset, to: now });
-                setComparative({ from: subYears(fromReset, 1), to: subYears(now, 1) });
+                applyPrimary(fromReset, now, "prev-year");
                 setTerritoryIds([]);
                 setRepIds([]);
                 setDealerIds([]);

@@ -142,6 +142,27 @@ const KNOWN_COLLECTION_NAMES = new Set<string>([
   "Manhattan Valley", // MHV sub-brand; Acctivate short code not yet confirmed
 ]);
 
+// Canonical collection roster, by brand — the same collection identities
+// already accepted by toCollectionDisplayName/KNOWN_COLLECTION_NAMES above
+// (there is no separate product/collection master table in this portal;
+// this hardcoded set, grouped here by brand for the first time, IS the
+// canonical source the rest of the UI already treats as ground truth).
+// Used to seed the Collection breakdown so every known collection appears
+// even with zero transactions for the selected rep/dealer/date range —
+// never derived from transaction rows alone.
+const COLLECTION_ROSTER: Record<string, string[]> = {
+  "Sea Winds": [
+    "Islamorada", "Credenza", "Sun Haven", "Monaco", "Ocean Isle",
+    "Picket Fence", "Surfside", "Cape May", "Miramar", "Maui",
+    "Monterey", "Cabinet Beds",
+  ],
+  "Finn & Lou": [
+    "Chatham Maple", "Chatham Midnight", "Geneva", "Hyde Park",
+    "MHV Dark", "MHV Light", "Point Breeze", "Rio Vista", "Manhattan Valley",
+  ],
+  "Lux": ["Lux Coast", "Lux Transitional", "Lux Traditional"],
+};
+
 function toCollectionDisplayName(productClass: string | null): string | null {
   if (!productClass?.trim()) return null;
   const trimmed = productClass.trim();
@@ -280,6 +301,18 @@ function buildHierarchy(lines: ViewLine[]): BrandEntry[] {
   type ClassMap = Map<string, { total: number; skuMap: SkuMap; label: string | null }>;
   const brandMap = new Map<string, { total: number; classMap: ClassMap }>();
 
+  // Seed every known brand/collection from the roster first, at $0/0 lines,
+  // so the breakdown is collection-roster-driven rather than transaction-
+  // driven — a collection with no activity this period still appears, it
+  // just has nothing to merge into it below.
+  for (const [brandKey, collections] of Object.entries(COLLECTION_ROSTER)) {
+    const classMap: ClassMap = new Map();
+    for (const label of collections) {
+      classMap.set(label, { total: 0, skuMap: new Map(), label });
+    }
+    brandMap.set(brandKey, { total: 0, classMap });
+  }
+
   for (const l of lines) {
     if (!isSalesBrandCat(l.brand_category)) continue;
 
@@ -320,7 +353,14 @@ function buildHierarchy(lines: ViewLine[]): BrandEntry[] {
           total: cv.total,
           skus: Array.from(cv.skuMap.values()).sort((a, b) => b.total - a.total),
         }))
-        .sort((a, b) => b.total - a.total),
+        // Collections with revenue first (descending), then $0 collections
+        // alphabetically below them.
+        .sort((a, b) => {
+          if (a.total > 0 && b.total > 0) return b.total - a.total;
+          if (a.total > 0) return -1;
+          if (b.total > 0) return 1;
+          return (a.label ?? "").localeCompare(b.label ?? "");
+        }),
     }))
     .sort((a, b) => b.total - a.total);
 }
@@ -949,15 +989,19 @@ export function InvoiceDetailSheet({
             No booking data available before {format(BOOKING_CUTOFF, "MMM d, yyyy")}.
           </p>
         )}
-        {!loadingAll && !detailFetchError && !detailRowsMismatch && bookingRangeValid && noData && (
-          <p className="mt-6 text-sm text-muted-foreground">
-            No {metric} detail found for this selection and date range.
-          </p>
-        )}
-
-        {/* ── Main content ── */}
-        {!loadingAll && !detailFetchError && !detailRowsMismatch && !noData && (
+        {/* ── Main content — collection-roster-driven, so it renders even
+             when this rep/dealer has zero real lines in the period (every
+             known collection still shows, at $0). Only genuinely blocked
+             states (loading/error/mismatch/pre-cutoff) skip it entirely. ── */}
+        {!loadingAll && !detailFetchError && !detailRowsMismatch && (bookingRangeValid || metric !== "bookings") && (
           <div className="mt-6 space-y-6">
+
+            {noData && (
+              <p className="text-sm text-muted-foreground">
+                No {metric} lines recorded for this selection in the selected date range — showing the full
+                collection breakdown below, all at $0.
+              </p>
+            )}
 
             {/* ── By Brand / Category — 4-level accordion ── */}
             {hierarchy.length > 0 && (
@@ -1027,22 +1071,28 @@ export function InvoiceDetailSheet({
                                 </button>
 
                                 {expandedClasses.has(cls.key) && (
-                                  <div className="bg-muted/20 divide-y">
-                                    {cls.skus.map((sku) => {
-                                      const skuKey = `${cls.key}::${sku.sku}`;
-                                      return (
-                                        <SkuAccordionRow
-                                          key={skuKey}
-                                          sku={sku}
-                                          skuKey={skuKey}
-                                          indent="pl-14"
-                                          expandedSkus={expandedSkus}
-                                          onToggle={() => toggle(expandedSkus, setExpandedSkus, skuKey)}
-                                          groupBy={groupBy}
-                                        />
-                                      );
-                                    })}
-                                  </div>
+                                  cls.skus.length === 0 ? (
+                                    <p className="pl-14 pr-3 py-2 text-[11px] text-muted-foreground">
+                                      No {metric === "bookings" ? "booking" : "invoice"} lines for this collection in the selected period.
+                                    </p>
+                                  ) : (
+                                    <div className="bg-muted/20 divide-y">
+                                      {cls.skus.map((sku) => {
+                                        const skuKey = `${cls.key}::${sku.sku}`;
+                                        return (
+                                          <SkuAccordionRow
+                                            key={skuKey}
+                                            sku={sku}
+                                            skuKey={skuKey}
+                                            indent="pl-14"
+                                            expandedSkus={expandedSkus}
+                                            onToggle={() => toggle(expandedSkus, setExpandedSkus, skuKey)}
+                                            groupBy={groupBy}
+                                          />
+                                        );
+                                      })}
+                                    </div>
+                                  )
                                 )}
                               </div>
                             );

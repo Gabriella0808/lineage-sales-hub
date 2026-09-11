@@ -55,6 +55,12 @@ interface DateRange { from: Date; to: Date }
 
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
+// Synthetic filter value for dealers with no territory_id — the Territory
+// filter is built from the full territories roster (useTerritories(), no
+// transaction dependency), but that table has no row for "no territory
+// assigned," so a sentinel is needed to let that be selected explicitly.
+const UNASSIGNED_TERRITORY = "__unassigned_territory__";
+
 // ── View row type ─────────────────────────────────────────────────────────────
 
 type DealerRepLine = {
@@ -639,18 +645,27 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     let list = reps.filter((r) => r.acctivate_id !== null && r.acctivate_id !== "");
     if (managerScopeRepIds) list = list.filter((r) => managerScopeRepIds.includes(r.id));
     if (territoryIds.length > 0) {
+      const realIds = territoryIds.filter((id) => id !== UNASSIGNED_TERRITORY);
       const allowedRepIds = new Set(
-        repTerritories.filter((rt) => territoryIds.includes(rt.territory_id)).map((rt) => rt.rep_id),
+        repTerritories.filter((rt) => realIds.includes(rt.territory_id)).map((rt) => rt.rep_id),
       );
+      // Reps have no "unassigned territory" concept of their own — the
+      // Unassigned option only ever narrows dealers, never the rep list.
       list = list.filter((r) => allowedRepIds.has(r.id));
     }
     return list;
   }, [reps, managerScopeRepIds, territoryIds, repTerritories]);
 
+  const matchesTerritoryFilter = (territoryId: string | null | undefined) => {
+    if (territoryIds.length === 0) return true;
+    if (territoryId) return territoryIds.includes(territoryId);
+    return territoryIds.includes(UNASSIGNED_TERRITORY);
+  };
+
   const visibleDealers = useMemo(() => {
     let list = dealers;
     if (managerScopeRepIds) list = list.filter((d) => d.rep_id && managerScopeRepIds.includes(d.rep_id));
-    if (territoryIds.length > 0) list = list.filter((d) => d.territory_id && territoryIds.includes(d.territory_id));
+    if (territoryIds.length > 0) list = list.filter((d) => matchesTerritoryFilter(d.territory_id));
     if (repIds.length > 0)       list = list.filter((d) => d.rep_id && repIds.includes(d.rep_id));
     return list;
   }, [dealers, managerScopeRepIds, territoryIds, repIds]);
@@ -664,7 +679,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     if (!hasFilter) return null;
 
     let list = dealers;
-    if (territoryIds.length > 0) list = list.filter((d) => d.territory_id && territoryIds.includes(d.territory_id));
+    if (territoryIds.length > 0) list = list.filter((d) => matchesTerritoryFilter(d.territory_id));
     if (dealerIds.length > 0)    list = list.filter((d) => dealerIds.includes(d.id));
 
     return list
@@ -673,9 +688,12 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   }, [territoryIds, dealerIds, dealers]);
 
   // Territory names for the selected territoryIds (for line-mode canonical filter).
+  // "Unassigned" matches the same fallback bucket name used when grouping by
+  // territory below (customerIdToTerritoryName.get(cid) ?? "Unassigned").
   const selectedTerritoryNames = useMemo(() => {
     const names = new Set<string>();
     for (const id of territoryIds) {
+      if (id === UNASSIGNED_TERRITORY) { names.add("Unassigned"); continue; }
       const t = territories.find((t) => t.id === id);
       if (t) names.add(t.name);
     }
@@ -939,8 +957,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       // Territory filter — canonical: look up line's customer_id in the territory map.
       if (selectedTerritoryNames.size > 0) {
         const cid = (line.customer_id ?? "").trim().toLowerCase();
-        const terrName = cid ? customerIdToTerritoryName.get(cid) : undefined;
-        if (!terrName || !selectedTerritoryNames.has(terrName)) continue;
+        const terrName = (cid ? customerIdToTerritoryName.get(cid) : undefined) ?? "Unassigned";
+        if (!selectedTerritoryNames.has(terrName)) continue;
       }
       // Rep filter — canonical acctivate_id matching regardless of groupBy.
       if (selectedRepAcIds.size > 0) {
@@ -1026,8 +1044,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       }
       if (selectedTerritoryNames.size > 0) {
         const cid = (line.customer_id ?? "").trim().toLowerCase();
-        const terrName = cid ? customerIdToTerritoryName.get(cid) : undefined;
-        if (!terrName || !selectedTerritoryNames.has(terrName)) return false;
+        const terrName = (cid ? customerIdToTerritoryName.get(cid) : undefined) ?? "Unassigned";
+        if (!selectedTerritoryNames.has(terrName)) return false;
       }
       if (selectedRepAcIds.size > 0) {
         const repAcId = (line.rep_id ?? "").trim().toLowerCase();
@@ -1134,7 +1152,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const activeFilterChips = useMemo((): { label: string; clear: () => void }[] => {
     const chips: { label: string; clear: () => void }[] = [];
     if (territoryIds.length > 0) {
-      const names = territoryIds.map((id) => territories.find((t) => t.id === id)?.name ?? id);
+      const names = territoryIds.map((id) => id === UNASSIGNED_TERRITORY ? "Unassigned Territory" : territories.find((t) => t.id === id)?.name ?? id);
       chips.push({
         label: names.length === 1 ? `Territory: ${names[0]}` : `${names.length} territories`,
         clear: () => setTerritoryIds([]),
@@ -1526,7 +1544,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           <div className="pt-3 border-t flex flex-wrap items-end gap-3">
             <MultiSelect
               label="Territory" selected={territoryIds} onChange={setTerritoryIds}
-              options={territories.map((t) => ({ value: t.id, label: t.name }))}
+              options={[
+                ...territories.map((t) => ({ value: t.id, label: t.name })),
+                { value: UNASSIGNED_TERRITORY, label: "Unassigned Territory" },
+              ]}
+              searchable searchPlaceholder="Search territory…"
             />
             <MultiSelect
               label="Rep" selected={repIds} onChange={setRepIds}

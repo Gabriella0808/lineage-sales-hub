@@ -14,7 +14,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { CalendarIcon, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -554,6 +555,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const [dealerIds,       setDealerIds]       = useState<string[]>([]);
   const [brandCategories, setBrandCategories] = useState<string[]>([]);
   const [skus,            setSkus]            = useState<string[]>([]);
+  // Free-text filter on the results table only — narrows which rows show,
+  // doesn't touch the underlying fetch/filters/KPIs above it.
+  const [rowSearch, setRowSearch] = useState("");
 
   // ── Portal reference data ─────────────────────────────────────────────────
 
@@ -1302,7 +1306,27 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const invTotal    = rpcKpis?.total    ?? summaryTotals.invoices;
   const invLines    = rpcKpis?.lines    ?? summaryTotals.invoiceLines;
   const invEntities = rpcKpis?.entities ?? summaryTotals.invoiceEntities;
-  const tableRows   = useRpcMode ? groupedRows.length : aggregation.rows.length;
+  const rowSearchLower = rowSearch.trim().toLowerCase();
+
+  // Filters which rows the results table shows — never touches the fetch,
+  // KPI cards, or goal computations above, which stay on the full dataset.
+  const filteredGroupedRows = useMemo(() => {
+    if (!rowSearchLower) return groupedRows;
+    return groupedRows.filter((r) => {
+      const label = groupBy === "rep"
+        ? (repAcIdToCanonical.get(r.entity_key.trim().toLowerCase()) ?? r.entity_label ?? r.entity_key)
+        : (r.entity_label ?? r.entity_key);
+      return label.toLowerCase().includes(rowSearchLower)
+        || (r.customer_id ?? "").toLowerCase().includes(rowSearchLower);
+    });
+  }, [groupedRows, rowSearchLower, groupBy, repAcIdToCanonical]);
+
+  const filteredAggregationRows = useMemo(() => {
+    if (!rowSearchLower) return aggregation.rows;
+    return aggregation.rows.filter((r) => r.label.toLowerCase().includes(rowSearchLower));
+  }, [aggregation.rows, rowSearchLower]);
+
+  const tableRows   = useRpcMode ? filteredGroupedRows.length : filteredAggregationRows.length;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -1574,6 +1598,25 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               )}
             </div>
           </div>
+          <div className="relative py-3 max-w-xs">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={rowSearch}
+              onChange={(e) => setRowSearch(e.target.value)}
+              placeholder={groupBy === "dealer" ? "Search dealers…" : groupBy === "rep" ? "Search reps…" : "Search territories…"}
+              className="h-8 pl-8 pr-8 text-xs"
+            />
+            {rowSearch && (
+              <button
+                type="button"
+                onClick={() => setRowSearch("")}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-auto max-h-[60vh]">
@@ -1597,7 +1640,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               </div>
             ) : useRpcMode ? (
               <TotalTable
-                rows={groupedRows.map((r) => {
+                rows={filteredGroupedRows.map((r) => {
                   // For rep: entity_key is Acctivate rep_id — map to canonical full name.
                   // For dealer: entity_key is customer_id; entity_label carries dealer display name.
                   const label = groupBy === "rep"
@@ -1623,7 +1666,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               />
             ) : display === "monthly" ? (
               <MonthlyTable
-                rows={aggregation.rows}
+                rows={filteredAggregationRows}
                 primMonths={aggregation.primMonths}
                 compMonths={aggregation.compMonths}
                 leftHeader={leftHeader}
@@ -1632,7 +1675,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               />
             ) : (
               <TotalTable
-                rows={groupBy === "rep" ? aggregation.rows : aggregation.rows.map((r) => ({ ...r, container: undefined, warehouse: undefined }))}
+                rows={groupBy === "rep" ? filteredAggregationRows : filteredAggregationRows.map((r) => ({ ...r, container: undefined, warehouse: undefined }))}
                 leftHeader={leftHeader}
                 showComparison={compareMode !== "none"}
                 onRowClick={(key, label) => setDrillRow({ key, label })}

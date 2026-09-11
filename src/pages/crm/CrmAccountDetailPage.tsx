@@ -169,6 +169,7 @@ export default function CrmAccountDetailPage() {
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="follow_up">Needs follow-up</SelectItem>
                   <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="unworkable">Unworkable</SelectItem>
                 </SelectContent>
               </Select>
             </Field>

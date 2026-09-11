@@ -79,6 +79,7 @@ const NAV_SECTIONS: NavSection[] = [
       roles: ["admin", "manager"],
       children: [
         { title: "Prospects", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
+        { title: "Prospect Reporting", url: "/prospects/reporting", icon: BarChart3, roles: ["admin", "manager"] },
         { title: "Visit Analytics", url: "/check-ins/analytics", icon: PieChart, roles: ["admin", "manager"] },
       ],
     },

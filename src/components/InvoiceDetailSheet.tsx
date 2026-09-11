@@ -1206,7 +1206,14 @@ export function InvoiceDetailSheet({
                                     <td className="py-1 text-right tabular-nums">{Number(l.qty_ordered).toLocaleString()}</td>
                                     <td className="py-1 text-right tabular-nums">{Number(l.qty_open).toLocaleString()}</td>
                                     <td className="py-1 text-right tabular-nums">{formatCurrency(Number(l.unit_price))}</td>
-                                    <td className="py-1 text-right tabular-nums font-medium">{formatCurrency(Number(l.net_open_amount))}</td>
+                                    <td className="py-1 text-right tabular-nums font-medium">
+                                      {formatCurrency(Number(l.net_open_amount))}
+                                      {Number(l.line_discount_pct) > 0 && (
+                                        <span className="block text-[9px] font-normal text-muted-foreground/70 leading-tight">
+                                          {Number(l.line_discount_pct) % 1 === 0 ? Number(l.line_discount_pct) : Number(l.line_discount_pct).toFixed(1)}% disc.
+                                        </span>
+                                      )}
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>

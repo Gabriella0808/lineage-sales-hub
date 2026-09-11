@@ -19,6 +19,8 @@ export interface OpenSalesOrderRow {
   product_class: string | null;
   qty_open: number;
   unit_price: number;
+  line_discount_pct: number;
+  open_so_gross_amount: number;
   open_so_amount: number;
   order_date: string | null;
   requested_ship_date: string | null;
@@ -43,7 +45,7 @@ export function useOpenSalesOrders() {
         while (true) {
           const { data, error } = await (supabase as any)
             .from("v_portal_open_sales_order_line_facts")
-            .select("guid_order, order_number, customer_id, dealer_name, rep_id, rep_name, sku, description, product_class, qty_open, unit_price, open_so_amount, order_date, requested_ship_date, branch_id, fulfillment_type")
+            .select("guid_order, order_number, customer_id, dealer_name, rep_id, rep_name, sku, description, product_class, qty_open, unit_price, line_discount_pct, open_so_gross_amount, open_so_amount, order_date, requested_ship_date, branch_id, fulfillment_type")
             .range(from, from + pageSize - 1);
           if (error) throw error;
           if (!data || data.length === 0) break;
@@ -60,6 +62,8 @@ export function useOpenSalesOrders() {
               product_class: r.product_class ?? null,
               qty_open: Number(r.qty_open) || 0,
               unit_price: Number(r.unit_price) || 0,
+              line_discount_pct: Number(r.line_discount_pct) || 0,
+              open_so_gross_amount: Number(r.open_so_gross_amount) || 0,
               open_so_amount: Number(r.open_so_amount) || 0,
               order_date: r.order_date ?? null,
               requested_ship_date: r.requested_ship_date ?? null,

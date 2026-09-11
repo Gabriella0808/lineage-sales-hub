@@ -20,6 +20,8 @@ type DetailRow = {
   memo: string | null;
   amount: number;
   openBalance: number;
+  grossAmount: number;
+  discountPct: number;
   stockClass: string | null;
 };
 
@@ -104,6 +106,8 @@ export function BacklogSummary() {
       memo: null,
       amount: r.open_so_amount,
       openBalance: r.open_so_amount,
+      grossAmount: r.open_so_gross_amount,
+      discountPct: r.line_discount_pct,
       stockClass: r.product_class ?? null,
       __live: true,
     }));
@@ -569,7 +573,14 @@ function BacklogOrderTable({
                               <td className="py-1 pr-3">
                                 {l.shipDate ? new Date(l.shipDate).toLocaleDateString() : "-"}
                               </td>
-                              <td className="py-1 pr-3 text-right tabular-nums">{fmtMoney(l.amount)}</td>
+                              <td className="py-1 pr-3 text-right tabular-nums">
+                                {fmtMoney(l.amount)}
+                                {l.discountPct > 0 && (
+                                  <span className="block text-[9px] text-muted-foreground/70 leading-tight">
+                                    {fmtMoney(l.grossAmount)} &minus; {l.discountPct % 1 === 0 ? l.discountPct : l.discountPct.toFixed(1)}% disc.
+                                  </span>
+                                )}
+                              </td>
                               <td className="py-1 text-right tabular-nums font-medium">
                                 {fmtMoney(l.openBalance)}
                               </td>

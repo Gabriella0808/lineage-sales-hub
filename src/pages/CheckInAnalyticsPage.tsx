@@ -33,8 +33,8 @@ type TeamId = "will" | "mateo" | "chris" | "justin";
 const TEAM: { id: TeamId; name: string; emails: string[]; repOwners: string[] }[] = [
   { id: "will", name: "Will Grisack", emails: ["will@lineage-collections.com"], repOwners: ["will"] },
   { id: "mateo", name: "Mateo De Lisa", emails: ["mateo@lineage-collections.com"], repOwners: ["mateo"] },
-  { id: "chris", name: "Chris De Lisa", emails: ["chris@lineage-collections.com"], repOwners: ["chris"] },
   { id: "justin", name: "Kate Jones", emails: ["kate@lineage-collections.com"], repOwners: ["kate"] },
+  { id: "chris", name: "Chris De Lisa", emails: ["chris@lineage-collections.com"], repOwners: ["chris"] },
 ];
 
 interface CheckInRow {

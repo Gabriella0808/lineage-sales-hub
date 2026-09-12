@@ -48,6 +48,14 @@ function currentWeekRange(now: Date) {
   return { start: thisMon, end: thisSun };
 }
 
+// Matches CheckInAnalyticsPage.tsx's isMeetingCheckIn exactly (same
+// case-sensitive substring check against the comma-joined log_type field)
+// so this report always reflects the same check-ins the Visit Analytics
+// page shows — not a superset of every logged interaction type.
+function isMeetingCheckIn(row: { log_type: string | null }): boolean {
+  return (row.log_type ?? "").split(",").map((v) => v.trim()).includes("meeting");
+}
+
 async function fetchAll<T>(builder: (from: number, to: number) => any): Promise<T[]> {
   const PAGE = 1000;
   let from = 0;
@@ -88,9 +96,9 @@ Deno.serve(async (req) => {
         supabase.from("managers").select("id,email").range(f, t)),
       fetchAll<{ user_id: string; manager_id: string }>((f, t) =>
         supabase.from("user_managers").select("user_id,manager_id").range(f, t)),
-      fetchAll<{ id: string; user_id: string; dealer_id: string | null; visit_date: string; new_placement: string | null }>((f, t) =>
+      fetchAll<{ id: string; user_id: string; dealer_id: string | null; visit_date: string; new_placement: string | null; log_type: string | null }>((f, t) =>
         supabase.from("dealer_check_ins")
-          .select("id,user_id,dealer_id,visit_date,new_placement")
+          .select("id,user_id,dealer_id,visit_date,new_placement,log_type")
           .gte("visit_date", startStr)
           .lte("visit_date", endStr)
           .range(f, t)),
@@ -136,7 +144,7 @@ Deno.serve(async (req) => {
       chris: { checkIns: 0, placements: 0 },
       kate: { checkIns: 0, placements: 0 },
     };
-    cis.forEach((c) => {
+    cis.filter(isMeetingCheckIn).forEach((c) => {
       const team = userToTeam[c.user_id] || (c.dealer_id && dealerToTeam[c.dealer_id]);
       if (!team) return;
       stats[team].checkIns += 1;

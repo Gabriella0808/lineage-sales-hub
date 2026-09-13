@@ -19,12 +19,22 @@ async function sendResendEmail(
     headers['Idempotency-Key'] = payload.message_id
   }
 
+  // payload.to may be a single address or a comma-separated list (e.g. a
+  // sales_reps row covering two people, like "a@x.com, b@y.com"). Resend
+  // requires each `to` array entry to be one valid address - passing the
+  // whole comma-joined string as a single entry gets rejected outright, so
+  // split/trim into individual recipients here, right at the API call.
+  const recipients = payload.to
+    .split(',')
+    .map((addr) => addr.trim())
+    .filter(Boolean)
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers,
     body: JSON.stringify({
       from: payload.from,
-      to: [payload.to],
+      to: recipients,
       subject: payload.subject,
       html: payload.html,
       text: payload.text,

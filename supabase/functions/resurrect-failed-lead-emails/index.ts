@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
   const { data: rows, error: readErr } = await supabase
     .from('email_send_log')
     .select(
-      'id, message_id, recipient_email, status, created_at, resurrect_attempts'
+      'id, message_id, recipient_email, status, created_at, resurrect_attempts, metadata'
     )
     .eq('template_name', TEMPLATE_NAME)
     .gte('created_at', sinceIso)
@@ -51,6 +51,16 @@ Deno.serve(async (req) => {
   const latestByMsg = new Map<string, typeof rows[number]>()
   for (const r of rows ?? []) {
     if (!latestByMsg.has(r.message_id!)) latestByMsg.set(r.message_id!, r)
+  }
+
+  // The original templateData only lives on the 'pending' row send-transactional-email
+  // logs before enqueueing (process-email-queue's own failed/dlq inserts don't carry
+  // it) - so scan every row per message_id, not just the latest, to find it.
+  const templateDataByMsg = new Map<string, Record<string, unknown>>()
+  for (const r of rows ?? []) {
+    if (templateDataByMsg.has(r.message_id!)) continue
+    const td = (r.metadata as { templateData?: Record<string, unknown> } | null)?.templateData
+    if (td) templateDataByMsg.set(r.message_id!, td)
   }
 
   // Max resurrect_attempts seen for each recipient (across all message_ids)
@@ -103,6 +113,17 @@ Deno.serve(async (req) => {
       continue
     }
 
+    // Without the original templateData a resurrected send would render
+    // every field as blank ("---") - worse than not sending at all. Skip
+    // rather than deliver a useless email (only affects messages enqueued
+    // before templateData started being persisted to metadata).
+    const templateData = templateDataByMsg.get(row.message_id!)
+    if (!templateData) {
+      console.warn('Skipping resurrect - no stored templateData', { email, message_id: row.message_id })
+      skipped++
+      continue
+    }
+
     const newAttemptCount =
       (attemptsByEmail.get(email) ?? 0) + 1
 
@@ -115,6 +136,7 @@ Deno.serve(async (req) => {
           templateName: TEMPLATE_NAME,
           recipientEmail: row.recipient_email,
           idempotencyKey,
+          templateData,
         },
       }
     )

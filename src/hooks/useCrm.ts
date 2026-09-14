@@ -96,6 +96,7 @@ export interface CrmAccount {
   buying_group: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface Rep {
@@ -230,17 +231,32 @@ export function useDeleteAccount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id }: { id: string }) => {
-      // Remove the linked dealer row first (cascades dealer_check_ins).
-      // Prospect-shell dealers share the crm_account.id, but match by FK to be safe.
-      const { error: dErr } = await supabase.from("dealers").delete().eq("crm_account_id", id);
-      if (dErr) throw dErr;
-      const { error } = await supabase.from("crm_accounts").delete().eq("id", id);
+      const { error } = await supabase
+        .from("crm_accounts")
+        .update({ deleted_at: new Date().toISOString() } as any)
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["crm_accounts"] });
       qc.invalidateQueries({ queryKey: ["dealers"] });
       qc.invalidateQueries({ queryKey: ["dealer_check_ins"] });
+    },
+  });
+}
+
+export function useRestoreAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }: { id: string }) => {
+      const { error } = await supabase
+        .from("crm_accounts")
+        .update({ deleted_at: null } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["crm_accounts"] });
     },
   });
 }

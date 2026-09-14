@@ -2193,8 +2193,31 @@ export default function CheckInsPage() {
                   </div>
                 </div>
 
-                <div className="text-[11px] text-muted-foreground">
+                                <div className="text-[11px] text-muted-foreground">
                   Logged {formatDistanceToNow(new Date(detailCheckIn.created_at), { addSuffix: true })}
+                </div>
+
+                <div className="pt-2 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const dealer = dealersWithMeta.find((d) => d.id === detailCheckIn.dealer_id);
+                      if (!dealer || dealer.lat == null || dealer.lng == null) {
+                        toast({
+                          title: "Not on the map",
+                          description: "This dealer doesn't have a location pin yet.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      mapRef.current?.flyTo({ center: [dealer.lng, dealer.lat], zoom: 12, duration: 600 });
+                      setSelected(dealer);
+                      setDetailCheckIn(null);
+                    }}
+                  >
+                    <MapPin className="h-3.5 w-3.5 mr-1.5" /> Show on map
+                  </Button>
                 </div>
 
                 {detailCheckIn.user_id === user?.id && (

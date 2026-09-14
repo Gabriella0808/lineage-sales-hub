@@ -436,7 +436,7 @@ export default function CheckInsPage() {
     let cancelled = false;
     (async () => {
       const PAGE = 1000;
-      type CrmRow = {
+            type CrmRow = {
         id: string;
         company_name: string;
         account_type: string;
@@ -451,23 +451,32 @@ export default function CheckInsPage() {
         buying_group: string | null;
         assigned_rep_id: string | null;
         assigned_manager_id: string | null;
+        prospect_type: string | null;
+        prospect_types: string[] | null;
       };
       let from = 0;
-      const all: CrmRow[] = [];
+      const allRaw: CrmRow[] = [];
       while (true) {
         const { data, error } = await supabase
           .from("crm_accounts")
           .select(
-            "id, company_name, account_type, street_1, city, state, zip, main_phone, email, website, notes, buying_group, assigned_rep_id, assigned_manager_id",
+            "id, company_name, account_type, street_1, city, state, zip, main_phone, email, website, notes, buying_group, assigned_rep_id, assigned_manager_id, prospect_type, prospect_types",
           )
           .range(from, from + PAGE - 1);
         if (error) break;
         const batch = (data ?? []) as CrmRow[];
-        all.push(...batch);
+        allRaw.push(...batch);
         if (batch.length < PAGE) break;
         from += PAGE;
       }
       if (cancelled) return;
+
+      // Unworkable prospects shouldn't get a pin on the map.
+      const all = allRaw.filter((r) => {
+        const types = r.prospect_types?.length ? r.prospect_types : (r.prospect_type ? [r.prospect_type] : []);
+        return !types.includes("Unworkable");
+      });
+
 
       // Skip CRM accounts that already have a dealers row with lat/lng —
       // those are rendered via the dealers query and don't need a pin here.
@@ -630,8 +639,36 @@ export default function CheckInsPage() {
       if (dealersRes.error) {
         toast({ title: "Failed to load dealers", description: dealersRes.error.message, variant: "destructive" });
       } else {
-        setDealers((dealersRes.data ?? []) as Dealer[]);
+                const crmRows: { id: string; prospect_type: string | null; prospect_types: string[] | null }[] = [];
+        {
+          const PAGE = 1000;
+          let from = 0;
+          while (true) {
+            const { data } = await supabase
+              .from("crm_accounts")
+              .select("id, prospect_type, prospect_types")
+              .range(from, from + PAGE - 1);
+            const batch = data ?? [];
+            crmRows.push(...batch);
+            if (batch.length < PAGE) break;
+            from += PAGE;
+          }
+        }
+
+        const unworkableCrmIds = new Set(
+          (crmRows ?? [])
+            .filter((r) => {
+              const types = r.prospect_types?.length ? r.prospect_types : (r.prospect_type ? [r.prospect_type] : []);
+              return types.includes("Unworkable");
+            })
+            .map((r) => r.id),
+        );
+        const dealersData = (dealersRes.data ?? []).filter(
+          (d) => !d.crm_account_id || !unworkableCrmIds.has(d.crm_account_id),
+        );
+        setDealers(dealersData as Dealer[]);
       }
+
       if (checkInsRes.error) {
         toast({ title: "Failed to load check-ins", description: checkInsRes.error.message, variant: "destructive" });
       } else {
@@ -1647,7 +1684,7 @@ export default function CheckInsPage() {
                           <Input
                             value={editForm.phone}
                             onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
-                            placeholder="—"
+                            placeholder="-"
                             className="h-8 text-sm"
                           />
                         ) : selected.phone ? (
@@ -1666,7 +1703,7 @@ export default function CheckInsPage() {
                           <Input
                             value={editForm.email}
                             onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
-                            placeholder="—"
+                            placeholder="-"
                             className="h-8 text-sm"
                           />
                         ) : selected.email ? (
@@ -1685,7 +1722,7 @@ export default function CheckInsPage() {
                           <Input
                             value={editForm.website}
                             onChange={(e) => setEditForm((f) => ({ ...f, website: e.target.value }))}
-                            placeholder="—"
+                            placeholder="-"
                             className="h-8 text-sm"
                           />
                         ) : selected.website ? (
@@ -1745,7 +1782,7 @@ export default function CheckInsPage() {
                               <SelectValue placeholder="Select rep" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="__none__">—</SelectItem>
+                              <SelectItem value="__none__">-</SelectItem>
                               {salesReps.map((r) => (
                                 <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                               ))}
@@ -1769,7 +1806,7 @@ export default function CheckInsPage() {
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="__none__">—</SelectItem>
+                              <SelectItem value="__none__">-</SelectItem>
                               <SelectItem value="none">Nothing</SelectItem>
                               <SelectItem value="fmg">FMG</SelectItem>
                               <SelectItem value="furniture_first">Furniture First</SelectItem>

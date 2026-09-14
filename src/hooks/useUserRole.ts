@@ -15,7 +15,12 @@ const ADMIN_EMAIL_OVERRIDES = new Set([
 export interface UserRoleInfo {
   role: AppRole;
   managerId: string | null;
+  /** First of repIds, kept for callers that only need a single rep (e.g. an
+   *  unambiguous "is a rep mapped at all" check). Prefer repIds for anything
+   *  that should cover a rep who legitimately spans multiple territories
+   *  (multiple sales_reps rows), like Jordan Shindell (PA/OH + Beach). */
   repId: string | null;
+  repIds: string[];
   dealerId: string | null;
   isAdmin: boolean;
   isManager: boolean;
@@ -24,7 +29,7 @@ export interface UserRoleInfo {
 }
 
 /**
- * Resolves the current user's effective role + linked manager/rep id.
+ * Resolves the current user's effective role + linked manager/rep id(s).
  * Priority: admin > manager > rep > rep (default fallback for unrecognized users).
  */
 export function useUserRole() {
@@ -39,13 +44,17 @@ export function useUserRole() {
       const [rolesRes, managerRes, repRes, dealerRes] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", user.id),
         supabase.from("user_managers").select("manager_id").eq("user_id", user.id).maybeSingle(),
-        supabase.from("user_reps").select("rep_id").eq("user_id", user.id).maybeSingle(),
+        // A user can be linked to more than one sales_reps row (a rep who
+        // legitimately covers multiple territories under separate Acctivate
+        // codes) — no .maybeSingle() here.
+        supabase.from("user_reps").select("rep_id").eq("user_id", user.id),
         supabase.from("user_dealers").select("dealer_id").eq("user_id", user.id).maybeSingle(),
       ]);
 
       const roles = (rolesRes.data ?? []).map((r) => r.role as AppRole);
       const managerId = managerRes.data?.manager_id ?? null;
-      const repId = repRes.data?.rep_id ?? null;
+      const repIds = (repRes.data ?? []).map((r) => r.rep_id).filter((id): id is string => !!id);
+      const repId = repIds[0] ?? null;
       const dealerId = dealerRes.data?.dealer_id ?? null;
 
       let role: AppRole;
@@ -60,6 +69,7 @@ export function useUserRole() {
         role,
         managerId,
         repId,
+        repIds,
         dealerId,
         isAdmin: role === "admin",
         isManager: role === "manager",

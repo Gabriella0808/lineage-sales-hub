@@ -103,9 +103,9 @@ const App = () => (
                       <Route path="/trade-show-leads" element={<ProtectedRoute allow={["admin", "manager"]}><TradeShowLeadsPage /></ProtectedRoute>} />
                       <Route path="/trade-show-leads/capture" element={<ProtectedRoute allow={["admin", "manager"]}><CaptureLeadsPage /></ProtectedRoute>} />
                       <Route path="/trade-show-leads/hp-appointments" element={<ProtectedRoute allow={["admin", "manager", "rep"]}><HighPointAppointmentsPage /></ProtectedRoute>} />
-                      <Route path="/clearance" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceProductsPage /></ProtectedRoute>} />
+                      <Route path="/clearance" element={<ProtectedRoute allow={["admin","manager","rep"]}><ClearanceProductsPage /></ProtectedRoute>} />
                       <Route path="/clearance/analytics" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceAnalyticsPage /></ProtectedRoute>} />
-                      <Route path="/promotions/labor-day-promo" element={<ProtectedRoute allow={["admin","manager"]}><LaborDayPromoPage /></ProtectedRoute>} />
+                      <Route path="/promotions/labor-day-promo" element={<ProtectedRoute allow={["admin","manager","rep"]}><LaborDayPromoPage /></ProtectedRoute>} />
                       <Route path="/meeting-intelligence" element={<ProtectedRoute allowEmails={["gmaccioni0808@gmail.com"]}><MeetingIntelligencePage /></ProtectedRoute>} />
                       <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]} denyEmails={["andrew@lineage-collections.com"]}><OrgChartPage /></ProtectedRoute>} />
                       <Route path="/crm/accounts" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsPage /></CrmGuard></ProtectedRoute>} />

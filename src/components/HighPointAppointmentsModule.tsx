@@ -4,6 +4,7 @@ import Papa from "papaparse";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/contexts/AuthContext";
+import { RepNotConfigured } from "@/components/RepNotConfigured";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -438,13 +439,19 @@ export function HighPointAppointmentsModule() {
 
   const loadAppointments = async (eventId: string, ph: string) => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = (supabase as any)
       .from("market_appointments")
       .select("*, sales_reps(id, name, manager_id)")
       .eq("event_id", eventId)
       .eq("phase", ph)
       .order("appointment_day", { ascending: true, nullsFirst: false })
       .order("appointment_time", { ascending: true, nullsFirst: false });
+    // Belt-and-suspenders client-side filter — the real enforcement is the
+    // "rep_id = current_rep_id()" RLS SELECT policy on market_appointments,
+    // so an unmapped rep (currentRepId null) already gets zero rows from the
+    // server regardless of this filter.
+    if (isRep) query = query.eq("rep_id", currentRepId ?? "__no_rep_mapped__");
+    const { data, error } = await query;
     if (error) { toast.error(error.message); setLoading(false); return; }
     setAppointments((data ?? []) as unknown as MarketAppt[]);
     setLoading(false);
@@ -669,6 +676,10 @@ export function HighPointAppointmentsModule() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  if (isRep && !currentRepId) {
+    return <RepNotConfigured />;
+  }
+
   return (
     <div className="mt-2 space-y-5 animate-fade-in">
       {/* Module header */}
@@ -748,7 +759,7 @@ export function HighPointAppointmentsModule() {
             {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
-        {showRepCol && visibleReps.length > 0 && (
+        {showRepCol && !isRep && visibleReps.length > 0 && (
           <Select value={repFilter} onValueChange={setRepFilter}>
             <SelectTrigger className="h-8 text-sm w-[150px]"><SelectValue placeholder="All reps" /></SelectTrigger>
             <SelectContent>
@@ -995,6 +1006,7 @@ export function HighPointAppointmentsModule() {
                 byRepStats={byRepStats}
                 byManagerStats={byManagerStats}
                 isAdmin={isAdmin}
+                isRep={isRep}
               />
             )}
           </TabsContent>
@@ -1350,10 +1362,11 @@ function StatusButton({ status, onStatusChange }: {
   );
 }
 
-function PerformanceView({ byRepStats, byManagerStats, isAdmin }: {
+function PerformanceView({ byRepStats, byManagerStats, isAdmin, isRep }: {
   byRepStats: Array<{ repId: string; repName: string; managerId: string | null; targets: number; confirmed: number; showed: number; noShow: number }>;
   byManagerStats: Array<{ managerId: string; managerName: string; targets: number; confirmed: number; showed: number; noShow: number; repCount: number }>;
   isAdmin: boolean;
+  isRep: boolean;
 }) {
   const [expandedManagers, setExpandedManagers] = useState<Set<string>>(new Set());
   const toggleManager = (id: string) =>
@@ -1438,7 +1451,7 @@ function PerformanceView({ byRepStats, byManagerStats, isAdmin }: {
 
       {/* Rep stats table */}
       <div>
-        <h3 className="text-sm font-medium mb-3">{isAdmin ? "All Reps" : "Team"}</h3>
+        <h3 className="text-sm font-medium mb-3">{isAdmin ? "All Reps" : isRep ? "My Performance" : "Team"}</h3>
         <div className="rounded-md border overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">

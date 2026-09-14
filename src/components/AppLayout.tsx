@@ -84,17 +84,17 @@ const NAV_SECTIONS: NavSection[] = [
     },
       { title: "Travel Log", url: "/travel-log", icon: Plane, roles: ["admin", "manager"] },
       {
-        title: "Trade Show Leads", url: "/trade-show-leads", icon: Megaphone, roles: ["admin", "manager"],
+        title: "Trade Show Leads", url: "/trade-show-leads", icon: Megaphone, roles: ["admin", "manager", "rep"],
         children: [
           { title: "Capture Leads", url: "/trade-show-leads/capture", icon: ClipboardList, roles: ["admin", "manager"] },
           { title: "High Point Market Appointments", url: "/trade-show-leads/hp-appointments", icon: ClipboardList, roles: ["admin", "manager", "rep"] },
         ],
       },
       {
-        title: "Sales Initiatives", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager"],
+        title: "Sales Initiatives", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager", "rep"],
         children: [
-          { title: "Labor Day Promo", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager"] },
-          { title: "Discontinued Products", url: "/clearance", icon: Tag, roles: ["admin", "manager"] },
+          { title: "Labor Day Promo", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager", "rep"] },
+          { title: "Discontinued Products", url: "/clearance", icon: Tag, roles: ["admin", "manager", "rep"] },
           { title: "Discontinued Analytics", url: "/clearance/analytics", icon: BarChart3, roles: ["admin", "manager"] },
         ],
       },

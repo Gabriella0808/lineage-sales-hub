@@ -14,13 +14,14 @@ import {
   useManagers, useSalesReps,
 } from "@/hooks/usePortalData";
 import { useUserRole } from "@/hooks/useUserRole";
+import { RepNotConfigured } from "@/components/RepNotConfigured";
 
 type ReportKey = "live-kpi" | "dealer-reporting" | "rep-reporting";
 
-const REPORTS: { key: ReportKey; label: string; icon: typeof BarChart3; description: string; managerOnly?: boolean }[] = [
+const REPORTS: { key: ReportKey; label: string; icon: typeof BarChart3; description: string }[] = [
   { key: "live-kpi",          label: "Live KPI",          icon: BarChart3,    description: "High-level rep & brand performance" },
   { key: "dealer-reporting",  label: "Dealer Reporting",  icon: Store,        description: "Granular dealer sales by date, brand, SKU" },
-  { key: "rep-reporting",     label: "Rep Reporting",     icon: UserSquare2,  description: "Granular rep & territory performance", managerOnly: true },
+  { key: "rep-reporting",     label: "Rep Reporting",     icon: UserSquare2,  description: "Granular rep & territory performance" },
 ];
 
 export default function CompanyWidePage() {
@@ -53,14 +54,17 @@ export default function CompanyWidePage() {
   );
   const repManagerId = currentRep?.manager_id ?? null;
 
-  const visibleReports = REPORTS.filter((r) => !r.managerOnly || !isRep);
+  // Live KPI is fully off-limits to reps — not just hidden from the tile
+  // grid, but excluded from the set of report keys a URL param can select.
+  const visibleReports = REPORTS.filter((r) => !isRep || r.key !== "live-kpi");
 
+  const defaultReport: ReportKey = isRep ? "dealer-reporting" : "live-kpi";
   const pathDefault: ReportKey | null =
-    location.pathname === "/kpi" ? "live-kpi" : null;
+    location.pathname === "/kpi" && !isRep ? "live-kpi" : null;
 
   const activeReport: ReportKey = reportParam && visibleReports.some((r) => r.key === reportParam)
     ? reportParam
-    : (pathDefault ?? "live-kpi");
+    : (pathDefault ?? defaultReport);
 
   const visibleManagers = useMemo(() => {
     // Step 1: apply base exclusions
@@ -110,6 +114,17 @@ export default function CompanyWidePage() {
   const managerName = effectiveManagerId === "all"
     ? undefined
     : visibleManagers.find((m) => m.id === effectiveManagerId)?.name;
+
+  if (isRep && !roleInfo?.repId) {
+    return (
+      <div className="animate-fade-in space-y-6">
+        <div className="page-header">
+          <h1 className="page-title">Company-Wide</h1>
+        </div>
+        <RepNotConfigured />
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -193,7 +208,7 @@ export default function CompanyWidePage() {
             managerId={effectiveManagerId === "all" ? null : effectiveManagerId}
           />
         )}
-        {activeReport === "rep-reporting" && !isRep && (
+        {activeReport === "rep-reporting" && (
           <SalesReporting
             groupBy="rep"
             groupByOptions={["rep", "territory"]}

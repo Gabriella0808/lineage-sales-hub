@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useUserRole } from "@/hooks/useUserRole";
+import { RepNotConfigured } from "@/components/RepNotConfigured";
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 //
@@ -124,6 +126,10 @@ function toNum(v: unknown): number {
 
 export default function LaborDayPromoPage() {
   const { toast } = useToast();
+  const { data: roleInfo } = useUserRole();
+  const isAdmin   = !!roleInfo?.isAdmin;
+  const isManager = !!roleInfo?.isManager;
+  const isRep     = !!roleInfo?.isRep;
   const [promoConfig, setPromoConfig]   = useState<PromoConfig | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [rawLines, setRawLines]         = useState<RawLine[]>([]);
@@ -190,10 +196,12 @@ export default function LaborDayPromoPage() {
             .eq("promo_slug", PROMO_SLUG)
             .eq("active", true),
           (supabase as any)
-            .from("v_portal_dealer_rep_reporting_lines")
-            .select("transaction_date,dealer_name,customer_id,rep_name,rep_id,sku,description,product_class,amount")
-            .eq("metric_type", "bookings")
-            .eq("discount_code", DISCOUNT_CODE),
+            .rpc("get_portal_dealer_rep_reporting_lines", {
+              p_metric: "bookings",
+              p_discount_code: DISCOUNT_CODE,
+              p_limit: 5000,
+              p_offset: 0,
+            }),
         ]);
 
         if (cancelled) return;
@@ -493,6 +501,17 @@ export default function LaborDayPromoPage() {
     return <div className="py-20 text-center text-muted-foreground text-sm">Loading LD26 booking data…</div>;
   }
 
+  if (isRep && !roleInfo?.repId) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Labor Day Promo</h1>
+        </div>
+        <RepNotConfigured />
+      </div>
+    );
+  }
+
   const noParticipants = !loadError && participants.length === 0;
 
   return (
@@ -561,7 +580,9 @@ export default function LaborDayPromoPage() {
             </Card>
           )}
 
-          {/* ── Manually add a participant ───────────────────────────────────── */}
+          {/* ── Manually add a participant (admin/manager only — reps get
+               read-only access to their own LD26 roster) ────────────────────── */}
+          {(isAdmin || isManager) && (
           <Card className="p-3">
             <button
               type="button"
@@ -633,6 +654,7 @@ export default function LaborDayPromoPage() {
               </div>
             )}
           </Card>
+          )}
 
           {/* ── Filters ──────────────────────────────────────────────────────── */}
           <div className="flex flex-wrap items-center gap-2">
@@ -642,6 +664,7 @@ export default function LaborDayPromoPage() {
               onChange={e => setSearch(e.target.value)}
               className="h-8 text-xs w-52"
             />
+            {!isRep && (
             <Select value={repFilter} onValueChange={setRepFilter}>
               <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue placeholder="All reps" /></SelectTrigger>
               <SelectContent>
@@ -649,6 +672,7 @@ export default function LaborDayPromoPage() {
                 {repOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
               </SelectContent>
             </Select>
+            )}
             <Select value={dealerFilter} onValueChange={setDealerFilter}>
               <SelectTrigger className="h-8 w-[170px] text-xs"><SelectValue placeholder="All dealers" /></SelectTrigger>
               <SelectContent>

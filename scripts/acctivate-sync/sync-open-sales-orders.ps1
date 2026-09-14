@@ -534,6 +534,85 @@ WHERE LOWER(REPLACE(REPLACE(CAST(o.GUIDOrder AS NVARCHAR(64)), '{', ''), '}', ''
 }
 
 # ===========================================================================
+# PHASE 4 — Staleness: zero out qty_outstanding for LINES that have closed
+# (fully shipped/invoiced/cancelled) since they were last synced, on orders
+# that remain open overall.
+#
+# Phase 3 above only patches ORDER-level workflow_status for orders that
+# close entirely. It does not help a line whose OWN QtyOutstanding has
+# dropped to 0 while sibling lines on the same still-open order are
+# genuinely open — that line just stops appearing in this run's
+# `WHERE od.QtyOutstanding > 0` pull, and since this script only upserts
+# (never deletes/zeroes), its last-known nonzero qty_outstanding lingers in
+# Supabase indefinitely, permanently overstating Open SO for that line.
+#
+# Diagnosed via order 179029: Acctivate showed ~$2,200 truly still open,
+# but the portal held $37,749 across 12 lines. After the Phase 2
+# duplicate-row-ordering fix (see ROW_NUMBER above) and a fresh sync run,
+# 11 of those 12 lines were STILL untouched, carrying the exact same
+# synced_at timestamp as before the fix — proving they were never
+# re-pulled at all, not a duplicate-resolution issue. Confirmed the query
+# genuinely omits them once QtyOutstanding drops to 0 (the order itself,
+# "Ready to Pick", correctly stays in freshGuids).
+#
+# Same trust model as Phase 3: absence from a fully-succeeded fresh pull
+# (this script aborts before reaching here if the SQL pull itself fails,
+# via $ErrorActionPreference = 'Stop') is treated as proof the line's
+# current QtyOutstanding is no longer > 0 — no extra Acctivate round-trip
+# needed, unlike Phase 3, since QtyOutstanding vs 0 is a much narrower
+# question than re-deriving a whole WorkFlowStatus string.
+# ===========================================================================
+
+Write-Host ''
+Write-Host '--- Phase 4: Zeroing out closed lines on still-open orders ---' -ForegroundColor Cyan
+
+$freshLineGuids = @{}
+foreach ($row in $lineRows) { $freshLineGuids[$row['guid_order_detail'].ToString()] = 1 }
+
+# PostgREST defaults to a 1000-row page cap, and this table currently holds
+# well over 1000 open lines - unlike Phase 3's order-level equivalent
+# (~500 open orders, safely under the cap), this one needs real pagination
+# or it would silently only ever check the first page.
+$markedOpenLinesInSupabase = @()
+try {
+    $pageSize = 1000
+    $offset   = 0
+    while ($true) {
+        $pageUrl = $SupabaseUrl + '/rest/v1/portal_acctivate_order_lines?select=guid_order_detail,guid_order' +
+                   '&qty_outstanding=gt.0&order=guid_order_detail&limit=' + $pageSize + '&offset=' + $offset
+        $page = Invoke-Get -Url $pageUrl
+        if ($null -eq $page -or $page.Count -eq 0) { break }
+        $markedOpenLinesInSupabase += $page
+        if ($page.Count -lt $pageSize) { break }
+        $offset += $pageSize
+    }
+} catch {
+    Write-Warning ('  Could not read currently-open lines from Supabase: ' + $_.Exception.Message)
+    Write-Warning '  Skipping line staleness reconciliation this run — will retry next scheduled sync.'
+    $markedOpenLinesInSupabase = @()
+}
+
+$staleLineGuids = @($markedOpenLinesInSupabase |
+    Where-Object { $freshGuids.ContainsKey($_.guid_order) } |
+    Where-Object { -not $freshLineGuids.ContainsKey($_.guid_order_detail) } |
+    ForEach-Object { $_.guid_order_detail })
+
+if ($staleLineGuids.Count -eq 0) {
+    Write-Host '  No stale open-flagged lines found. Nothing to clear.' -ForegroundColor Green
+} else {
+    Write-Host ('  ' + $staleLineGuids.Count + ' line(s) marked open in Supabase are no longer open in this run''s pull — zeroing qty_outstanding...') -ForegroundColor Yellow
+
+    $clearedLineCount = 0
+    foreach ($guid in $staleLineGuids) {
+        $row = @{ guid_order_detail = $guid; qty_outstanding = 0; synced_at = $SyncedAt }
+        $r = Invoke-Post -Url $LinesUpsertUrl -Rows @($row)
+        if ($r.ok) { $clearedLineCount++ }
+        else { Write-Warning ('    Failed to clear guid_order_detail=' + $guid + '  HTTP ' + $r.statusCode + ': ' + $r.body) }
+    }
+    Write-Host ('  ' + $clearedLineCount + '/' + $staleLineGuids.Count + ' closed line(s) zeroed out.') -ForegroundColor Green
+}
+
+# ===========================================================================
 # Summary
 # ===========================================================================
 

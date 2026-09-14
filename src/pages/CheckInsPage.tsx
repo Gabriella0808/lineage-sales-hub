@@ -287,6 +287,7 @@ export default function CheckInsPage() {
     to: "",
   });
   const [recentManagerFilter, setRecentManagerFilter] = useState<TeamMemberId | "all">("all");
+  const [recentSearch, setRecentSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [addSaving, setAddSaving] = useState(false);
@@ -1387,6 +1388,15 @@ export default function CheckInsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <h2 className="text-sm font-semibold">Recent check-ins</h2>
           <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by dealer name..."
+                value={recentSearch}
+                onChange={(e) => setRecentSearch(e.target.value)}
+                className="h-8 w-[180px] pl-8 text-xs"
+              />
+            </div>
             <Select value={recentManagerFilter} onValueChange={(v) => setRecentManagerFilter(v as TeamMemberId | "all")}>
               <SelectTrigger className="h-8 w-[150px] text-xs">
                 <SelectValue placeholder="All managers" />
@@ -1418,12 +1428,12 @@ export default function CheckInsPage() {
                 className="h-8 w-[140px] text-xs"
               />
             </div>
-            {(recentRange.from || recentRange.to || recentManagerFilter !== "all") && (
+            {(recentRange.from || recentRange.to || recentManagerFilter !== "all" || recentSearch) && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 text-xs"
-                onClick={() => { setRecentRange({ from: "", to: "" }); setRecentManagerFilter("all"); }}
+                onClick={() => { setRecentRange({ from: "", to: "" }); setRecentManagerFilter("all"); setRecentSearch(""); }}
               >
                 Clear
               </Button>
@@ -1433,13 +1443,19 @@ export default function CheckInsPage() {
         {(() => {
           // Filter by selected manager via the dealer's manager_id / rep_owner.
           const team = recentManagerFilter === "all" ? null : TEAM_MEMBERS.find((t) => t.id === recentManagerFilter);
-          const dealerById = new Map(dealers.map((d) => [d.id, d]));
+          const dealerById = new Map(dealersWithMeta.map((d) => [d.id, d]));
           const teamScoped = checkIns.filter((c) => {
             if (!team) return true;
             const d = dealerById.get(c.dealer_id);
             return !!d && dealerMatchesTeam(d, team);
           });
-          const filtered = teamScoped.filter((c) => {
+          const searchQuery = recentSearch.trim().toLowerCase();
+          const nameScoped = teamScoped.filter((c) => {
+            if (!searchQuery) return true;
+            const d = dealerById.get(c.dealer_id);
+            return !!d && d.name.toLowerCase().includes(searchQuery);
+          });
+          const filtered = nameScoped.filter((c) => {
             const d = c.visit_date.slice(0, 10);
             if (recentRange.from && d < recentRange.from) return false;
             if (recentRange.to && d > recentRange.to) return false;
@@ -1451,8 +1467,8 @@ export default function CheckInsPage() {
               <div className="flex items-center justify-end -mt-1 mb-2">
                 <span className="text-xs text-muted-foreground">
                   {hasRange
-                    ? `${filtered.length} in range ... ${teamScoped.length} total`
-                    : `${teamScoped.length} total`}
+                    ? `${filtered.length} in range ... ${nameScoped.length} total`
+                    : `${nameScoped.length} total`}
                 </span>
               </div>
               {loading ? (
@@ -1463,12 +1479,14 @@ export default function CheckInsPage() {
                     ? team
                       ? `No check-ins yet for ${team.name}.`
                       : "No check-ins yet. Click any dealer pin to log your first visit."
-                    : "No check-ins in the selected date range."}
+                    : nameScoped.length === 0
+                      ? `No check-ins found for "${recentSearch}".`
+                      : "No check-ins in the selected date range."}
                 </p>
               ) : (
                 <ul className="divide-y max-h-[420px] overflow-y-auto pr-1">
                   {filtered.map((c) => {
-                    const d = dealers.find((x) => x.id === c.dealer_id);
+                    const d = dealerById.get(c.dealer_id);
                     const canDelete = c.user_id === user?.id;
                     return (
                       <li key={c.id} className="py-2 flex items-stretch justify-between gap-3 text-sm">

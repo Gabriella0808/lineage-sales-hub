@@ -1564,7 +1564,7 @@ export default function CheckInsPage() {
                       : `There are ${siblingDealers.length} other locations on the map for this retailer:`}
                   </p>
                   <p className="text-amber-800/80 dark:text-amber-300/80 mt-0.5">
-                    Check-ins are logged per address — this location only shows its own history.
+                    Check-ins are logged per address - this location only shows its own history.
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     {siblingDealers.map((d) => (

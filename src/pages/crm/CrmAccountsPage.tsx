@@ -1,6 +1,6 @@
 import { useMemo, useState, useDeferredValue, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useCrmAccounts, useCrmReps, useCrmManagers, useUpdateAccount, useDeleteAccount, useProspectTypes, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
+import { useCrmAccounts, useCrmReps, useCrmManagers, useUpdateAccount, useDeleteAccount, useRestoreAccount, useProspectTypes, ACCOUNT_TYPES, BRANDS, BRAND_COLORS, type AccountType, type Brand } from "@/hooks/useCrm";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, ArrowLeft, ChevronDown, Trash2, X, Download } from "lucide-react";
+import { Plus, Search, ArrowLeft, ChevronDown, Trash2, X, Download, RotateCcw } from "lucide-react";
 import { ImportAccountsDialog } from "@/components/ImportAccountsDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +24,9 @@ export default function CrmAccountsPage() {
   const { data: prospectTypes = [] } = useProspectTypes();
   const update = useUpdateAccount();
   const del = useDeleteAccount();
+  const restore = useRestoreAccount();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const FILTER_KEYS = ["rep", "manager", "stage", "brand", "ptype", "atype", "state"] as const;
   const STORAGE_KEY = "crm_accounts_filters_v1";
@@ -207,12 +209,13 @@ export default function CrmAccountsPage() {
         if (!hasRegular && !hasEmpty) continue;
       }
       if (stateFilter !== "all" && a.state !== stateFilter) continue;
+      if (showDeleted ? !a.deleted_at : !!a.deleted_at) continue;
       if (accountTypeFilter !== "all" && (a.account_type ?? "prospect") !== accountTypeFilter) continue;
       if (needle && !hay.includes(needle)) continue;
       out.push(a);
     }
     return out;
-  }, [indexed, needle, repFilter, managerFilter, brandSet, ptypeRegularSet, ptypeHasNone, stateFilter, accountTypeFilter]);
+  }, [indexed, needle, repFilter, managerFilter, brandSet, ptypeRegularSet, ptypeHasNone, stateFilter, accountTypeFilter, showDeleted]);
 
   // Incremental render: only mount a slice of rows, grow on scroll near bottom.
   const PAGE = 100;
@@ -281,11 +284,24 @@ export default function CrmAccountsPage() {
     toast({ title: "Prospect types updated", description: `${selectedIds.length} prospect${selectedIds.length === 1 ? "" : "s"} updated.` });
   };
 
+    const bulkDelete = () => {
+    const ids = selectedIds;
+    for (const id of ids) {
+      del.mutate({ id });
+    }
+    toast({
+      title: "Prospects deleted",
+      description: `${ids.length} prospect${ids.length === 1 ? "" : "s"} removed from prospects and the check-ins map.`,
+    });
+    clearSelection();
+    setBulkDeleteOpen(false);
+  };
+
+
   // Working state for bulk dropdowns (start empty)
   const [bulkBrands, setBulkBrands] = useState<string[]>([]);
   const [bulkPTypes, setBulkPTypes] = useState<string[]>([]);
-
-
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
 
   const [convertTarget, setConvertTarget] = useState<{ id: string; name: string } | null>(null);
@@ -384,6 +400,14 @@ export default function CrmAccountsPage() {
         subtitle={`${filtered.length} of ${accounts.length} prospects`}
         actions={
           <div className="flex items-center gap-2">
+            <Button
+              variant={showDeleted ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowDeleted((v) => !v)}
+              className="h-9"
+            >
+              {showDeleted ? "Back to Prospects" : "Recently Deleted"}
+            </Button>
             <Button variant="outline" size="sm" onClick={exportToCsv} className="h-9">
               <Download className="h-4 w-4 mr-1.5" />Export CSV
             </Button>
@@ -545,6 +569,14 @@ export default function CrmAccountsPage() {
             onClick={() => bulkSetProspectTypes(bulkPTypes)}
           >
             Apply types to {selected.size}
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="h-8 text-xs"
+            onClick={() => setBulkDeleteOpen(true)}
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete {selected.size}
           </Button>
           <Button
             variant="ghost"
@@ -742,14 +774,25 @@ export default function CrmAccountsPage() {
                       })()}
                     </td>
                     <td className="px-2 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        title="Delete prospect"
-                        onClick={() => setDeleteTarget({ id: a.id, name: a.company_name })}
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {showDeleted ? (
+                        <button
+                          type="button"
+                          title="Restore prospect"
+                          onClick={() => restore.mutate({ id: a.id })}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          title="Delete prospect"
+                          onClick={() => setDeleteTarget({ id: a.id, name: a.company_name })}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -799,6 +842,23 @@ export default function CrmAccountsPage() {
               }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selected.size} prospect{selected.size === 1 ? "" : "s"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes all {selected.size} selected prospects from the list and removes their pins from the Field Check-ins map. Any check-ins logged for these accounts will also be deleted. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={bulkDelete}>
+              Delete {selected.size}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -194,7 +194,19 @@ WITH src AS (
                 od.GUIDOrderDetail, od.GUIDOrder, od.OrderNumber,
                 od.LineNumber, od.SubLineNumber, od.ComponentLevel, od.ProductID
             ORDER BY
-                od.ProductID, od.Description, od.QtyOrdered, od._OriginalPrice, od.Amount
+                -- QtyOutstanding only ever decreases as an order ships, so
+                -- when dbo.OrderDetail genuinely returns more than one row
+                -- for the same true line (confirmed happening - this
+                -- ordinal existed but was never filtered on, see below),
+                -- the smallest QtyOutstanding is the most-progressed/most-
+                -- current state and is what should win. Previously ordered
+                -- by ProductID/Description/QtyOrdered/_OriginalPrice/Amount
+                -- (arbitrary descriptive fields, not recency), which could
+                -- non-deterministically keep a stale, larger QtyOutstanding
+                -- instead - diagnosed via order 179029, where Acctivate
+                -- shows ~$2,200 truly still open but the portal had
+                -- $37,749 (essentially the full unshipped order value).
+                od.QtyOutstanding ASC, od.Price DESC, od.Amount DESC
         ) AS duplicate_row_ordinal
     FROM dbo.OrderDetail od
     INNER JOIN dbo.Orders o     ON od.GUIDOrder  = o.GUIDOrder
@@ -206,7 +218,14 @@ WITH src AS (
       AND RTRIM(LTRIM(od.ProductID)) <> ''
       AND od.QtyOutstanding > 0
 )
+-- duplicate_row_ordinal was computed above but never filtered on - any
+-- genuine duplicate row for the same true line from dbo.OrderDetail was
+-- previously sent to the upsert, and since guid_order_detail is the same
+-- for true duplicates, whichever was processed last in the batch silently
+-- won, regardless of which was actually current. Keep only the
+-- most-progressed one per line.
 SELECT * FROM src
+WHERE duplicate_row_ordinal = 1
 ORDER BY order_date, order_number, line_number, sub_line_number, component_level
 "@
 

@@ -90,6 +90,17 @@ export default function CompanyWidePage() {
   }, [managers, isRep, repManagerId]);
 
   const effectiveManagerId = isRep && repManagerId ? repManagerId : managerParam;
+  // The manager_id actually sent to the data-fetching RPCs. For a rep's own
+  // view, managerScopeRepIds (their own, server-enforced rep code set) is
+  // already the complete and authoritative scope - additionally filtering
+  // by dealers.manager_id / actuals.manager_id only risks silently
+  // under-counting when that field is stale or unset on some of the rep's
+  // own dealers (a real, separate data-quality gap found while reconciling
+  // Jordan Shindell's Dealer vs Rep Reporting totals - dealers.manager_id
+  // is NULL/mismatched on many correctly rep-assigned dealers). effectiveManagerId
+  // itself is left untouched since it still drives the locked manager <Select>
+  // display elsewhere on this page.
+  const dataManagerId = isRep ? null : (effectiveManagerId === "all" ? null : effectiveManagerId);
 
   const setReport = (key: ReportKey) => {
     const next = new URLSearchParams(params);
@@ -200,7 +211,7 @@ export default function CompanyWidePage() {
             managerName={managerName}
             lockedRepName={isRep ? currentRep?.name ?? null : null}
             managerScopeRepIds={managerScopeRepIds}
-            managerId={effectiveManagerId === "all" ? null : effectiveManagerId}
+            managerId={dataManagerId}
             refreshKey={refreshKey}
           />
         )}
@@ -208,7 +219,7 @@ export default function CompanyWidePage() {
           <SalesReporting
             groupBy="dealer"
             managerScopeRepIds={managerScopeRepIds}
-            managerId={effectiveManagerId === "all" ? null : effectiveManagerId}
+            managerId={dataManagerId}
           />
         )}
         {activeReport === "rep-reporting" && (
@@ -216,7 +227,7 @@ export default function CompanyWidePage() {
             groupBy="rep"
             groupByOptions={["rep", "territory"]}
             managerScopeRepIds={managerScopeRepIds}
-            managerId={effectiveManagerId === "all" ? null : effectiveManagerId}
+            managerId={dataManagerId}
           />
         )}
       </section>

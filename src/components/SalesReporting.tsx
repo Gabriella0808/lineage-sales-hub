@@ -26,6 +26,7 @@ import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { useRepTargets, TARGET_MONTHS, type RepTarget } from "@/hooks/useRepTargets";
 import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCutoff";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 
 // Ahead/Behind/Open Territories summary cards are still being validated -
 // restricted to Gabriella's account only until ready for everyone.
@@ -105,12 +106,13 @@ async function fetchPortalLinesByType(
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const { data, error } = await (supabase as any)
-      .from("v_portal_dealer_rep_reporting_lines")
-      .select("metric_type, transaction_date, year, month_number, dealer_name, customer_id, rep_name, rep_id, sku, description, brand_category, product_class, amount, invoice_number, fulfillment_type")
-      .eq("metric_type", metricType)
-      .gte("transaction_date", fromStr)
-      .lt("transaction_date", toExcl)
-      .range(start, start + PAGE_SIZE - 1);
+      .rpc("get_portal_dealer_rep_reporting_lines", {
+        p_metric: metricType,
+        p_from: fromStr,
+        p_to: toExcl,
+        p_limit: PAGE_SIZE,
+        p_offset: start,
+      });
     if (error) {
       console.error(`[dealer-rep] ${metricType} fetch failed:`, error.message, error);
       break;
@@ -515,6 +517,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const today = getReportingToday();
   const { user } = useAuth();
   const showSummaryCards = (user?.email ?? "").toLowerCase() === SUMMARY_CARDS_VISIBLE_TO_EMAIL;
+  const { data: roleInfo } = useUserRole();
+  const isRep = !!roleInfo?.isRep;
 
   const [groupBy, setGroupBy]         = useState<GroupBy>(initialGroupBy);
   // Default primary to YTD (clamped to the report cutoff) because Display
@@ -1559,6 +1563,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             />
             <MultiSelect
               label="Rep" selected={repIds} onChange={setRepIds}
+              disabled={isRep}
+              disabledReason={isRep ? "Locked to your own rep scope" : undefined}
               options={visibleReps.map((r) => ({
                 value: r.id,
                 label: (r.acctivate_id && acctivateNameByCode.get(r.acctivate_id.toLowerCase())) || r.name,

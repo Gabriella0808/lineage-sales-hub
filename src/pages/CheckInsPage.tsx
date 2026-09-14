@@ -907,12 +907,31 @@ export default function CheckInsPage() {
     else map.once("idle", apply);
   }, [territoriesOnly, token]);
 
+  // Same retailer can have multiple dealer rows (e.g. separate locations, or
+  // a CRM-prospect shell alongside its later Acctivate-synced record), each
+  // with its own id and its own dealer_check_ins.dealer_id. Match check-ins
+  // to a profile by name (not just exact id) so a visit logged against one
+  // location still shows up when a teammate opens a sibling location's pin -
+  // matching how the "Recent Check-ins" list already surfaces every visit
+  // regardless of which specific dealer row it's attached to.
+  const dealerById = useMemo(() => {
+    const m = new Map<string, Dealer>();
+    for (const d of dealersWithMeta) m.set(d.id, d);
+    return m;
+  }, [dealersWithMeta]);
+
   const dealerCheckIns = useMemo(() => {
     if (!selected) return [];
+    const nameKey = selected.name.trim().toLowerCase();
+    const siblingIds = new Set(
+      dealersWithMeta
+        .filter((d) => d.name.trim().toLowerCase() === nameKey)
+        .map((d) => d.id),
+    );
     return checkIns
-      .filter((c) => c.dealer_id === selected.id)
+      .filter((c) => siblingIds.has(c.dealer_id))
       .sort((a, b) => (a.visit_date < b.visit_date ? 1 : -1));
-  }, [selected, checkIns]);
+  }, [selected, checkIns, dealersWithMeta]);
 
   const deleteDealer = async (dealer: Dealer) => {
     if (!confirm(`Delete ${dealer.name}? This removes the pin and all its check-ins.`)) return;
@@ -2024,6 +2043,16 @@ export default function CheckInsPage() {
                             </div>
                             <p className="text-[11px] text-muted-foreground mt-0.5">
                               Logged by {userNames[c.user_id] ?? (c.user_id === user?.id ? "You" : "Unknown")}
+                              {c.dealer_id !== selected.id && (() => {
+                                const loc = dealerById.get(c.dealer_id);
+                                const addr = loc ? [loc.city, loc.state].filter(Boolean).join(", ") : "";
+                                return (
+                                  <>
+                                    {" "}
+                                    <span className="italic">— {addr || "other location"}</span>
+                                  </>
+                                );
+                              })()}
                             </p>
                             {c.notes && (
                               <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap line-clamp-2">

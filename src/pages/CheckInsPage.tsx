@@ -914,6 +914,25 @@ export default function CheckInsPage() {
       .sort((a, b) => (a.visit_date < b.visit_date ? 1 : -1));
   }, [selected, checkIns]);
 
+  // Retailers with more than one physical location get a separate pin per
+  // address, each with its own check-in history. Surface the sibling pins
+  // here so it's obvious a visit might be logged under a different one
+  // instead of looking like missing data.
+  const siblingDealers = useMemo(() => {
+    if (!selected) return [];
+    const nameKey = selected.name.trim().toLowerCase();
+    return dealersWithMeta.filter(
+      (d) => d.id !== selected.id && d.name.trim().toLowerCase() === nameKey,
+    );
+  }, [selected, dealersWithMeta]);
+
+  const goToSibling = (d: Dealer) => {
+    setSelected(d);
+    if (d.lat != null && d.lng != null) {
+      mapRef.current?.flyTo({ center: [d.lng, d.lat], zoom: 12, duration: 600 });
+    }
+  };
+
   const deleteDealer = async (dealer: Dealer) => {
     if (!confirm(`Delete ${dealer.name}? This removes the pin and all its check-ins.`)) return;
     // Delete child check-ins first (no cascade)
@@ -1518,6 +1537,33 @@ export default function CheckInsPage() {
                     .join(", ") || "Location unknown"}
                 </SheetDescription>
               </SheetHeader>
+
+              {siblingDealers.length > 0 && (
+                <div className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs">
+                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                    {siblingDealers.length === 1
+                      ? "There's another location on the map for this retailer:"
+                      : `There are ${siblingDealers.length} other locations on the map for this retailer:`}
+                  </p>
+                  <p className="text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                    Check-ins are logged per address — this location only shows its own history.
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {siblingDealers.map((d) => (
+                      <Button
+                        key={d.id}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[11px] px-2 bg-white/60 dark:bg-transparent"
+                        onClick={() => goToSibling(d)}
+                      >
+                        {[d.city, d.state].filter(Boolean).join(", ") || "View location"}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 space-y-4">
                 <div className="rounded-lg border bg-card">

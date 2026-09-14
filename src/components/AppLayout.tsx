@@ -105,7 +105,7 @@ const NAV_SECTIONS: NavSection[] = [
     id: "network",
     label: "Dealer Network",
     items: [
-      { title: "Dealers", url: "/dealers", icon: Store, roles: ["admin", "manager", "rep"] },
+      { title: "Dealers", url: "/dealers", icon: Store, roles: ["admin", "manager"] },
       { title: "Directory",  url: "/directory", icon: BookOpen, roles: ["admin", "manager"] },
     ],
   },
@@ -113,7 +113,7 @@ const NAV_SECTIONS: NavSection[] = [
     id: "ops",
     label: "Inventory & Reporting",
     items: [
-      { title: "Inventory", url: "/inventory", icon: Boxes, roles: ["admin", "manager", "rep", "dealer"] },
+      { title: "Inventory", url: "/inventory", icon: Boxes, roles: ["admin", "manager", "dealer"] },
     ],
   },
   {

@@ -25,6 +25,11 @@ import {
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { useRepTargets, TARGET_MONTHS, type RepTarget } from "@/hooks/useRepTargets";
 import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCutoff";
+import { useAuth } from "@/contexts/AuthContext";
+
+// Ahead/Behind/Open Territories summary cards are still being validated -
+// restricted to Gabriella's account only until ready for everyone.
+const SUMMARY_CARDS_VISIBLE_TO_EMAIL = "gabriella@lineage-collections.com";
 
 // Booking data is only trusted from this date onwards.
 // Used to clamp query start dates before any fetch — not applied post-aggregation.
@@ -508,6 +513,8 @@ interface Props {
 
 export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions, managerId }: Props) {
   const today = getReportingToday();
+  const { user } = useAuth();
+  const showSummaryCards = (user?.email ?? "").toLowerCase() === SUMMARY_CARDS_VISIBLE_TO_EMAIL;
 
   const [groupBy, setGroupBy]         = useState<GroupBy>(initialGroupBy);
   // Default primary to YTD (clamped to the report cutoff) because Display
@@ -1352,7 +1359,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     <div className="space-y-4">
 
       {/* ── B1. Summary Cards (Ahead / Behind / Open Territories) ─── */}
-      {useRpcMode && compareMode !== "none" && (
+      {showSummaryCards && useRpcMode && compareMode !== "none" && (
         <div className={cn("grid gap-3", groupBy === "rep" ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
           <Card>
             <CardContent className="p-5">

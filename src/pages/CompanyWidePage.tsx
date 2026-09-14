@@ -104,12 +104,15 @@ export default function CompanyWidePage() {
 
   const activeReportMeta = visibleReports.find((r) => r.key === activeReport)!;
 
-  // Manager scope → list of rep ids the user is allowed to see
+  // Manager scope → list of rep ids the user is allowed to see. A rep can
+  // be linked to more than one sales_reps row (multiple territories under
+  // separate Acctivate codes, e.g. Jordan Shindell covers both PA/OH and
+  // Beach) — include all of them, not just the first.
   const managerScopeRepIds = useMemo<string[] | null>(() => {
-    if (isRep && roleInfo?.repId) return [roleInfo.repId];
+    if (isRep && roleInfo?.repIds?.length) return roleInfo.repIds;
     if (effectiveManagerId === "all") return null;
     return reps.filter((r) => r.manager_id === effectiveManagerId).map((r) => r.id);
-  }, [isRep, roleInfo?.repId, effectiveManagerId, reps]);
+  }, [isRep, roleInfo?.repIds, effectiveManagerId, reps]);
 
   const managerName = effectiveManagerId === "all"
     ? undefined

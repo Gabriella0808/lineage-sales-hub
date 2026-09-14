@@ -123,6 +123,12 @@ export function HighPointAppointmentsModule() {
   const isManager = roleInfo?.isManager ?? false;
   const isRep     = roleInfo?.isRep     ?? false;
   const currentRepId     = roleInfo?.repId     ?? null;
+  // A rep can be linked to more than one sales_reps row (multiple
+  // territories under separate Acctivate codes, e.g. Jordan Shindell covers
+  // both PA/OH and Beach) — market_appointments.rep_id points at exactly
+  // one of those rows per appointment, so a rep's own leads can be spread
+  // across several rep_id values.
+  const currentRepIds     = roleInfo?.repIds ?? [];
   const currentManagerId = roleInfo?.managerId ?? null;
 
   // Event / phase
@@ -447,10 +453,11 @@ export function HighPointAppointmentsModule() {
       .order("appointment_day", { ascending: true, nullsFirst: false })
       .order("appointment_time", { ascending: true, nullsFirst: false });
     // Belt-and-suspenders client-side filter — the real enforcement is the
-    // "rep_id = current_rep_id()" RLS SELECT policy on market_appointments,
-    // so an unmapped rep (currentRepId null) already gets zero rows from the
-    // server regardless of this filter.
-    if (isRep) query = query.eq("rep_id", currentRepId ?? "__no_rep_mapped__");
+    // "rep_id IN (current_rep_ids())" RLS SELECT policy on market_appointments,
+    // so an unmapped rep (currentRepIds empty) already gets zero rows from
+    // the server regardless of this filter. .in() with multiple ids covers
+    // a rep spanning several territories (several rep_id values).
+    if (isRep) query = query.in("rep_id", currentRepIds.length ? currentRepIds : ["__no_rep_mapped__"]);
     const { data, error } = await query;
     if (error) { toast.error(error.message); setLoading(false); return; }
     setAppointments((data ?? []) as unknown as MarketAppt[]);
@@ -576,7 +583,7 @@ export function HighPointAppointmentsModule() {
 
   const openNew = () => {
     setEditingId(null);
-    setForm({ ...emptyForm(phase), rep_id: isRep ? (currentRepId ?? "") : "" });
+    setForm({ ...emptyForm(phase), rep_id: isRep ? (currentRepIds[0] ?? "") : "" });
     setFormOpen(true);
   };
 
@@ -603,7 +610,14 @@ export function HighPointAppointmentsModule() {
     if (form.buyer_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.buyer_email))
       return toast.error("Invalid email address");
 
-    const repId = isRep ? (currentRepId ?? "") : form.rep_id;
+    // Trust form.rep_id (correctly pre-filled by openNew/openEdit, and by the
+    // rep picker below for a multi-territory rep) rather than always forcing
+    // it back to the caller's own id — that used to silently reassign an
+    // existing appointment's territory on every edit. Still constrained to
+    // one of the rep's own ids as a safety net; RLS enforces this too.
+    const repId = isRep
+      ? (currentRepIds.includes(form.rep_id) ? form.rep_id : (currentRepIds[0] ?? ""))
+      : form.rep_id;
     if (!repId) return toast.error("Please select a rep");
 
     const payload = {
@@ -676,7 +690,7 @@ export function HighPointAppointmentsModule() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (isRep && !currentRepId) {
+  if (isRep && currentRepIds.length === 0) {
     return <RepNotConfigured />;
   }
 
@@ -1066,7 +1080,7 @@ export function HighPointAppointmentsModule() {
         <SheetContent className="sm:max-w-md overflow-y-auto">
           <SheetHeader className="text-left">
             <SheetTitle>{editingId ? "Edit Lead" : "Add Trade Show Lead"}</SheetTitle>
-            {(isAdmin || isManager) && !isRep && form.rep_id && (
+            {((isAdmin || isManager) || (isRep && currentRepIds.length > 1)) && form.rep_id && (
               <SheetDescription>
                 For: {reps.find((r) => r.id === form.rep_id)?.name ?? "Selected rep"}
               </SheetDescription>
@@ -1074,13 +1088,28 @@ export function HighPointAppointmentsModule() {
           </SheetHeader>
 
           <div className="mt-5 space-y-4">
-            {/* Rep selector — managers/admins only; reps always submit as themselves */}
+            {/* Rep selector — admins/managers get every rep; a rep spanning
+                multiple territories gets a selector locked to just their own
+                identities; a single-territory rep always submits as themselves,
+                no selector shown. */}
             {(isAdmin || isManager) && (
               <FormField label="Rep" required>
                 <Select value={form.rep_id} onValueChange={(v) => setForm({ ...form, rep_id: v })}>
                   <SelectTrigger><SelectValue placeholder="Select rep…" /></SelectTrigger>
                   <SelectContent>
                     {visibleReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            )}
+            {isRep && currentRepIds.length > 1 && (
+              <FormField label="Territory" required>
+                <Select value={form.rep_id} onValueChange={(v) => setForm({ ...form, rep_id: v })}>
+                  <SelectTrigger><SelectValue placeholder="Select territory…" /></SelectTrigger>
+                  <SelectContent>
+                    {reps.filter((r) => currentRepIds.includes(r.id)).map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </FormField>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,22 @@ interface UserRow {
 
 interface ManagerOpt { id: string; name: string }
 interface RepOpt { id: string; name: string }
+
+// supabase-js only gives a generic "Edge Function returned a non-2xx status
+// code" message on error - the function's own { error: "..." } body is on
+// error.context (a raw Response) and has to be read separately.
+async function getInvokeErrorMessage(error: any): Promise<string | undefined> {
+  if (!error) return undefined;
+  if (error instanceof FunctionsHttpError && error.context) {
+    try {
+      const body = await error.context.json();
+      if (body?.error) return body.error as string;
+    } catch {
+      // fall through to the generic message below
+    }
+  }
+  return error.message;
+}
 
 export default function SettingsPage() {
   const { data: roleInfo } = useUserRole();
@@ -215,7 +232,8 @@ function RoleAdminPanel() {
     });
     setCreating(false);
     if (error || (data as any)?.error) {
-      toast({ title: "Couldn't create user", description: error?.message ?? (data as any)?.error, variant: "destructive" });
+      const message = error ? await getInvokeErrorMessage(error) : (data as any)?.error;
+      toast({ title: "Couldn't create user", description: message, variant: "destructive" });
       return;
     }
     toast({ title: "User created", description: `${newEmail} added as ${newRole}.` });
@@ -231,7 +249,8 @@ function RoleAdminPanel() {
     });
     setSavingId(null);
     if (error || (data as any)?.error) {
-      toast({ title: "Couldn't delete user", description: error?.message ?? (data as any)?.error, variant: "destructive" });
+      const message = error ? await getInvokeErrorMessage(error) : (data as any)?.error;
+      toast({ title: "Couldn't delete user", description: message, variant: "destructive" });
       return;
     }
     toast({ title: "User deleted" });

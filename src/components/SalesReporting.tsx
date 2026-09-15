@@ -648,6 +648,29 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     [primaryLines, compLines, compareMode],
   );
 
+  // ── Filter-option source data (Brand/Category + SKU) ─────────────────────
+  // get_sales_reporting_grouped_rows (RPC/Total-display mode) only returns
+  // aggregated totals — it never returns distinct brand_category/sku values —
+  // so the Brand/Category and SKU dropdowns need line-level data regardless
+  // of which mode (RPC vs. line) is powering the table/KPIs. These reuse the
+  // exact same query keys as the primary/comparative fetches above (same
+  // dates), so React Query dedupes: when those are already enabled (line
+  // mode) this adds zero extra network calls; it only fetches when RPC mode
+  // had them switched off. Deliberately NOT used for aggregation/KPIs/table
+  // rows — those still branch on useRpcMode exactly as before.
+  const { data: optionsPrimaryInvoiced = [] } = usePortalInvoicedLines(primary.from, primary.to, true);
+  const { data: optionsPrimaryBookings = [] } = usePortalBookingLines(primBkFrom, primary.to, primBkEnabled);
+  const { data: optionsCompInvoiced    = [] } = usePortalInvoicedLines(comparative.from, comparative.to, compareMode !== "none");
+  const { data: optionsCompBookings    = [] } = usePortalBookingLines(compBkFrom, comparative.to, compareMode !== "none" && compBkEnabled);
+
+  const optionsPrimaryLines = metric === "invoices" ? optionsPrimaryInvoiced : optionsPrimaryBookings;
+  const optionsCompLines    = metric === "invoices" ? optionsCompInvoiced    : optionsCompBookings;
+
+  const optionLines = useMemo(
+    () => compareMode === "none" ? optionsPrimaryLines : [...optionsPrimaryLines, ...optionsCompLines],
+    [optionsPrimaryLines, optionsCompLines, compareMode],
+  );
+
   // ── Hierarchical filter helpers ───────────────────────────────────────────
 
   const visibleReps = useMemo(() => {
@@ -901,20 +924,23 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // ── Filter options from view data ─────────────────────────────────────────
 
   const allBrandCategories = useMemo(() =>
-    Array.from(new Set(repLines.map((l) =>
-      l.brand_category ?? (l.metric_type === "invoiced" ? "Historical Invoice" : null)
-    ).filter(Boolean) as string[])).sort(),
-  [repLines]);
+    Array.from(new Set(optionLines.map((l) => {
+      const raw = l.brand_category?.trim();
+      return raw ? raw : (l.metric_type === "invoiced" ? "Historical Invoice" : null);
+    }).filter(Boolean) as string[])).sort(),
+  [optionLines]);
 
   const skuLabelMap = useMemo(() => {
     const map = new Map<string, string>();
-    for (const l of repLines) {
-      if (l.sku && !map.has(l.sku)) {
-        map.set(l.sku, l.description ? `${l.sku} – ${l.description}` : l.sku);
+    for (const l of optionLines) {
+      const sku = l.sku?.trim();
+      if (sku && !map.has(sku)) {
+        const desc = l.description?.trim();
+        map.set(sku, desc ? `${sku} – ${desc}` : sku);
       }
     }
     return map;
-  }, [repLines]);
+  }, [optionLines]);
 
   const brandCategorySet = useMemo(() => new Set(brandCategories), [brandCategories]);
   const skuSet           = useMemo(() => new Set(skus),            [skus]);
@@ -1553,6 +1579,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
           {/* Row 3: Dimension filters */}
           <div className="pt-3 border-t flex flex-wrap items-end gap-3">
+            {!isRep && (
             <MultiSelect
               label="Territory" selected={territoryIds} onChange={setTerritoryIds}
               options={[
@@ -1561,15 +1588,16 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               ]}
               searchable searchPlaceholder="Search territory…"
             />
+            )}
+            {!isRep && (
             <MultiSelect
               label="Rep" selected={repIds} onChange={setRepIds}
-              disabled={isRep}
-              disabledReason={isRep ? "Locked to your own rep scope" : undefined}
               options={visibleReps.map((r) => ({
                 value: r.id,
                 label: (r.acctivate_id && acctivateNameByCode.get(r.acctivate_id.toLowerCase())) || r.name,
               }))}
             />
+            )}
             <MultiSelect
               label="Dealer" selected={dealerIds} onChange={setDealerIds}
               options={visibleDealers.map((d) => ({ value: d.id, label: d.name }))}

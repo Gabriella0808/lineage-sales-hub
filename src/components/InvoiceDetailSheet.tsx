@@ -280,11 +280,6 @@ const EXCLUDED_BRAND_CATS = new Set([
   "freight", "tax", "surcharge", "qc",
 ]);
 
-function isSalesBrandCat(bc: string | null): boolean {
-  if (!bc || bc.trim() === "") return false;
-  return !EXCLUDED_BRAND_CATS.has(bc.toLowerCase().trim());
-}
-
 // ── Hierarchy ─────────────────────────────────────────────────────────────────
 //
 // Level 1: brand_category  (e.g. "Sea Winds", "Finn & Lou", "Lux")
@@ -314,9 +309,18 @@ function buildHierarchy(lines: ViewLine[]): BrandEntry[] {
   }
 
   for (const l of lines) {
-    if (!isSalesBrandCat(l.brand_category)) continue;
-
-    const brandKey = l.brand_category!;
+    const bcRaw = l.brand_category?.trim();
+    // Excluded codes (freight/tax/tariff/surcharge/qc/ccfee) are never real
+    // brand sales — always skip those regardless of metric type.
+    if (bcRaw && EXCLUDED_BRAND_CATS.has(bcRaw.toLowerCase())) continue;
+    // A blank/null brand_category on an invoiced line is legacy/historical
+    // data missing brand attribution — bucket it as "Historical Invoice"
+    // (same label SalesReporting.tsx's summary uses) instead of silently
+    // dropping it, so this total still reconciles with the header total
+    // above, which sums ALL matching lines regardless of brand_category.
+    // Bookings lines with no brand_category are excluded, unchanged.
+    const brandKey = bcRaw || (l.metric_type === "invoiced" ? "Historical Invoice" : null);
+    if (!brandKey) continue;
     if (!brandMap.has(brandKey)) brandMap.set(brandKey, { total: 0, classMap: new Map() });
     const brand = brandMap.get(brandKey)!;
     brand.total += Number(l.amount);
@@ -686,6 +690,7 @@ export function InvoiceDetailSheet({
   const primActive = makeFetchLines
     ? allLines
     : (activeMetricType === "bookings" ? primBookings : primInvoiced);
+  const grandTotal = useMemo(() => sumAmount(primActive), [primActive]);
 
   // ── Stat card totals ──────────────────────────────────────────────────────────
   // CANONICAL SOURCE: in RPC mode, primaryBookingsAmt/primaryInvoicedAmt come
@@ -702,8 +707,20 @@ export function InvoiceDetailSheet({
   // full stop — the drawer can only ever agree with it or be visibly broken
   // (surfaced via detailRowsMismatch below), never silently show a different
   // number.
-  const displayBookingsAmt = makeFetchLines ? primaryBookingsAmt : primBookingsTotal;
-  const displayInvoicedAmt = makeFetchLines ? primaryInvoicedAmt : primInvoicedTotal;
+  // The parent total above is only valid for the "Same as report" period —
+  // it's computed for the report's own date range, not whatever period the
+  // user may have picked in this drawer's own Period selector. Once preset
+  // is anything else, there's no parent total for that window to defer to,
+  // so the freshly-fetched, already period-scoped detail lines (grandTotal)
+  // become authoritative instead — same dataset that already drives the
+  // Line Detail breakdown below, so the two stay in agreement.
+  const isReportPeriod = preset === "report";
+  const displayBookingsAmt = makeFetchLines
+    ? (isReportPeriod ? primaryBookingsAmt : grandTotal)
+    : primBookingsTotal;
+  const displayInvoicedAmt = makeFetchLines
+    ? (isReportPeriod ? primaryInvoicedAmt : grandTotal)
+    : primInvoicedTotal;
 
   // The canonical total for whichever metric is active right now.
   const canonicalActiveTotal = metric === "bookings" ? displayBookingsAmt : displayInvoicedAmt;
@@ -747,7 +764,6 @@ export function InvoiceDetailSheet({
 
   // ── Derived breakdowns — all from primActive ──────────────────────────────────
   const hierarchy  = useMemo(() => buildHierarchy(primActive), [primActive]);
-  const grandTotal = useMemo(() => sumAmount(primActive),       [primActive]);
 
   // ── Accordion helpers ─────────────────────────────────────────────────────────
   function toggle(set: Set<string>, setSet: (s: Set<string>) => void, key: string) {

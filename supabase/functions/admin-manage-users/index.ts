@@ -106,7 +106,11 @@ Deno.serve(async (req) => {
       // cascade - null it out rather than deleting the sales data itself.
       await admin.from("clearance_weekly_sales").update({ imported_by: null }).eq("imported_by", targetId);
       const { error } = await admin.auth.admin.deleteUser(targetId);
-      if (error) return json({ error: error.message }, 500);
+      // Role/link rows for this id are already cleaned up above. If the auth
+      // account itself is already gone (e.g. removed some other way in the
+      // past, leaving orphaned rows behind), that's the same end state we
+      // were trying to reach - treat "not found" as success, not a failure.
+      if (error && error.status !== 404) return json({ error: error.message }, 500);
       return json({ ok: true });
     }
 

@@ -522,8 +522,8 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "manager_tasks" }, (payload) => {
         setTasks((prev) => prev.map((t) => t.id === (payload.new as Task).id ? { ...t, ...(payload.new as Task) } : t));
       })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "manager_tasks" }, () => load())
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "manager_tasks" }, () => load())
+            .on("postgres_changes", { event: "INSERT", schema: "public", table: "manager_tasks" }, () => load(true))
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "manager_tasks" }, () => load(true))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [load]);

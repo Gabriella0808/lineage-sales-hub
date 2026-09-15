@@ -221,7 +221,7 @@ export function ReportIssueDialog({ open, onOpenChange }: { open: boolean; onOpe
             <DialogHeader>
               <DialogTitle>Issue reported</DialogTitle>
               <DialogDescription>
-                Thanks — your report has been sent to the portal team.
+                Thanks - your report has been sent to the portal team.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

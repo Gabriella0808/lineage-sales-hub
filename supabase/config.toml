@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.submit-quote]
 verify_jwt = true
 
+[functions.report-portal-issue]
+verify_jwt = true
+
 [functions.list-monday-boards]
 verify_jwt = false
 

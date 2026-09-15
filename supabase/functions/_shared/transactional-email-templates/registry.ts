@@ -21,6 +21,7 @@ import { template as salesManagerWeeklyReview } from './sales-manager-weekly-rev
 import { template as salesManagerWeeklyReviewMissing } from './sales-manager-weekly-review-missing.tsx'
 import { template as dailyPerformanceReport } from './daily-performance-report.tsx'
 import { template as laborDayPromoReport } from './labor-day-promo-report.tsx'
+import { template as portalIssueReport } from './portal-issue-report.tsx'
 
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
@@ -36,4 +37,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'sales-manager-weekly-review-missing': salesManagerWeeklyReviewMissing,
   'daily-performance-report': dailyPerformanceReport,
   'labor-day-promo-report': laborDayPromoReport,
+  'portal-issue-report': portalIssueReport,
 }

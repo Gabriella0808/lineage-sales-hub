@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
 import { RepNotConfigured } from "@/components/RepNotConfigured";
+import { useRegisterReportContext } from "@/contexts/ReportContextProvider";
 
 // ── Config ─────────────────────────────────────────────────────────────────────
 //
@@ -172,6 +173,21 @@ export default function LaborDayPromoPage() {
   const [expandedReps, setExpandedReps]               = useState<Set<string>>(new Set());
   const [expandedDealers, setExpandedDealers]         = useState<Set<string>>(new Set());
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set());
+
+  // Publish the currently-active filters for the global Report Issue dialog
+  // (read-only — never changes filter behavior, only lets a bug report
+  // include a snapshot of what the reporter was looking at).
+  const reportContext = useMemo(() => ({
+    page: "Labor Day Promo",
+    repFilter,
+    dealerFilter,
+    dateFrom: dateFrom || null,
+    dateTo: dateTo || null,
+    usingPromoRange,
+    showUnmatched,
+    search: search || null,
+  }), [repFilter, dealerFilter, dateFrom, dateTo, usingPromoRange, showUnmatched, search]);
+  useRegisterReportContext(reportContext);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 

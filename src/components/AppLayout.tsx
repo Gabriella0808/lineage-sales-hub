@@ -1,9 +1,8 @@
 import { useState } from "react";
 import {
-  LayoutDashboard, Store, BookOpen, BarChart3, Settings,
-  UserCog, LogOut, ListChecks, Boxes, MapPinned, Plane, PieChart,
-  ChevronDown, Megaphone, ClipboardList, Compass, Network, RefreshCw, Target, Package, ShoppingCart,
-  FileText, Send, FolderOpen, Tag, Database, ChevronLeft, ChevronRight, AudioLines,
+  LayoutDashboard, LogOut,
+  ChevronDown, Compass, RefreshCw,
+  ChevronLeft, ChevronRight, AlertCircle,
 } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,122 +10,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";
 import lineageLogo from "@/assets/lineage-logo-white.png";
 import { NavLink } from "@/components/NavLink";
-import { isAllowedEmail, isCustomerService } from "@/components/EmailGuard";
+import { isCustomerService } from "@/components/EmailGuard";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { ReportIssueDialog } from "@/components/ReportIssueDialog";
+import { ReportContextProvider } from "@/contexts/ReportContextProvider";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarHeader,
   SidebarProvider, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
-
-type NavItem = {
-  title: string;
-  url: string;
-  icon: typeof LayoutDashboard;
-  roles: AppRole[];
-  allowEmails?: string[];
-  children?: { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] }[];
-};
-
-type NavSection = {
-  id: string;
-  label: string;
-  items: NavItem[];
-};
-
-/**
- * Lineage Collections - internal operating system navigation.
- * Items are grouped into operational sections so the shell reads
- * like a purpose-built tool, not a generic admin template.
- */
-const NAV_SECTIONS: NavSection[] = [
-  {
-    id: "command",
-    label: "Command Center",
-    items: [
-      { title: "Company-wide",     url: "/",  icon: BarChart3, roles: ["admin"] },
-      { title: "Team Performance", url: "/",  icon: BarChart3, roles: ["manager"] },
-      { title: "My Performance",   url: "/",  icon: BarChart3, roles: ["rep"] },
-      { title: "My Tasks", url: "/tasks", icon: ListChecks, roles: ["admin", "manager", "rep"] },
-      { title: "Meeting Intelligence", url: "/meeting-intelligence", icon: AudioLines, roles: ["admin", "manager"], allowEmails: ["gmaccioni0808@gmail.com"] },
-    ],
-  },
-  {
-    id: "catalog",
-    label: "Products & Orders",
-    items: [
-      { title: "Product Catalog", url: "/catalog", icon: Package, roles: ["admin", "manager", "rep", "dealer"] },
-      { title: "Cart", url: "/cart", icon: ShoppingCart, roles: ["admin", "manager", "rep", "dealer"] },
-      { title: "My Quotes", url: "/my-quotes", icon: FileText, roles: ["admin", "manager", "rep", "dealer"] },
-      { title: "Customer Quotes", url: "/customer-quotes", icon: Send, roles: ["admin", "manager", "rep", "dealer"] },
-      { title: "Digital Assets", url: "/digital-assets", icon: FolderOpen, roles: ["admin", "manager", "rep", "dealer"] },
-    ],
-  },
-  {
-    id: "sales",
-    label: "Sales Operations",
-    items: [
-    {
-      title: "Sales Targets",
-      url: "/sales-targets",
-      icon: Target,
-      roles: ["admin", "manager"],
-    },
-    {
-      title: "Field Check-Ins",
-      url: "/check-ins",
-      icon: MapPinned,
-      roles: ["admin", "manager"],
-      children: [
-        { title: "Prospects", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
-        { title: "Prospect Reporting", url: "/prospects/reporting", icon: BarChart3, roles: ["admin", "manager"] },
-        { title: "Visit Analytics", url: "/check-ins/analytics", icon: PieChart, roles: ["admin", "manager"] },
-      ],
-    },
-      { title: "Travel Log", url: "/travel-log", icon: Plane, roles: ["admin", "manager"] },
-      {
-        title: "Trade Show Leads", url: "/trade-show-leads", icon: Megaphone, roles: ["admin", "manager", "rep"],
-        children: [
-          { title: "Capture Leads", url: "/trade-show-leads/capture", icon: ClipboardList, roles: ["admin", "manager"] },
-          { title: "High Point Market Appointments", url: "/trade-show-leads/hp-appointments", icon: ClipboardList, roles: ["admin", "manager", "rep"] },
-        ],
-      },
-      {
-        title: "Sales Initiatives", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager", "rep"],
-        children: [
-          { title: "Labor Day Promo", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager", "rep"] },
-          { title: "Discontinued Products", url: "/clearance", icon: Tag, roles: ["admin", "manager", "rep"] },
-          { title: "Discontinued Analytics", url: "/clearance/analytics", icon: BarChart3, roles: ["admin", "manager"] },
-        ],
-      },
-    ],
-  },
-  {
-    id: "network",
-    label: "Dealer Network",
-    items: [
-      { title: "Dealers", url: "/dealers", icon: Store, roles: ["admin", "manager"] },
-      { title: "Directory",  url: "/directory", icon: BookOpen, roles: ["admin", "manager"] },
-    ],
-  },
-  {
-    id: "ops",
-    label: "Inventory & Reporting",
-    items: [
-      { title: "Inventory", url: "/inventory", icon: Boxes, roles: ["admin", "manager", "dealer"] },
-    ],
-  },
-  {
-    id: "admin",
-    label: "Administration",
-    items: [
-      { title: "Organizational Chart", url: "/org-chart", icon: Network,  roles: ["admin"] },
-      { title: "Sales Managers", url: "/managers", icon: UserCog,  roles: ["admin", "manager"] },
-      { title: "Sales Rep Database (Acctivate)", url: "/reps-acctivate", icon: Database, roles: ["admin"] },
-      { title: "Settings",       url: "/settings", icon: Settings, roles: ["admin", "manager", "rep"] },
-    ],
-  },
-];
+import { getVisibleNavSections, type NavItem } from "@/config/navSections";
 
 function SidebarNavItemRow({
   item, role, collapsed, isOpen, onToggleGroup, closeOnMobile,
@@ -202,25 +95,9 @@ function SidebarNav() {
   const role: AppRole = roleInfo?.role ?? "rep";
   const location = useLocation();
   const { user } = useAuth();
+  const [reportIssueOpen, setReportIssueOpen] = useState(false);
 
-  const cs = isCustomerService(user?.email);
-  const CS_ALLOWED = new Set(["/", "/tasks", "/dealers", "/settings"]);
-
-  const sections = NAV_SECTIONS
-    .filter((s) => {
-      if (cs) return true;
-      if (s.id === "catalog") return isAllowedEmail(user?.email);
-      return true;
-    })
-    .map((s) => ({
-      ...s,
-      items: s.items
-        .filter((i) => (cs ? CS_ALLOWED.has(i.url) : i.roles.includes(role)))
-        .filter((i) => !(i.url === "/org-chart" && user?.email?.toLowerCase() === "andrew@lineage-collections.com"))
-        .filter((i) => !i.allowEmails || (!!user?.email && i.allowEmails.map(e => e.toLowerCase()).includes(user.email.toLowerCase())))
-        .map((i) => (cs ? { ...i, children: undefined } : i)),
-    }))
-    .filter((s) => s.items.length > 0);
+  const sections = getVisibleNavSections(role, user);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -281,6 +158,22 @@ function SidebarNav() {
         </nav>
       </SidebarContent>
 
+      <div className="px-2 pt-1 pb-1 border-t border-sidebar-border/70">
+        <button
+          type="button"
+          onClick={() => { setReportIssueOpen(true); closeOnMobile(); }}
+          className={cn(
+            "w-full flex items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-sidebar-foreground/70",
+            "hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
+            collapsed && "justify-center",
+          )}
+        >
+          <AlertCircle className="h-[15px] w-[15px] shrink-0" />
+          {!collapsed && <span className="truncate">Report Issue</span>}
+        </button>
+      </div>
+
       <SidebarFooter className="p-3 border-t border-sidebar-border/70">
         <div className="flex items-center gap-3 px-1.5">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center overflow-hidden">
@@ -295,6 +188,8 @@ function SidebarNav() {
         </div>
       </SidebarFooter>
     </Sidebar>
+
+    <ReportIssueDialog open={reportIssueOpen} onOpenChange={setReportIssueOpen} />
 
     {/* Floating collapse toggle at sidebar edge (desktop only) */}
     {!isMobile && (
@@ -321,28 +216,30 @@ function SidebarNav() {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const defaultOpen = typeof window === "undefined" ? true : window.innerWidth >= 1024;
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
-      <div className="min-h-screen flex w-full bg-background">
-        <SidebarNav />
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-14 flex items-center border-b border-border/70 px-3 sm:px-5 bg-card/80 backdrop-blur shrink-0 gap-2 sm:gap-3">
-            <SidebarTrigger className="mr-1 shrink-0 lg:hidden" />
-            <div className="flex-1" />
-            <span className="text-xs text-muted-foreground hidden lg:inline tabular-nums">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-            </span>
-            <span className="text-xs text-muted-foreground hidden sm:inline lg:hidden tabular-nums">
-              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-            </span>
-            <RefreshUpdatesButton />
-            <SignOutButton />
-          </header>
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
-            {children}
-          </main>
+    <ReportContextProvider>
+      <SidebarProvider defaultOpen={defaultOpen}>
+        <div className="min-h-screen flex w-full bg-background">
+          <SidebarNav />
+          <div className="flex-1 flex flex-col min-w-0">
+            <header className="h-14 flex items-center border-b border-border/70 px-3 sm:px-5 bg-card/80 backdrop-blur shrink-0 gap-2 sm:gap-3">
+              <SidebarTrigger className="mr-1 shrink-0 lg:hidden" />
+              <div className="flex-1" />
+              <span className="text-xs text-muted-foreground hidden lg:inline tabular-nums">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+              </span>
+              <span className="text-xs text-muted-foreground hidden sm:inline lg:hidden tabular-nums">
+                {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+              <RefreshUpdatesButton />
+              <SignOutButton />
+            </header>
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </ReportContextProvider>
   );
 }
 

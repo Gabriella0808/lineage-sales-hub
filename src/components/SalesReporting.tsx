@@ -27,6 +27,7 @@ import { useRepTargets, TARGET_MONTHS, type RepTarget } from "@/hooks/useRepTarg
 import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCutoff";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useRegisterReportContext } from "@/contexts/ReportContextProvider";
 
 // Ahead/Behind/Open Territories summary cards are still being validated -
 // restricted to Gabriella's account only until ready for everyone.
@@ -575,6 +576,26 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // Free-text filter on the results table only — narrows which rows show,
   // doesn't touch the underlying fetch/filters/KPIs above it.
   const [rowSearch, setRowSearch] = useState("");
+
+  // Publish the currently-active filters for the global Report Issue dialog
+  // (read-only — this never changes what any filter does, it only lets a bug
+  // report include a snapshot of what the reporter was looking at).
+  const reportContext = useMemo(() => ({
+    page: "Dealer/Rep Reporting",
+    groupBy,
+    metric,
+    display,
+    compareMode,
+    dateRange: { from: format(primary.from, "yyyy-MM-dd"), to: format(primary.to, "yyyy-MM-dd") },
+    compareRange: compareMode === "none" ? null : { from: format(comparative.from, "yyyy-MM-dd"), to: format(comparative.to, "yyyy-MM-dd") },
+    territoryIds,
+    repIds,
+    dealerIds,
+    brandCategories,
+    skus,
+    rowSearch: rowSearch || null,
+  }), [groupBy, metric, display, compareMode, primary, comparative, territoryIds, repIds, dealerIds, brandCategories, skus, rowSearch]);
+  useRegisterReportContext(reportContext);
 
   // ── Portal reference data ─────────────────────────────────────────────────
 

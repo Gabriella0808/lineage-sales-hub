@@ -36,6 +36,15 @@ const DEALER_GOAL   = 5000;
 const CUTOFF_DATE_ET = "2026-09-15"; // last day this email should send (inclusive)
 const UNCLASSIFIED   = "Unclassified Collection"; // mirrors LaborDayPromoPage.tsx
 
+// Reporting window for which LD26 activity counts toward the totals below —
+// must stay in sync with REPORTING_START/REPORTING_END in
+// src/pages/LaborDayPromoPage.tsx. Deliberately NOT the promotions table's
+// start_date/end_date (the official Sep 4-14 *display* dates) — this email
+// has no date-range text to keep in sync with those, only totals, so it
+// should always reflect the same widened data window the portal page uses.
+const REPORTING_START = "2026-08-25";
+const REPORTING_END   = "2026-09-15";
+
 // ── Timezone helpers ──────────────────────────────────────────────────────────
 
 function getTodayET(): string {
@@ -249,8 +258,8 @@ Deno.serve(async (req) => {
     }
 
     // ── 1. Fetch participant roster + LD26 booking lines (same source as the
-    //        portal page) + optional promo date range ──────────────────────
-    const [participantsRes, salesRes, promoRes] = await Promise.all([
+    //        portal page) ────────────────────────────────────────────────────
+    const [participantsRes, salesRes] = await Promise.all([
       supabase
         .from("labor_day_2026_participants")
         .select("cust_id,company_name,dealer_name,salesperson_id,salesperson_name")
@@ -261,11 +270,6 @@ Deno.serve(async (req) => {
         .select("transaction_date,customer_id,product_class,amount")
         .eq("metric_type", "bookings")
         .eq("discount_code", DISCOUNT_CODE),
-      supabase
-        .from("promotions")
-        .select("start_date,end_date")
-        .eq("slug", "labor-day-promo")
-        .maybeSingle(),
     ]);
 
     if (participantsRes.error) throw participantsRes.error;
@@ -279,17 +283,13 @@ Deno.serve(async (req) => {
       salesperson_name: r.salesperson_name ?? null,
     }));
 
-    const dateFrom = promoRes.data?.start_date ?? null;
-    const dateTo   = promoRes.data?.end_date ?? null;
-
     let lines: SalesLine[] = (salesRes.data ?? []).map((r: any) => ({
       transaction_date: String(r.transaction_date ?? ""),
       customer_id:      r.customer_id ?? "",
       product_class:    r.product_class ?? null,
       amount:            Number(r.amount) || 0,
     }));
-    if (dateFrom) lines = lines.filter((l) => l.transaction_date >= dateFrom);
-    if (dateTo)   lines = lines.filter((l) => l.transaction_date <= dateTo);
+    lines = lines.filter((l) => l.transaction_date >= REPORTING_START && l.transaction_date <= REPORTING_END);
 
     // ── 2. Match sales to the roster (normalized customer_id) — participant-
     //        driven: every roster row appears, $0 sales included. Grouped by

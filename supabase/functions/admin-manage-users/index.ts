@@ -102,6 +102,9 @@ Deno.serve(async (req) => {
       await admin.from("user_managers").delete().eq("user_id", targetId);
       await admin.from("user_reps").delete().eq("user_id", targetId);
       await admin.from("user_dealers").delete().eq("user_id", targetId);
+      // clearance_weekly_sales.imported_by references auth.users with no
+      // cascade - null it out rather than deleting the sales data itself.
+      await admin.from("clearance_weekly_sales").update({ imported_by: null }).eq("imported_by", targetId);
       const { error } = await admin.auth.admin.deleteUser(targetId);
       if (error) return json({ error: error.message }, 500);
       return json({ ok: true });

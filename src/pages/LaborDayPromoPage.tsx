@@ -3,7 +3,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
-import { ChevronDown, ChevronRight, AlertTriangle, UserPlus } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { ChevronDown, ChevronRight, AlertTriangle, UserPlus, CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -162,6 +165,8 @@ export default function LaborDayPromoPage() {
   const [search, setSearch]             = useState("");
   const [usingPromoRange, setUsingPromoRange] = useState(true);
   const [showUnmatched, setShowUnmatched]     = useState(false);
+  const [rangePopoverOpen, setRangePopoverOpen] = useState(false);
+  const [rangeDraft, setRangeDraft] = useState<{ from?: Date; to?: Date } | undefined>(undefined);
 
   // Table expansion
   const [expandedReps, setExpandedReps]               = useState<Set<string>>(new Set());
@@ -696,12 +701,40 @@ export default function LaborDayPromoPage() {
                 {dealerOptions.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>From</span>
-              <Input type="date" value={dateFrom} onChange={e => { setUsingPromoRange(false); setDateFrom(e.target.value); }} className="h-8 text-xs w-[160px] pr-2" />
-              <span>To</span>
-              <Input type="date" value={dateTo} onChange={e => { setUsingPromoRange(false); setDateTo(e.target.value); }} className="h-8 text-xs w-[160px] pr-2" />
-            </div>
+            <Popover
+              open={rangePopoverOpen}
+              onOpenChange={(o) => {
+                setRangePopoverOpen(o);
+                setRangeDraft(o ? { from: dateFrom ? parseISO(dateFrom) : undefined, to: dateTo ? parseISO(dateTo) : undefined } : undefined);
+              }}
+            >
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs justify-start font-normal min-w-[210px]">
+                  <CalendarIcon className="h-3.5 w-3.5 mr-2 shrink-0 text-muted-foreground" />
+                  {dateFrom && dateTo
+                    ? `${format(parseISO(dateFrom), "MMM d, yyyy")} – ${format(parseISO(dateTo), "MMM d, yyyy")}`
+                    : "Select date range"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="range"
+                  numberOfMonths={2}
+                  selected={rangeDraft}
+                  defaultMonth={rangeDraft?.from ?? (dateFrom ? parseISO(dateFrom) : undefined)}
+                  onSelect={(r) => {
+                    setRangeDraft(r);
+                    if (r?.from && r?.to) {
+                      setUsingPromoRange(false);
+                      setDateFrom(format(r.from, "yyyy-MM-dd"));
+                      setDateTo(format(r.to, "yyyy-MM-dd"));
+                      setRangePopoverOpen(false);
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
             {hasPromoRange && (
               <Button size="sm" variant={usingPromoRange ? "secondary" : "outline"} className="h-8 text-xs" onClick={showPromoRange}>
                 Promo dates

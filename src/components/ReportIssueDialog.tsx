@@ -262,7 +262,7 @@ export function ReportIssueDialog({ open, onOpenChange }: { open: boolean; onOpe
                   id="issue-title"
                   value={form.title}
                   maxLength={TITLE_MAX}
-                  placeholder="Bookings total looks incorrect"
+                  placeholder="What is the issue in a few words?"
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   aria-invalid={!!fieldErrors.title}
                 />

@@ -29,6 +29,13 @@ const DISCOUNT_CODE = "LD26";
 const DEALER_GOAL   = 5000;
 const UNCLASSIFIED  = "Unclassified Collection";
 
+// Display dates (Sep 4–14) come from the `promotions` table and drive the
+// date pickers below. Reporting is widened on each side per Justin's request.
+// REPORTING_START is set to the earliest LD26-coded order in the data
+// (2026-08-25) rather than an arbitrary date, so nothing pre-promo is missed.
+const REPORTING_START = "2026-08-25";
+const REPORTING_END   = "2026-09-15";
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Participant {
@@ -322,9 +329,18 @@ export default function LaborDayPromoPage() {
   // ── Match sales lines to the participant roster (normalized customer_id) ─────
 
   const { matchedByCustId, unmatchedLines } = useMemo(() => {
+    // usingPromoRange = true is the default promo view: the date pickers
+    // still show/reset to the official Sep 4–14 window, but counting uses
+    // the wider Sep 1–15 reporting window (a few pre-promo LD26 orders and
+    // a large Sep 15 order need to count). A manual date-picker edit flips
+    // usingPromoRange to false and filters on exactly what was typed, same
+    // as before.
+    const effectiveFrom = usingPromoRange ? REPORTING_START : dateFrom;
+    const effectiveTo   = usingPromoRange ? REPORTING_END   : dateTo;
+
     const dateFiltered = rawLines.filter(line => {
-      if (dateFrom && line.transaction_date < dateFrom) return false;
-      if (dateTo && line.transaction_date > dateTo) return false;
+      if (effectiveFrom && line.transaction_date < effectiveFrom) return false;
+      if (effectiveTo && line.transaction_date > effectiveTo) return false;
       return true;
     });
 
@@ -362,7 +378,7 @@ export default function LaborDayPromoPage() {
       matchedByCustId: matched,
       unmatchedLines: [...unmatchedMap.values()].sort((a, b) => b.total_sales - a.total_sales),
     };
-  }, [rawLines, participants, dateFrom, dateTo]);
+  }, [rawLines, participants, dateFrom, dateTo, usingPromoRange]);
 
   // ── Filter roster (rep / dealer / search) ────────────────────────────────────
 

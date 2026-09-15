@@ -331,7 +331,9 @@ function AssigneePicker({ users, selectedIds, onChange }: AssigneePickerProps) {
 
   const toggle = (id: string) => {
     onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
+    setOpen(false);
   };
+
 
   return (
     <div className="space-y-1.5">

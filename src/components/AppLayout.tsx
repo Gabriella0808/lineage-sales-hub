@@ -149,6 +149,7 @@ function SidebarNavItemRow({
           className={cn(
             "relative flex-1 flex items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-sidebar-foreground/90",
             "hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
             "before:pointer-events-none before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:bg-sidebar-primary before:opacity-0 before:transition-opacity",
           )}
           activeClassName={cn(
@@ -167,7 +168,7 @@ function SidebarNavItemRow({
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleGroup(); }}
             aria-label={`Toggle ${item.title}`}
             aria-expanded={isOpen}
-            className="p-1 mr-1 rounded text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+            className="p-1 mr-1 rounded text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"
           >
             <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
           </button>
@@ -180,7 +181,7 @@ function SidebarNavItemRow({
               <NavLink
                 to={child.url}
                 onClick={closeOnMobile}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-sidebar-muted hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-sidebar-muted hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"
                 activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
               >
                 <span className="truncate">{child.title}</span>
@@ -305,7 +306,8 @@ function SidebarNav() {
         className={cn(
           "hidden lg:flex fixed top-[72px] z-50 h-6 w-6 items-center justify-center rounded-full",
           "bg-sidebar-primary text-sidebar-primary-foreground shadow-md",
-          "hover:bg-sidebar-primary/90 transition-[left,background-color] duration-200"
+          "hover:bg-sidebar-primary/90 transition-[left,background-color] duration-200",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
       >
         <ChevronLeft className={cn("h-3.5 w-3.5", collapsed && "rotate-180")} />

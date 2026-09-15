@@ -170,13 +170,19 @@
   }
 }
 
-/* Globally suppress focus rings across the portal */
+/*
+  Focus treatment — deliberate, not suppressed.
+  Interactive components apply their own `focus-visible:ring-2
+  focus-visible:ring-ring focus-visible:ring-offset-2` (or the sidebar's
+  `ring-sidebar-ring` equivalent) so keyboard focus reads as a crisp,
+  restrained outline rather than the browser default or nothing at all.
+  Mouse/pointer interaction never shows the ring, only keyboard focus does.
+*/
 @layer base {
-  *:focus,
-  *:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
-    --tw-ring-shadow: 0 0 #0000 !important;
-    --tw-ring-offset-shadow: 0 0 #0000 !important;
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: none;
   }
 }

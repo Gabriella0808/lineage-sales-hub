@@ -163,8 +163,8 @@ function SidebarNav() {
           type="button"
           onClick={() => { setReportIssueOpen(true); closeOnMobile(); }}
           className={cn(
-            "w-full flex items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-sidebar-foreground/70",
-            "hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground transition-colors",
+            "w-full flex items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] bg-sidebar-primary text-sidebar-primary-foreground",
+            "hover:bg-sidebar-primary/90 transition-colors",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
             collapsed && "justify-center",
           )}

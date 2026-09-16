@@ -346,6 +346,13 @@ function buildHierarchy(lines: ViewLine[]): BrandEntry[] {
   }
 
   return Array.from(brandMap.entries())
+    // "Historical Invoice" (null-brand_category invoiced lines) is not shown
+    // as its own expandable row here — it's not a real brand. Its dollar
+    // amount is still included in the header/grand total (computed
+    // separately, straight from the raw lines), and surfaced as a small
+    // "unclassified" note near that total so the numbers still reconcile
+    // for anyone comparing the total against the visible rows.
+    .filter(([brandKey]) => brandKey !== "Historical Invoice")
     .map(([brandKey, bv]): BrandEntry => ({
       key: brandKey,
       label: brandKey,
@@ -691,6 +698,14 @@ export function InvoiceDetailSheet({
     ? allLines
     : (activeMetricType === "bookings" ? primBookings : primInvoiced);
   const grandTotal = useMemo(() => sumAmount(primActive), [primActive]);
+  // Dollar total behind the lines buildHierarchy excludes from the visible
+  // breakdown (invoiced lines with no brand_category) — surfaced as a small
+  // note near the Line Detail total so it still visibly reconciles with
+  // grandTotal above, even though there's no expandable row for it anymore.
+  const unclassifiedTotal = useMemo(
+    () => sumAmount(primActive.filter((l) => l.metric_type === "invoiced" && !l.brand_category?.trim())),
+    [primActive],
+  );
 
   // ── Stat card totals ──────────────────────────────────────────────────────────
   // CANONICAL SOURCE: in RPC mode, primaryBookingsAmt/primaryInvoicedAmt come
@@ -1020,14 +1035,27 @@ export function InvoiceDetailSheet({
             )}
 
             {/* ── By Brand / Category — 4-level accordion ── */}
-            {hierarchy.length > 0 && (
+            {(hierarchy.length > 0 || unclassifiedTotal > 0) && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold">Line Detail</h3>
-                  <span className="text-xs tabular-nums font-semibold text-muted-foreground">
-                    {formatCurrency(grandTotal)}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-xs tabular-nums font-semibold text-muted-foreground">
+                      {formatCurrency(grandTotal)}
+                    </span>
+                    {unclassifiedTotal > 0 && (
+                      <p className="text-[10px] text-muted-foreground/70 mt-0.5">
+                        includes {formatCurrency(unclassifiedTotal)} unclassified (no brand on file)
+                      </p>
+                    )}
+                  </div>
                 </div>
+                {hierarchy.length === 0 && (
+                  <p className="text-xs text-muted-foreground border rounded-md p-3">
+                    All activity in this selection is unclassified (no brand on file) — see note above.
+                  </p>
+                )}
+                {hierarchy.length > 0 && (
                 <div className="border rounded-md overflow-hidden divide-y">
                   {hierarchy.map((brand) => (
                     <div key={brand.key}>
@@ -1118,6 +1146,7 @@ export function InvoiceDetailSheet({
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             )}
 

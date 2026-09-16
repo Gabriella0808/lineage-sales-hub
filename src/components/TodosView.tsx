@@ -57,7 +57,7 @@ import { useToast } from "@/hooks/use-toast";
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
-type FilterTab = "all" | "overdue" | "today" | "upcoming" | "completed";
+type FilterTab = "all" | "assigned" | "overdue" | "today" | "upcoming" | "completed";
 
 interface Task {
   id: string;
@@ -458,6 +458,20 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
     return !name.toUpperCase().includes("SOP");
   });
 
+  // Split standalone tasks into "My To Do's" (things I'm actually doing — I'm
+  // an assignee, or it's a personal note with nobody else assigned) vs
+  // "Tasks Assigned" (things I created and handed entirely to someone else —
+  // I'm tracking status, not doing the work myself). `load()` only ever
+  // includes a task here if I created it or I'm an assignee, so these two
+  // buckets are exhaustive and mutually exclusive.
+  const isAssignedToMe = (t: Task) => (taskAssigneeMap[t.id] ?? []).includes(user?.id ?? "");
+  const myTodoTasks = standaloneTasks.filter(
+    (t) => isAssignedToMe(t) || (taskAssigneeMap[t.id] ?? []).length === 0,
+  );
+  const assignedOutTasks = standaloneTasks.filter(
+    (t) => !isAssignedToMe(t) && (taskAssigneeMap[t.id] ?? []).length > 0,
+  );
+
   // Filter function
   const passesFilter = (t: Task): boolean => {
     if (filterTab === "all") return t.status !== "done";
@@ -469,7 +483,9 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
     return true;
   };
 
-  const filteredStandalone = sortTasks(standaloneTasks.filter(passesFilter));
+  const isAssignedTab = filterTab === "assigned";
+  const filteredStandalone = sortTasks(myTodoTasks.filter(passesFilter));
+  const filteredAssignedOut = sortTasks(assignedOutTasks.filter((t) => t.status !== "done"));
   const filteredBoardTasks = sortTasks(boardTasks.filter(passesFilter));
 
   // Group board tasks by board id
@@ -629,6 +645,7 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
 
   const FILTER_TABS: { key: FilterTab; label: string }[] = [
     { key: "all", label: "All" },
+    { key: "assigned", label: "Tasks Assigned" },
     { key: "overdue", label: "Overdue" },
     { key: "today", label: "Due Today" },
     { key: "upcoming", label: "Upcoming" },
@@ -688,166 +705,201 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
         ))}
       </div>
 
-      {/* ── Section A: My To Do's (standalone) ── */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setTodosCollapsed((v) => !v)}
-          className="flex items-center gap-1.5 mb-2 group"
-        >
-          {todosCollapsed
-            ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-            : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground group-hover:text-foreground transition-colors">
-            My To Do's
-          </h3>
-          <span className="text-xs text-muted-foreground/60">({filteredStandalone.length})</span>
-        </button>
-        {!todosCollapsed && <Card className="overflow-hidden">
-          {filteredStandalone.length === 0 && filterTab !== "all" ? (
-            <p className="px-4 py-6 text-sm text-muted-foreground text-center">No tasks match this filter.</p>
-          ) : filteredStandalone.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted-foreground text-center">
-              Nothing here yet.{" "}
-              <button type="button" className="underline hover:no-underline" onClick={() => setAddingInline(true)}>
-                Add your first to do
-              </button>
-            </p>
-          ) : (
-            filteredStandalone.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                assigneeNames={getAssigneeNames(task.id)}
-                commentCount={commentCounts[task.id] ?? 0}
-                onToggle={toggleDone}
-                onStatusChange={changeStatus}
-                onOpen={setDetailTask}
-                onComments={setCommentsTaskId}
-              />
-            ))
-          )}
-
-          {/* Inline quick-add */}
-          {addingInline ? (
-            <div className="flex items-center gap-2 px-3 py-2 border-t border-border/40">
-              <Checkbox disabled className="shrink-0 opacity-30" />
-              <Input
-                ref={inlineRef}
-                autoFocus
-                value={inlineTitle}
-                onChange={(e) => setInlineTitle(e.target.value)}
-                placeholder="Task title…"
-                className="h-7 text-sm border-0 shadow-none focus-visible:ring-0 px-0 flex-1"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    quickAdd(inlineTitle);
-                    setInlineTitle("");
-                    setAddingInline(false);
-                  }
-                  if (e.key === "Escape") { setAddingInline(false); setInlineTitle(""); }
-                }}
-                onBlur={() => {
-                  if (inlineTitle.trim()) quickAdd(inlineTitle);
-                  setInlineTitle("");
-                  setAddingInline(false);
-                }}
-              />
-              <span className="text-[10px] text-muted-foreground shrink-0">↵ to save</span>
-            </div>
-          ) : (
+      {isAssignedTab ? (
+        /* ── Tasks Assigned mode: things I created and handed entirely to
+             someone else — tracking status, not doing the work myself. ── */
+        <div>
+          <div className="flex items-center gap-1.5 mb-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Tasks Assigned
+            </h3>
+            <span className="text-xs text-muted-foreground/60">({filteredAssignedOut.length})</span>
+          </div>
+          <Card className="overflow-hidden">
+            {filteredAssignedOut.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-muted-foreground text-center">
+                Nothing here yet. Tasks you create and assign entirely to someone else will show up here.
+              </p>
+            ) : (
+              filteredAssignedOut.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  assigneeNames={getAssigneeNames(task.id)}
+                  commentCount={commentCounts[task.id] ?? 0}
+                  onToggle={toggleDone}
+                  onStatusChange={changeStatus}
+                  onOpen={setDetailTask}
+                  onComments={setCommentsTaskId}
+                />
+              ))
+            )}
+          </Card>
+        </div>
+      ) : (
+        <>
+          {/* ── Section A: My To Do's (standalone) ── */}
+          <div>
             <button
               type="button"
-              onClick={() => setAddingInline(true)}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-t border-border/40"
+              onClick={() => setTodosCollapsed((v) => !v)}
+              className="flex items-center gap-1.5 mb-2 group"
             >
-              <Plus className="h-3.5 w-3.5" />
-              Add to do
+              {todosCollapsed
+                ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground group-hover:text-foreground transition-colors">
+                My To Do's
+              </h3>
+              <span className="text-xs text-muted-foreground/60">({filteredStandalone.length})</span>
             </button>
-          )}
-        </Card>}
-      </div>
+            {!todosCollapsed && <Card className="overflow-hidden">
+              {filteredStandalone.length === 0 && filterTab !== "all" ? (
+                <p className="px-4 py-6 text-sm text-muted-foreground text-center">No tasks match this filter.</p>
+              ) : filteredStandalone.length === 0 ? (
+                <p className="px-4 py-6 text-sm text-muted-foreground text-center">
+                  Nothing here yet.{" "}
+                  <button type="button" className="underline hover:no-underline" onClick={() => setAddingInline(true)}>
+                    Add your first to do
+                  </button>
+                </p>
+              ) : (
+                filteredStandalone.map((task) => (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    assigneeNames={getAssigneeNames(task.id)}
+                    commentCount={commentCounts[task.id] ?? 0}
+                    onToggle={toggleDone}
+                    onStatusChange={changeStatus}
+                    onOpen={setDetailTask}
+                    onComments={setCommentsTaskId}
+                  />
+                ))
+              )}
 
-      {/* ── Section B: Board Tasks (grouped) ── */}
-      {boardGroups.size > 0 && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setBoardTasksCollapsed((v) => !v)}
-            className="flex items-center gap-1.5 mb-2 group"
-          >
-            {boardTasksCollapsed
-              ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-              : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground group-hover:text-foreground transition-colors">
-              Board Tasks
-            </h3>
-            <span className="text-xs text-muted-foreground/60">({[...boardGroups.values()].reduce((s, t) => s + t.length, 0)})</span>
-          </button>
-          {!boardTasksCollapsed && <div className="space-y-3">
-            {[...boardGroups.entries()].map(([boardId, boardTaskList]) => {
-              const board = boardMap.get(boardId);
-              const isCollapsed = collapsedBoards[boardId] ?? false;
-
-              return (
-                <Card key={boardId} className="overflow-hidden">
-                  {/* Board header */}
-                  <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 border-b border-border/50">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCollapsedBoards((prev) => ({ ...prev, [boardId]: !isCollapsed }))
+              {/* Inline quick-add */}
+              {addingInline ? (
+                <div className="flex items-center gap-2 px-3 py-2 border-t border-border/40">
+                  <Checkbox disabled className="shrink-0 opacity-30" />
+                  <Input
+                    ref={inlineRef}
+                    autoFocus
+                    value={inlineTitle}
+                    onChange={(e) => setInlineTitle(e.target.value)}
+                    placeholder="Task title…"
+                    className="h-7 text-sm border-0 shadow-none focus-visible:ring-0 px-0 flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        quickAdd(inlineTitle);
+                        setInlineTitle("");
+                        setAddingInline(false);
                       }
-                      className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
-                    >
-                      {isCollapsed ? (
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      ) : (
-                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      )}
-                      {board?.color && (
-                        <span
-                          className="h-2.5 w-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: board.color }}
-                        />
-                      )}
-                      <span className="text-sm font-medium truncate">
-                        {board?.name ?? "Unknown Board"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        ({boardTaskList.length})
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      title="Open board"
-                      onClick={() => onSwitchToBoards?.(boardId)}
-                      className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+                      if (e.key === "Escape") { setAddingInline(false); setInlineTitle(""); }
+                    }}
+                    onBlur={() => {
+                      if (inlineTitle.trim()) quickAdd(inlineTitle);
+                      setInlineTitle("");
+                      setAddingInline(false);
+                    }}
+                  />
+                  <span className="text-[10px] text-muted-foreground shrink-0">↵ to save</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingInline(true)}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-t border-border/40"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add to do
+                </button>
+              )}
+            </Card>}
+          </div>
 
-                  {/* Board tasks */}
-                  {!isCollapsed &&
-                    boardTaskList.map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        assigneeNames={getAssigneeNames(task.id)}
-                        commentCount={commentCounts[task.id] ?? 0}
-                        groupName={getGroupName(task)}
-                        onToggle={toggleDone}
-                        onStatusChange={changeStatus}
-                        onOpen={setDetailTask}
-                        onComments={setCommentsTaskId}
-                      />
-                    ))}
-                </Card>
-              );
-            })}
-          </div>}
-        </div>
+          {/* ── Section B: Board Tasks (grouped) ── */}
+          {boardGroups.size > 0 && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setBoardTasksCollapsed((v) => !v)}
+                className="flex items-center gap-1.5 mb-2 group"
+              >
+                {boardTasksCollapsed
+                  ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground group-hover:text-foreground transition-colors">
+                  Board Tasks
+                </h3>
+                <span className="text-xs text-muted-foreground/60">({[...boardGroups.values()].reduce((s, t) => s + t.length, 0)})</span>
+              </button>
+              {!boardTasksCollapsed && <div className="space-y-3">
+                {[...boardGroups.entries()].map(([boardId, boardTaskList]) => {
+                  const board = boardMap.get(boardId);
+                  const isCollapsed = collapsedBoards[boardId] ?? false;
+
+                  return (
+                    <Card key={boardId} className="overflow-hidden">
+                      {/* Board header */}
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-muted/30 border-b border-border/50">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCollapsedBoards((prev) => ({ ...prev, [boardId]: !isCollapsed }))
+                          }
+                          className="flex items-center gap-1.5 flex-1 min-w-0 text-left"
+                        >
+                          {isCollapsed ? (
+                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          )}
+                          {board?.color && (
+                            <span
+                              className="h-2.5 w-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: board.color }}
+                            />
+                          )}
+                          <span className="text-sm font-medium truncate">
+                            {board?.name ?? "Unknown Board"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            ({boardTaskList.length})
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          title="Open board"
+                          onClick={() => onSwitchToBoards?.(boardId)}
+                          className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Board tasks */}
+                      {!isCollapsed &&
+                        boardTaskList.map((task) => (
+                          <TaskRow
+                            key={task.id}
+                            task={task}
+                            assigneeNames={getAssigneeNames(task.id)}
+                            commentCount={commentCounts[task.id] ?? 0}
+                            groupName={getGroupName(task)}
+                            onToggle={toggleDone}
+                            onStatusChange={changeStatus}
+                            onOpen={setDetailTask}
+                            onComments={setCommentsTaskId}
+                          />
+                        ))}
+                    </Card>
+                  );
+                })}
+              </div>}
+            </div>
+          )}
+        </>
       )}
 
       {/* ── Detail Sheet ── */}

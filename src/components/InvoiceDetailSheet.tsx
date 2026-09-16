@@ -445,29 +445,70 @@ function summaryBlockHtml(summary: Array<[string, string]>): string {
   return `<div class="summary">${summary.map(([k, v]) => `<div>${k}<strong>${v}</strong></div>`).join("")}</div>`;
 }
 
+// Row/table markup for the Open Sales Orders section appended onto the
+// metric-detail export (generatePrintHTML), so a dealer/rep's open backlog
+// always travels with their CSV/PDF exports.
+function openOrdersTableHtml(orders: OpenOrderEntry[], total: number): string {
+  let rows = "";
+  for (const so of orders) {
+    rows += `<tr class="so-row"><td colspan="6"><strong>${so.order_number}</strong> — ${so.dealer_name} (${so.rep_name})${so.order_date ? ` · ${so.order_date}` : ""}</td><td class="amt"><strong>${formatCurrency(so.total)}</strong></td></tr>`;
+    for (const l of so.lines) {
+      rows += `<tr class="line-row"><td style="padding-left:12px;font-family:monospace;font-size:10px">${l.sku ?? "—"}</td><td>${l.description ?? ""}</td><td>${l.brand_category ?? ""}</td><td>${l.warehouse ?? l.fulfillment_type ?? ""}</td><td class="amt">${Number(l.qty_ordered).toLocaleString()}</td><td class="amt">${Number(l.qty_open).toLocaleString()}</td><td class="amt">${formatCurrency(Number(l.net_open_amount))}</td></tr>`;
+    }
+  }
+  return `<table>
+<thead><tr><th>SKU</th><th>Product</th><th>Brand</th><th>Warehouse</th><th class="amt">Ordered</th><th class="amt">Open Qty</th><th class="amt">Open Value</th></tr></thead>
+<tbody>${rows}</tbody>
+<tfoot><tr><td colspan="6">Total</td><td class="amt">${formatCurrency(total)}</td></tr></tfoot>
+</table>`;
+}
+
 function generatePrintHTML(
   rowLabel: string, metric: string,
   fromDate: Date, toDate: Date,
   hierarchy: BrandEntry[], grandTotal: number,
   summary: Array<[string, string]>,
+  groupBy: "dealer" | "rep" | "territory",
+  openOrders: OpenOrderEntry[] = [], openOrdersTotal = 0,
 ) {
   const dateRange = `${format(fromDate, "MMM d, yyyy")} – ${format(toDate, "MMM d, yyyy")}`;
+  // Mirrors LineDetailTable's on-screen column logic: show Dealer unless
+  // this drawer is already scoped to one dealer (redundant), show Rep
+  // unless it's already scoped to one rep — same reasoning, so the PDF's
+  // per-line column never just repeats the name already in the title.
+  const showDealer = groupBy !== "dealer";
+  const showRep    = groupBy !== "rep";
+  const totalCols  = 4 + (showDealer ? 1 : 0) + (showRep ? 1 : 0); // indent + Date + Invoice/Order + [Dealer] + [Rep] + Amount
+  const preAmtCols = totalCols - 1;
+
   let rows = "";
   for (const brand of hierarchy) {
-    rows += `<tr class="brand-row"><td colspan="5"><strong>${brand.label}</strong></td><td class="amt"><strong>${formatCurrency(brand.total)}</strong></td></tr>`;
+    rows += `<tr class="brand-row"><td colspan="${preAmtCols}"><strong>${brand.label}</strong></td><td class="amt"><strong>${formatCurrency(brand.total)}</strong></td></tr>`;
     for (const cls of brand.classes) {
       if (cls.label) {
-        rows += `<tr class="class-row"><td></td><td colspan="4" style="padding-left:12px"><em>${cls.label}</em></td><td class="amt">${formatCurrency(cls.total)}</td></tr>`;
+        rows += `<tr class="class-row"><td></td><td colspan="${preAmtCols - 1}" style="padding-left:12px"><em>${cls.label}</em></td><td class="amt">${formatCurrency(cls.total)}</td></tr>`;
       }
       for (const sku of cls.skus) {
         const indent = cls.label ? 24 : 12;
-        rows += `<tr class="sku-row"><td></td><td style="padding-left:${indent}px;font-family:monospace;font-size:10px" colspan="2">${sku.sku}</td><td colspan="2">${sku.desc !== sku.sku ? sku.desc : ""}</td><td class="amt">${formatCurrency(sku.total)}</td></tr>`;
+        const skuLabel = sku.desc !== sku.sku
+          ? `<span style="font-family:monospace;font-size:10px">${sku.sku}</span> — ${sku.desc}`
+          : `<span style="font-family:monospace;font-size:10px">${sku.sku}</span>`;
+        rows += `<tr class="sku-row"><td></td><td colspan="${preAmtCols - 1}" style="padding-left:${indent}px">${skuLabel}</td><td class="amt">${formatCurrency(sku.total)}</td></tr>`;
         for (const line of [...sku.lines].sort((a, b) => a.transaction_date.localeCompare(b.transaction_date))) {
-          rows += `<tr class="line-row"><td></td><td></td><td style="padding-left:${indent + 12}px">${line.transaction_date}</td><td>${line.invoice_number ?? "—"}</td><td>${line.rep_name ?? line.dealer_name ?? ""}</td><td class="amt">${formatCurrency(Number(line.amount))}</td></tr>`;
+          rows += `<tr class="line-row"><td></td><td style="padding-left:${indent + 12}px">${line.transaction_date}</td><td>${line.invoice_number ?? "—"}</td>`;
+          if (showDealer) rows += `<td>${line.dealer_name ?? line.customer_id ?? "—"}</td>`;
+          if (showRep)    rows += `<td>${line.rep_name ?? "—"}</td>`;
+          rows += `<td class="amt">${formatCurrency(Number(line.amount))}</td></tr>`;
         }
       }
     }
   }
+  const openOrdersSection = openOrders.length > 0
+    ? `<h1 style="font-size:13px;margin:22px 0 2px">Open Sales Orders</h1>
+<p>Current backlog as of the latest Acctivate sync</p>
+${openOrdersTableHtml(openOrders, openOrdersTotal)}`
+    : "";
+  const headerCols = `<th></th><th>Date</th><th>Invoice/Order</th>${showDealer ? "<th>Dealer</th>" : ""}${showRep ? "<th>Rep</th>" : ""}<th class="amt">Amount</th>`;
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"/>
 <title>${rowLabel} — ${metric} — ${dateRange}</title>
@@ -477,39 +518,11 @@ function generatePrintHTML(
 <p>${metric.charAt(0).toUpperCase() + metric.slice(1)} · ${dateRange}</p>
 ${summaryBlockHtml(summary)}
 <table>
-<thead><tr><th></th><th>Date</th><th>Invoice/Order</th><th>Description</th><th>Rep</th><th class="amt">Amount</th></tr></thead>
+<thead><tr>${headerCols}</tr></thead>
 <tbody>${rows}</tbody>
-<tfoot><tr><td colspan="5">Total</td><td class="amt">${formatCurrency(grandTotal)}</td></tr></tfoot>
+<tfoot><tr><td colspan="${preAmtCols}">Total</td><td class="amt">${formatCurrency(grandTotal)}</td></tr></tfoot>
 </table>
-</body></html>`;
-}
-
-function generateOpenOrdersPrintHTML(
-  rowLabel: string,
-  orders: OpenOrderEntry[],
-  total: number,
-  summary: Array<[string, string]>,
-) {
-  let rows = "";
-  for (const so of orders) {
-    rows += `<tr class="so-row"><td colspan="6"><strong>${so.order_number}</strong> — ${so.dealer_name} (${so.rep_name})${so.order_date ? ` · ${so.order_date}` : ""}</td><td class="amt"><strong>${formatCurrency(so.total)}</strong></td></tr>`;
-    for (const l of so.lines) {
-      rows += `<tr class="line-row"><td style="padding-left:12px;font-family:monospace;font-size:10px">${l.sku ?? "—"}</td><td>${l.description ?? ""}</td><td>${l.brand_category ?? ""}</td><td>${l.warehouse ?? l.fulfillment_type ?? ""}</td><td class="amt">${Number(l.qty_ordered).toLocaleString()}</td><td class="amt">${Number(l.qty_open).toLocaleString()}</td><td class="amt">${formatCurrency(Number(l.net_open_amount))}</td></tr>`;
-    }
-  }
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"/>
-<title>${rowLabel} — Open Sales Orders</title>
-<style>${PRINT_STYLE}</style></head>
-<body>
-<h1>${rowLabel}</h1>
-<p>Open Sales Orders — current backlog as of the latest Acctivate sync</p>
-${summaryBlockHtml(summary)}
-<table>
-<thead><tr><th>SKU</th><th>Product</th><th>Brand</th><th>Warehouse</th><th class="amt">Ordered</th><th class="amt">Open Qty</th><th class="amt">Open Value</th></tr></thead>
-<tbody>${rows}</tbody>
-<tfoot><tr><td colspan="6">Total</td><td class="amt">${formatCurrency(total)}</td></tr></tfoot>
-</table>
+${openOrdersSection}
 </body></html>`;
 }
 
@@ -788,8 +801,6 @@ export function InvoiceDetailSheet({
   }
 
   // ── Exports ───────────────────────────────────────────────────────────────────
-  // Shared summary block — always includes Open Sales Orders, whichever
-  // dataset (metric detail or open-orders detail) the export body is showing.
   const exportSummary: Array<[string, string]> = [
     [metric === "bookings" ? "Bookings" : "Invoiced",
       formatCurrency((metric === "bookings" ? displayBookingsAmt : displayInvoicedAmt) ?? 0)],
@@ -801,10 +812,28 @@ export function InvoiceDetailSheet({
   const exportCSV = () => {
     const summaryCsv = ["Summary", ...exportSummary.map(([k, v]) => `${k},${v}`), ""].join("\n");
 
-    let detailCsv: string;
-    let filenameSuffix: string;
-    if (showOpenOrdersDetail) {
-      const rows = openOrderLines.map((l) => ({
+    const rows = primActive.map((l) => ({
+      Date:          l.transaction_date,
+      "Invoice #":   l.invoice_number ?? "",
+      Dealer:        l.dealer_name ?? "",
+      "Customer ID": l.customer_id ?? "",
+      Rep:           l.rep_name ?? "",
+      SKU:           l.sku ?? "",
+      Description:   l.description ?? "",
+      Brand:         l.brand_category ?? "",
+      Collection:    toCollectionDisplayName(l.product_class) ?? "",
+      Amount:        Number(l.amount),
+      Metric:        l.metric_type,
+    }));
+    const detailCsv = Papa.unparse(rows);
+
+    // Open backlog always rides along with the metric-detail export, so the
+    // file always matches everything shown in the drawer (Line Detail plus
+    // Open Sales Orders), regardless of whether the Open SO section happens
+    // to be expanded on screen right now.
+    let openOrdersCsv = "";
+    if (openOrderLines.length > 0) {
+      const openRows = openOrderLines.map((l) => ({
         "Sales Order #":       l.order_number ?? "",
         Dealer:                l.dealer_name ?? "",
         "Customer ID":         l.customer_id ?? "",
@@ -819,40 +848,21 @@ export function InvoiceDetailSheet({
         Brand:                 l.brand_category ?? "",
         Warehouse:             l.warehouse ?? l.fulfillment_type ?? "",
       }));
-      detailCsv = Papa.unparse(rows);
-      filenameSuffix = "open-sales-orders";
-    } else {
-      const rows = primActive.map((l) => ({
-        Date:          l.transaction_date,
-        "Invoice #":   l.invoice_number ?? "",
-        Dealer:        l.dealer_name ?? "",
-        "Customer ID": l.customer_id ?? "",
-        Rep:           l.rep_name ?? "",
-        SKU:           l.sku ?? "",
-        Description:   l.description ?? "",
-        Brand:         l.brand_category ?? "",
-        Collection:    toCollectionDisplayName(l.product_class) ?? "",
-        Amount:        Number(l.amount),
-        Metric:        l.metric_type,
-      }));
-      detailCsv = Papa.unparse(rows);
-      filenameSuffix = metric;
+      openOrdersCsv = "\n\nOpen Sales Orders\n" + Papa.unparse(openRows);
     }
 
-    const csv  = summaryCsv + detailCsv;
+    const csv  = summaryCsv + detailCsv + openOrdersCsv;
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
     a.href = url;
-    a.download = `${rowLabel.replace(/\s+/g, "-")}_${filenameSuffix}_${format(effectiveFrom, "yyyy-MM-dd")}_${format(localTo, "yyyy-MM-dd")}.csv`;
+    a.download = `${rowLabel.replace(/\s+/g, "-")}_${metric}_${format(effectiveFrom, "yyyy-MM-dd")}_${format(localTo, "yyyy-MM-dd")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const exportPDF = () => {
-    const html = showOpenOrdersDetail
-      ? generateOpenOrdersPrintHTML(rowLabel, openOrdersHierarchy, openOrdersTotal, exportSummary)
-      : generatePrintHTML(rowLabel, metric, effectiveFrom, localTo, hierarchy, grandTotal, exportSummary);
+    const html = generatePrintHTML(rowLabel, metric, effectiveFrom, localTo, hierarchy, grandTotal, exportSummary, groupBy, openOrdersHierarchy, openOrdersTotal);
     const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
     win.document.write(html);
@@ -1149,28 +1159,6 @@ export function InvoiceDetailSheet({
                 )}
               </div>
             )}
-
-            {/* ── Export buttons ── */}
-            {primActive.length > 0 && (
-              <div className="flex gap-2 pt-2 border-t">
-                <button
-                  type="button"
-                  onClick={exportCSV}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded hover:bg-muted/50 transition-colors"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Export CSV
-                </button>
-                <button
-                  type="button"
-                  onClick={exportPDF}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded hover:bg-muted/50 transition-colors"
-                >
-                  <Printer className="h-3.5 w-3.5" />
-                  Export PDF
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -1271,6 +1259,30 @@ export function InvoiceDetailSheet({
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* ── Export buttons — always last, below Line Detail and (when
+             expanded) Open Sales Orders, so the export always matches
+             everything currently visible above it. ── */}
+        {primActive.length > 0 && (
+          <div className="flex gap-2 mt-6 pt-2 border-t">
+            <button
+              type="button"
+              onClick={exportCSV}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded hover:bg-muted/50 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={exportPDF}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-border rounded hover:bg-muted/50 transition-colors"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Export PDF
+            </button>
           </div>
         )}
       </SheetContent>

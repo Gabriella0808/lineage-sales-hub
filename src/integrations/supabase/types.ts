@@ -9615,6 +9615,7 @@ export type Database = {
       get_sales_reporting_detail_lines: {
         Args: {
           p_brand_cats?: string[]
+          p_collections?: string[]
           p_customer_ids?: string[]
           p_entity_key: string
           p_from: string
@@ -9646,6 +9647,7 @@ export type Database = {
       get_sales_reporting_grouped_rows: {
         Args: {
           p_brand_cats?: string[]
+          p_collections?: string[]
           p_comp_from?: string
           p_comp_to?: string
           p_customer_ids?: string[]

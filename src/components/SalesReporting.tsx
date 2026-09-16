@@ -187,6 +187,7 @@ interface GroupedRowsParams {
   compTo:      Date | null;
   customerIds: string[] | null;
   brandCats:   string[] | null;
+  collections: string[] | null;
   skus:        string[] | null;
   repIds:      string[] | null;  // lowercase Acctivate rep_ids for canonical rep filter
   managerId:   string | null;    // managers.id UUID; null = company-wide
@@ -204,6 +205,7 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
       params.compTo   ? format(params.compTo,   "yyyy-MM-dd") : null,
       JSON.stringify(params.customerIds),
       JSON.stringify(params.brandCats),
+      JSON.stringify(params.collections),
       JSON.stringify(params.skus),
       JSON.stringify(params.repIds),
       params.managerId,
@@ -224,6 +226,7 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
           p_comp_to:      params.compTo   ? format(params.compTo,   "yyyy-MM-dd") : null,
           p_customer_ids: params.customerIds ?? null,
           p_brand_cats:   params.brandCats   ?? null,
+          p_collections:  params.collections ?? null,
           p_skus:         params.skus        ?? null,
           p_rep_ids:      params.repIds      ?? null,
           p_manager_id:   params.managerId   ?? null,
@@ -586,6 +589,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const [repIds,          setRepIds]          = useState<string[]>([]);
   const [dealerIds,       setDealerIds]       = useState<string[]>([]);
   const [brandCategories, setBrandCategories] = useState<string[]>([]);
+  const [collections,     setCollections]     = useState<string[]>([]);
   const [skus,            setSkus]            = useState<string[]>([]);
   // Free-text filter on the results table only — narrows which rows show,
   // doesn't touch the underlying fetch/filters/KPIs above it.
@@ -606,9 +610,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     repIds,
     dealerIds,
     brandCategories,
+    collections,
     skus,
     rowSearch: rowSearch || null,
-  }), [groupBy, metric, display, compareMode, primary, comparative, territoryIds, repIds, dealerIds, brandCategories, skus, rowSearch]);
+  }), [groupBy, metric, display, compareMode, primary, comparative, territoryIds, repIds, dealerIds, brandCategories, collections, skus, rowSearch]);
   useRegisterReportContext(reportContext);
 
   // ── Portal reference data ─────────────────────────────────────────────────
@@ -856,6 +861,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       compTo:      compareMode !== "none" ? comparative.to : null,
       customerIds: rpcCustomerIds,
       brandCats:   brandCategories.length > 0 ? brandCategories : null,
+      collections: collections.length > 0 ? collections : null,
       skus:        skus.length > 0 ? skus : null,
       repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
       managerId:   managerId ?? null,
@@ -874,6 +880,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     compTo:      compareMode !== "none" ? comparative.to   : null,
     customerIds: rpcCustomerIds,
     brandCats:   brandCategories.length > 0 ? brandCategories : null,
+    collections: collections.length > 0 ? collections : null,
     skus:        skus.length > 0 ? skus : null,
     repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
     managerId:   managerId ?? null,
@@ -886,12 +893,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
   // Fixed MTD + YTD per-rep actuals for goal % (only fetched in rep + RPC mode).
   // Reference date = end of primary range so the columns follow the user's period, not today.
-  // Brand/SKU filters are excluded — goals are total per-rep, not per-brand.
+  // Brand/Collection/SKU filters are excluded — goals are total per-rep, not per-brand.
   const rpcMetric = (metric === "invoices" ? "invoiced" : "bookings") as "invoiced" | "bookings";
   const goalQueryBase = {
     groupBy:     "rep" as const,
     customerIds: rpcCustomerIds,
     brandCats:   null,
+    collections: null,
     skus:        null,
     repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
     managerId:   managerId ?? null,
@@ -967,6 +975,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     Array.from(new Set(optionLines.map((l) => l.brand_category?.trim()).filter(Boolean) as string[])).sort(),
   [optionLines]);
 
+  const allCollections = useMemo(() =>
+    Array.from(new Set(optionLines.map((l) => l.product_class?.trim()).filter(Boolean) as string[])).sort(),
+  [optionLines]);
+
   const skuLabelMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const l of optionLines) {
@@ -980,6 +992,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   }, [optionLines]);
 
   const brandCategorySet = useMemo(() => new Set(brandCategories), [brandCategories]);
+  const collectionSet    = useMemo(() => new Set(collections),     [collections]);
   const skuSet           = useMemo(() => new Set(skus),            [skus]);
 
   // Best display label for each customer_id, derived from actual line data.
@@ -1049,6 +1062,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const effectiveBrand = line.brand_category ??
         (line.metric_type === "invoiced" ? "Historical Invoice" : "");
       if (brandCategorySet.size > 0 && !brandCategorySet.has(effectiveBrand)) continue;
+      if (collectionSet.size > 0 && !collectionSet.has(line.product_class ?? "")) continue;
       if (skuSet.size > 0 && !skuSet.has(line.sku ?? "")) continue;
 
       const d  = new Date(line.transaction_date + "T00:00:00");
@@ -1104,7 +1118,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     repLines, metric, primary, comparative, compareMode, groupBy,
     managerScopeCustomerIds, selectedTerritoryNames, selectedRepAcIds,
     selectedDealerAcIds, selectedDealerNames,
-    repAcIdToCanonical, brandCategorySet, skuSet, customerIdToTerritoryName,
+    repAcIdToCanonical, brandCategorySet, collectionSet, skuSet, customerIdToTerritoryName,
     customerIdBestLabel,
   ]);
 
@@ -1133,6 +1147,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const effectiveBrand = line.brand_category ??
         (line.metric_type === "invoiced" ? "Historical Invoice" : "");
       if (brandCategorySet.size > 0 && !brandCategorySet.has(effectiveBrand)) return false;
+      if (collectionSet.size > 0 && !collectionSet.has(line.product_class ?? "")) return false;
       if (skuSet.size > 0 && !skuSet.has(line.sku ?? "")) return false;
       if (line.metric_type === "bookings" && !isBookingVisibleDate(line.transaction_date)) return false;
       return true;
@@ -1186,7 +1201,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     primaryInvoiced, primaryBookings, groupBy, primary,
     managerScopeCustomerIds, selectedTerritoryNames, selectedRepAcIds,
     selectedDealerAcIds, selectedDealerNames,
-    repAcIdToCanonical, brandCategorySet, skuSet, customerIdToTerritoryName,
+    repAcIdToCanonical, brandCategorySet, collectionSet, skuSet, customerIdToTerritoryName,
   ]);
 
 
@@ -1256,6 +1271,12 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         clear: () => setBrandCategories([]),
       });
     }
+    if (collections.length > 0) {
+      chips.push({
+        label: collections.length === 1 ? `Collection: ${collections[0]}` : `${collections.length} collections`,
+        clear: () => setCollections([]),
+      });
+    }
     if (skus.length > 0) {
       chips.push({
         label: skus.length === 1 ? `SKU: ${skus[0]}` : `${skus.length} SKUs`,
@@ -1263,7 +1284,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       });
     }
     return chips;
-  }, [territoryIds, repIds, dealerIds, brandCategories, skus, territories, visibleReps, visibleDealers]);
+  }, [territoryIds, repIds, dealerIds, brandCategories, collections, skus, territories, visibleReps, visibleDealers]);
 
   // Factory that creates a detail-line fetcher for any date range.
   // The sidebar passes its local period dates; this factory bakes in filters
@@ -1275,6 +1296,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     const cids      = rpcCustomerIds;
     const rids      = selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null;
     const bcs       = brandCategories.length > 0 ? brandCategories : null;
+    const cols      = collections.length > 0 ? collections : null;
     const sks       = skus.length > 0 ? skus : null;
     const gbStr     = groupBy === "territory" ? "dealer" : groupBy;
     const mgr       = managerId ?? null;
@@ -1290,6 +1312,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
           p_to:           toStr,
           p_customer_ids: cids,
           p_brand_cats:   bcs,
+          p_collections:  cols,
           p_skus:         sks,
           p_rep_ids:      rids,
           p_limit:        limit,
@@ -1323,7 +1346,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       };
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRpcMode, drillRow?.key, metric, groupBy, rpcCustomerIds, selectedRepAcIds, brandCategories, skus, managerId]);
+  }, [useRpcMode, drillRow?.key, metric, groupBy, rpcCustomerIds, selectedRepAcIds, brandCategories, collections, skus, managerId]);
 
   // Open Sales Orders — current backlog snapshot for the drilled-into rep/dealer.
   // Not date-scoped (unlike drillMakeFetch above): the report's invoice date
@@ -1572,6 +1595,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 setRepIds([]);
                 setDealerIds([]);
                 setBrandCategories([]);
+                setCollections([]);
                 setSkus([]);
               }}
             >
@@ -1658,6 +1682,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               searchable searchPlaceholder="Search brand / category…"
             />
             <MultiSelect
+              label="Collection" selected={collections} onChange={setCollections}
+              options={allCollections.map((c) => ({ value: c, label: c }))}
+              searchable searchPlaceholder="Search collection…"
+            />
+            <MultiSelect
               label="SKU" selected={skus} onChange={setSkus}
               options={Array.from(skuLabelMap.entries()).map(([sku, label]) => ({ value: sku, label }))}
               searchable searchPlaceholder="Search SKU…"
@@ -1673,7 +1702,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               ))}
               <button
                 type="button"
-                onClick={() => { setTerritoryIds([]); setRepIds([]); setDealerIds([]); setBrandCategories([]); setSkus([]); }}
+                onClick={() => { setTerritoryIds([]); setRepIds([]); setDealerIds([]); setBrandCategories([]); setCollections([]); setSkus([]); }}
                 className="text-[11px] text-muted-foreground hover:text-foreground underline ml-1 transition-colors"
               >
                 Clear all
@@ -1972,8 +2001,11 @@ function TotalTable({
                 </td>
               )}
               {goalData && (
-                <td className={cn("px-4 py-3 text-right tabular-nums text-sm", goal?.ytdPct != null && goal.ytdPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
-                  {goal ? (fmtGoalPct(goal.ytdPct) ?? "—") : "—"}
+                <td
+                  className="px-4 py-3 text-right text-sm text-muted-foreground"
+                  title="Not yet meaningful — a full year of data isn't available yet"
+                >
+                  —
                 </td>
               )}
               <td className="px-5 py-3 text-right tabular-nums font-medium">{formatCurrency(r.primary)}</td>

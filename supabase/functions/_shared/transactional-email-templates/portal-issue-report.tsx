@@ -115,7 +115,7 @@ export const template = {
     pageLabel: 'Labor Day Promo',
     submittedAt: 'September 15, 2026 at 2:14 PM ET',
     description: 'The dealer total shows $0 even though I can see bookings in the table below it.',
-    url: 'https://www.lineage-collections-portal.com/promotions/labor-day-promo',
+    url: 'https://lineage-collections-portal.com/promotions/labor-day-promo',
     filterContextText: 'Rep: all, Dealer: all, Date range: 2026-08-25 to 2026-09-15',
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
     viewport: '1440 × 900',

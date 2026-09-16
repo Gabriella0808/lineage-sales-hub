@@ -347,7 +347,7 @@ export const template = {
       { sku: 'FL-D70086-EARTHCLAY',      entries: [{ rep: 'DE',    amount: 300  }, { rep: 'Stew', amount: 300 }] },
       { sku: 'FL-D70086-TOP-EARTHCLAY',  entries: [{ rep: 'MD',    amount: 200  }] },
     ],
-    portalUrl: 'https://www.lineage-collections-portal.com/clearance/analytics',
+    portalUrl: 'https://lineage-collections-portal.com/clearance/analytics',
   },
 } satisfies TemplateEntry
 

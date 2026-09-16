@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
               rows,
               totalCheckIns,
               totalPlacements,
-              portalUrl: "https://www.lineage-collections-portal.com/check-ins/analytics",
+              portalUrl: "https://lineage-collections-portal.com/check-ins/analytics",
             },
           }),
         });

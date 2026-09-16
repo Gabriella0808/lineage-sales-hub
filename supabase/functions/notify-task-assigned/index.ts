@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
           taskTitle: task.title,
           taskDescription: task.description ?? undefined,
           dueDate: dueDateLabel,
-          link: "https://www.lineage-collections-portal.com/tasks",
+          link: "https://lineage-collections-portal.com/tasks",
         },
       }),
     });

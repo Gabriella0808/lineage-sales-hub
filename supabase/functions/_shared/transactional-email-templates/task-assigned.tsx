@@ -62,7 +62,7 @@ export const template = {
     taskTitle: 'Follow up with High Point dealer',
     taskDescription: 'Confirm shipment dates and confirm next sample order.',
     dueDate: 'May 22, 2026',
-    link: 'https://www.lineage-collections-portal.com/tasks',
+    link: 'https://lineage-collections-portal.com/tasks',
   },
 } satisfies TemplateEntry
 

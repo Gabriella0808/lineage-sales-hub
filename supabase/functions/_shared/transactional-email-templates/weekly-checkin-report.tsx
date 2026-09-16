@@ -114,7 +114,7 @@ export const template = {
     ],
     totalCheckIns: 13,
     totalPlacements: 7,
-    portalUrl: 'https://www.lineage-collections-portal.com/check-ins/analytics',
+    portalUrl: 'https://lineage-collections-portal.com/check-ins/analytics',
   },
 } satisfies TemplateEntry
 

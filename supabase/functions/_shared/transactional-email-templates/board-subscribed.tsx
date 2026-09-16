@@ -65,7 +65,7 @@ export const template = {
     inviterName: 'Jordan',
     boardName: 'Q1 Trade Show Prep',
     boardDescription: 'Tasks for High Point market planning.',
-    link: 'https://www.lineage-collections-portal.com/tasks',
+    link: 'https://lineage-collections-portal.com/tasks',
   },
 } satisfies TemplateEntry
 

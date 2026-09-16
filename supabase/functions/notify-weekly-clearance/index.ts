@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
               totalRevenue,
               skusMoved,
               hideUnits,
-              portalUrl: "https://www.lineage-collections-portal.com/clearance/analytics",
+              portalUrl: "https://lineage-collections-portal.com/clearance/analytics",
             },
           }),
         });

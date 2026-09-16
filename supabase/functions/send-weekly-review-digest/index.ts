@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
           {
             managerName,
             weekLabel: `${isTest ? "[TEST] " : ""}${weekLabel}`,
-            portalUrl: "https://www.lineage-collections-portal.com/managers",
+            portalUrl: "https://lineage-collections-portal.com/managers",
           },
         );
         if (ok) count++;
@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
           {
             managerName,
             weekLabel: `${isTest ? "[TEST] " : ""}${weekLabel}`,
-            portalUrl: "https://www.lineage-collections-portal.com/managers",
+            portalUrl: "https://lineage-collections-portal.com/managers",
             sections,
           },
         );
@@ -243,7 +243,7 @@ Deno.serve(async (req) => {
         {
           managerName: "Test Manager",
           weekLabel: `[TEST] ${weekLabel}`,
-          portalUrl: "https://www.lineage-collections-portal.com/managers",
+          portalUrl: "https://lineage-collections-portal.com/managers",
         },
       );
       return new Response(

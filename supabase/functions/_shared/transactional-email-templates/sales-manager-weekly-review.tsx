@@ -128,7 +128,7 @@ export const template = {
   previewData: {
     managerName: 'Mateo De Lisa',
     weekLabel: 'Week of Jun 22, 2026',
-    portalUrl: 'https://www.lineage-collections-portal.com/sales-managers',
+    portalUrl: 'https://lineage-collections-portal.com/sales-managers',
     sections: [
       {
         title: 'Weekly Metrics',

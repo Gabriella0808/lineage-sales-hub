@@ -6,7 +6,7 @@ import {
   startOfQuarter, subDays, addDays, differenceInCalendarDays,
 } from "date-fns";
 import {
-  RotateCcw, X, FileText, ShoppingCart, Hash, Users2, Calculator,
+  RotateCcw, X, FileText, ShoppingCart, Hash, Users2, Calculator, ChevronDown, Filter, ArrowLeftRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -277,19 +277,26 @@ function MultiSelect({
     return options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
   }, [options, query, searchable]);
 
+  const isActive = selected.length > 0;
   return (
-    <div className="flex flex-col gap-1 min-w-[140px]">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+    <div className="min-w-[130px]">
       <Popover>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             size="sm"
             disabled={disabled}
-            className="h-9 justify-between font-normal"
+            className={cn(
+              "h-8 w-full justify-between font-normal gap-2",
+              isActive && "border-foreground/30 bg-accent/40",
+            )}
             title={disabled ? disabledReason : undefined}
           >
-            <span className="truncate">{summary}</span>
+            <span className="truncate text-[13px]">
+              <span className="text-muted-foreground">{label}</span>
+              {isActive && <span className="text-foreground">{" · " + summary}</span>}
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64 p-0" align="start">
@@ -350,13 +357,14 @@ function DateRangePicker({ label, value, onChange, onReset, minDate }: { label: 
   const [open, setOpen] = useState(false);
   const display = draft ?? { from: value.from, to: value.to };
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+    <div>
       <Popover open={open} onOpenChange={(o) => { setOpen(o); setDraft(o ? { from: undefined, to: undefined } : undefined); }}>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 justify-start font-normal min-w-[220px]">
-            <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0" />
-            {format(value.from, "MMM d, yyyy")} – {format(value.to, "MMM d, yyyy")}
+          <Button variant="outline" size="sm" className="h-8 justify-start font-normal min-w-[230px]" title={label}>
+            <CalendarIcon className="mr-2 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <span className="text-[13px] tabular-nums">
+              {format(value.from, "MMM d, yyyy")} – {format(value.to, "MMM d, yyyy")}
+            </span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -415,7 +423,7 @@ function monthsInRange(range: DateRange): { year: number; monthIdx: number; key:
 
 function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground/70">
+    <span className="inline-flex items-center gap-1 rounded border border-border bg-accent/30 px-2 py-1 text-[11px] font-medium text-foreground/80">
       {label}
       <button
         type="button"
@@ -1446,12 +1454,15 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
       {/* ── A. Filter Card ─────────────────────────────────────────── */}
       <Card>
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="p-4 space-y-3">
 
-          {/* Row 1: Date ranges */}
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Quick range</span>
+          {/* Zone 1: Period + comparison */}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="page-eyebrow flex items-center shrink-0">
+              <span className="accent-rule" />
+              Period
+            </span>
+            <div className="flex items-center gap-1.5">
               <Select
                 onValueChange={(v) => {
                   const now      = getReportingToday();
@@ -1473,7 +1484,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                   applyPrimary(from, to);
                 }}
               >
-                <SelectTrigger className="h-9 w-[180px]">
+                <SelectTrigger className="h-8 w-[170px]">
                   <SelectValue placeholder="Select preset…" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1498,30 +1509,31 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               minDate={REPORT_CUTOFF_DATE}
             />
 
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Compare to</span>
-              <Select
-                value={compareMode}
-                onValueChange={(v: CompareMode) => {
-                  setCompareMode(v);
-                  if (v === "prev-year") {
-                    setComparative({ from: subYears(primary.from, 1), to: subYears(primary.to, 1) });
-                  } else if (v === "prev-period") {
-                    const days   = differenceInCalendarDays(primary.to, primary.from) + 1;
-                    const prevTo = subDays(primary.from, 1);
-                    setComparative({ from: subDays(prevTo, days - 1), to: prevTo });
-                  }
-                }}
-              >
-                <SelectTrigger className="h-9 w-[170px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="prev-year">Previous year</SelectItem>
-                  <SelectItem value="prev-period">Previous period</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                  <SelectItem value="none">No comparison</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <span className="flex items-center justify-center h-6 w-6 rounded-full bg-muted text-muted-foreground/70 shrink-0" aria-hidden="true">
+              <ArrowLeftRight className="h-3 w-3" />
+            </span>
+
+            <Select
+              value={compareMode}
+              onValueChange={(v: CompareMode) => {
+                setCompareMode(v);
+                if (v === "prev-year") {
+                  setComparative({ from: subYears(primary.from, 1), to: subYears(primary.to, 1) });
+                } else if (v === "prev-period") {
+                  const days   = differenceInCalendarDays(primary.to, primary.from) + 1;
+                  const prevTo = subDays(primary.from, 1);
+                  setComparative({ from: subDays(prevTo, days - 1), to: prevTo });
+                }
+              }}
+            >
+              <SelectTrigger className="h-8 w-[150px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="prev-year">Previous year</SelectItem>
+                <SelectItem value="prev-period">Previous period</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+                <SelectItem value="none">No comparison</SelectItem>
+              </SelectContent>
+            </Select>
 
             {compareMode !== "none" && (
               <DateRangePicker
@@ -1539,7 +1551,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               type="button"
               variant="ghost"
               size="sm"
-              className="h-9 text-muted-foreground self-end"
+              className="h-8 text-muted-foreground ml-auto"
               onClick={() => {
                 const now = getReportingToday();
                 const fromReset = display === "total" && metric === "invoices" ? startOfYear(now) : startOfMonth(now);
@@ -1556,50 +1568,55 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             </Button>
           </div>
 
-          {/* Row 2: Metric + Display + Group By */}
-          <div className="pt-3 border-t flex flex-wrap items-center gap-x-6 gap-y-3">
-            <div className="flex items-center gap-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Metric</span>
-              <SegmentedControl
-                value={metric}
-                onChange={setMetric}
-                options={[
-                  { value: "invoices", label: "Invoices" },
-                  { value: "bookings", label: "Bookings" },
-                ]}
-                size="md"
-              />
-            </div>
+          {/* Zone 2: View options */}
+          <div className="pt-3 border-t flex flex-wrap items-center gap-4">
+            <SegmentedControl
+              value={metric}
+              onChange={setMetric}
+              options={[
+                { value: "invoices", label: "Invoices" },
+                { value: "bookings", label: "Bookings" },
+              ]}
+            />
 
-            <div className="flex items-center gap-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Display</span>
-              <SegmentedControl
-                value={display}
-                onChange={handleDisplayChange}
-                options={[
-                  { value: "total", label: "Total" },
-                  { value: "monthly", label: "Monthly" },
-                ]}
-              />
-            </div>
+            <div className="h-5 w-px bg-border" />
+
+            <SegmentedControl
+              value={display}
+              onChange={handleDisplayChange}
+              options={[
+                { value: "total", label: "Total" },
+                { value: "monthly", label: "Monthly" },
+              ]}
+            />
 
             {groupByOptions && groupByOptions.length > 1 && (
-              <div className="flex items-center gap-2.5">
-                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Group by</span>
-                <SegmentedControl
-                  value={groupBy}
-                  onChange={setGroupBy}
-                  options={(groupByOptions).map((g) => ({
-                    value: g,
-                    label: g === "dealer" ? "Dealer" : g === "rep" ? "Rep" : "Territory",
-                  }))}
-                />
-              </div>
+              <>
+                <div className="h-5 w-px bg-border" />
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-medium text-muted-foreground/70">Group by</span>
+                  <SegmentedControl
+                    value={groupBy}
+                    onChange={setGroupBy}
+                    options={(groupByOptions).map((g) => ({
+                      value: g,
+                      label: g === "dealer" ? "Dealer" : g === "rep" ? "Rep" : "Territory",
+                    }))}
+                  />
+                </div>
+              </>
             )}
           </div>
 
-          {/* Row 3: Dimension filters */}
-          <div className="pt-3 border-t flex flex-wrap items-end gap-3">
+          {/* Zone 3: Dimension filters — its own tinted sub-panel, giving real
+              surface contrast against Zones 1-2 rather than another plain
+              divider, since this is the "narrow the result set" concern. */}
+          <div className="-mx-4 -mb-4 mt-1 rounded-b-[var(--radius)] border-t bg-muted/25 px-4 pb-4 pt-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="page-eyebrow flex items-center shrink-0">
+              <span className="accent-rule" />
+              Filters
+            </span>
             {!isRep && (
             <MultiSelect
               label="Territory" selected={territoryIds} onChange={setTerritoryIds}
@@ -1638,7 +1655,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
           {/* Active filter chips */}
           {activeFilterChips.length > 0 && (
-            <div className="pt-2.5 border-t flex flex-wrap gap-1.5 items-center">
+            <div className="pt-2.5 mt-2.5 border-t border-border/60 flex flex-wrap gap-1.5 items-center">
               <span className="text-[11px] text-muted-foreground mr-0.5">Active:</span>
               {activeFilterChips.map((chip) => (
                 <FilterChip key={chip.label} label={chip.label} onClear={chip.clear} />
@@ -1652,6 +1669,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               </button>
             </div>
           )}
+          </div>
         </CardContent>
       </Card>
 
@@ -1747,6 +1765,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 onRowClick={(key, label) => setDrillRow({ key, label })}
                 goalData={groupBy === "rep" ? repGoalMap : undefined}
                 showDealerColumns={groupBy === "dealer"}
+                metric={metric}
               />
             ) : display === "monthly" ? (
               <MonthlyTable
@@ -1763,6 +1782,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 leftHeader={leftHeader}
                 showComparison={compareMode !== "none"}
                 onRowClick={(key, label) => setDrillRow({ key, label })}
+                metric={metric}
               />
             )}
           </div>
@@ -1804,7 +1824,7 @@ function fmtFulfillPct(amount: number, primary: number): string {
 }
 
 function TotalTable({
-  rows, leftHeader, showComparison, onRowClick, goalData, showDealerColumns,
+  rows, leftHeader, showComparison, onRowClick, goalData, showDealerColumns, metric,
 }: {
   rows: {
     key: string; label: string; primary: number; comparative: number; container?: number; warehouse?: number;
@@ -1816,6 +1836,7 @@ function TotalTable({
   goalData?: Map<string, { mtdPct: number | null; ytdPct: number | null }>;
   /** Dealer mode — renders Customer ID / Rep / Territory / Manager / Open SO Value columns. */
   showDealerColumns?: boolean;
+  metric: Metric;
 }) {
   const totalP           = rows.reduce((s, r) => s + r.primary, 0);
   const totalC           = rows.reduce((s, r) => s + r.comparative, 0);
@@ -1867,7 +1888,7 @@ function TotalTable({
             </th>
           )}
           <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Primary
+            {metric === "invoices" ? "Total Invoices" : "Total Bookings"}
           </th>
           {hasContainerData && (
             <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">

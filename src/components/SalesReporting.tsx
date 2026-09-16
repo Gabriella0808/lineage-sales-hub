@@ -544,6 +544,11 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const [compareMode, setCompareMode] = useState<CompareMode>("prev-year");
   const [metric,  setMetric]  = useState<Metric>("invoices");
   const [display, setDisplay] = useState<Display>("total");
+  // Tracks which Quick Range preset (if any) is currently selected, purely
+  // for the Select's own display — cleared whenever the primary range is
+  // set some other way (manual date edit, Reset) so the dropdown doesn't
+  // keep showing a stale preset label that no longer matches the range.
+  const [quickRangePreset, setQuickRangePreset] = useState<string>("");
   const [drillRow, setDrillRow] = useState<{ key: string; label: string } | null>(null);
 
   // When switching display modes, auto-sync the primary range so that
@@ -552,6 +557,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     setDisplay(newDisplay);
     if (metric === "invoices") {
       const now = getReportingToday();
+      setQuickRangePreset("");
       applyPrimary(newDisplay === "total" ? startOfYear(now) : startOfMonth(now), now);
     }
   };
@@ -1464,6 +1470,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             </span>
             <div className="flex items-center gap-1.5">
               <Select
+                value={quickRangePreset}
                 onValueChange={(v) => {
                   const now      = getReportingToday();
                   const todayEnd = startOfDay(now);
@@ -1481,6 +1488,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                     case "12m":      from = startOfMonth(subMonths(monthEnd, 11)); to = monthEnd; break;
                     default: return;
                   }
+                  setQuickRangePreset(v);
                   applyPrimary(from, to);
                 }}
               >
@@ -1504,8 +1512,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             <DateRangePicker
               label="Primary date range"
               value={primary}
-              onChange={(r) => applyPrimary(r.from, r.to)}
-              onReset={() => { const now = getReportingToday(); applyPrimary(startOfYear(now), endOfMonth(now)); }}
+              onChange={(r) => { setQuickRangePreset(""); applyPrimary(r.from, r.to); }}
+              onReset={() => { setQuickRangePreset(""); const now = getReportingToday(); applyPrimary(startOfYear(now), endOfMonth(now)); }}
               minDate={REPORT_CUTOFF_DATE}
             />
 
@@ -1555,6 +1563,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               onClick={() => {
                 const now = getReportingToday();
                 const fromReset = display === "total" && metric === "invoices" ? startOfYear(now) : startOfMonth(now);
+                setQuickRangePreset("");
                 setCompareMode("prev-year");
                 applyPrimary(fromReset, now, "prev-year");
                 setTerritoryIds([]);

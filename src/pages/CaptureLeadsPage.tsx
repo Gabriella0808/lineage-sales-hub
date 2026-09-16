@@ -393,7 +393,35 @@ export default function CaptureLeadsPage() {
         });
       }
 
+      // Create follow-up task if requested (mirrors the new-lead branch below)
+      if (leadForm.followup_enabled && user?.id) {
+        const title = leadForm.followup_title.trim() || `Follow up: ${leadForm.contact_name.trim()}${leadForm.dealer.trim() ? ` (${leadForm.dealer.trim()})` : ""}`;
+        const descParts = [
+          leadForm.followup_description.trim(),
+          `--- Lead from ${market?.name ?? "Trade Show"}`,
+          leadForm.dealer.trim() ? `Dealer: ${leadForm.dealer.trim()}` : "",
+          leadForm.email.trim() ? `Dealer Email: ${leadForm.email.trim()}` : "",
+          leadForm.product_interest.trim() ? `Collections: ${leadForm.product_interest.trim()}` : "",
+          Number(leadForm.order_amount) > 0 ? `Order Amount: ${fmt(Number(leadForm.order_amount))}` : "",
+        ].filter(Boolean);
 
+        const assigneeIds = followupAssigneeIds.length > 0 ? followupAssigneeIds : [user.id];
+
+        const { data: taskRow, error: taskErr } = await supabase.from("manager_tasks").insert({
+          user_id: user.id,
+          assigned_user_id: assigneeIds[0],
+          title,
+          description: descParts.join("\n"),
+          status: "todo",
+          due_date: leadForm.followup_due_date || null,
+        }).select("id").single();
+        if (taskErr) {
+          toast.error(`Follow-up task: ${taskErr.message}`);
+        } else if (taskRow?.id) {
+          await supabase.from("manager_task_assignees").insert(assigneeIds.map((uid) => ({ task_id: taskRow.id, user_id: uid })));
+          toast.success("Follow-up task created");
+        }
+      }
 
       setLeadDialog(null);
       setEditingLeadId(null);

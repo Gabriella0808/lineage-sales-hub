@@ -958,11 +958,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
 
   // ── Filter options from view data ─────────────────────────────────────────
 
+  // "Historical Invoice" (the synthetic label for null-brand_category
+  // invoiced lines) is deliberately NOT offered here as a selectable filter
+  // option — it's not a real brand. Those lines are still included whenever
+  // no brand filter is applied; see effectiveBrand below, which is
+  // unaffected by this options list.
   const allBrandCategories = useMemo(() =>
-    Array.from(new Set(optionLines.map((l) => {
-      const raw = l.brand_category?.trim();
-      return raw ? raw : (l.metric_type === "invoiced" ? "Historical Invoice" : null);
-    }).filter(Boolean) as string[])).sort(),
+    Array.from(new Set(optionLines.map((l) => l.brand_category?.trim()).filter(Boolean) as string[])).sort(),
   [optionLines]);
 
   const skuLabelMap = useMemo(() => {

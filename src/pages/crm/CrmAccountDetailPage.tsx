@@ -15,6 +15,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { AssigneePicker, type AssignableUser } from "@/components/AssigneePicker";
 
 export default function CrmAccountDetailPage() {
   const { id } = useParams();
@@ -35,8 +36,18 @@ export default function CrmAccountDetailPage() {
   const [followUpTitle, setFollowUpTitle] = useState("");
   const [followUpDue, setFollowUpDue] = useState("");
   const [followUpSubmitting, setFollowUpSubmitting] = useState(false);
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [followUpAssigneeIds, setFollowUpAssigneeIds] = useState<string[]>([]);
 
   useEffect(() => { if (account) setForm(account); }, [account]);
+
+  useEffect(() => {
+    if (!user) return;
+    setFollowUpAssigneeIds([user.id]);
+    supabase.rpc("assignable_users").then(({ data }) => {
+      setAssignableUsers((data ?? []) as AssignableUser[]);
+    });
+  }, [user]);
 
   if (isLoading || !form || !account) return <div className="p-8 text-muted-foreground">Loading...</div>;
 
@@ -89,21 +100,25 @@ export default function CrmAccountDetailPage() {
       return;
     }
     setFollowUpSubmitting(true);
-    const { error } = await supabase.from("manager_tasks").insert({
+    const assigneeIds = followUpAssigneeIds.length > 0 ? followUpAssigneeIds : [user.id];
+    const { data, error } = await supabase.from("manager_tasks").insert({
       user_id: user.id,
-      assigned_user_id: user.id,
+      assigned_user_id: assigneeIds[0],
       title,
       description: `Follow-up for ${account.company_name}\n/crm/accounts/${account.id}`,
       due_date: followUpDue || null,
       status: "todo",
-    });
-    setFollowUpSubmitting(false);
-    if (error) {
-      toast({ title: "Couldn't create task", description: error.message, variant: "destructive" });
+    }).select("id").single();
+    if (error || !data) {
+      setFollowUpSubmitting(false);
+      toast({ title: "Couldn't create task", description: error?.message, variant: "destructive" });
       return;
     }
+    await supabase.from("manager_task_assignees").insert(assigneeIds.map((uid) => ({ task_id: data.id, user_id: uid })));
+    setFollowUpSubmitting(false);
     setFollowUpTitle("");
     setFollowUpDue("");
+    setFollowUpAssigneeIds([user.id]);
     toast({ title: "Follow-up task created", description: "Added to your My Tasks." });
   };
 
@@ -224,6 +239,11 @@ export default function CrmAccountDetailPage() {
                   onChange={(e) => setFollowUpDue(e.target.value)}
                 />
               </div>
+              <AssigneePicker
+                users={assignableUsers}
+                selectedIds={followUpAssigneeIds}
+                onChange={setFollowUpAssigneeIds}
+              />
               <Button
                 size="sm"
                 className="w-full"

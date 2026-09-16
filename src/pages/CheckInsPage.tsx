@@ -64,6 +64,7 @@ const parseDateOnly = (s: string | null | undefined): Date => {
 };
 import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Users, Navigation, Pencil } from "lucide-react";
 import { STATE_TO_TERRITORY, STATE_NAME_TO_CODE, colorForTerritory } from "@/lib/territoryMap";
+import { AssigneePicker, type AssignableUser } from "@/components/AssigneePicker";
 
 // Team member -  match config. We match dealers by rep_owner (authoritative
 // when present, e.g. "will") OR by state code (so reps without a rep_owner
@@ -302,6 +303,8 @@ export default function CheckInsPage() {
     buying_group: "", street_address: "", city: "", state: "",
     manager_id: "", rep_id: "",
   });
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [followUpAssigneeIds, setFollowUpAssigneeIds] = useState<string[]>([]);
   const [savingDetails, setSavingDetails] = useState(false);
   const [newDealer, setNewDealer] = useState<{
     first_name: string;
@@ -705,6 +708,14 @@ export default function CheckInsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    setFollowUpAssigneeIds([user.id]);
+    supabase.rpc("assignable_users").then(({ data }) => {
+      setAssignableUsers((data ?? []) as AssignableUser[]);
+    });
+  }, [user]);
+
   // Re-fetch dealers when the user tabs back in so edits made in the CRM
   // (prospect assignments, contact info, etc.) are reflected immediately.
   useEffect(() => {
@@ -1066,11 +1077,12 @@ export default function CheckInsPage() {
       const taskDesc = form.notes.trim()
         ? `From check-in on ${form.visit_date}: ${form.notes.trim()}`
         : `From check-in on ${form.visit_date}`;
+      const assigneeIds = followUpAssigneeIds.length > 0 ? followUpAssigneeIds : [user.id];
       const { data: taskRow, error: taskErr } = await supabase
         .from("manager_tasks")
         .insert({
           user_id: user.id,
-          assigned_user_id: user.id,
+          assigned_user_id: assigneeIds[0],
           title: taskTitle,
           description: taskDesc,
           due_date: form.follow_up_date,
@@ -1081,6 +1093,9 @@ export default function CheckInsPage() {
       if (taskErr) {
         toast({ title: "Check-in saved, task failed", description: taskErr.message, variant: "destructive" });
       } else {
+        if (taskRow?.id) {
+          await supabase.from("manager_task_assignees").insert(assigneeIds.map((uid) => ({ task_id: taskRow.id, user_id: uid })));
+        }
         await supabase.from("notifications").insert({
           user_id: user.id,
           type: "follow_up_scheduled",
@@ -1105,6 +1120,7 @@ export default function CheckInsPage() {
       follow_up_date: "",
       follow_up_title: "",
     });
+    setFollowUpAssigneeIds(user ? [user.id] : []);
   };
 
   const addDealer = async () => {
@@ -2075,6 +2091,12 @@ export default function CheckInsPage() {
                           min={todayEST()}
                           value={form.follow_up_date}
                           onChange={(e) => setForm({ ...form, follow_up_date: e.target.value })}
+                        />
+                        <Label className="text-xs font-medium">Assign to</Label>
+                        <AssigneePicker
+                          users={assignableUsers}
+                          selectedIds={followUpAssigneeIds}
+                          onChange={setFollowUpAssigneeIds}
                         />
                         <p className="text-[11px] text-muted-foreground">
                           A task will be added to "My Tasks" and you'll get a notification.

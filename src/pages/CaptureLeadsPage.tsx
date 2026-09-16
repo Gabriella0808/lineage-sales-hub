@@ -23,6 +23,7 @@ import { Loader2, Plus, MapPin, Calendar, Trash2, Pencil, Mail, Phone, User, Bui
 import { toast } from "sonner";
 import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
+import { AssigneePicker, type AssignableUser } from "@/components/AssigneePicker";
 
 type Market = {
   id: string;
@@ -99,6 +100,9 @@ export default function CaptureLeadsPage() {
   const [editingOriginalRepEmail, setEditingOriginalRepEmail] = useState<string>("");
   const [editRepCleared, setEditRepCleared] = useState<boolean>(false);
   const [viewingLead, setViewingLead] = useState<Lead | null>(null);
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [followupAssigneeIds, setFollowupAssigneeIds] = useState<string[]>([]);
+  const [followupAssigneeTouched, setFollowupAssigneeTouched] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -140,6 +144,34 @@ export default function CaptureLeadsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.rpc("assignable_users").then(({ data }) => {
+      setAssignableUsers((data ?? []) as AssignableUser[]);
+    });
+  }, [user]);
+
+  // Default the follow-up assignee to whichever portal account the currently-selected
+  // rep resolves to (same lookup used at submit time), falling back to the creator when
+  // the rep has no portal account yet. Only recomputes while the user hasn't manually
+  // overridden the picker, so a deliberate pick survives further rep changes.
+  useEffect(() => {
+    if (!leadForm.followup_enabled || followupAssigneeTouched || !user) return;
+    let cancelled = false;
+    (async () => {
+      let resolved: string | null = null;
+      if (leadForm.sales_rep_id) {
+        const { data: uid } = await supabase.rpc(
+          "user_id_for_rep_with_email_fallback",
+          { _rep_id: leadForm.sales_rep_id }
+        );
+        resolved = (uid as string | null) ?? null;
+      }
+      if (!cancelled) setFollowupAssigneeIds(resolved ? [resolved] : [user.id]);
+    })();
+    return () => { cancelled = true; };
+  }, [leadForm.followup_enabled, leadForm.sales_rep_id, followupAssigneeTouched, user]);
 
   const leadsByMarket = useMemo(() => {
     const map = new Map<string, Lead[]>();
@@ -214,6 +246,8 @@ export default function CaptureLeadsPage() {
     setEditingLeadId(l.id);
     setEditingOriginalRepEmail((l.rep_email ?? "").trim().toLowerCase());
     setEditRepCleared(false);
+    setFollowupAssigneeIds([]);
+    setFollowupAssigneeTouched(false);
     setLeadDialog(l.market_id ?? markets.find((m) => m.name === l.trade_show)?.id ?? null);
   };
 
@@ -366,6 +400,8 @@ export default function CaptureLeadsPage() {
       setEditingOriginalRepEmail("");
       setEditRepCleared(false);
       setLeadForm(emptyLead);
+      setFollowupAssigneeIds([]);
+      setFollowupAssigneeTouched(false);
       load();
       return;
     }
@@ -434,7 +470,9 @@ export default function CaptureLeadsPage() {
         Number(leadForm.order_amount) > 0 ? `Order Amount: ${fmt(Number(leadForm.order_amount))}` : "",
       ].filter(Boolean);
 
-      // Look up rep's auth user_id (so it shows up in their portal's My Tasks)
+      // Look up rep's auth user_id (kept only to detect the "no portal account yet"
+      // case for the toast below — the actual assignee(s) now come from the picker,
+      // which already defaults to this same lookup's result).
       let assignedUserId: string | null = null;
       if (leadForm.sales_rep_id) {
         const { data: uid, error: rpcErr } = await supabase.rpc(
@@ -445,19 +483,27 @@ export default function CaptureLeadsPage() {
         assignedUserId = (uid as string | null) ?? null;
       }
 
-      const { error: taskErr } = await supabase.from("manager_tasks").insert({
+      const assigneeIds = followupAssigneeIds.length > 0 ? followupAssigneeIds : [user.id];
+
+      const { data: taskRow, error: taskErr } = await supabase.from("manager_tasks").insert({
         user_id: user.id,
-        assigned_user_id: assignedUserId,
+        assigned_user_id: assigneeIds[0],
         title,
         description: descParts.join("\n"),
         status: "todo",
         due_date: leadForm.followup_due_date || null,
-      });
-      if (taskErr) toast.error(`Follow-up task: ${taskErr.message}`);
-      else if (!assignedUserId && leadForm.sales_rep_id) {
-        toast.success("Follow-up task added to My Tasks (rep has no portal account yet)");
+      }).select("id").single();
+      if (taskErr) {
+        toast.error(`Follow-up task: ${taskErr.message}`);
       } else {
-        toast.success("Follow-up task created");
+        if (taskRow?.id) {
+          await supabase.from("manager_task_assignees").insert(assigneeIds.map((uid) => ({ task_id: taskRow.id, user_id: uid })));
+        }
+        if (!assignedUserId && leadForm.sales_rep_id) {
+          toast.success("Follow-up task added to My Tasks (rep has no portal account yet)");
+        } else {
+          toast.success("Follow-up task created");
+        }
       }
     }
 
@@ -483,6 +529,8 @@ export default function CaptureLeadsPage() {
     setLeadDialog(null);
     setEditingLeadId(null);
     setLeadForm(emptyLead);
+    setFollowupAssigneeIds([]);
+    setFollowupAssigneeTouched(false);
     load();
   };
 
@@ -573,7 +621,7 @@ export default function CaptureLeadsPage() {
                     <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); deleteMarket(m.id); }}>
                       <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Market
                     </Button>
-                    <Button size="sm" onClick={() => { setEditingLeadId(null); setLeadForm(emptyLead); setLeadDialog(m.id); }}>
+                    <Button size="sm" onClick={() => { setEditingLeadId(null); setLeadForm(emptyLead); setFollowupAssigneeIds([]); setFollowupAssigneeTouched(false); setLeadDialog(m.id); }}>
                       <Plus className="h-3.5 w-3.5 mr-1.5" /> Capture Lead
                     </Button>
                   </div>
@@ -680,7 +728,7 @@ export default function CaptureLeadsPage() {
         </Accordion>
       )}
 
-      <Dialog open={!!leadDialog} onOpenChange={(o) => { if (!o) { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); } }}>
+      <Dialog open={!!leadDialog} onOpenChange={(o) => { if (!o) { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); setFollowupAssigneeIds([]); setFollowupAssigneeTouched(false); } }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -814,6 +862,13 @@ export default function CaptureLeadsPage() {
                       placeholder="Anything specific the rep should do..."
                     />
                   </Field>
+                  <Field label="Assign to">
+                    <AssigneePicker
+                      users={assignableUsers}
+                      selectedIds={followupAssigneeIds}
+                      onChange={(ids) => { setFollowupAssigneeIds(ids); setFollowupAssigneeTouched(true); }}
+                    />
+                  </Field>
                 </div>
               )}
             </div>
@@ -846,7 +901,7 @@ export default function CaptureLeadsPage() {
             </Field>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setLeadDialog(null); setEditingLeadId(null); setLeadForm(emptyLead); setEditingOriginalRepEmail(""); setEditRepCleared(false); setFollowupAssigneeIds([]); setFollowupAssigneeTouched(false); }}>Cancel</Button>
             <Button onClick={submitLead}>{editingLeadId ? "Save Changes" : "Create Lead"}</Button>
           </DialogFooter>
         </DialogContent>

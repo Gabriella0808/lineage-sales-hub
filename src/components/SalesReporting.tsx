@@ -1858,12 +1858,12 @@ function TotalTable({
           )}
           {goalData && (
             <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              MTD %
+              MTD % to Goal
             </th>
           )}
           {goalData && (
             <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              YTD %
+              YTD % to Goal
             </th>
           )}
           <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">

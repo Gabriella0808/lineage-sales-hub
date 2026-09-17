@@ -325,6 +325,33 @@ export function useDealers() {
   });
 }
 
+const UUID_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Canonical active-dealer set, matching the exact roster rule
+// get_sales_reporting_grouped_rows uses server-side (source = 'acctivate',
+// status = 'active', a real non-UUID/non-ChIJ acctivate_id). Deliberately
+// separate from useDealers(), which hardcodes status to "active" for every
+// row and uses a looser filter — this hook exists so Dealer/Rep Reporting's
+// line-mode (Monthly view / Territory grouping) can seed a $0 row for every
+// truly active dealer, the same way the RPC's Total view already does.
+export function useCanonicalActiveDealers() {
+  return useQuery({
+    queryKey: ["dealers", "canonical_active_v1"],
+    queryFn: async () => {
+      const rows = await fetchAllRows<DbDealer>("dealers");
+      return rows.filter((d) => {
+        if (d.source !== "acctivate") return false;
+        if (d.status !== "active") return false;
+        const acId = (d.acctivate_id ?? "").trim();
+        if (!acId) return false;
+        if (UUID_ID_RE.test(acId)) return false;
+        if (acId.startsWith("ChIJ")) return false;
+        return true;
+      });
+    },
+  });
+}
+
 
 export function useManagers() {
   return useQuery({

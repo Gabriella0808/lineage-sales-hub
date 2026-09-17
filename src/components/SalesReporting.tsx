@@ -19,7 +19,7 @@ import { CalendarIcon, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  useDealers, useSalesReps, useTerritories, useRepTerritories,
+  useDealers, useCanonicalActiveDealers, useSalesReps, useTerritories, useRepTerritories,
   formatCurrency,
 } from "@/hooks/usePortalData";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
@@ -619,6 +619,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // ── Portal reference data ─────────────────────────────────────────────────
 
   const { data: dealers        = [] } = useDealers();
+  // Canonical active-only dealer set (source='acctivate', status truly
+  // 'active', no UUID/ChIJ junk) — separate from `dealers` above, which
+  // useDealers() returns with status hardcoded to "active" regardless of
+  // the real value. Used only to seed $0 rows for line-mode (Monthly
+  // view / Territory grouping) below; Total view already gets this for
+  // free from get_sales_reporting_grouped_rows's own roster logic.
+  const { data: canonicalActiveDealers = [] } = useCanonicalActiveDealers();
   const { data: reps           = [] } = useSalesReps();
   const { data: territories    = [] } = useTerritories();
   const { data: repTerritories = [] } = useRepTerritories();
@@ -743,6 +750,33 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     if (repIds.length > 0)       list = list.filter((d) => d.rep_id && repIds.includes(d.rep_id));
     return list;
   }, [dealers, managerScopeRepIds, territoryIds, repIds]);
+
+  // Canonical active dealers matching the current manager/territory/rep/dealer
+  // filters, for seeding $0 rows in line-mode aggregation (Monthly view /
+  // Territory grouping) below — mirrors visibleDealers' filter logic plus the
+  // dealerIds sub-filter (same pattern rpcCustomerIds uses), but starts from
+  // canonicalActiveDealers instead of the unfiltered `dealers` array, so
+  // inactive/non-canonical rows never get seeded as a $0 dealer row.
+  const dealerSeedList = useMemo(() => {
+    let list = canonicalActiveDealers;
+    if (managerScopeRepIds) list = list.filter((d) => d.rep_id && managerScopeRepIds.includes(d.rep_id));
+    if (territoryIds.length > 0) list = list.filter((d) => matchesTerritoryFilter(d.territory_id));
+    if (repIds.length > 0)       list = list.filter((d) => d.rep_id && repIds.includes(d.rep_id));
+    if (dealerIds.length > 0)    list = list.filter((d) => dealerIds.includes(d.id));
+    return list;
+  }, [canonicalActiveDealers, managerScopeRepIds, territoryIds, repIds, dealerIds]);
+
+  // Same idea as dealerSeedList, for reps — seeds $0 rows in line-mode
+  // aggregation (Monthly view) so a rep with zero matching lines (e.g. no
+  // trusted bookings data yet this period) still shows up, matching Total
+  // view's roster-driven behavior. visibleReps already excludes pseudo-reps
+  // (no acctivate_id) and applies manager/territory scope; this adds the
+  // repIds sub-filter on top, same pattern as dealerSeedList's dealerIds.
+  const repSeedList = useMemo(() => {
+    let list = visibleReps;
+    if (repIds.length > 0) list = list.filter((r) => repIds.includes(r.id));
+    return list;
+  }, [visibleReps, repIds]);
 
   // Customer IDs for the RPC p_customer_ids param: territory + dealer sub-filters only.
   // Manager scope is handled via p_manager_id — NOT included here.
@@ -1031,6 +1065,34 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     type Key = string;
     const rows = new Map<Key, { primary: number; comparative: number; byMonth: Map<string, number>; container: number; warehouse: number }>();
 
+    // Seed a $0 row for every active dealer/rep matching the current
+    // filters, so an entity with no matching lines (e.g. zero activity, or
+    // no trusted bookings data yet this period) still shows up — mirrors
+    // what Total view already gets for free from
+    // get_sales_reporting_grouped_rows' roster. Territory rows are left
+    // alone — no fixed roster concept for those.
+    const dealerSeedNameByKey = new Map<Key, string>();
+    if (groupBy === "dealer") {
+      for (const d of dealerSeedList) {
+        const acId = (d.acctivate_id ?? "").trim().toLowerCase();
+        const key = acId || d.name.trim().toLowerCase();
+        if (!key) continue;
+        dealerSeedNameByKey.set(key, d.name);
+        if (!rows.has(key)) {
+          rows.set(key, { primary: 0, comparative: 0, byMonth: new Map(), container: 0, warehouse: 0 });
+        }
+      }
+    } else if (groupBy === "rep") {
+      for (const r of repSeedList) {
+        const acId = (r.acctivate_id ?? "").trim().toLowerCase();
+        const key = (acId ? repAcIdToCanonical.get(acId) : undefined) ?? r.name;
+        if (!key) continue;
+        if (!rows.has(key)) {
+          rows.set(key, { primary: 0, comparative: 0, byMonth: new Map(), container: 0, warehouse: 0 });
+        }
+      }
+    }
+
     for (const line of repLines) {
       if (line.metric_type !== targetMetric) continue;
       // Jan–Jul 2026 booking actuals are not trusted; hide them everywhere in the portal.
@@ -1107,7 +1169,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       .map(([k, v]) => ({
         key: k,
         label: groupBy === "dealer"
-          ? (customerIdBestLabel.get(k) ?? k)
+          ? (customerIdBestLabel.get(k) ?? dealerSeedNameByKey.get(k) ?? k)
           : (k === "Unassigned" ? "Unassigned" : k),
         ...v,
       }))
@@ -1119,7 +1181,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     managerScopeCustomerIds, selectedTerritoryNames, selectedRepAcIds,
     selectedDealerAcIds, selectedDealerNames,
     repAcIdToCanonical, brandCategorySet, collectionSet, skuSet, customerIdToTerritoryName,
-    customerIdBestLabel,
+    customerIdBestLabel, dealerSeedList, repSeedList,
   ]);
 
   // ── Summary totals + KPI stats ────────────────────────────────────────────
@@ -1411,8 +1473,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const isFetching = useRpcMode
     ? groupedFetching
     : (metric === "invoices" ? invFetching : bkgFetching);
-  const isLoading  = isFetching && (useRpcMode ? groupedRows.length === 0 : primaryLines.length === 0);
-  const noData     = !isFetching && (useRpcMode ? groupedRows.length === 0 : primaryLines.length === 0);
+  // Line mode checks aggregation.rows (post-seeding), not the raw
+  // primaryLines array — a dealer/rep with zero matching lines still has a
+  // seeded $0 row in aggregation.rows, so "no data" should only show when
+  // there's truly nothing to render, not just because zero transaction
+  // lines happened to match the current filters.
+  const isLoading  = isFetching && (useRpcMode ? groupedRows.length === 0 : primaryLines.length === 0 && aggregation.rows.length === 0);
+  const noData     = !isFetching && (useRpcMode ? groupedRows.length === 0 : aggregation.rows.length === 0);
   const dateRangeLabel  = `${format(primary.from, "MMM d, yyyy")} – ${format(primary.to, "MMM d, yyyy")}`;
   const compRangeLabel  = `${format(comparative.from, "MMM d, yyyy")} – ${format(comparative.to, "MMM d, yyyy")}`;
   const tableRangeLabel = dateRangeLabel;

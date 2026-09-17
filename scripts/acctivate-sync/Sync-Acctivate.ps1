@@ -390,6 +390,10 @@ function Send-Batch {
 # and MUST include an `acctivate_id` text column used for upsert conflict resolution.
 
 $queries = @{
+  # Status = 1 means active, Status = 0 means inactive in this Acctivate
+  # install (confirmed directly against real customer records). Only active
+  # customers are pulled — inactive ones are left untouched in Supabase
+  # rather than synced with status = 'inactive'.
   dealers = @"
 SELECT
   CAST(cv.CustId AS NVARCHAR(64)) AS acctivate_id,
@@ -403,11 +407,12 @@ SELECT
   CAST(cv.SalespersonID AS NVARCHAR(64)) AS rep_owner,
   tc._Territory                   AS territory,
   tc._SalesManager                AS sales_manager,
-  CASE WHEN LOWER(CAST(cv.Status AS NVARCHAR(32))) IN ('1', 'inactive') THEN 'inactive' ELSE 'active' END AS status
+  'active'                        AS status
 FROM dbo.Customer cv
 LEFT JOIN dbo.tbCustomer tc ON tc.CustID = cv.CustID
 WHERE cv.CustID IS NOT NULL
   AND cv.CustID NOT LIKE '%(deleted)%'
+  AND CAST(cv.Status AS NVARCHAR(32)) = '1'
 "@
 
 

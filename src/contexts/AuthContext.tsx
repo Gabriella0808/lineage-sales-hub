@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Set listener BEFORE getSession to avoid missing the initial auth event
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
       const newUserId = sess?.user?.id ?? null;
       if (initializedRef.current && prevUserIdRef.current !== newUserId) {
         // A different person is now signed in (or signed out) - drop every
@@ -39,13 +39,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setSession(sess);
       setLoading(false);
-
-      // Log sign-in events (defer to avoid Supabase deadlock inside callback)
-      if (event === "SIGNED_IN" && sess?.user) {
-        setTimeout(() => {
-          supabase.from("sign_in_log").insert({ user_id: sess.user.id }).then();
-        }, 0);
-      }
     });
 
     supabase.auth.getSession().then(({ data: { session: sess } }) => {

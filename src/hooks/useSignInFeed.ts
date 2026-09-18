@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export interface SignInEvent {
   id: string;
@@ -90,5 +91,30 @@ export function useLastSeenUsers() {
       }));
     },
     refetchInterval: 30000,
+  });
+}
+
+export interface RepLastLogin {
+  rep_id: string;
+  rep_name: string;
+  last_signed_in_at: string | null;
+}
+
+// Admin/manager-only: uses a SECURITY DEFINER RPC because sign_in_log (admin-only)
+// and user_reps (own-row-only) are both too locked down for a manager to read
+// directly via RLS. The RPC does the admin/manager scoping itself.
+export function useRepLastLogins() {
+  const { data: roleInfo } = useUserRole();
+  const enabled = !!roleInfo?.isAdmin || !!roleInfo?.isManager;
+
+  return useQuery({
+    queryKey: ["rep-last-logins"],
+    queryFn: async (): Promise<RepLastLogin[]> => {
+      const { data, error } = await (supabase as any).rpc("get_rep_last_logins");
+      if (error) throw error;
+      return (data ?? []) as RepLastLogin[];
+    },
+    enabled,
+    refetchInterval: 60000,
   });
 }

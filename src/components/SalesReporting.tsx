@@ -1100,6 +1100,22 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       }
     }
 
+    // TEMPORARY DEBUG — remove after diagnosing the rep-filtered dealer $0 issue.
+    if (groupBy === "dealer" && selectedRepAcIds.size > 0) {
+      const matching = repLines.filter((l) => {
+        const repAcId = (l.rep_id ?? "").trim().toLowerCase();
+        return repAcId && selectedRepAcIds.has(repAcId);
+      });
+      console.group("[dealer-rep-debug] aggregation input");
+      console.log("selectedRepAcIds:", Array.from(selectedRepAcIds));
+      console.log("repLines.length:", repLines.length, "metric:", metric, "targetMetric:", targetMetric);
+      console.log("lines matching selectedRepAcIds (any metric_type):", matching.length);
+      console.log("of those, matching targetMetric too:", matching.filter((l) => l.metric_type === targetMetric).length);
+      console.log("sample matching lines:", matching.slice(0, 10));
+      console.log("dealerSeedList.length:", dealerSeedList.length, "seed acctivate_ids:", dealerSeedList.map((d) => d.acctivate_id));
+      console.groupEnd();
+    }
+
     for (const line of repLines) {
       if (line.metric_type !== targetMetric) continue;
       // Jan–Jul 2026 booking actuals are not trusted; hide them everywhere in the portal.

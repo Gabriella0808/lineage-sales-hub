@@ -1100,28 +1100,6 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       }
     }
 
-    // TEMPORARY DEBUG — remove after diagnosing the Monthly-view dealer $0 issue.
-    if (groupBy === "dealer") {
-      const byMetric = repLines.reduce<Record<string, number>>((acc, l) => {
-        acc[l.metric_type] = (acc[l.metric_type] ?? 0) + 1;
-        return acc;
-      }, {});
-      const bookingLines = repLines.filter((l) => l.metric_type === "bookings");
-      const visibleBookingLines = bookingLines.filter((l) => isBookingVisibleDate(l.transaction_date));
-      const nonZeroBookingLines = visibleBookingLines.filter((l) => l.amount !== 0);
-      console.group("[dealer-rep-debug] aggregation input");
-      console.log("metric (toggle):", metric, "targetMetric:", targetMetric);
-      console.log("repLines.length:", repLines.length, "by metric_type:", byMetric);
-      console.log("bookingLines (metric_type==='bookings'):", bookingLines.length);
-      console.log("of those, isBookingVisibleDate === true:", visibleBookingLines.length);
-      console.log("of those, amount !== 0:", nonZeroBookingLines.length);
-      console.log("sample booking lines (raw):", bookingLines.slice(0, 5));
-      console.log("date range primary.from/to:", primary.from, primary.to);
-      console.log("selectedRepAcIds:", Array.from(selectedRepAcIds));
-      console.log("dealerSeedList.length:", dealerSeedList.length);
-      console.groupEnd();
-    }
-
     for (const line of repLines) {
       if (line.metric_type !== targetMetric) continue;
       // Jan–Jul 2026 booking actuals are not trusted; hide them everywhere in the portal.

@@ -13,7 +13,7 @@ export type NavItem = {
   icon: typeof LayoutDashboard;
   roles: AppRole[];
   allowEmails?: string[];
-  children?: { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[] }[];
+  children?: { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[]; allowEmails?: string[] }[];
 };
 
 export type NavSection = {
@@ -71,7 +71,7 @@ export const NAV_SECTIONS: NavSection[] = [
       roles: ["admin", "manager"],
       children: [
         { title: "Prospects", url: "/crm/accounts", icon: Store, roles: ["admin", "manager"] },
-        { title: "Prospect Reporting", url: "/prospects/reporting", icon: BarChart3, roles: ["admin", "manager"] },
+        { title: "Prospect Reporting", url: "/prospects/reporting", icon: BarChart3, roles: ["admin", "manager"], allowEmails: ["gabriella@lineage-collections.com"] },
         { title: "Visit Analytics", url: "/check-ins/analytics", icon: PieChart, roles: ["admin", "manager"] },
       ],
     },
@@ -146,7 +146,14 @@ export function getVisibleNavSections(
         .filter((i) => (cs ? CS_ALLOWED_URLS.has(i.url) : i.roles.includes(role)))
         .filter((i) => !(i.url === "/org-chart" && user?.email?.toLowerCase() === "andrew@lineage-collections.com"))
         .filter((i) => !i.allowEmails || (!!user?.email && i.allowEmails.map((e) => e.toLowerCase()).includes(user.email!.toLowerCase())))
-        .map((i) => (cs ? { ...i, children: undefined } : i)),
+        .map((i) => cs
+          ? { ...i, children: undefined }
+          : {
+              ...i,
+              children: i.children
+                ?.filter((c) => c.roles.includes(role))
+                .filter((c) => !c.allowEmails || (!!user?.email && c.allowEmails.map((e) => e.toLowerCase()).includes(user.email!.toLowerCase()))),
+            }),
     }))
     .filter((s) => s.items.length > 0);
 }

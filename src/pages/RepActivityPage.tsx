@@ -23,15 +23,16 @@ export default function RepActivityPage() {
   const isLoading = loginsLoading || repsLoading;
 
   // get_rep_last_logins() already scopes rows to what the caller is allowed
-  // to see (all reps for admin, only their own for a manager) — the page
-  // just joins in email/status/manager from sales_reps for display.
+  // to see (all reps for admin, only their own for a manager) and returns
+  // the real login email directly — sales_reps.email is blank for several
+  // real, actively-used accounts, so it's only used here for status/manager.
   const rows = useMemo(() => {
     return repLastLogins.map((r) => {
       const rep = repsById.get(r.rep_id);
       return {
         rep_id: r.rep_id,
         rep_name: r.rep_name,
-        email: rep?.email ?? null,
+        email: r.email,
         status: rep?.status ?? null,
         manager_name: rep?.manager_id ? managerNameById.get(rep.manager_id) ?? null : null,
         last_signed_in_at: r.last_signed_in_at,

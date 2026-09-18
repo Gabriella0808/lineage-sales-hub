@@ -97,6 +97,7 @@ export function useLastSeenUsers() {
 export interface RepLastLogin {
   rep_id: string;
   rep_name: string;
+  email: string | null;
   last_signed_in_at: string | null;
 }
 

@@ -1013,11 +1013,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     Array.from(new Set(optionLines.map((l) => l.product_class?.trim()).filter(Boolean) as string[])).sort(),
   [optionLines]);
 
+  // Freight Out and Quality Control line items are accounting/logistics
+  // entries, not real products — never offered as SKU filter options,
+  // for invoices or bookings, admin or rep portals (this component is
+  // shared by all of them).
+  const isNonProductSku = (sku: string) =>
+    /^(freight out|quality control)\b/i.test(sku);
+
   const skuLabelMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const l of optionLines) {
       const sku = l.sku?.trim();
-      if (sku && !map.has(sku)) {
+      if (sku && !isNonProductSku(sku) && !map.has(sku)) {
         const desc = l.description?.trim();
         map.set(sku, desc ? `${sku} – ${desc}` : sku);
       }

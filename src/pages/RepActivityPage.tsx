@@ -48,13 +48,12 @@ export default function RepActivityPage() {
       )
     : rows;
 
-  // Never-logged-in and longest-idle reps first, so the page surfaces who to
-  // check in on rather than burying them below active reps.
+  // Most-recently-logged-in reps first, never-logged-in reps last.
   const sorted = [...filtered].sort((a, b) => {
     if (!a.last_signed_in_at && !b.last_signed_in_at) return a.rep_name.localeCompare(b.rep_name);
-    if (!a.last_signed_in_at) return -1;
-    if (!b.last_signed_in_at) return 1;
-    return new Date(a.last_signed_in_at).getTime() - new Date(b.last_signed_in_at).getTime();
+    if (!a.last_signed_in_at) return 1;
+    if (!b.last_signed_in_at) return -1;
+    return new Date(b.last_signed_in_at).getTime() - new Date(a.last_signed_in_at).getTime();
   });
 
   const neverLoggedInCount = rows.filter((r) => !r.last_signed_in_at).length;

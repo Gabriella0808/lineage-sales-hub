@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldCheck, UserCog, Users, KeyRound, Trash2, UserPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AboutLineage } from "@/components/desktop/AboutLineage";
 
 interface UserRow {
   user_id: string;
@@ -84,6 +85,8 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AboutLineage />
     </div>
   );
 }

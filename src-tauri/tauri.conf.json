@@ -1,0 +1,66 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Lineage Collections",
+  "version": "1.0.0",
+  "identifier": "com.lineagecollections.portal",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1430",
+    "beforeDevCommand": "npm run dev -- --port 1430 --strictPort",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Lineage Collections",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' https://tcqpseblcwqjopbocfmr.supabase.co wss://tcqpseblcwqjopbocfmr.supabase.co https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://api.github.com https://github.com; frame-src 'none'; object-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "publisher": "Lineage Collections",
+    "copyright": "© 2026 Lineage Collections",
+    "category": "Business",
+    "shortDescription": "Lineage Collections Business Portal",
+    "longDescription": "The Lineage Collections desktop application — dealer, rep, and operations management for the Lineage Collections team.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "signingIdentity": "Developer ID Application: Gabriella Maccioni (64SWT785RC)",
+      "hardenedRuntime": true
+    }
+  },
+  "plugins": {
+    "updater": {
+      "requireSignedVersion": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIwRUU0OENEOERGQzA0NkUKUldSdUJQeU56VWp1c04xQ2NmdzFkU296MDJQcjMwRjZrbWR3dFB2MGJOeVJEWFI3eW5lRlB2dVYK",
+      "endpoints": [
+        "https://github.com/Gabriella0808/lineage-sales-hub/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

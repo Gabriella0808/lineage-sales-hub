@@ -6,6 +6,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { openExternal } from "@/lib/desktop";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -218,8 +219,8 @@ export default function CrmAccountDetailPage() {
                   <a href={`mailto:${email.trim()}`}><Mail className="h-4 w-4 mr-2" />{email.trim()}</a>
                 </Button>
               ))}
-              {form.website && <Button asChild variant="outline" className="w-full justify-start"><a href={form.website} target="_blank" rel="noreferrer"><Globe className="h-4 w-4 mr-2" />Visit website</a></Button>}
-              {(form.street_1 || form.city) && <Button asChild variant="outline" className="w-full justify-start"><a href={`https://maps.google.com/?q=${encodeURIComponent([form.street_1, form.city, form.state, form.zip].filter(Boolean).join(", "))}`} target="_blank" rel="noreferrer"><MapPin className="h-4 w-4 mr-2" />Open in Maps</a></Button>}
+              {form.website && <Button variant="outline" className="w-full justify-start" onClick={() => openExternal(form.website!)}><Globe className="h-4 w-4 mr-2" />Visit website</Button>}
+              {(form.street_1 || form.city) && <Button variant="outline" className="w-full justify-start" onClick={() => openExternal(`https://maps.google.com/?q=${encodeURIComponent([form.street_1, form.city, form.state, form.zip].filter(Boolean).join(", "))}`)}><MapPin className="h-4 w-4 mr-2" />Open in Maps</Button>}
             </CardContent>
           </Card>
 

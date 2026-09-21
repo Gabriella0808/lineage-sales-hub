@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Mail, Phone, ExternalLink, Copy, MapPin } from "lucide-react";
+import { openExternal } from "@/lib/desktop";
 
 // Billing addresses sourced from Reps-ship_to_address spreadsheet, keyed by email
 const REP_ADDRESSES: Record<string, string> = {
@@ -140,7 +141,7 @@ export default function DirectoryPage() {
             <div className="flex items-center gap-1.5 pt-2 border-t">
               {c.email && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.location.href = `mailto:${c.email}`}><Mail className="h-3.5 w-3.5" /></Button>}
               {c.phone && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.location.href = `tel:${c.phone}`}><Phone className="h-3.5 w-3.5" /></Button>}
-              {c.website && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.open(c.website.startsWith('http') ? c.website : `https://${c.website}`, '_blank')}><ExternalLink className="h-3.5 w-3.5" /></Button>}
+              {c.website && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openExternal(c.website.startsWith('http') ? c.website : `https://${c.website}`)}><ExternalLink className="h-3.5 w-3.5" /></Button>}
             </div>
           </div>
         ))}

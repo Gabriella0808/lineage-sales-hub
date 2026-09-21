@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Mail, Phone, ExternalLink } from "lucide-react";
+import { openExternal } from "@/lib/desktop";
 import { FilterBar } from "@/components/FilterBar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useSalesReps, useTerritories, useDealers, useManagers, formatCurrency, getRepName, getTerritoryName } from "@/hooks/usePortalData";
@@ -248,14 +249,18 @@ export default function DealersPage() {
                   {dealer.phone && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Phone</p><p className="text-sm">{dealer.phone}</p></div>}
                   {dealer.email && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Email</p><p className="text-sm">{dealer.email}</p></div>}
                   {dealer.website && <div><p className="text-[11px] text-muted-foreground uppercase mb-1">Website</p>
-                    <a href={dealer.website.startsWith('http') ? dealer.website : `https://${dealer.website}`} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline flex items-center gap-1">{dealer.website} <ExternalLink className="h-3 w-3" /></a>
+                    <a
+                      href={dealer.website.startsWith('http') ? dealer.website : `https://${dealer.website}`}
+                      onClick={(e) => { e.preventDefault(); openExternal(dealer.website!.startsWith('http') ? dealer.website! : `https://${dealer.website}`); }}
+                      className="text-sm text-accent hover:underline flex items-center gap-1"
+                    >{dealer.website} <ExternalLink className="h-3 w-3" /></a>
                   </div>}
                 </div>
 
                 <div className="flex gap-2">
                   {dealer.email && <Button size="sm" variant="outline" onClick={() => window.location.href = `mailto:${dealer.email}`}><Mail className="h-3.5 w-3.5 mr-2" /> Email</Button>}
                   {dealer.phone && <Button size="sm" variant="outline" onClick={() => window.location.href = `tel:${dealer.phone}`}><Phone className="h-3.5 w-3.5 mr-2" /> Call</Button>}
-                  {dealer.website && <Button size="sm" variant="outline" onClick={() => window.open(dealer.website!.startsWith('http') ? dealer.website! : `https://${dealer.website}`, '_blank')}><ExternalLink className="h-3.5 w-3.5 mr-2" /> Website</Button>}
+                  {dealer.website && <Button size="sm" variant="outline" onClick={() => openExternal(dealer.website!.startsWith('http') ? dealer.website! : `https://${dealer.website}`)}><ExternalLink className="h-3.5 w-3.5 mr-2" /> Website</Button>}
                 </div>
 
                 <div>

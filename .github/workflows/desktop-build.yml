@@ -1,0 +1,89 @@
+name: Desktop App Build (Windows + macOS)
+
+# Manual trigger ONLY. This never runs on push or on a schedule — someone
+# has to explicitly click "Run workflow" in the GitHub Actions tab. That's
+# deliberate: this builds and signs real, distributable installers.
+#
+# By default it creates a DRAFT GitHub Release — visible only to repo
+# collaborators, not linked from "latest", and not something the desktop
+# app's auto-updater would ever pick up. A human has to explicitly click
+# "Publish release" in the GitHub UI (or re-run with publish_release=true)
+# before it's actually live. That's the real safety gate, not the input
+# flag alone.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, e.g. 1.0.1 (must match src-tauri/tauri.conf.json)"
+        required: true
+      publish_release:
+        description: "Publish immediately instead of leaving it as a draft"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: ""
+          - platform: windows-latest
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - run: npm ci
+
+      # --- macOS signing setup only ---
+      - name: Import Apple signing certificate
+        if: matrix.platform == 'macos-latest'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.CI_KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN=ci-build.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > cert.p12
+          security import cert.p12 -k "$KEYCHAIN" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          rm cert.p12
+          curl -s -o /tmp/DeveloperIDG2CA.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+          security add-certificates -k "$KEYCHAIN" /tmp/DeveloperIDG2CA.cer
+          echo "${{ secrets.APPLE_API_KEY_P8 }}" | base64 --decode > /tmp/apple-api-key.p8
+
+      # --- Windows signing: NOT wired up yet. Trusted Signing needs the
+      # trusted-signing-cli tool run as a separate post-build step; Tauri
+      # doesn't call it natively the way it calls Apple's codesign. This
+      # produces an UNSIGNED Windows installer until that's added — a
+      # documented gap, not a fake pass. ---
+
+      - name: Build and release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_UPDATER_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_UPDATER_KEY_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_KEY_PATH: /tmp/apple-api-key.p8
+        with:
+          tagName: v${{ github.event.inputs.version }}
+          releaseName: "Lineage Collections v${{ github.event.inputs.version }}"
+          releaseDraft: ${{ github.event.inputs.publish_release != 'true' }}
+          prerelease: false
+          includeUpdaterJson: true
+          args: ${{ matrix.args }}

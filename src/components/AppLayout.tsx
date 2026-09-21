@@ -20,6 +20,9 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { getVisibleNavSections, type NavItem } from "@/config/navSections";
+import { useDesktopWindowTitle } from "@/lib/desktop/useDesktopWindowTitle";
+import { useConnectivity } from "@/lib/desktop/useConnectivity";
+import { OfflineScreen } from "@/components/desktop/OfflineScreen";
 
 function SidebarNavItemRow({
   item, role, collapsed, isOpen, onToggleGroup, closeOnMobile,
@@ -215,6 +218,13 @@ function SidebarNav() {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const defaultOpen = typeof window === "undefined" ? true : window.innerWidth >= 1024;
+  useDesktopWindowTitle();
+  const { isConnected, checking, retry } = useConnectivity();
+
+  if (!isConnected) {
+    return <OfflineScreen onRetry={retry} checking={checking} />;
+  }
+
   return (
     <ReportContextProvider>
       <SidebarProvider defaultOpen={defaultOpen}>

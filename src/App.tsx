@@ -17,6 +17,7 @@ import KpiPage from "@/pages/KpiPage";
 import ManagersPage from "@/pages/ManagersPage";
 import RepActivityPage from "@/pages/RepActivityPage";
 import SettingsPage from "@/pages/SettingsPage";
+import DownloadAppPage from "@/pages/DownloadAppPage";
 import BookingsReportPage from "@/pages/BookingsReportPage";
 import InvoicingReportPage from "@/pages/InvoicingReportPage";
 import CompanyWidePage from "@/pages/CompanyWidePage";
@@ -82,6 +83,7 @@ const App = () => (
                       <Route path="/managers" element={<ProtectedRoute allow={["admin", "manager"]}><ManagersPage /></ProtectedRoute>} />
                       <Route path="/reps-acctivate" element={<ProtectedRoute allow={["admin"]}><SalesRepsAcctivatePage /></ProtectedRoute>} />
                       <Route path="/rep-activity" element={<ProtectedRoute allow={["admin", "manager"]}><RepActivityPage /></ProtectedRoute>} />
+                      <Route path="/desktop-app" element={<ProtectedRoute><DownloadAppPage /></ProtectedRoute>} />
                       <Route path="/dealers" element={<DealersPage />} />
                       <Route path="/directory" element={<ProtectedRoute allow={["admin", "manager"]}><DirectoryPage /></ProtectedRoute>} />
                       <Route path="/kpi" element={<CompanyWidePage />} />

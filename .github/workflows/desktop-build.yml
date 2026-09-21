@@ -76,6 +76,22 @@ jobs:
         if: matrix.platform == 'windows-latest'
         run: cargo install trusted-signing-cli --locked
 
+      # Diagnostic only: Tauri's bundler swallows this tool's own
+      # stdout/stderr when it's invoked as a signCommand, so a real
+      # failure there only ever shows "failed to run trusted-signing-cli"
+      # with zero detail. Running it directly here, against a throwaway
+      # file, surfaces its actual error message in the CI log.
+      - name: Test Azure Trusted Signing CLI (diagnostic)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          Copy-Item "$env:SystemRoot\System32\notepad.exe" test-sign.exe
+          trusted-signing-cli.exe -e https://eus.codesigning.azure.net/ -a lineage-collections -c lineage-collections test-sign.exe
+
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:

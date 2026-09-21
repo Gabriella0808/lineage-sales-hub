@@ -117,7 +117,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Sales Managers", url: "/managers", icon: UserCog,  roles: ["admin", "manager"] },
       { title: "Sales Rep Database (Acctivate)", url: "/reps-acctivate", icon: Database, roles: ["admin"] },
       { title: "Rep Login Activity", url: "/rep-activity", icon: Clock, roles: ["admin", "manager"] },
-      { title: "Desktop App", url: "/desktop-app", icon: Download, roles: ["admin", "manager", "rep", "dealer"] },
+      { title: "Desktop App", url: "/desktop-app", icon: Download, roles: ["admin", "manager", "rep", "dealer"], allowEmails: ["gabriella@lineage-collections.com"] },
       { title: "Settings",       url: "/settings", icon: Settings, roles: ["admin", "manager", "rep"] },
     ],
   },

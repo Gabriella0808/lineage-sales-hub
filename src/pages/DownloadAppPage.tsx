@@ -75,8 +75,8 @@ export default function DownloadAppPage() {
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             {selected === "windows"
-              ? "Installs a standalone Lineage Collections app to your PC — appears in the Start Menu, launches from the taskbar, and uninstalls cleanly from Windows Settings."
-              : "A standard macOS .dmg install — drag Lineage Collections into Applications, launch from Launchpad or the Dock."}
+              ? "Installs a standalone Lineage Collections app to your PC. Appears in the Start Menu, launches from the taskbar, and uninstalls cleanly from Windows Settings."
+              : "A standard macOS .dmg install. Drag Lineage Collections into Applications, launch from Launchpad or the Dock."}
           </p>
           {loading ? (
             <Button disabled className="w-full sm:w-auto">
@@ -90,14 +90,14 @@ export default function DownloadAppPage() {
           ) : (
             <Button disabled className="w-full sm:w-auto">
               <Download className="h-4 w-4 mr-2" />
-              Download for {selected === "windows" ? "Windows" : "macOS"} — Coming Soon
+              Download for {selected === "windows" ? "Windows" : "macOS"} (Coming Soon)
             </Button>
           )}
           <p className="text-xs text-muted-foreground">
             {asset
               ? "Built, signed, and notarized via the project's release pipeline."
               : selected === "windows"
-                ? "The Windows build exists but isn't code-signed yet, so it isn't offered here — a real download will appear the moment signing is in place."
+                ? "The Windows build exists but isn't code-signed yet, so it isn't offered here. A real download will appear the moment signing is in place."
                 : "No published release yet. This page will offer a real download the moment one exists; nothing here is a placeholder link."}
           </p>
         </CardContent>

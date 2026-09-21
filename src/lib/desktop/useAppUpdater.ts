@@ -10,11 +10,9 @@ export type UpdateState =
   | { status: "error"; message: string };
 
 /**
- * Wraps @tauri-apps/plugin-updater. No-ops on web. Nothing here calls the
- * update endpoint automatically on app start — it's manual-trigger only
- * (the "Check for Updates" button) until there's a real, reachable
- * endpoint and a decision on how it's hosted (see tauri.conf.json's
- * updater.endpoints placeholder).
+ * Wraps @tauri-apps/plugin-updater. No-ops on web. Used by the Settings
+ * "Check for Updates" button and by UpdatePrompt, which checks shortly after
+ * the app opens and every few hours.
  */
 export function useAppUpdater() {
   const [state, setState] = useState<UpdateState>({ status: "idle" });

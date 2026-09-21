@@ -31,6 +31,7 @@ import { getVisibleNavSections, type NavItem, type NavSection } from "@/config/n
 import { useDesktopWindowTitle } from "@/lib/desktop/useDesktopWindowTitle";
 import { useConnectivity } from "@/lib/desktop/useConnectivity";
 import { OfflineScreen } from "@/components/desktop/OfflineScreen";
+import { UpdatePrompt } from "@/components/desktop/UpdatePrompt";
 
 const SECTION_ICONS: Record<string, typeof LayoutDashboard> = {
   command: LayoutDashboard,
@@ -616,6 +617,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       <ReportIssueDialog open={issueOpen} onOpenChange={setIssueOpen} />
       <WhatsNewTour />
+      <UpdatePrompt />
     </div>
   );
 }

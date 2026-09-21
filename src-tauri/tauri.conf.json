@@ -47,8 +47,7 @@
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
-      },
-      "signCommand": "trusted-signing-cli -e https://eus.codesigning.azure.net/ -a lineage-collections -c lineage-collections %1"
+      }
     },
     "macOS": {
       "minimumSystemVersion": "11.0",

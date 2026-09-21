@@ -41,12 +41,7 @@ function useLatestRelease() {
 
 function findAsset(assets: ReleaseAsset[] | undefined, os: DetectedOS): ReleaseAsset | undefined {
   if (!assets) return undefined;
-  // Windows builds exist in the release already but aren't code-signed yet
-  // (Trusted Signing isn't wired up) -- deliberately never offered here
-  // even though the asset technically exists, so nobody gets a SmartScreen
-  // warning from a portal-linked download. Remove this guard once Windows
-  // signing is actually in place.
-  if (os === "windows") return undefined;
+  if (os === "windows") return assets.find((a) => a.name.toLowerCase().endsWith("-setup.exe")) ?? assets.find((a) => a.name.toLowerCase().endsWith(".msi"));
   return assets.find((a) => a.name.toLowerCase().endsWith(".dmg"));
 }
 
@@ -95,10 +90,10 @@ export default function DownloadAppPage() {
           )}
           <p className="text-xs text-muted-foreground">
             {asset
-              ? "Built, signed, and notarized via the project's release pipeline."
-              : selected === "windows"
-                ? "The Windows build exists but isn't code-signed yet, so it isn't offered here. A real download will appear the moment signing is in place."
-                : "No published release yet. This page will offer a real download the moment one exists; nothing here is a placeholder link."}
+              ? selected === "windows"
+                ? "This Windows installer is not code-signed, so Windows SmartScreen will warn \"Windows protected your PC\". Click More info, then Run anyway. Only install copies downloaded from this page."
+                : "Built, signed, and notarized via the project's release pipeline."
+              : "No published release yet. This page will offer a real download the moment one exists; nothing here is a placeholder link."}
           </p>
         </CardContent>
       </Card>

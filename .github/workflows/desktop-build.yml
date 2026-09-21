@@ -67,31 +67,6 @@ jobs:
           security add-certificates -k "$KEYCHAIN" /tmp/DeveloperIDG2CA.cer
           echo "${{ secrets.APPLE_API_KEY_P8 }}" | base64 --decode > /tmp/apple-api-key.p8
 
-      # --- Windows signing setup only ---
-      # Tauri calls tauri.conf.json's bundle.windows.signCommand automatically
-      # during `tauri build` -- no separate post-build step needed, just the
-      # CLI tool installed and Azure credentials available as env vars (the
-      # Azure SDK convention trusted-signing-cli reads them from).
-      - name: Install Azure Trusted Signing CLI
-        if: matrix.platform == 'windows-latest'
-        run: cargo install trusted-signing-cli --locked
-
-      # Diagnostic only: Tauri's bundler swallows this tool's own
-      # stdout/stderr when it's invoked as a signCommand, so a real
-      # failure there only ever shows "failed to run trusted-signing-cli"
-      # with zero detail. Running it directly here, against a throwaway
-      # file, surfaces its actual error message in the CI log.
-      - name: Test Azure Trusted Signing CLI (diagnostic)
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        env:
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-        run: |
-          Copy-Item "$env:SystemRoot\System32\notepad.exe" test-sign.exe
-          trusted-signing-cli.exe -e https://eus.codesigning.azure.net/ -a lineage-collections -c lineage-collections test-sign.exe
-
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -102,9 +77,6 @@ jobs:
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_KEY_PATH: /tmp/apple-api-key.p8
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
         with:
           tagName: v${{ github.event.inputs.version }}
           releaseName: "Lineage Collections v${{ github.event.inputs.version }}"

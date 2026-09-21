@@ -11,6 +11,7 @@ const TESTERS = ["gabriella@lineage-collections.com"];
 // Bump this when there is a new tour worth showing again.
 const TOUR_VERSION = "2026-09-22";
 const SEEN_KEY = "lc.tourSeen";
+const seenKeyFor = (email?: string | null) => `${SEEN_KEY}:${(email ?? "").toLowerCase()}`;
 export const START_TOUR_EVENT = "lc:start-tour";
 
 export function canUseTour(email?: string | null) {
@@ -67,7 +68,7 @@ function removeCursor() {
   cursorEl = null;
 }
 
-export function runTour(role?: string) {
+export function runTour(role?: string, email?: string | null) {
   const steps = buildSteps(role);
   const d = driver({
     showProgress: true,
@@ -82,7 +83,7 @@ export function runTour(role?: string) {
     onHighlightStarted: (el) => moveCursor(el),
     onDestroyed: () => {
       removeCursor();
-      try { localStorage.setItem(SEEN_KEY, TOUR_VERSION); } catch { /* ignore */ }
+      try { localStorage.setItem(seenKeyFor(email), TOUR_VERSION); } catch { /* ignore */ }
     },
   });
   d.drive();
@@ -96,15 +97,21 @@ export function WhatsNewTour() {
   const role = roleInfo?.role;
   const allowed = canUseTour(user?.email);
 
-  // Auto-start once per version, on the Company-wide page.
+  // Auto-start after sign-in: once per person per tour version, on any page.
+  // If they land somewhere other than Company-wide, take them there first so
+  // the tour can show the full set of highlights.
   useEffect(() => {
-    if (!allowed || location.pathname !== "/") return;
+    if (!allowed || !user?.email || !role) return;
     let seen: string | null = null;
-    try { seen = localStorage.getItem(SEEN_KEY); } catch { /* ignore */ }
+    try { seen = localStorage.getItem(seenKeyFor(user.email)); } catch { /* ignore */ }
     if (seen === TOUR_VERSION) return;
-    const t = window.setTimeout(() => runTour(role), 2500);
+    if (location.pathname !== "/") {
+      navigate("/", { replace: true });
+      return;
+    }
+    const t = window.setTimeout(() => runTour(role, user.email), 2500);
     return () => window.clearTimeout(t);
-  }, [allowed, location.pathname, role]);
+  }, [allowed, user?.email, role, location.pathname, navigate]);
 
   // Replay from the account menu.
   useEffect(() => {
@@ -112,14 +119,14 @@ export function WhatsNewTour() {
     const onStart = () => {
       if (location.pathname !== "/") {
         navigate("/");
-        window.setTimeout(() => runTour(role), 1500);
+        window.setTimeout(() => runTour(role, user?.email), 1500);
       } else {
-        runTour(role);
+        runTour(role, user?.email);
       }
     };
     window.addEventListener(START_TOUR_EVENT, onStart);
     return () => window.removeEventListener(START_TOUR_EVENT, onStart);
-  }, [allowed, location.pathname, navigate, role]);
+  }, [allowed, location.pathname, navigate, role, user?.email]);
 
   return null;
 }

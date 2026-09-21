@@ -184,10 +184,11 @@ export default function CompanyWidePage() {
       </div>
 
       {/* Report switcher */}
-      <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit max-w-full overflow-x-auto">
+      <div data-tour="report-tabs" className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit max-w-full overflow-x-auto">
         {visibleReports.map(({ key, label }) => (
           <button
             key={key}
+            data-tour={`tab-${key}`}
             onClick={() => setReport(key)}
             className={cn(
               "h-8 px-3 rounded-md text-[13px] whitespace-nowrap transition-colors",

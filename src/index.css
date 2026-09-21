@@ -256,6 +256,27 @@
   .inv-modern table tbody tr { @apply transition-colors hover:bg-muted/40; }
 }
 
+/* What's new tour: match the portal theme (works in light and dark) */
+.driver-popover {
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-elev);
+}
+.driver-popover-title { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.25rem; font-weight: 600; }
+.driver-popover-description { color: hsl(var(--muted-foreground)); font-size: 0.8125rem; line-height: 1.5; }
+.driver-popover-progress-text { color: hsl(var(--muted-foreground)); }
+.driver-popover-footer button {
+  background: hsl(var(--secondary)); color: hsl(var(--secondary-foreground));
+  border: 1px solid hsl(var(--border)); border-radius: 0.375rem; text-shadow: none; padding: 0.35rem 0.75rem;
+}
+.driver-popover-footer button.driver-popover-next-btn { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.driver-popover-arrow-side-left.driver-popover-arrow { border-left-color: hsl(var(--card)); }
+.driver-popover-arrow-side-right.driver-popover-arrow { border-right-color: hsl(var(--card)); }
+.driver-popover-arrow-side-top.driver-popover-arrow { border-top-color: hsl(var(--card)); }
+.driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: hsl(var(--card)); }
+
 /*
   Focus treatment — deliberate, not suppressed.
   Interactive components apply their own `focus-visible:ring-2

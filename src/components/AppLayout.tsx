@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  AlertCircle, Boxes, ChevronDown, ChevronLeft, LayoutGrid, Moon, Sun, ChevronRight, LayoutDashboard, LogOut, Menu, Package,
+  AlertCircle, Boxes, ChevronDown, ChevronLeft, Sparkles, LayoutGrid, Moon, Sun, ChevronRight, LayoutDashboard, LogOut, Menu, Package,
   RefreshCw, Search, Settings, Star, Store, Target,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
+import { WhatsNewTour, START_TOUR_EVENT, canUseTour } from "@/components/WhatsNewTour";
 import { getVisibleNavSections, type NavItem, type NavSection } from "@/config/navSections";
 import { useDesktopWindowTitle } from "@/lib/desktop/useDesktopWindowTitle";
 import { useConnectivity } from "@/lib/desktop/useConnectivity";
@@ -379,7 +380,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const accountMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className={cn("flex items-center gap-2 rounded-full pl-1 pr-2 py-1", dark ? "hover:bg-sidebar-accent" : "hover:bg-muted")} aria-label="Account menu">
+        <button type="button" data-tour="account" className={cn("flex items-center gap-2 rounded-full pl-1 pr-2 py-1", dark ? "hover:bg-sidebar-accent" : "hover:bg-muted")} aria-label="Account menu">
           <span className={cn("h-8 w-8 rounded-full text-[11px] font-semibold flex items-center justify-center", dark ? "bg-sidebar-primary text-sidebar-primary-foreground" : "bg-primary text-primary-foreground")}>{initials(user?.email)}</span>
           <ChevronDown className={cn("h-3.5 w-3.5 hidden sm:block", dark ? "text-sidebar-muted" : "text-muted-foreground")} />
         </button>
@@ -404,6 +405,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
+        {canUseTour(user?.email) && <DropdownMenuItem onClick={() => window.dispatchEvent(new Event(START_TOUR_EVENT))}><Sparkles className="h-4 w-4 mr-2" />What's new tour</DropdownMenuItem>}
         <DropdownMenuItem onClick={() => goTo("/settings")}><Settings className="h-4 w-4 mr-2" />Settings</DropdownMenuItem>
         <DropdownMenuItem onClick={() => setIssueOpen(true)}><AlertCircle className="h-4 w-4 mr-2" />Report an issue</DropdownMenuItem>
         <DropdownMenuItem onClick={() => hardRefresh()}><RefreshCw className="h-4 w-4 mr-2" />Refresh app</DropdownMenuItem>
@@ -416,6 +418,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const themeButton = (
     <button
       type="button"
+      data-tour="theme"
       onClick={() => setThemeMode(themeResolved === "dark" ? "light" : "dark")}
       className={cn("h-9 w-9 shrink-0 rounded-lg flex items-center justify-center transition-colors", dark ? "hover:bg-sidebar-accent" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
       aria-label={themeResolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -428,6 +431,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const searchButton = (
     <button
       type="button"
+      data-tour="search"
       onClick={() => setSearchOpen(true)}
       className={cn(
         "flex items-center gap-2 h-9 w-full max-w-[280px] rounded-lg border px-3 text-[13px] transition-colors",
@@ -611,6 +615,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       </CommandDialog>
 
       <ReportIssueDialog open={issueOpen} onOpenChange={setIssueOpen} />
+      <WhatsNewTour />
     </div>
   );
 }

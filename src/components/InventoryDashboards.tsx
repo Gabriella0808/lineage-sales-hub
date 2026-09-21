@@ -23,6 +23,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { weeksOfSupply, weeksTone, LEAD_TIME_WEEKS } from "@/lib/inventoryMath";
 import ComparePeriodsReport from "@/components/ComparePeriodsReport";
+import { QboPrepaidReport } from "@/components/QboPrepaidReport";
+import { useQboPrepaidSummary } from "@/hooks/useQboPrepaid";
+import { useUserRole } from "@/hooks/useUserRole";
 import { BacklogSummary } from "@/components/BacklogSummary";
 import { OpenOrdersCalendar } from "@/components/OpenOrdersCalendar";
 
@@ -68,13 +71,13 @@ function KPI({ label, value, hint, icon: Icon, accent, onClick, active }: {
 }) {
   const inner = (
     <>
-      <div>
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-        <div className="text-2xl font-semibold mt-2 tabular-nums">{value}</div>
-        {hint && <div className={cn("text-xs mt-1", accent ?? "text-muted-foreground")}>{hint}</div>}
+      <div className="min-w-0">
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+        <div className="font-serif text-4xl font-medium tracking-tight mt-2 tabular-nums">{value}</div>
+        {hint && <div className={cn("text-xs mt-1.5", accent ?? "text-muted-foreground")}>{hint}</div>}
       </div>
-      <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
-        <Icon className="h-4 w-4" />
+      <div className="h-10 w-10 shrink-0 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+        <Icon className="h-[18px] w-[18px]" />
       </div>
     </>
   );
@@ -84,15 +87,15 @@ function KPI({ label, value, hint, icon: Icon, accent, onClick, active }: {
         type="button"
         onClick={onClick}
         className={cn(
-          "text-left rounded-lg border bg-card p-5 flex items-start justify-between transition-colors hover:border-primary/40 hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-ring",
-          active ? "border-primary ring-1 ring-primary/40" : "border-border",
+          "text-left rounded-xl border bg-card p-5 shadow-sm flex items-start justify-between gap-3 transition-all hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring",
+          active ? "border-primary ring-2 ring-primary/30" : "border-border",
         )}
       >
         {inner}
       </button>
     );
   }
-  return <Card className="p-5 flex items-start justify-between">{inner}</Card>;
+  return <Card className="p-5 flex items-start justify-between gap-3 rounded-xl shadow-sm">{inner}</Card>;
 }
 
 function EmptyState({ message }: { message: string }) {
@@ -686,37 +689,6 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
   );
 }
 
-function ReportPOs({ pos, prepaidMode }: { pos: PurchaseOrder[]; prepaidMode?: boolean }) {
-  const rows = [...pos].sort((a, b) => Number(b.total_value) - Number(a.total_value));
-  if (rows.length === 0) return <EmptyState message="No POs to show." />;
-  return (
-    <table className="w-full text-sm">
-      <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground sticky top-0">
-        <tr>
-          <th className="text-left px-3 py-2">PO #</th>
-          <th className="text-left px-3 py-2">Factory</th>
-          <th className="text-left px-3 py-2">Stage</th>
-          <th className="text-left px-3 py-2">ETA</th>
-          <th className="text-right px-3 py-2">Total Value</th>
-          {prepaidMode && <th className="text-right px-3 py-2">Prepaid</th>}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((p) => (
-          <tr key={p.id} className="border-t border-border hover:bg-muted/30">
-            <td className="px-3 py-2 font-mono text-xs">{p.po_number ?? "-"}</td>
-            <td className="px-3 py-2">{p.factory ?? "-"}</td>
-            <td className="px-3 py-2 text-xs">{p.production_stage ?? p.status ?? "-"}</td>
-            <td className="px-3 py-2 text-xs">{p.eta ? new Date(p.eta).toLocaleDateString() : "-"}</td>
-            <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(Number(p.total_value))}</td>
-            {prepaidMode && <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(Number(p.prepaid_amount ?? 0))}</td>}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
 function ReportBacklog({ rows }: { rows: { id: string; order_number: string | null; sku: string; dealer_name: string | null; qty_open: number; unit_price: number; extended_value: number; order_date: string | null; promised_date: string | null }[] }) {
   if (rows.length === 0) return <EmptyState message="No open sales orders." />;
   const sorted = [...rows].sort((a, b) => Number(b.extended_value) - Number(a.extended_value));
@@ -878,6 +850,9 @@ interface Props {
 }
 
 export default function InventoryDashboards({ items, statusFilter, onStatusFilterChange }: Props) {
+  const { data: qboPrepaid } = useQboPrepaidSummary();
+  const { data: prepaidRoleInfo } = useUserRole();
+  const canSeePrepaidLedger = prepaidRoleInfo?.role === "admin" || prepaidRoleInfo?.role === "manager";
   const hub = useInventoryHub();
 
   // Status counts for clickable summary tiles
@@ -927,12 +902,9 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     const closeoutValue = hub.inventorySummary
       .filter((r) => r.discontinued === true)
       .reduce((s, r) => s + Number(r.inventory_value), 0);
-    const prepaidValue = hub.purchaseOrders
-      .filter((p) => p.is_prepaid)
-      .reduce((s, p) => s + Number(p.prepaid_amount ?? 0), 0);
     const salesToInv = value > 0 ? monthlySales / value : 0;
     const turnover = value > 0 ? (monthlySales * 12) / value : 0;
-    return { value, units, monthlySales, backlogValue, backlogUnits, backlogOrders, openPoValue, openPoCount, openPoUnits, prepaidValue, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
+    return { value, units, monthlySales, backlogValue, backlogUnits, backlogOrders, openPoValue, openPoCount, openPoUnits, salesToInv, lostSales, outOfStockValue, closeoutValue, turnover };
   }, [items, hub.openOrders, hub.purchaseOrders, hub.openPOs, hub.inventorySummary, hub.closeoutInventory, hub.clearanceInventoryValue]);
 
 
@@ -1665,6 +1637,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // Analysis sub-tab
   const [analysisTab, setAnalysisTab] = useState<string>("compare");
+  const [mainTab, setMainTab] = useState<string>("analysis");
   const [perfMode, setPerfMode] = useState<"vendor" | "item">("vendor");
   const [compareLY, setCompareLY] = useState<boolean>(false);
 
@@ -1884,23 +1857,31 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   const drillTitles: Record<DrilldownKey, { title: string; desc: string }> = {
     value: { title: "Total Inventory Value - by SKU", desc: "All on-hand inventory valued at unit cost." },
     openpo: { title: "Total Open POs - not yet arrived", desc: "Purchase orders still in production or transit." },
-    prepaid: { title: "Prepaid Inventory - POs with deposits", desc: "Cash already paid out to factories." },
+    prepaid: { title: "Prepaid Inventory", desc: "Cash already paid out to factories. Balance comes from QuickBooks (Vendor Prepayments)." },
     backlog: { title: "Backlog - Open Sales Orders", desc: "Customer orders placed but not yet shipped." },
     closeout: { title: "Discontinued Inventory", desc: "Products marked as discontinued in Acctivate." },
     lost: { title: "Lost Sales - out-of-stock SKUs", desc: "Estimated monthly $ lost from stockouts." },
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div className="space-y-6 inv-modern">
+      <div>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Stock position</p>
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <KPI label="Total Inventory Value" value={fmtMoney(summary.value)} hint={`${fmtNum(summary.units)} units`} icon={DollarSign} onClick={() => toggleDrill("value")} active={drilldown === "value"} />
         <KPI label="Total Open POs" value={fmtMoney(summary.openPoValue)} hint={`${summary.openPoCount} POs · ${fmtNum(summary.openPoUnits)} units`} icon={Truck} onClick={() => toggleDrill("openpo")} active={drilldown === "openpo"} />
-        <KPI label="Prepaid Inventory" value={fmtMoney(summary.prepaidValue)} icon={DollarSign} onClick={() => toggleDrill("prepaid")} active={drilldown === "prepaid"} />
+        <KPI label="Prepaid Inventory" value={qboPrepaid ? fmtMoney(qboPrepaid.current_balance) : "-"} hint="from QuickBooks" icon={DollarSign} onClick={() => toggleDrill("prepaid")} active={drilldown === "prepaid"} />
         <KPI label="Backlog (Open Orders)" value={hub.loading ? "-" : fmtMoney(summary.backlogValue)} hint={hub.loading ? "loading..." : `${summary.backlogOrders.toLocaleString()} orders · ${fmtNum(summary.backlogUnits)} units`} icon={ShoppingCart} onClick={() => toggleDrill("backlog")} active={drilldown === "backlog"} />
+      </div>
+      </div>
+      <div>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Health and performance</p>
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <KPI label="Discontinued Inventory" value={fmtMoney(summary.closeoutValue)} hint={`${new Set(hub.closeoutInventory.map((r) => r.sku)).size} SKUs · ${fmtNum(hub.closeoutInventory.reduce((s, r) => s + Number(r.on_hand), 0))} units`} icon={Tag} onClick={() => toggleDrill("closeout")} active={drilldown === "closeout"} />
         <KPI label="OUT OF STOCK - LOST SALES" value={fmtMoney(summary.lostSales)} hint="per month" icon={AlertCircle} accent="text-destructive" onClick={() => toggleDrill("lost")} active={drilldown === "lost"} />
         <KPI label="Sales / Inv Ratio" value={summary.salesToInv.toFixed(2)} hint={summary.salesToInv > 0.5 ? "healthy" : summary.salesToInv > 0.2 ? "OK" : "carrying too much"} icon={Activity} accent={summary.salesToInv < 0.2 ? "text-warning-foreground" : undefined} />
         <KPI label="Annual Turnover" value={`${summary.turnover.toFixed(1)}×`} hint="sales ÷ inventory" icon={Activity} />
+      </div>
       </div>
 
       {drilldown && (
@@ -1912,11 +1893,11 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
             </div>
             <Button size="sm" variant="ghost" className="h-8" onClick={() => setDrilldown(null)}>Close</Button>
           </div>
-          <div className={cn("overflow-auto", drilldown === "openpo" ? "max-h-[88vh]" : drilldown === "closeout" ? "max-h-[80vh]" : drilldown === "backlog" ? "max-h-[90vh]" : "max-h-[60vh]")}>
+          <div className={cn("overflow-auto", drilldown === "openpo" ? "max-h-[88vh]" : drilldown === "prepaid" ? "max-h-[92vh]" : drilldown === "closeout" ? "max-h-[80vh]" : drilldown === "backlog" ? "max-h-[90vh]" : "max-h-[60vh]")}>
             {drilldown === "value" && <ReportInventoryValue rows={hub.inventorySummary} total={summary.value} />}
             {drilldown === "closeout" && <ReportCloseout />}
             {drilldown === "openpo" && <ReportOpenPOs pos={hub.openPOs} lines={hub.openPOLines} />}
-            {drilldown === "prepaid" && <ReportPOs pos={hub.purchaseOrders.filter((p) => p.is_prepaid)} prepaidMode />}
+            {drilldown === "prepaid" && <QboPrepaidReport canSeeLedger={canSeePrepaidLedger} />}
             {drilldown === "backlog" && (
               <Tabs defaultValue="table">
                 <TabsList className="mb-4">
@@ -1936,8 +1917,36 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         </Card>
       )}
 
-      <Tabs defaultValue="analysis" className="w-full">
-      <TabsList className="flex-wrap h-auto">
+      <div className="grid gap-6 lg:grid-cols-[230px_1fr] items-start">
+      <nav aria-label="Inventory reports" className="lg:sticky lg:top-4 rounded-xl border bg-card p-2 space-y-4">
+        {([
+          ["Sales analysis", [["analysis:compare", "Sales Report"], ["analysis:sku", "SKU Table"], ["analysis:vendor", "Performance by Vendor"], ["analysis:slow", "Slow Movers"], ["analysis:ranking", "Ranking"]]],
+          ["Monitor", [["stockouts", "Stockouts / Lost Sales"], ["summary", "Summary"], ["reorder", "Reorder"]]],
+        ] as [string, [string, string][]][]).map(([group, links]) => (
+          <div key={group}>
+            <p className="px-2.5 pt-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{group}</p>
+            <ul className="space-y-0.5">
+              {links.map(([key, label]) => {
+                const [tab, sub] = key.split(":");
+                const active = mainTab === tab && (!sub || analysisTab === sub);
+                return (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      onClick={() => { setMainTab(tab); if (sub) setAnalysisTab(sub); }}
+                      className={cn("w-full text-left rounded-lg px-2.5 py-2 text-[13px] transition-colors", active ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+                    >
+                      {label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+      <Tabs value={mainTab} onValueChange={setMainTab} className="w-full min-w-0">
+      <TabsList className="hidden">
         <TabsTrigger value="analysis">Analysis</TabsTrigger>
         <TabsTrigger value="stockouts">Stockouts / Lost Sales</TabsTrigger>
         <TabsTrigger value="summary">Summary</TabsTrigger>
@@ -2102,7 +2111,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       {/* ============ SECTION 2: ANALYSIS ============ */}
       <TabsContent value="analysis" className="space-y-4 mt-4">
         <Tabs value={analysisTab} onValueChange={setAnalysisTab}>
-          <TabsList className="flex w-full flex-nowrap overflow-x-auto h-auto justify-start">
+          <TabsList className="hidden">
             <TabsTrigger value="compare" className="whitespace-nowrap px-2.5 text-sm">Sales Report</TabsTrigger>
             <TabsTrigger value="sku" className="whitespace-nowrap px-2.5 text-sm">SKU Table</TabsTrigger>
             <TabsTrigger value="vendor" className="whitespace-nowrap px-2.5 text-sm">Performance by Vendor</TabsTrigger>
@@ -2939,6 +2948,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
         </SheetContent>
       </Sheet>
     </Tabs>
+    </div>
     </div>
   );
 }

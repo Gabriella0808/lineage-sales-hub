@@ -24,6 +24,7 @@ import {
 } from "@/hooks/usePortalData";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { useRepTargets, TARGET_MONTHS, type RepTarget } from "@/hooks/useRepTargets";
+import { RepTargetPanel } from "@/components/TargetProgressChart";
 import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCutoff";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -1525,31 +1526,31 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       {/* ── B1. Summary Cards (Ahead / Behind / Open Territories) ─── */}
       {showSummaryCards && useRpcMode && compareMode !== "none" && (
         <div className={cn("grid gap-3", groupBy === "rep" ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
-          <Card>
+          <Card className="border-l-4 border-l-success">
             <CardContent className="p-5">
               <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
                 {groupBy === "rep" ? "Reps Ahead" : "Dealers Ahead"}
               </p>
-              <p className="text-2xl font-semibold tabular-nums">{aheadCount}</p>
+              <p className="font-serif text-4xl font-medium tracking-tight tabular-nums">{aheadCount}</p>
               <p className="text-[11px] text-muted-foreground mt-1">Bookings vs last year</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-l-4 border-l-destructive">
             <CardContent className="p-5">
               <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
                 {groupBy === "rep" ? "Reps Behind" : "Dealers Behind"}
               </p>
-              <p className="text-2xl font-semibold tabular-nums">{behindCount}</p>
+              <p className="font-serif text-4xl font-medium tracking-tight tabular-nums">{behindCount}</p>
               <p className="text-[11px] text-muted-foreground mt-1">Bookings vs last year</p>
             </CardContent>
           </Card>
           {groupBy === "rep" && (
-            <Card>
+            <Card className="border-l-4 border-l-warning">
               <CardContent className="p-5">
                 <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
                   Open Territories
                 </p>
-                <p className="text-2xl font-semibold tabular-nums">{openTerritories}</p>
+                <p className="font-serif text-4xl font-medium tracking-tight tabular-nums">{openTerritories}</p>
                 <p className="text-[11px] text-muted-foreground mt-1">No rep assigned</p>
               </CardContent>
             </Card>
@@ -1920,6 +1921,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         metric={metric}
         primaryBookingsAmt={drillBookings}
         primaryInvoicedAmt={drillInvoiced}
+        extra={groupBy === "rep" && drillRow ? (
+          <RepTargetPanel repCode={drillRow.key} target={repAcIdToTarget.get(drillRow.key.trim().toLowerCase())} year={primary.to.getFullYear()} />
+        ) : undefined}
       />
     </div>
   );

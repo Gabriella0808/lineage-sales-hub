@@ -104,6 +104,71 @@
 }
 
 @layer base {
+  .dark {
+    --background: 30 8% 7%;
+    --foreground: 38 20% 92%;
+
+    --card: 30 7% 10%;
+    --card-foreground: 38 20% 92%;
+
+    --popover: 30 7% 11%;
+    --popover-foreground: 38 20% 92%;
+
+    --primary: 38 22% 90%;
+    --primary-foreground: 0 0% 7%;
+
+    --secondary: 30 6% 17%;
+    --secondary-foreground: 38 20% 90%;
+
+    --muted: 30 6% 14%;
+    --muted-foreground: 35 8% 64%;
+
+    --accent: 199 30% 46%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 55% 52%;
+    --destructive-foreground: 38 25% 96%;
+
+    --success: 152 40% 42%;
+    --success-foreground: 0 0% 98%;
+
+    --warning: 34 55% 55%;
+    --warning-foreground: 0 0% 8%;
+
+    --border: 30 6% 21%;
+    --input: 30 6% 21%;
+    --ring: 38 20% 80%;
+
+    --sidebar-background: 30 8% 4%;
+    --sidebar-foreground: 38 14% 76%;
+    --sidebar-primary: 34 33% 58%;
+    --sidebar-primary-foreground: 0 0% 6%;
+    --sidebar-accent: 30 6% 13%;
+    --sidebar-accent-foreground: 38 25% 94%;
+    --sidebar-border: 30 6% 15%;
+    --sidebar-ring: 34 33% 58%;
+    --sidebar-muted: 38 8% 56%;
+    --sidebar-section: 38 10% 58%;
+
+    --chart-1: 38 20% 88%;
+    --chart-2: 199 40% 62%;
+    --chart-3: 34 45% 60%;
+    --chart-4: 33 20% 58%;
+    --chart-5: 200 15% 65%;
+
+    --shadow-soft:
+      0 1px 0 hsl(30 6% 20% / 0.7),
+      0 1px 2px hsl(0 0% 0% / 0.3);
+    --shadow-elev:
+      0 1px 0 hsl(30 6% 20% / 0.7),
+      0 2px 4px hsl(0 0% 0% / 0.35),
+      0 12px 28px -16px hsl(0 0% 0% / 0.6);
+
+    color-scheme: dark;
+  }
+}
+
+@layer base {
   * { @apply border-border; }
   body {
     @apply bg-background text-foreground font-sans antialiased;
@@ -168,6 +233,27 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+}
+
+
+@layer components {
+  /* Underline-style tab bars */
+  .tabs-underline {
+    @apply h-auto w-full justify-start gap-1 rounded-none border-b bg-transparent p-0;
+  }
+  .tabs-underline [role="tab"] {
+    @apply rounded-none border-b-2 border-transparent bg-transparent px-4 py-2.5 shadow-none;
+  }
+  .tabs-underline [role="tab"][data-state="active"] {
+    @apply border-primary bg-transparent text-foreground shadow-none;
+  }
+
+  /* Inventory page: softer cards and cleaner tables (styling only) */
+  .inv-modern .rounded-lg { border-radius: 0.75rem; }
+  .inv-modern table thead th {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground;
+  }
+  .inv-modern table tbody tr { @apply transition-colors hover:bg-muted/40; }
 }
 
 /*

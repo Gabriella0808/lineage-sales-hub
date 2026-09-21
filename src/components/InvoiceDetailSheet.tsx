@@ -84,6 +84,8 @@ interface Props {
   makeFetchLines?: (from: Date, to: Date) => FetchFn;
   primaryBookingsAmt?: number;
   primaryInvoicedAmt?: number;
+  /** Optional content rendered under the header (e.g. a rep target chart). */
+  extra?: React.ReactNode;
   /**
    * RPC mode only: fetches the current open-sales-order backlog for this
    * rep/dealer. Not date-scoped — open orders are a live snapshot,
@@ -532,7 +534,7 @@ export function InvoiceDetailSheet({
   open, onOpenChange, groupBy, rowKey, rowLabel,
   from, to, compareFrom, compareTo, viewLines, repAcIdToCanonical,
   makeFetchLines, metric, primaryBookingsAmt, primaryInvoicedAmt,
-  makeFetchOpenOrders,
+  makeFetchOpenOrders, extra,
 }: Props) {
   // ── Period filter ─────────────────────────────────────────────────────────────
   const [preset,     setPreset]     = useState<PeriodPreset>("report");
@@ -885,6 +887,8 @@ export function InvoiceDetailSheet({
             )}
           </SheetDescription>
         </SheetHeader>
+
+        {extra && <div className="mt-4">{extra}</div>}
 
         {/* ── Period filter ── */}
         <div className="mt-4 p-3 bg-muted/40 rounded-lg space-y-2">

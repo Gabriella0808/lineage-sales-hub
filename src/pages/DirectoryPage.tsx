@@ -32,6 +32,7 @@ export default function DirectoryPage() {
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [shown, setShown] = useState(60);
   const { toast } = useToast();
 
   // Build contact list from synced data when DB contacts are empty
@@ -52,11 +53,11 @@ export default function DirectoryPage() {
     ...dealers.slice(0, 200).map(d => ({ id: `dlr-${d.id}`, name: d.name, company: d.name, role: 'dealer', title: 'Dealer', phone: d.phone || '', cell: '', email: d.email || '', website: d.website || '', territory: '', address: '' })),
   ];
 
-  const filtered = contacts.filter(c => {
-    if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !c.company.toLowerCase().includes(search.toLowerCase())) return false;
-    if (roleFilter !== "all" && c.role !== roleFilter) return false;
-    return true;
-  });
+  const searched = contacts.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.company.toLowerCase().includes(search.toLowerCase()));
+  const filtered = searched
+    .filter(c => roleFilter === "all" || c.role === roleFilter)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const roleCounts = searched.reduce<Record<string, number>>((m, c) => { m[c.role] = (m[c.role] ?? 0) + 1; return m; }, {});
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -91,14 +92,24 @@ export default function DirectoryPage() {
       <FilterBar
         searchPlaceholder="Search by name or company..."
         searchValue={search}
-        onSearchChange={setSearch}
-        filters={[
-          { label: "Role", value: roleFilter, onChange: setRoleFilter, options: [{ label: 'Dealer', value: 'dealer' }, { label: 'Rep', value: 'rep' }] },
-        ]}
+        onSearchChange={(v) => { setSearch(v); setShown(60); }}
       />
 
+      <div className="flex flex-wrap items-center gap-1 rounded-lg bg-muted p-1 w-fit mb-4">
+        {([["all", "All", searched.length], ...["dealer", "rep", "manager", "other"].filter((r) => roleCounts[r]).map((r) => [r, r === "other" ? "Other" : `${r[0].toUpperCase()}${r.slice(1)}s`, roleCounts[r]])] as [string, string, number][]).map(([k, label, n]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => { setRoleFilter(k); setShown(60); }}
+            className={`h-8 px-3 rounded-md text-[13px] transition-colors ${roleFilter === k ? "bg-card font-medium shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {label} <span className="text-muted-foreground tabular-nums">{n}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.slice(0, 60).map(c => (
+        {filtered.slice(0, shown).map(c => (
           <div key={c.id} className="glass-card p-4 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-3">
               <div>
@@ -147,7 +158,11 @@ export default function DirectoryPage() {
         ))}
       </div>
 
-      {filtered.length > 60 && <p className="text-center text-muted-foreground py-3 text-xs">Showing 60 of {filtered.length} contacts. Use search to narrow results.</p>}
+      {filtered.length > shown && (
+        <div className="flex justify-center mt-5">
+          <Button variant="outline" onClick={() => setShown((n) => n + 60)}>Show more ({filtered.length - shown} remaining)</Button>
+        </div>
+      )}
       {filtered.length === 0 && <p className="text-center text-muted-foreground py-12 text-sm">No contacts match your search.</p>}
     </div>
   );

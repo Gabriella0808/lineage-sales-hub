@@ -40,53 +40,88 @@ async function getInvokeErrorMessage(error: any): Promise<string | undefined> {
   return error.message;
 }
 
+type SettingsSection = "account" | "team" | "integrations" | "about";
+
 export default function SettingsPage() {
   const { data: roleInfo } = useUserRole();
   const isAdmin = roleInfo?.isAdmin === true;
+  const [section, setSection] = useState<SettingsSection>("account");
+
+  const items: { key: SettingsSection; label: string; icon: typeof KeyRound; show: boolean }[] = [
+    { key: "account", label: "Account & security", icon: KeyRound, show: true },
+    { key: "team", label: "Team access", icon: Users, show: isAdmin },
+    { key: "integrations", label: "Data integration", icon: ShieldCheck, show: true },
+    { key: "about", label: "About this app", icon: UserCog, show: true },
+  ];
 
   return (
-    <div className="animate-fade-in max-w-4xl">
+    <div className="animate-fade-in max-w-5xl">
       <div className="page-header">
         <h1 className="page-title">Settings</h1>
         <p className="page-subtitle">Manage your portal preferences{isAdmin && " and team access"}</p>
       </div>
 
-      <Card className="mb-5">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-primary" /> Your access
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm space-y-1">
-          <p>Role: <Badge variant="secondary" className="capitalize">{roleInfo?.role ?? "-"}</Badge></p>
-          {roleInfo?.managerId && <p className="text-xs text-muted-foreground">Linked manager record: {roleInfo.managerId}</p>}
-          {roleInfo?.repId && <p className="text-xs text-muted-foreground">Linked rep record: {roleInfo.repId}</p>}
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 md:grid-cols-[220px_1fr]">
+        <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible md:sticky md:top-4 self-start" aria-label="Settings sections">
+          {items.filter((i) => i.show).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSection(key)}
+              className={
+                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] whitespace-nowrap text-left transition-colors " +
+                (section === key ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground")
+              }
+            >
+              <Icon className="h-4 w-4 shrink-0" />{label}
+            </button>
+          ))}
+        </nav>
 
-      <ChangePasswordPanel />
+        <div className="min-w-0">
+          {section === "account" && (
+            <>
+              <Card className="mb-5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" /> Your access
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-1">
+                  <p>Role: <Badge variant="secondary" className="capitalize">{roleInfo?.role ?? "-"}</Badge></p>
+                  {roleInfo?.managerId && <p className="text-xs text-muted-foreground">Linked manager record: {roleInfo.managerId}</p>}
+                  {roleInfo?.repId && <p className="text-xs text-muted-foreground">Linked rep record: {roleInfo.repId}</p>}
+                </CardContent>
+              </Card>
+              <ChangePasswordPanel />
+            </>
+          )}
 
-      {isAdmin && <RoleAdminPanel />}
+          {section === "team" && isAdmin && <RoleAdminPanel />}
 
-      <Card className="mb-5">
-        <CardHeader className="pb-3"><CardTitle className="text-sm">Data Integration</CardTitle></CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex justify-between items-center py-2 border-b">
-            <span className="text-muted-foreground">Acctivate SQL Server</span>
-            <span className="text-xs bg-success/10 text-success px-2.5 py-0.5 rounded-full font-medium">Connected</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b">
-            <span className="text-muted-foreground">Sync Method</span>
-            <span className="font-medium">Local Node.js script -  Backend</span>
-          </div>
-          <div className="flex justify-between items-center py-2">
-            <span className="text-muted-foreground">Data</span>
-            <span className="font-medium">Sales Reps, Territories, Dealers</span>
-          </div>
-        </CardContent>
-      </Card>
+          {section === "integrations" && (
+            <Card className="mb-5">
+              <CardHeader className="pb-3"><CardTitle className="text-sm">Data Integration</CardTitle></CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Acctivate SQL Server</span>
+                  <span className="text-xs bg-success/10 text-success px-2.5 py-0.5 rounded-full font-medium">Connected</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-muted-foreground">Sync Method</span>
+                  <span className="font-medium">Local Node.js script -  Backend</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-muted-foreground">Data</span>
+                  <span className="font-medium">Sales Reps, Territories, Dealers</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-      <AboutLineage />
+          {section === "about" && <AboutLineage />}
+        </div>
+      </div>
     </div>
   );
 }

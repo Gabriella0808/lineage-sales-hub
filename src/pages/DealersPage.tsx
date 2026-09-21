@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Mail, Phone, ExternalLink } from "lucide-react";
+import { Mail, Phone, ExternalLink, ArrowUpDown, ArrowDown, ArrowUp } from "lucide-react";
 import { openExternal } from "@/lib/desktop";
 import { FilterBar } from "@/components/FilterBar";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NoteToTask } from "@/components/NoteToTask";
+import { cn } from "@/lib/utils";
 
 async function fetchDealerIdsWithCheckIns(): Promise<Set<string>> {
   const ids = new Set<string>();
@@ -82,6 +83,9 @@ export default function DealersPage() {
   const [repFilter, setRepFilter] = useState("all");
   const [managerFilter, setManagerFilter] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
+  const [revenueFilter, setRevenueFilter] = useState<"all" | "with" | "none">("all");
+  const [sortKey, setSortKey] = useState<"name" | "ytd">("ytd");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 100;
 
@@ -101,13 +105,36 @@ export default function DealersPage() {
     if (territoryFilter !== "all" && d.territory_id !== territoryFilter) return false;
     if (!isRep && repFilter !== "all" && d.rep_id !== repFilter) return false;
     if (managerFilter !== "all" && (d as any).manager_id !== managerFilter) return false;
+    if (revenueFilter === "with" && getYtd(d.id) <= 0) return false;
+    if (revenueFilter === "none" && getYtd(d.id) > 0) return false;
     return true;
-  }), [visibleDealers, isRep, myRepId, search, territoryFilter, repFilter, managerFilter]);
+  }), [visibleDealers, isRep, myRepId, search, territoryFilter, repFilter, managerFilter, revenueFilter, ytdRevenueByDealer]);
+
+  const sorted = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => sortKey === "ytd"
+      ? (getYtd(a.id) - getYtd(b.id)) * dir
+      : a.name.localeCompare(b.name) * dir);
+  }, [filtered, sortKey, sortDir, ytdRevenueByDealer]);
+
+  const stats = useMemo(() => {
+    const total = filtered.reduce((sum, d) => sum + getYtd(d.id), 0);
+    const active = filtered.filter((d) => getYtd(d.id) > 0).length;
+    const max = filtered.reduce((m, d) => Math.max(m, getYtd(d.id)), 0);
+    return { total, active, inactive: filtered.length - active, avg: active > 0 ? total / active : 0, max };
+  }, [filtered, ytdRevenueByDealer]);
+
+  const toggleSort = (key: "name" | "ytd") => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir(key === "ytd" ? "desc" : "asc"); }
+  };
+  const SortIcon = ({ k }: { k: "name" | "ytd" }) =>
+    sortKey !== k ? <ArrowUpDown className="h-3 w-3 opacity-40" /> : sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  useEffect(() => { setPage(1); }, [search, territoryFilter, repFilter, managerFilter]);
+  useEffect(() => { setPage(1); }, [search, territoryFilter, repFilter, managerFilter, revenueFilter, sortKey, sortDir]);
   const currentPage = Math.min(page, totalPages);
-  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const paged = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const dealer = visibleDealers.find(d => d.id === selected);
 
@@ -142,6 +169,34 @@ export default function DealersPage() {
           { label: "Manager", value: managerFilter, onChange: setManagerFilter, options: managers.map(m => ({ label: m.name, value: m.id })) },
         ]}
       />
+
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 mb-4">
+        {([
+          ["Dealers shown", filtered.length.toLocaleString(), `${visibleDealers.length.toLocaleString()} in total`],
+          ["YTD gross revenue", formatCurrency(stats.total), "For the dealers shown"],
+          ["Ordering this year", stats.active.toLocaleString(), `${stats.avg > 0 ? formatCurrency(stats.avg) : "$0"} average each`],
+          ["No revenue this year", stats.inactive.toLocaleString(), "Worth a call"],
+        ] as const).map(([label, value, sub]) => (
+          <div key={label} className="rounded-xl border bg-card p-4 shadow-sm">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+            <p className="font-serif text-3xl font-medium tracking-tight tabular-nums mt-1.5">{value}</p>
+            <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit mb-4">
+        {([["all", "All dealers"], ["with", "Ordering this year"], ["none", "No revenue yet"]] as const).map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setRevenueFilter(k)}
+            className={cn("h-8 px-3 rounded-md text-[13px] transition-colors", revenueFilter === k ? "bg-card font-medium shadow-sm" : "text-muted-foreground hover:text-foreground")}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {/* Mobile card list */}
       <div className="lg:hidden space-y-2">
@@ -182,13 +237,13 @@ export default function DealersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/30">
-              <th className="text-left p-3 font-medium text-muted-foreground">Dealer</th>
+              <th className="text-left p-3 font-medium text-muted-foreground"><button type="button" onClick={() => toggleSort("name")} className="inline-flex items-center gap-1 hover:text-foreground">Dealer <SortIcon k="name" /></button></th>
               <th className="text-left p-3 font-medium text-muted-foreground">Location</th>
               <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Territory</th>
               <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Rep</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
               <th className="text-left p-3 font-medium text-muted-foreground">Engagement</th>
-              <th className="text-right p-3 font-medium text-muted-foreground hidden lg:table-cell">YTD Gross Revenue</th>
+              <th className="text-right p-3 font-medium text-muted-foreground hidden lg:table-cell"><button type="button" onClick={() => toggleSort("ytd")} className="inline-flex items-center gap-1 hover:text-foreground">YTD Gross Revenue <SortIcon k="ytd" /></button></th>
               <th className="text-center p-3 font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
@@ -207,7 +262,10 @@ export default function DealersPage() {
                 </td>
                 <td className="p-3"><StatusBadge status={d.status} /></td>
                 <td className="p-3"><StatusBadge status={d.engagement ?? 'medium'} /></td>
-                <td className="p-3 text-right hidden lg:table-cell font-medium">{formatCurrency(getYtd(d.id))}</td>
+                <td className="p-3 text-right hidden lg:table-cell">
+                  <p className={cn("font-medium tabular-nums", getYtd(d.id) <= 0 && "text-muted-foreground")}>{formatCurrency(getYtd(d.id))}</p>
+                  <div className="ml-auto mt-1 h-1 w-24 rounded-full bg-muted overflow-hidden"><div className="h-full bg-primary/70 rounded-full" style={{ width: `${stats.max > 0 ? Math.max(0, (getYtd(d.id) / stats.max) * 100) : 0}%` }} /></div>
+                </td>
                 <td className="p-3">
                   <div className="flex items-center justify-center gap-1">
                     {d.email && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={e => { e.stopPropagation(); window.location.href = `mailto:${d.email}`; }}><Mail className="h-3.5 w-3.5" /></Button>}

@@ -1,8 +1,8 @@
-import { useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  BarChart3, Store, UserSquare2, ChevronRight, RefreshCw,
+  BarChart3, Store, UserSquare2, RefreshCw, LayoutDashboard,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,18 +10,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import { LiveKpiReport } from "@/components/LiveKpiReport";
 import { SalesReporting } from "@/components/SalesReporting";
+import { ExecutiveOverview, prefetchExecutiveData } from "@/components/ExecutiveOverview";
 import {
   useManagers, useSalesReps,
 } from "@/hooks/usePortalData";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAuth } from "@/contexts/AuthContext";
 import { RepNotConfigured } from "@/components/RepNotConfigured";
 
-type ReportKey = "live-kpi" | "dealer-reporting" | "rep-reporting";
+type ReportKey = "executive" | "live-kpi" | "dealer-reporting" | "rep-reporting";
 
 const REPORTS: { key: ReportKey; label: string; icon: typeof BarChart3; description: string }[] = [
   { key: "live-kpi",          label: "Live KPI",          icon: BarChart3,    description: "High-level rep & brand performance" },
   { key: "dealer-reporting",  label: "Dealer Reporting",  icon: Store,        description: "Granular dealer sales by date, brand, SKU" },
   { key: "rep-reporting",     label: "Rep Reporting",     icon: UserSquare2,  description: "Granular rep & territory performance" },
+  { key: "executive",         label: "High-Level Reporting", icon: LayoutDashboard, description: "Revenue, targets, dealer health and rep performance at a glance" },
 ];
 
 export default function CompanyWidePage() {
@@ -47,6 +50,9 @@ export default function CompanyWidePage() {
   const { data: managers = [] } = useManagers();
   const { data: reps = [] } = useSalesReps();
   const { data: roleInfo } = useUserRole();
+  const { user } = useAuth();
+  // High-Level Reporting is limited to one account while it is being reviewed.
+  const canSeeExecutive = user?.email?.toLowerCase() === "gabriella@lineage-collections.com";
   const isRep = !!roleInfo?.isRep;
   const currentRep = useMemo(
     () => (roleInfo?.repId ? reps.find((r) => r.id === roleInfo.repId) ?? null : null),
@@ -56,7 +62,7 @@ export default function CompanyWidePage() {
 
   // Live KPI is fully off-limits to reps — not just hidden from the tile
   // grid, but excluded from the set of report keys a URL param can select.
-  const visibleReports = REPORTS.filter((r) => !isRep || r.key !== "live-kpi");
+  const visibleReports = REPORTS.filter((r) => (r.key !== "executive" || canSeeExecutive) && (!isRep || (r.key !== "live-kpi" && r.key !== "executive")));
 
   const defaultReport: ReportKey = isRep ? "dealer-reporting" : "live-kpi";
   const pathDefault: ReportKey | null =
@@ -101,6 +107,13 @@ export default function CompanyWidePage() {
   // itself is left untouched since it still drives the locked manager <Select>
   // display elsewhere on this page.
   const dataManagerId = isRep ? null : (effectiveManagerId === "all" ? null : effectiveManagerId);
+
+  // Warm the High-Level Reporting data in the background so that tab opens instantly.
+  useEffect(() => {
+    if (isRep || !canSeeExecutive) return;
+    const t = window.setTimeout(() => prefetchExecutiveData(queryClient, dataManagerId, refreshKey), 1500);
+    return () => window.clearTimeout(t);
+  }, [isRep, canSeeExecutive, queryClient, dataManagerId, refreshKey]);
 
   const setReport = (key: ReportKey) => {
     const next = new URLSearchParams(params);
@@ -170,42 +183,39 @@ export default function CompanyWidePage() {
         </div>
       </div>
 
-      {/* Report tiles */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {visibleReports.map(({ key, label, icon: Icon, description }) => {
-          const isActive = key === activeReport;
-          return (
-            <button key={key} onClick={() => setReport(key)} className="text-left">
-              <Card className={cn(
-                "transition-all hover:shadow-md",
-                isActive && "ring-2 ring-primary shadow-md",
-              )}>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className={cn(
-                    "w-10 h-10 rounded-md flex items-center justify-center shrink-0",
-                    isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                  )}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{label}</p>
-                    <p className="text-xs text-muted-foreground truncate">{description}</p>
-                  </div>
-                  {isActive && <ChevronRight className="h-4 w-4 text-primary shrink-0" />}
-                </CardContent>
-              </Card>
-            </button>
-          );
-        })}
+      {/* Report switcher */}
+      <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit max-w-full overflow-x-auto">
+        {visibleReports.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setReport(key)}
+            className={cn(
+              "h-8 px-3 rounded-md text-[13px] whitespace-nowrap transition-colors",
+              key === activeReport ? "bg-card font-medium shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Active report */}
       <section>
-        <div className="mb-3">
-          <h2 className="text-lg font-semibold tracking-tight">{activeReportMeta.label}</h2>
-          <p className="text-xs text-muted-foreground">{activeReportMeta.description}</p>
-        </div>
+        {activeReport !== "executive" && (
+          <div className="mb-3">
+            <h2 className="text-lg font-semibold tracking-tight">{activeReportMeta.label}</h2>
+            <p className="text-xs text-muted-foreground">{activeReportMeta.description}</p>
+          </div>
+        )}
 
+        {activeReport === "executive" && (
+          <ExecutiveOverview
+            managerId={dataManagerId}
+            managerName={managerName}
+            refreshKey={refreshKey}
+            onOpenReport={setReport}
+          />
+        )}
         {activeReport === "live-kpi" && (
           <LiveKpiReport
             managerName={managerName}

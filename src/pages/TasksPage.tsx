@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { LayoutTemplate, Plus, ExternalLink } from "lucide-react";
+import { LayoutTemplate, Plus, ExternalLink, ListChecks, KanbanSquare } from "lucide-react";
 import TaskBoardsView from "@/components/TaskBoardsView";
 import TodosView from "@/components/TodosView";
 import BoardTemplatesView from "@/components/BoardTemplatesView";
@@ -133,7 +133,16 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Command Center" title="My Tasks" />
+      <PageHeader
+        eyebrow="Command Center"
+        title="My Tasks"
+        subtitle="Your to-dos, team boards and templates in one place."
+        actions={isAdmin && activeTab === "boards" && templates.length > 0 ? (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={openPicker}>
+            <Plus className="h-3.5 w-3.5" />New board from template
+          </Button>
+        ) : undefined}
+      />
 
       <Tabs
           value={activeTab}
@@ -143,10 +152,20 @@ export default function TasksPage() {
           }}
           className="w-full"
         >
-        <TabsList>
-          <TabsTrigger value="todos">To Do's</TabsTrigger>
-          {isAdmin && <TabsTrigger value="boards">Boards</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="templates">Templates</TabsTrigger>}
+        <TabsList className="h-auto w-full justify-start gap-1 rounded-none border-b bg-transparent p-0">
+          {([
+            ["todos", "To Do's", ListChecks, true],
+            ["boards", "Boards", KanbanSquare, isAdmin],
+            ["templates", "Templates", LayoutTemplate, isAdmin],
+          ] as const).filter(([, , , show]) => show).map(([value, label, Icon]) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="gap-2 rounded-none border-b-2 border-transparent bg-transparent px-4 py-2.5 shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+            >
+              <Icon className="h-4 w-4" />{label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="todos" className="mt-4">
@@ -154,19 +173,6 @@ export default function TasksPage() {
         </TabsContent>
 
         <TabsContent value="boards" className="mt-4 space-y-4">
-          {/* Template shortcut row - shows above the board view (admins only) */}
-          {isAdmin && templates.length > 0 && (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-2.5">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <LayoutTemplate className="h-4 w-4" />
-                Start from a template
-              </div>
-              <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={openPicker}>
-                <Plus className="h-3 w-3" />
-                From Template
-              </Button>
-            </div>
-          )}
           <TaskBoardsView key={boardsViewKey} />
         </TabsContent>
 

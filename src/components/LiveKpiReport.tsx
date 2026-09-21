@@ -176,6 +176,36 @@ type MonthFilter = typeof MONTHS[number];
 type MetricFilter = "both" | "bookings" | "invoiced";
 type LineFilter = "all" | "lux" | "sw" | "fl";
 
+function GoalCard({ label, value, goal, actual, visible, goalLabel, fraction, foot, fmtPct, formatCurrency }: {
+  label: string; value: string; goal: number; actual: number; visible: boolean; goalLabel: string; fraction: number; foot: string;
+  fmtPct: (n: number) => string; formatCurrency: (n: number) => string;
+}) {
+  const hasGoal = goal > 0 && visible;
+  const ratio = hasGoal ? actual / goal : 0;
+  const pace = Math.max(0, Math.min(1, fraction));
+  const tone = !hasGoal ? "bg-muted-foreground/40" : ratio >= pace ? "bg-success" : ratio >= pace * 0.8 ? "bg-warning" : "bg-destructive";
+  return (
+    <div className="rounded-xl border bg-card p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+        {hasGoal && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums">{fmtPct(ratio)} of goal</span>}
+      </div>
+      <p className="font-serif text-4xl font-medium tracking-tight tabular-nums mt-3">{value}</p>
+      <div className="mt-4">
+        <div className="relative h-2.5 rounded-full bg-muted overflow-visible">
+          <div className={cn("h-full rounded-full transition-all", tone)} style={{ width: `${Math.min(100, ratio * 100)}%` }} />
+          {hasGoal && <span className="absolute -top-1 h-4.5 w-0.5 bg-foreground/70" style={{ left: `${pace * 100}%`, height: "18px" }} title="Where you should be by today" />}
+        </div>
+        <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+          <span>{hasGoal ? `${goalLabel} ${formatCurrency(goal)}` : `${goalLabel} not set`}</span>
+          {hasGoal && <span>{ratio >= pace ? "Ahead of pace" : "Behind pace"}</span>}
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground mt-3">{foot}</p>
+    </div>
+  );
+}
+
 export function LiveKpiReport({
   managerName,
   managerId,
@@ -814,46 +844,37 @@ export function LiveKpiReport({
   return (
     <div className="space-y-6">
       {/* ── MTD Summary KPI Row ──────────────────────────────────────── */}
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="glass-card p-5 grid grid-cols-2 lg:grid-cols-4 divide-x divide-border">
-          <div className="flex flex-col gap-1 pr-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">MTD Bookings</p>
-            <p className="text-xl font-serif tabular-nums">{mtdBookingVisible ? formatCurrency(mtdB) : "—"}</p>
-            <p className="text-[10px] text-muted-foreground">{currentMonthName} {reportingYear}</p>
-          </div>
-          <div className="flex flex-col gap-1 px-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Booking Goal</p>
-            <p className="text-xl font-serif tabular-nums">{mtdBGoal > 0 ? formatCurrency(mtdBGoal) : "—"}</p>
-            <p className="text-[10px] text-muted-foreground">Day {daysElapsed} of {daysInMonth} · 2026</p>
-          </div>
-          <div className="flex flex-col gap-1 px-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">% Booking Goal</p>
-            <p className="text-xl font-serif tabular-nums">{mtdBookingVisible ? fmtPct(mtdB / mtdBGoal) : "—"}</p>
-            <p className="text-[10px] text-muted-foreground">MTD vs Goal</p>
-          </div>
-          <div className="flex flex-col gap-1 pl-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Open SO Value</p>
-            <p className="text-xl font-serif tabular-nums">{formatCurrency(openSoStats.totalValue)}</p>
-            <p className="text-[10px] text-muted-foreground">
-              {openSoStats.orderCount.toLocaleString()} open orders · {Math.round(openSoStats.totalUnits).toLocaleString()} units
-            </p>
-          </div>
-        </div>
-        <div className="glass-card p-5 grid grid-cols-3 divide-x divide-border">
-          <div className="flex flex-col gap-1 pr-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">MTD Invoicing</p>
-            <p className="text-xl font-serif tabular-nums">{formatCurrency(mtdI)}</p>
-            <p className="text-[10px] text-muted-foreground">{currentMonthName} {reportingYear}</p>
-          </div>
-          <div className="flex flex-col gap-1 px-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Invoice Goal</p>
-            <p className="text-xl font-serif tabular-nums">{mtdIGoal > 0 ? formatCurrency(mtdIGoal) : "—"}</p>
-            <p className="text-[10px] text-muted-foreground">Day {daysElapsed} of {daysInMonth} · 2026</p>
-          </div>
-          <div className="flex flex-col gap-1 pl-5">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">% Invoice Goal</p>
-            <p className="text-xl font-serif tabular-nums">{fmtPct(mtdI / mtdIGoal)}</p>
-            <p className="text-[10px] text-muted-foreground">MTD vs Goal</p>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <GoalCard
+          label="Bookings, month to date"
+          value={mtdBookingVisible ? formatCurrency(mtdB) : "—"}
+          goal={mtdBGoal}
+          actual={mtdB}
+          visible={mtdBookingVisible}
+          goalLabel="Booking goal"
+          fraction={daysElapsed / daysInMonth}
+          foot={`${currentMonthName} ${reportingYear} · day ${daysElapsed} of ${daysInMonth}`}
+          fmtPct={fmtPct}
+          formatCurrency={formatCurrency}
+        />
+        <GoalCard
+          label="Invoicing, month to date"
+          value={formatCurrency(mtdI)}
+          goal={mtdIGoal}
+          actual={mtdI}
+          visible
+          goalLabel="Invoice goal"
+          fraction={daysElapsed / daysInMonth}
+          foot={`${currentMonthName} ${reportingYear} · day ${daysElapsed} of ${daysInMonth}`}
+          fmtPct={fmtPct}
+          formatCurrency={formatCurrency}
+        />
+        <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Open sales orders</p>
+          <p className="font-serif text-4xl font-medium tracking-tight tabular-nums mt-3">{formatCurrency(openSoStats.totalValue)}</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-lg bg-muted/60 p-3"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Open orders</p><p className="font-serif text-2xl font-medium tabular-nums">{openSoStats.orderCount.toLocaleString()}</p></div>
+            <div className="rounded-lg bg-muted/60 p-3"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Units</p><p className="font-serif text-2xl font-medium tabular-nums">{Math.round(openSoStats.totalUnits).toLocaleString()}</p></div>
           </div>
         </div>
       </div>
@@ -861,7 +882,7 @@ export function LiveKpiReport({
       {/* ── Daily Performance ─────────────────────────────────────────── */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Daily Performance</span>
+          <span className="text-sm font-semibold tracking-tight">Daily performance</span>
           <Popover open={dailyDatePickerOpen} onOpenChange={setDailyDatePickerOpen}>
             <PopoverTrigger asChild>
               <button type="button" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border rounded px-2 py-1">
@@ -883,8 +904,8 @@ export function LiveKpiReport({
         <div className="grid gap-4 md:grid-cols-2">
           {/* Bookings card */}
           <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold mb-3">Daily Bookings</h3>
-            <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalBkg)}</p>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Daily bookings</h3>
+            <p className="font-serif text-4xl font-medium tracking-tight tabular-nums mb-4">{formatCurrency(dailyStats.totalBkg)}</p>
             <div className="space-y-1.5 text-xs">
               {(["SW", "FIN", "LUX", "HOSP"] as CollKey[]).map((coll) => (
                 <div key={coll} className="flex justify-between">
@@ -914,7 +935,7 @@ export function LiveKpiReport({
           </div>
           {/* Invoice card — always shows prior day; Acctivate sync runs overnight */}
           <div className="glass-card p-5">
-            <h3 className="text-sm font-semibold mb-1">Daily Invoices</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Daily invoices</h3>
             <p className="text-xs text-muted-foreground mb-3">
               {isToday ? `Yesterday · ${format(invoiceDate, "MMM d")}` : format(invoiceDate, "MMM d, yyyy")}
             </p>
@@ -923,7 +944,7 @@ export function LiveKpiReport({
                 Excluded import-transition data before July 2026.
               </p>
             ) : (
-              <p className="text-2xl font-serif mb-3">{formatCurrency(dailyStats.totalInv)}</p>
+              <p className="font-serif text-4xl font-medium tracking-tight tabular-nums mb-4">{formatCurrency(dailyStats.totalInv)}</p>
             )}
             <div className="space-y-1.5 text-xs">
               {(["SW", "FIN", "LUX", "ALLOW"] as CollKey[]).map((coll) => (

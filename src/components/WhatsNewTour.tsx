@@ -3,9 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { driver, type DriveStep } from "driver.js";
 import "driver.js/dist/driver.css";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserRole } from "@/hooks/useUserRole";
 
 // Who sees the tour. Set to "everyone" when it is ready to roll out.
-const TOUR_AUDIENCE: "gabriella" | "everyone" = "gabriella";
+const TOUR_AUDIENCE: "gabriella" | "everyone" = "everyone";
 const TESTERS = ["gabriella@lineage-collections.com"];
 // Bump this when there is a new tour worth showing again.
 const TOUR_VERSION = "2026-09-22";
@@ -19,7 +20,8 @@ export function canUseTour(email?: string | null) {
 
 const has = (sel: string) => !!document.querySelector(sel);
 
-function buildSteps(): DriveStep[] {
+function buildSteps(role?: string): DriveStep[] {
+  const isLeader = role === "admin" || role === "manager";
   const steps: (DriveStep | null)[] = [
     {
       popover: {
@@ -36,7 +38,9 @@ function buildSteps(): DriveStep[] {
     {
       popover: {
         title: "Also new",
-        description: "Click a rep in Rep Reporting to see their progress against their sales target. On the Inventory page, the Prepaid Inventory card now shows the live QuickBooks balance and its full ledger.",
+        description: isLeader
+          ? "Click a rep in Rep Reporting to see their progress against their sales target. On the Inventory page, the Prepaid Inventory card now shows the live QuickBooks balance and its full ledger."
+          : "That's the tour. You can replay it any time from your account menu.",
       },
     },
   ];
@@ -63,8 +67,8 @@ function removeCursor() {
   cursorEl = null;
 }
 
-export function runTour() {
-  const steps = buildSteps();
+export function runTour(role?: string) {
+  const steps = buildSteps(role);
   const d = driver({
     showProgress: true,
     allowClose: true,
@@ -88,6 +92,8 @@ export function WhatsNewTour() {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { data: roleInfo } = useUserRole();
+  const role = roleInfo?.role;
   const allowed = canUseTour(user?.email);
 
   // Auto-start once per version, on the Company-wide page.
@@ -96,9 +102,9 @@ export function WhatsNewTour() {
     let seen: string | null = null;
     try { seen = localStorage.getItem(SEEN_KEY); } catch { /* ignore */ }
     if (seen === TOUR_VERSION) return;
-    const t = window.setTimeout(runTour, 2500);
+    const t = window.setTimeout(() => runTour(role), 2500);
     return () => window.clearTimeout(t);
-  }, [allowed, location.pathname]);
+  }, [allowed, location.pathname, role]);
 
   // Replay from the account menu.
   useEffect(() => {
@@ -106,14 +112,14 @@ export function WhatsNewTour() {
     const onStart = () => {
       if (location.pathname !== "/") {
         navigate("/");
-        window.setTimeout(runTour, 1500);
+        window.setTimeout(() => runTour(role), 1500);
       } else {
-        runTour();
+        runTour(role);
       }
     };
     window.addEventListener(START_TOUR_EVENT, onStart);
     return () => window.removeEventListener(START_TOUR_EVENT, onStart);
-  }, [allowed, location.pathname, navigate]);
+  }, [allowed, location.pathname, navigate, role]);
 
   return null;
 }

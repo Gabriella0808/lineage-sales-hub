@@ -107,6 +107,33 @@ async function refreshAccessToken(conn: QboConnection, clientId: string, clientS
   return res.json() as Promise<TokenResponse>;
 }
 
+const ADMIN_EMAILS = new Set([
+  "justin@lineage-collections.com",
+  "scott@lineage-collections.com",
+  "andrew@lineage-collections.com",
+  "gabriella@lineage-collections.com",
+]);
+
+async function authorize(req: Request, supabase: ReturnType<typeof createClient>): Promise<Response | null> {
+  const cronSecret = Deno.env.get("QBO_SYNC_CRON_SECRET");
+  const sent = req.headers.get("x-cron-secret");
+  if (cronSecret && sent && sent === cronSecret) return null;
+
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!token) return jsonError("Not authorized.", 401);
+  const { data, error } = await supabase.auth.getUser(token);
+  const user = data?.user;
+  if (error || !user) return jsonError("Not authorized.", 401);
+  if (ADMIN_EMAILS.has((user.email ?? "").toLowerCase())) return null;
+
+  const [roles, mgr] = await Promise.all([
+    supabase.from("user_roles").select("role").eq("user_id", user.id),
+    supabase.from("user_managers").select("manager_id").eq("user_id", user.id).maybeSingle(),
+  ]);
+  const isLeader = (roles.data ?? []).some((r: { role: string }) => r.role === "admin" || r.role === "manager") || !!mgr.data?.manager_id;
+  return isLeader ? null : jsonError("Only admins and managers can run this sync.", 403);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -116,6 +143,11 @@ Deno.serve(async (req) => {
   const clientSecret = Deno.env.get("QBO_CLIENT_SECRET")!;
   const supabase = createClient(supabaseUrl, serviceKey);
   const qboBase = getQboBaseUrl();
+
+  // Two ways in: the scheduled job (shared secret header) or a signed-in
+  // admin/manager clicking "Sync now" in the portal.
+  const denied = await authorize(req, supabase);
+  if (denied) return denied;
 
   const { data: connRows, error: connErr } = await supabase
     .from("qbo_connections")

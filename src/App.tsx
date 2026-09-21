@@ -83,7 +83,7 @@ const App = () => (
                       <Route path="/managers" element={<ProtectedRoute allow={["admin", "manager"]}><ManagersPage /></ProtectedRoute>} />
                       <Route path="/reps-acctivate" element={<ProtectedRoute allow={["admin"]}><SalesRepsAcctivatePage /></ProtectedRoute>} />
                       <Route path="/rep-activity" element={<ProtectedRoute allow={["admin", "manager"]}><RepActivityPage /></ProtectedRoute>} />
-                      <Route path="/desktop-app" element={<ProtectedRoute><DownloadAppPage /></ProtectedRoute>} />
+                      <Route path="/desktop-app" element={<ProtectedRoute allowEmails={["gabriella@lineage-collections.com"]}><DownloadAppPage /></ProtectedRoute>} />
                       <Route path="/dealers" element={<DealersPage />} />
                       <Route path="/directory" element={<ProtectedRoute allow={["admin", "manager"]}><DirectoryPage /></ProtectedRoute>} />
                       <Route path="/kpi" element={<CompanyWidePage />} />

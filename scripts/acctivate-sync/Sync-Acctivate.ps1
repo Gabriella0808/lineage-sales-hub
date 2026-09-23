@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Pushes data from the local Acctivate SQL Server database to the
   Lineage backend `sync-acctivate` edge function.
@@ -35,6 +35,14 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Build tag: bumped by hand every time this file is edited in the repo.
+# Printed first so `last-run.log` (and any manual run's console output)
+# always shows which version actually executed - compare this against
+# the same line in the repo copy to tell whether a machine's copy of
+# this script has drifted out of date.
+$ScriptBuildTag = '2026-09-17.1-rep-always-from-acctivate'
+Write-Host "Sync-Acctivate.ps1 build: $ScriptBuildTag" -ForegroundColor DarkGray
 
 # ---------- Load config ----------
 if (-not (Test-Path $ConfigPath)) {
@@ -281,7 +289,7 @@ WHERE d.$(Quote-SqlIdentifier $invIdCol) IS NOT NULL
 }
 
 function New-OpenSalesOrdersQuery {
-  # Source = Acctivate's Sales → Open Only view (dbo.OrderManagementSummary).
+  # Source = Acctivate's Sales -> Open Only view (dbo.OrderManagementSummary).
   # Open Only = OrderStatus IN ('Scheduled','Backordered','Booked')
   # (excludes Completed and Cancelled). Joined to dbo.OrderDetail for line-level qty/sku.
   $detailTable = 'OrderDetail'
@@ -391,9 +399,16 @@ function Send-Batch {
 
 $queries = @{
   # Status = 1 means active, Status = 0 means inactive in this Acctivate
-  # install (confirmed directly against real customer records). Only active
-  # customers are pulled — inactive ones are left untouched in Supabase
-  # rather than synced with status = 'inactive'.
+  # install (confirmed directly against real customer records). Syncs
+  # ACTIVE Acctivate customers only  -  the portal should only ever pull
+  # active Acctivate dealers/customers for invoices and bookings.
+  #
+  # Known tradeoff (accepted): a dealer that is active today and later
+  # goes inactive in Acctivate will simply stop appearing in future sync
+  # payloads, so its status in public.dealers will not automatically flip
+  # to 'inactive'  -  it will just stop being refreshed. Revisit with a
+  # -Prune run or a separate deactivation step if stale active rows
+  # become a problem.
   dealers = @"
 SELECT
   CAST(cv.CustId AS NVARCHAR(64)) AS acctivate_id,
@@ -407,7 +422,7 @@ SELECT
   CAST(cv.SalespersonID AS NVARCHAR(64)) AS rep_owner,
   tc._Territory                   AS territory,
   tc._SalesManager                AS sales_manager,
-  'active'                        AS status
+  'active' AS status
 FROM dbo.Customer cv
 LEFT JOIN dbo.tbCustomer tc ON tc.CustID = cv.CustID
 WHERE cv.CustID IS NOT NULL
@@ -423,8 +438,10 @@ SELECT
   p.Description                     AS name,
   p.ProductClassID                  AS collection,
   p.SalesCategory                   AS category,
-  p.ListPrice                       AS price
+  p.ListPrice                       AS price,
+  CAST(ISNULL(tp.[_NewIntroUnavail], 0) AS bit) AS new_intro_unavail
 FROM dbo.Product p
+LEFT JOIN dbo.tbProduct tp ON tp.ProductID = p.ProductID
 WHERE ISNULL(p.Discontinued, 0) = 0
 "@
 
@@ -460,7 +477,7 @@ function Test-SqlObjectExists {
 
 function New-AcctivateSalesRepsQuery {
   if (-not (Test-SqlObjectExists -Name 'Salesperson')) {
-    throw "dbo.Salesperson not found in Acctivate — cannot sync acctivate_sales_reps."
+    throw "dbo.Salesperson not found in Acctivate  -  cannot sync acctivate_sales_reps."
   }
   $cols = Get-SqlColumns -Table 'Salesperson'
   $idCol      = Get-FirstColumn -Columns $cols -Candidates @('SalespersonID','SalespersonId','ID','Code')
@@ -592,7 +609,7 @@ if ($Prune) {
 foreach ($table in $enabled) {
   if (-not $queries.ContainsKey($table) -and -not $queryBuilders.ContainsKey($table)) {
     $available = @($queries.Keys) + @($queryBuilders.Keys) | Sort-Object -Unique
-    Write-Warning "No query defined for '$table' — skipping. Available: $($available -join ', ')"
+    Write-Warning "No query defined for '$table'  -  skipping. Available: $($available -join ', ')"
     continue
   }
   Write-Host "==> $table at $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Yellow

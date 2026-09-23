@@ -438,6 +438,7 @@ SELECT
   p.Description                     AS name,
   p.ProductClassID                  AS collection,
   p.SalesCategory                   AS category,
+  p.ProductType                     AS product_type,
   p.ListPrice                       AS base_price,
   CAST(ISNULL(tp.[_NewIntroUnavail], 0) AS bit) AS new_intro_unavail
 FROM dbo.Product p

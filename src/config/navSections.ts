@@ -3,7 +3,7 @@ import {
   UserCog, ListChecks, Boxes, MapPinned, Plane, PieChart,
   Megaphone, ClipboardList, Network, Target, Package, ShoppingCart,
   FileText, Send, FolderOpen, Tag, Database, AudioLines, Clock,
-  Download,
+  Download, Rocket,
 } from "lucide-react";
 import type { AppRole } from "@/hooks/useUserRole";
 import { isAllowedEmail, isCustomerService } from "@/components/EmailGuard";
@@ -90,6 +90,7 @@ export const NAV_SECTIONS: NavSection[] = [
           { title: "Labor Day Promo", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager", "rep"] },
           { title: "Discontinued Products", url: "/clearance", icon: Tag, roles: ["admin", "manager", "rep"] },
           { title: "Discontinued Analytics", url: "/clearance/analytics", icon: BarChart3, roles: ["admin", "manager"] },
+          { title: "Pre-Sale", url: "/promotions/pre-sale", icon: Rocket, roles: ["admin", "manager"] },
         ],
       },
     ],

@@ -18,10 +18,12 @@
               collection's first PO date in the portal).
               Upserted on guid_po.
 
-    Posts directly to PostgREST (same pattern as sync-aug-current-bookings.ps1)
-    using the service role key, not through the sync-acctivate edge function.
+    Posts through the sync-acctivate edge function using the shared sync
+    token, the same pattern (and the same sync.config.json) as
+    Sync-Acctivate.ps1 already uses on this machine.
 
-    Config: place kpi.config.json next to this script, or pass -ConfigPath.
+    Config: uses sync.config.json next to this script by default, or pass
+    -ConfigPath to point at a different file.
 
 .EXAMPLE
     pwsh .\sync-presale-purchase-orders.ps1
@@ -29,26 +31,30 @@
 
 [CmdletBinding()]
 param(
-    [string]$ConfigPath = (Join-Path $PSScriptRoot 'kpi.config.json')
+    [string]$ConfigPath = (Join-Path $PSScriptRoot 'sync.config.json')
 )
 
 $ErrorActionPreference = 'Stop'
 
 # ---------------------------------------------------------------------------
-# Config
+# Config - same sync.config.json / syncToken pattern as Sync-Acctivate.ps1
+# (posts through the sync-acctivate edge function, not a raw database key).
 # ---------------------------------------------------------------------------
 
 if (-not (Test-Path $ConfigPath)) { throw "Config not found: $ConfigPath" }
 $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
 
 $SupabaseUrl    = $cfg.supabaseUrl.TrimEnd('/')
-$ServiceKey     = $cfg.serviceRoleKey
+$SyncToken      = $cfg.syncToken
+$FunctionUrl    = "$SupabaseUrl/functions/v1/sync-acctivate"
 $BatchSize      = if ($cfg.batchSize)                { [int]$cfg.batchSize }                else { 200 }
-$RequestTimeout = if ($cfg.requestTimeoutSec)        { [int]$cfg.requestTimeoutSec }        else { 60 }
+$RequestTimeout = if ($cfg.requestTimeoutSeconds)    { [int]$cfg.requestTimeoutSeconds }    else { 60 }
+$MaxRetries     = if ($cfg.maxRetries)               { [int]$cfg.maxRetries }               else { 3 }
+$RetryDelaySeconds = if ($cfg.retryDelaySeconds)     { [int]$cfg.retryDelaySeconds }        else { 5 }
 $SqlTimeout     = if ($cfg.sql.commandTimeoutSeconds){ [int]$cfg.sql.commandTimeoutSeconds } else { 600 }
 
-if (-not $SupabaseUrl -or -not $ServiceKey) {
-    throw "supabaseUrl and serviceRoleKey are required in $ConfigPath"
+if (-not $SupabaseUrl -or -not $SyncToken) {
+    throw "supabaseUrl and syncToken are required in $ConfigPath"
 }
 
 $connStr = 'Server=' + $cfg.sql.server + ';Database=' + $cfg.sql.database + ';Connection Timeout=30;'
@@ -141,51 +147,35 @@ function Clean-Row {
     return $out
 }
 
-function Convert-RowsToJsonArray {
-    param([array]$Rows)
-    $items = @()
-    foreach ($row in @($Rows)) { $items += ($row | ConvertTo-Json -Depth 20 -Compress) }
-    return '[' + ($items -join ',') + ']'
-}
-
-function Invoke-Post {
-    param([string]$Url, [array]$Rows)
-    $json      = Convert-RowsToJsonArray -Rows @($Rows)
-    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($json)
-    $headers = @{
-        'apikey'        = $ServiceKey
-        'Authorization' = 'Bearer ' + $ServiceKey
-        'Prefer'        = 'resolution=merge-duplicates,return=minimal'
-    }
-    try {
-        Invoke-WebRequest -Uri $Url -Method Post -Headers $headers `
-            -ContentType 'application/json; charset=utf-8' -Body $bodyBytes `
-            -UseBasicParsing -TimeoutSec $RequestTimeout -ErrorAction Stop | Out-Null
-        return @{ ok = $true; statusCode = 200; body = '' }
-    } catch {
-        $code = 0
-        $body = $_.Exception.Message
-        if ($null -ne $_.Exception.Response) {
-            $code   = [int]$_.Exception.Response.StatusCode
-            $stream = $_.Exception.Response.GetResponseStream()
-            $reader = New-Object System.IO.StreamReader($stream)
-            $body   = $reader.ReadToEnd()
-            $reader.Close()
-        }
-        return @{ ok = $false; statusCode = $code; body = $body }
-    }
-}
-
-function Send-InBatches {
-    param([string]$Url, [array]$Rows, [string]$Label)
+function Send-Batch {
+    param([string]$Table, [array]$Rows, [string]$OnConflict)
     $cleaned = @($Rows | ForEach-Object { Clean-Row $_ })
-    for ($i = 0; $i -lt $cleaned.Count; $i += $BatchSize) {
-        $chunk = $cleaned[$i..[Math]::Min($i + $BatchSize - 1, $cleaned.Count - 1)]
-        $res = Invoke-Post -Url $Url -Rows $chunk
-        if (-not $res.ok) {
-            throw "$Label upload failed at row $i (HTTP $($res.statusCode)): $($res.body)"
+    if ($cleaned.Count -eq 0) { Write-Host "  [$Table] no rows" -ForegroundColor DarkGray; return }
+    $total = $cleaned.Count
+    $sent  = 0
+    for ($i = 0; $i -lt $total; $i += $BatchSize) {
+        $chunk = $cleaned[$i..([Math]::Min($i + $BatchSize - 1, $total - 1))]
+        $payload = @{ table = $Table; rows = $chunk; on_conflict = $OnConflict } | ConvertTo-Json -Depth 8 -Compress
+
+        $attempt = 0
+        while ($true) {
+            $attempt++
+            try {
+                $resp = Invoke-RestMethod -Method Post -Uri $FunctionUrl `
+                    -Headers @{ Authorization = "Bearer $SyncToken"; 'Content-Type' = 'application/json' } `
+                    -Body $payload -TimeoutSec $RequestTimeout
+                break
+            } catch {
+                if ($attempt -ge $MaxRetries) {
+                    throw "Sync failed for $Table batch starting $i after $attempt attempts: $($_.Exception.Message)"
+                }
+                Write-Warning "[$Table] batch starting $i failed on attempt $attempt/$MaxRetries; retrying in $RetryDelaySeconds seconds: $($_.Exception.Message)"
+                Start-Sleep -Seconds $RetryDelaySeconds
+            }
         }
-        Write-Host "  [$Label] $([Math]::Min($i + $BatchSize, $cleaned.Count)) / $($cleaned.Count)"
+        if (-not $resp.success) { throw "Sync failed for $Table batch starting $i : $($resp.error)" }
+        $sent += $chunk.Count
+        Write-Host "  [$Table] $sent / $total"
     }
 }
 
@@ -225,14 +215,14 @@ WHERE pms.GUIDPO IN (
 # Run
 # ---------------------------------------------------------------------------
 
-Write-Host "Pre-Sale PO sync starting -> $SupabaseUrl" -ForegroundColor Yellow
+Write-Host "Pre-Sale PO sync starting -> $FunctionUrl" -ForegroundColor Yellow
 
 Write-Host "==> presale_po_lines"
 $lines = Invoke-Sql -Query $PoLinesQuery
 Write-Host "  pulled $($lines.Count) rows from SQL"
 if ($lines.Count -gt 0) {
     $lines = $lines | ForEach-Object { $_['synced_at'] = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss'); $_ }
-    Send-InBatches -Url ($SupabaseUrl + '/rest/v1/presale_po_lines?on_conflict=guid_po_detail') -Rows $lines -Label 'presale_po_lines'
+    Send-Batch -Table 'presale_po_lines' -Rows $lines -OnConflict 'guid_po_detail'
 }
 
 Write-Host "==> presale_po_summary"
@@ -240,7 +230,7 @@ $summary = Invoke-Sql -Query $PoSummaryQuery
 Write-Host "  pulled $($summary.Count) rows from SQL"
 if ($summary.Count -gt 0) {
     $summary = $summary | ForEach-Object { $_['synced_at'] = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss'); $_ }
-    Send-InBatches -Url ($SupabaseUrl + '/rest/v1/presale_po_summary?on_conflict=guid_po') -Rows $summary -Label 'presale_po_summary'
+    Send-Batch -Table 'presale_po_summary' -Rows $summary -OnConflict 'guid_po'
 }
 
 Write-Host "Done." -ForegroundColor Green

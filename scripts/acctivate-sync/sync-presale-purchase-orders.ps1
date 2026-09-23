@@ -70,12 +70,12 @@ $connStr += 'Encrypt=False;TrustServerCertificate=True;'
 # ---------------------------------------------------------------------------
 
 function Invoke-Sql {
-    param([string]$SqlQuery, [int]$TimeoutSec = $SqlTimeout)
+    param([string]$Query, [int]$TimeoutSec = $SqlTimeout)
     $conn = New-Object System.Data.SqlClient.SqlConnection($connStr)
     $conn.Open()
     try {
         $cmd = $conn.CreateCommand()
-        $cmd.CommandText = $SqlQuery
+        $cmd.CommandText = $Query
         $cmd.CommandTimeout = $TimeoutSec
         $reader = $cmd.ExecuteReader()
         $rows = New-Object System.Collections.Generic.List[hashtable]

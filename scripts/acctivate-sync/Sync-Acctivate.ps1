@@ -438,7 +438,7 @@ SELECT
   p.Description                     AS name,
   p.ProductClassID                  AS collection,
   p.SalesCategory                   AS category,
-  p.ListPrice                       AS price,
+  p.ListPrice                       AS base_price,
   CAST(ISNULL(tp.[_NewIntroUnavail], 0) AS bit) AS new_intro_unavail
 FROM dbo.Product p
 LEFT JOIN dbo.tbProduct tp ON tp.ProductID = p.ProductID

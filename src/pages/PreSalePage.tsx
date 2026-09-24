@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { differenceInCalendarWeeks, format, parseISO } from "date-fns";
 import {
   Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { AlertTriangle, Boxes, DollarSign, Package, Search, Store, Target, Users } from "lucide-react";
+import { AlertTriangle, Boxes, ChevronRight, DollarSign, Package, Search, Store, Target, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ const money = (n: number) => {
 const moneyFull = (n: number) => `$${Math.round(n).toLocaleString()}`;
 const pieColors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
-type Tab = "overview" | "dealers" | "reps" | "collections" | "skus" | "pos";
+type Tab = "overview" | "breakdown" | "pos";
 
 interface CollectionRow {
   key: string;
@@ -32,7 +32,11 @@ interface CollectionRow {
   poAmount: number;
   skus: Set<string>;
   firstPODate: string | null;
+  byDealer: Map<string, { name: string; booked: number }>;
+  byRep: Map<string, { name: string; booked: number }>;
+  bySku: Map<string, { name: string | null; booked: number; poAmount: number }>;
 }
+const emptyCollectionExtras = () => ({ byDealer: new Map(), byRep: new Map(), bySku: new Map() });
 
 export default function PreSalePage() {
   const { data: products = [], isLoading: loadingProducts } = usePreSaleProducts();
@@ -72,9 +76,25 @@ export default function PreSalePage() {
 
       const prod = productBySku.get(b.sku);
       const key = classKey(prod?.collection ?? null, prod?.product_type ?? null);
-      const c = byCollection.get(key) ?? { key, collection: prod?.collection ?? "Uncategorized", productType: prod?.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null };
+      const c = byCollection.get(key) ?? { key, collection: prod?.collection ?? "Uncategorized", productType: prod?.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null, ...emptyCollectionExtras() };
       c.booked += amt;
       c.skus.add(b.sku);
+
+      const repKey = b.rep_id ?? "unassigned";
+      const repDisplayName = b.rep_id ? (b.rep_name ?? "Unnamed rep") : "Unassigned";
+
+      if (b.customer_id) {
+        const cd = c.byDealer.get(b.customer_id) ?? { name: b.dealer_name ?? "Unknown dealer", booked: 0 };
+        cd.booked += amt;
+        c.byDealer.set(b.customer_id, cd);
+      }
+      const cr = c.byRep.get(repKey) ?? { name: repDisplayName, booked: 0 };
+      cr.booked += amt;
+      c.byRep.set(repKey, cr);
+      const cs = c.bySku.get(b.sku) ?? { name: prod?.name ?? null, booked: 0, poAmount: 0 };
+      cs.booked += amt;
+      c.bySku.set(b.sku, cs);
+
       byCollection.set(key, c);
 
       if (b.customer_id) {
@@ -84,8 +104,7 @@ export default function PreSalePage() {
         byDealer.set(b.customer_id, d);
       }
 
-      const repKey = b.rep_id ?? "unassigned";
-      const r = byRep.get(repKey) ?? { name: b.rep_id ? (b.rep_name ?? "Unnamed rep") : "Unassigned", booked: 0, dealers: new Set(), byCollection: new Map() };
+      const r = byRep.get(repKey) ?? { name: repDisplayName, booked: 0, dealers: new Set(), byCollection: new Map() };
       r.booked += amt;
       if (b.customer_id) r.dealers.add(b.customer_id);
       r.byCollection.set(key, (r.byCollection.get(key) ?? 0) + amt);
@@ -104,9 +123,12 @@ export default function PreSalePage() {
 
       const prod = productBySku.get(l.product_id);
       const key = classKey(prod?.collection ?? null, prod?.product_type ?? null);
-      const c = byCollection.get(key) ?? { key, collection: prod?.collection ?? "Uncategorized", productType: prod?.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null };
+      const c = byCollection.get(key) ?? { key, collection: prod?.collection ?? "Uncategorized", productType: prod?.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null, ...emptyCollectionExtras() };
       c.poAmount += amt;
       c.skus.add(l.product_id);
+      const cs = c.bySku.get(l.product_id) ?? { name: prod?.name ?? null, booked: 0, poAmount: 0 };
+      cs.poAmount += amt;
+      c.bySku.set(l.product_id, cs);
       // Andrew's FirstPODate: earliest requested delivery date across PO
       // lines that still have quantity outstanding (i.e. not yet fully in).
       if ((Number(l.quantity_outstanding) || 0) > 0) {
@@ -120,7 +142,8 @@ export default function PreSalePage() {
     for (const p of products) {
       if (!bySku.has(p.sku)) bySku.set(p.sku, { booked: 0, poAmount: 0, poOutstanding: 0 });
       const key = classKey(p.collection, p.product_type);
-      if (!byCollection.has(key)) byCollection.set(key, { key, collection: p.collection ?? "Uncategorized", productType: p.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null });
+      if (!byCollection.has(key)) byCollection.set(key, { key, collection: p.collection ?? "Uncategorized", productType: p.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null, ...emptyCollectionExtras() });
+      if (!byCollection.get(key)!.bySku.has(p.sku)) byCollection.get(key)!.bySku.set(p.sku, { name: p.name, booked: 0, poAmount: 0 });
       byCollection.get(key)!.skus.add(p.sku);
     }
 
@@ -210,19 +233,13 @@ export default function PreSalePage() {
       <Tabs value={tab} onValueChange={(v) => { setTab(v as Tab); setSearch(""); }}>
         <TabsList className="tabs-underline flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="collections">By Collection</TabsTrigger>
-          <TabsTrigger value="reps">By Rep</TabsTrigger>
-          <TabsTrigger value="dealers">By Dealer</TabsTrigger>
-          <TabsTrigger value="skus">By SKU</TabsTrigger>
+          <TabsTrigger value="breakdown">By Dealer, Rep, Collection &amp; SKU</TabsTrigger>
           <TabsTrigger value="pos">Purchase Orders</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {tab === "overview" && <OverviewTab model={model} />}
-      {tab === "collections" && <CollectionsTab model={model} search={search} setSearch={setSearch} />}
-      {tab === "reps" && <RepsTab model={model} search={search} setSearch={setSearch} />}
-      {tab === "dealers" && <DealersTab model={model} search={search} setSearch={setSearch} />}
-      {tab === "skus" && <SkusTab model={model} search={search} setSearch={setSearch} />}
+      {tab === "breakdown" && <BreakdownTab model={model} search={search} setSearch={setSearch} />}
       {tab === "pos" && <PosTab poLines={poLines} poHeaders={poHeaders} products={products} search={search} setSearch={setSearch} />}
     </div>
   );
@@ -387,46 +404,74 @@ function SearchBox({ value, onChange, placeholder }: { value: string; onChange: 
   );
 }
 
-function CollectionsTab({ model, search, setSearch }: { model: Model; search: string; setSearch: (v: string) => void }) {
+function BreakdownTab({ model, search, setSearch }: { model: Model; search: string; setSearch: (v: string) => void }) {
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggle = (key: string) => setOpen((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+
   const q = search.toLowerCase();
   const rows = model.collectionList.filter((c) => !q || c.collection.toLowerCase().includes(q) || c.productType.toLowerCase().includes(q));
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <SearchBox value={search} onChange={setSearch} placeholder="Search collections" />
-        <p className="text-xs text-muted-foreground mt-2">Matches Andrew's reference report: grouped by Product Class and Product Type, with the earliest requested delivery date across PO lines still outstanding.</p>
+        <p className="text-xs text-muted-foreground mt-2">
+          Click a row to see the dealers, reps and SKUs behind it. Each rep's goal is their share of the team's 2026 target applied to this collection's PO'd value &mdash; the same formula as the heatmap above.
+        </p>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b">
-            <th className="py-2 pr-3 font-medium">Product Class</th>
+            <th className="py-2 pr-3 font-medium">Collection</th>
             <th className="py-2 px-3 font-medium">Product Type</th>
             <th className="py-2 px-3 font-medium text-right">SKUs</th>
             <th className="py-2 px-3 font-medium text-right">Total Booked</th>
             <th className="py-2 px-3 font-medium text-right">PO Amount</th>
             <th className="py-2 px-3 font-medium">First PO Date</th>
-            <th className="py-2 pl-3 font-medium w-[200px]">% Booked</th>
+            <th className="py-2 pl-3 font-medium w-[160px]">% Booked</th>
           </tr></thead>
           <tbody>
             {rows.map((c) => {
               const pct = c.poAmount > 0 ? (c.booked / c.poAmount) * 100 : 0;
+              const isOpen = open.has(c.key);
               return (
-                <tr key={c.key} className="border-b last:border-0">
-                  <td className="py-2.5 pr-3 font-medium">{c.collection}</td>
-                  <td className="py-2.5 px-3 text-muted-foreground">{c.productType}</td>
-                  <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{c.skus.size}</td>
-                  <td className="py-2.5 px-3 text-right tabular-nums">{money(c.booked)}</td>
-                  <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{c.poAmount > 0 ? money(c.poAmount) : "-"}</td>
-                  <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">{c.firstPODate ? format(parseISO(c.firstPODate), "MMM d, yyyy") : "-"}</td>
-                  <td className="py-2.5 pl-3">
-                    {c.poAmount > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden"><div className={cn("h-full rounded-full", attainmentBar(pct))} style={{ width: `${Math.min(100, pct)}%` }} /></div>
-                        <span className={cn("text-xs tabular-nums w-10 text-right font-medium", attainmentTone(pct))}>{Math.round(pct)}%</span>
-                      </div>
-                    ) : <span className="text-xs text-muted-foreground">no PO yet</span>}
-                  </td>
-                </tr>
+                <Fragment key={c.key}>
+                  <tr
+                    onClick={() => toggle(c.key)}
+                    className="border-b last:border-0 cursor-pointer hover:bg-muted/40"
+                  >
+                    <td className="py-2.5 pr-3 font-medium">
+                      <span className="inline-flex items-center gap-1.5">
+                        <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", isOpen && "rotate-90")} />
+                        {c.collection}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-muted-foreground">{c.productType}</td>
+                    <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{c.skus.size}</td>
+                    <td className="py-2.5 px-3 text-right tabular-nums">{money(c.booked)}</td>
+                    <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{c.poAmount > 0 ? money(c.poAmount) : "-"}</td>
+                    <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">{c.firstPODate ? format(parseISO(c.firstPODate), "MMM d, yyyy") : "-"}</td>
+                    <td className="py-2.5 pl-3">
+                      {c.poAmount > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden"><div className={cn("h-full rounded-full", attainmentBar(pct))} style={{ width: `${Math.min(100, pct)}%` }} /></div>
+                          <span className={cn("text-xs tabular-nums w-10 text-right font-medium", attainmentTone(pct))}>{Math.round(pct)}%</span>
+                        </div>
+                      ) : <span className="text-xs text-muted-foreground">no PO yet</span>}
+                    </td>
+                  </tr>
+                  {isOpen && (
+                    <tr key={`${c.key}-detail`} className="border-b last:border-0 bg-muted/20">
+                      <td colSpan={7} className="p-4">
+                        <CollectionDetail collection={c} model={model} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
             {rows.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">No collections match.</td></tr>}
@@ -437,125 +482,72 @@ function CollectionsTab({ model, search, setSearch }: { model: Model; search: st
   );
 }
 
-function RepsTab({ model, search, setSearch }: { model: Model; search: string; setSearch: (v: string) => void }) {
-  const rows = model.repList.filter(([, r]) => !search || r.name.toLowerCase().includes(search.toLowerCase()));
+function CollectionDetail({ collection, model }: { collection: CollectionRow; model: Model }) {
+  const reps = [...collection.byRep.entries()].sort((a, b) => b[1].booked - a[1].booked);
+  const dealers = [...collection.byDealer.entries()].sort((a, b) => b[1].booked - a[1].booked).slice(0, 8);
+  const skus = [...collection.bySku.entries()].sort((a, b) => b[1].booked - a[1].booked).slice(0, 8);
+
   return (
-    <div className="space-y-3">
-      {model.weeksSinceStart !== null && model.weeksSinceStart < 12 && (
-        <p className="text-xs text-muted-foreground rounded-lg bg-muted p-3">
-          These products have only been booking for about {model.weeksSinceStart} week{model.weeksSinceStart === 1 ? "" : "s"}. Attainment below is a raw share-of-goal number, not adjusted for how new the launch is — treat low numbers on very recent collections with that in mind rather than as a verdict on the rep.
-        </p>
-      )}
-      <Card>
-        <CardHeader className="pb-3">
-          <SearchBox value={search} onChange={setSearch} placeholder="Search reps" />
-          <p className="text-xs text-muted-foreground mt-2">
-            Each rep's goal is their share of everyone's 2026 sales target ({moneyFull(model.targetSum)} total) applied to the {moneyFull(model.totalPoAmount)} committed on PO for these SKUs. &lt;40% needs attention, 40&ndash;70% okay, 70%+ good.
-          </p>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b">
-              <th className="py-2 pr-3 font-medium">Rep</th>
-              <th className="py-2 px-3 font-medium text-right">Booked</th>
-              <th className="py-2 px-3 font-medium text-right">Dealers</th>
-              <th className="py-2 px-3 font-medium text-right">Goal (weighted)</th>
-              <th className="py-2 pl-3 font-medium w-[200px]">Attainment</th>
-            </tr></thead>
+    <div className="grid gap-5 lg:grid-cols-3">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />By rep</p>
+        {reps.length === 0 ? <p className="text-xs text-muted-foreground">No bookings yet.</p> : (
+          <table className="w-full text-xs">
             <tbody>
-              {rows.map(([key, r]) => {
-                const goal = model.repGoal.get(key);
+              {reps.map(([key, r]) => {
+                const share = model.repShare.get(key);
+                const goal = share ? share * collection.poAmount : null;
                 const pct = goal && goal > 0 ? (r.booked / goal) * 100 : null;
                 return (
-                  <tr key={key} className={cn("border-b last:border-0", key === "unassigned" && "text-muted-foreground italic")}>
-                    <td className="py-2.5 pr-3 font-medium">{r.name}</td>
-                    <td className="py-2.5 px-3 text-right tabular-nums">{money(r.booked)}</td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{r.dealers.size}</td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{goal ? money(goal) : "no target"}</td>
-                    <td className="py-2.5 pl-3">
-                      {pct !== null ? (
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden"><div className={cn("h-full rounded-full", attainmentBar(pct))} style={{ width: `${Math.min(100, pct)}%` }} /></div>
-                          <span className={cn("text-xs tabular-nums w-10 text-right font-medium", attainmentTone(pct))}>{Math.round(pct)}%</span>
-                        </div>
-                      ) : <span className="text-xs text-muted-foreground">n/a</span>}
+                  <tr key={key} className="border-b last:border-0">
+                    <td className={cn("py-1.5 pr-2 font-medium", key === "unassigned" && "text-muted-foreground italic")}>{r.name}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">{money(r.booked)}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">{goal ? money(goal) : "no target"}</td>
+                    <td className="py-1.5 pl-2 text-right">
+                      {pct !== null ? <span className={cn("font-medium tabular-nums", attainmentTone(pct))}>{Math.round(pct)}%</span> : <span className="text-muted-foreground">n/a</span>}
                     </td>
                   </tr>
                 );
               })}
-              {rows.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">No reps match.</td></tr>}
             </tbody>
           </table>
-        </CardContent>
-      </Card>
+        )}
+      </div>
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5"><Store className="h-3.5 w-3.5" />By dealer</p>
+        {dealers.length === 0 ? <p className="text-xs text-muted-foreground">No bookings yet.</p> : (
+          <table className="w-full text-xs">
+            <tbody>
+              {dealers.map(([id, d]) => (
+                <tr key={id} className="border-b last:border-0">
+                  <td className="py-1.5 pr-2 font-medium truncate max-w-[160px]">{d.name}</td>
+                  <td className="py-1.5 pl-2 text-right tabular-nums">{money(d.booked)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5"><Package className="h-3.5 w-3.5" />By SKU</p>
+        {skus.length === 0 ? <p className="text-xs text-muted-foreground">No SKUs.</p> : (
+          <table className="w-full text-xs">
+            <tbody>
+              {skus.map(([sku, s]) => (
+                <tr key={sku} className="border-b last:border-0">
+                  <td className="py-1.5 pr-2 font-mono truncate max-w-[140px]" title={s.name ?? undefined}>{sku}</td>
+                  <td className="py-1.5 px-2 text-right tabular-nums">{money(s.booked)}</td>
+                  <td className="py-1.5 pl-2 text-right tabular-nums text-muted-foreground">{s.poAmount > 0 ? money(s.poAmount) : "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
 
-function DealersTab({ model, search, setSearch }: { model: Model; search: string; setSearch: (v: string) => void }) {
-  const rows = model.dealerList.filter(([, d]) => !search || d.name.toLowerCase().includes(search.toLowerCase())).slice(0, 200);
-  return (
-    <Card>
-      <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
-        <SearchBox value={search} onChange={setSearch} placeholder="Search dealers" />
-        <span className="text-xs text-muted-foreground flex items-center gap-1.5"><Store className="h-3.5 w-3.5" />{model.dealerCount} dealers so far</span>
-      </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b">
-            <th className="py-2 pr-3 font-medium">Dealer</th>
-            <th className="py-2 px-3 font-medium">Rep(s)</th>
-            <th className="py-2 pl-3 font-medium text-right">Booked</th>
-          </tr></thead>
-          <tbody>
-            {rows.map(([id, d]) => (
-              <tr key={id} className="border-b last:border-0">
-                <td className="py-2.5 pr-3 font-medium max-w-[280px] truncate">{d.name}</td>
-                <td className="py-2.5 px-3 text-muted-foreground truncate max-w-[220px]">{[...d.reps].join(", ") || "-"}</td>
-                <td className="py-2.5 pl-3 text-right tabular-nums">{money(d.booked)}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && <tr><td colSpan={3} className="py-8 text-center text-muted-foreground">No dealers match.</td></tr>}
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SkusTab({ model, search, setSearch }: { model: Model; search: string; setSearch: (v: string) => void }) {
-  const q = search.toLowerCase();
-  const rows = model.skuList.filter((r) => !q || r.product.sku.toLowerCase().includes(q) || (r.product.name ?? "").toLowerCase().includes(q))
-    .sort((a, b) => b.booked - a.booked);
-  return (
-    <Card>
-      <CardHeader className="pb-3"><SearchBox value={search} onChange={setSearch} placeholder="Search SKU or product name" /></CardHeader>
-      <CardContent className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b">
-            <th className="py-2 pr-3 font-medium">SKU</th>
-            <th className="py-2 px-3 font-medium">Name</th>
-            <th className="py-2 px-3 font-medium">Collection</th>
-            <th className="py-2 px-3 font-medium text-right">Booked</th>
-            <th className="py-2 pl-3 font-medium text-right">On PO</th>
-          </tr></thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.product.sku} className="border-b last:border-0">
-                <td className="py-2.5 pr-3 font-mono text-xs">{r.product.sku}</td>
-                <td className="py-2.5 px-3 max-w-[320px] truncate" title={r.product.name ?? undefined}>{r.product.name ?? "-"}</td>
-                <td className="py-2.5 px-3 text-muted-foreground">{r.product.collection ?? "-"}</td>
-                <td className={cn("py-2.5 px-3 text-right tabular-nums", r.booked === 0 && "text-muted-foreground")}>{money(r.booked)}</td>
-                <td className="py-2.5 pl-3 text-right tabular-nums text-muted-foreground">{r.poAmount > 0 ? money(r.poAmount) : "-"}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-muted-foreground">No SKUs match.</td></tr>}
-          </tbody>
-        </table>
-      </CardContent>
-    </Card>
-  );
-}
 
 function PosTab({ poLines, poHeaders, products, search, setSearch }: {
   poLines: { product_id: string | null; po_number: string | null; guid_po: string; line_amount: number; quantity_outstanding: number }[];

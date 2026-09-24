@@ -91,7 +91,7 @@ export const NAV_SECTIONS: NavSection[] = [
           { title: "Labor Day Promo", url: "/promotions/labor-day-promo", icon: Tag, roles: ["admin", "manager", "rep"] },
           { title: "Discontinued Products", url: "/clearance", icon: Tag, roles: ["admin", "manager", "rep"] },
           { title: "Discontinued Analytics", url: "/clearance/analytics", icon: BarChart3, roles: ["admin", "manager"] },
-          { title: "Pre-Sale", url: "/promotions/pre-sale", icon: Rocket, roles: ["admin", "manager"] },
+          { title: "Pre-Sale", url: "/promotions/pre-sale", icon: Rocket, roles: ["admin", "manager"], allowEmails: ["gabriella@lineage-collections.com"] },
         ],
       },
     ],

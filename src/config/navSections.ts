@@ -14,7 +14,8 @@ export type NavItem = {
   icon: typeof LayoutDashboard;
   roles: AppRole[];
   allowEmails?: string[];
-  children?: { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[]; allowEmails?: string[] }[];
+  denyEmails?: string[];
+  children?: { title: string; url: string; icon: typeof LayoutDashboard; roles: AppRole[]; allowEmails?: string[]; denyEmails?: string[] }[];
 };
 
 export type NavSection = {
@@ -117,7 +118,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Organizational Chart", url: "/org-chart", icon: Network,  roles: ["admin"] },
       { title: "Sales Managers", url: "/managers", icon: UserCog,  roles: ["admin", "manager"] },
       { title: "Sales Rep Database (Acctivate)", url: "/reps-acctivate", icon: Database, roles: ["admin"] },
-      { title: "Rep Login Activity", url: "/rep-activity", icon: Clock, roles: ["admin", "manager"] },
+      { title: "Rep Login Activity", url: "/rep-activity", icon: Clock, roles: ["admin", "manager"], denyEmails: ["kate@lineage-collections.com"] },
       { title: "Desktop App", url: "/desktop-app", icon: Download, roles: ["admin", "manager", "rep", "dealer"], allowEmails: ["gabriella@lineage-collections.com", "justin@lineage-collections.com", "scott@lineage-collections.com"] },
       { title: "Settings",       url: "/settings", icon: Settings, roles: ["admin", "manager", "rep"] },
     ],
@@ -150,13 +151,15 @@ export function getVisibleNavSections(
         .filter((i) => (cs ? CS_ALLOWED_URLS.has(i.url) : i.roles.includes(role)))
         .filter((i) => !(i.url === "/org-chart" && user?.email?.toLowerCase() === "andrew@lineage-collections.com"))
         .filter((i) => !i.allowEmails || (!!user?.email && i.allowEmails.map((e) => e.toLowerCase()).includes(user.email!.toLowerCase())))
+        .filter((i) => !i.denyEmails || !user?.email || !i.denyEmails.map((e) => e.toLowerCase()).includes(user.email!.toLowerCase()))
         .map((i) => cs
           ? { ...i, children: undefined }
           : {
               ...i,
               children: i.children
                 ?.filter((c) => c.roles.includes(role))
-                .filter((c) => !c.allowEmails || (!!user?.email && c.allowEmails.map((e) => e.toLowerCase()).includes(user.email!.toLowerCase()))),
+                .filter((c) => !c.allowEmails || (!!user?.email && c.allowEmails.map((e) => e.toLowerCase()).includes(user.email!.toLowerCase())))
+                .filter((c) => !c.denyEmails || !user?.email || !c.denyEmails.map((e) => e.toLowerCase()).includes(user.email!.toLowerCase())),
             }),
     }))
     .filter((s) => s.items.length > 0);

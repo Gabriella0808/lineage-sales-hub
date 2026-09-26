@@ -17,6 +17,7 @@ import {
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/contexts/AuthContext";
 import { RepNotConfigured } from "@/components/RepNotConfigured";
+import { managerGroupIds } from "@/utils/managerGroups";
 
 type ReportKey = "executive" | "live-kpi" | "dealer-reporting" | "rep-reporting";
 
@@ -106,14 +107,26 @@ export default function CompanyWidePage() {
   // is NULL/mismatched on many correctly rep-assigned dealers). effectiveManagerId
   // itself is left untouched since it still drives the locked manager <Select>
   // display elsewhere on this page.
-  const dataManagerId = isRep ? null : (effectiveManagerId === "all" ? null : effectiveManagerId);
+  // The selected manager plus any bare duplicate records for the same person
+  // (Acctivate's short "Will"/"Mateo" next to "Will Grisack"/"Mateo De Lisa").
+  // Dealers, reps and orders are split across those records, so scoping to just
+  // the real one silently drops most of that manager's numbers. This only widens
+  // REPORTING scope - it does not change any dealer/rep/prospect assignment.
+  const groupIds = useMemo<string[] | null>(() => {
+    if (isRep || effectiveManagerId === "all") return null;
+    return managerGroupIds(effectiveManagerId, managers);
+  }, [isRep, effectiveManagerId, managers]);
+  const hasDuplicates = !!groupIds && groupIds.length > 1;
+  // With duplicates, the single-id server filter can't express "these records",
+  // so those tabs are scoped by the team's reps instead (groupRepAcIds below).
+  const dataManagerId = isRep ? null : (effectiveManagerId === "all" || hasDuplicates ? null : effectiveManagerId);
 
   // Warm the High-Level Reporting data in the background so that tab opens instantly.
   useEffect(() => {
     if (isRep || !canSeeExecutive) return;
-    const t = window.setTimeout(() => prefetchExecutiveData(queryClient, dataManagerId, refreshKey), 1500);
+    const t = window.setTimeout(() => prefetchExecutiveData(queryClient, groupIds, refreshKey), 1500);
     return () => window.clearTimeout(t);
-  }, [isRep, canSeeExecutive, queryClient, dataManagerId, refreshKey]);
+  }, [isRep, canSeeExecutive, queryClient, groupIds, refreshKey]);
 
   const setReport = (key: ReportKey) => {
     const next = new URLSearchParams(params);
@@ -135,8 +148,20 @@ export default function CompanyWidePage() {
   const managerScopeRepIds = useMemo<string[] | null>(() => {
     if (isRep && roleInfo?.repIds?.length) return roleInfo.repIds;
     if (effectiveManagerId === "all") return null;
-    return reps.filter((r) => r.manager_id === effectiveManagerId).map((r) => r.id);
-  }, [isRep, roleInfo?.repIds, effectiveManagerId, reps]);
+    const ids = groupIds ?? [effectiveManagerId];
+    return reps.filter((r) => r.manager_id && ids.includes(r.manager_id)).map((r) => r.id);
+  }, [isRep, roleInfo?.repIds, effectiveManagerId, reps, groupIds]);
+
+  // Acctivate rep codes of the team, used to scope the server-side reports when
+  // the manager has duplicate records (null otherwise, so every other manager's
+  // numbers are computed exactly as before).
+  const groupRepAcIds = useMemo<string[] | null>(() => {
+    if (!hasDuplicates || !managerScopeRepIds) return null;
+    const codes = reps
+      .filter((r) => managerScopeRepIds.includes(r.id) && r.acctivate_id?.trim())
+      .map((r) => r.acctivate_id!.trim());
+    return codes.length > 0 ? codes : ["__no_reps__"]; // never fall back to company-wide
+  }, [hasDuplicates, managerScopeRepIds, reps]);
 
   const managerName = effectiveManagerId === "all"
     ? undefined
@@ -211,7 +236,7 @@ export default function CompanyWidePage() {
 
         {activeReport === "executive" && (
           <ExecutiveOverview
-            managerId={dataManagerId}
+            managerIds={groupIds}
             managerName={managerName}
             refreshKey={refreshKey}
             onOpenReport={setReport}
@@ -223,6 +248,8 @@ export default function CompanyWidePage() {
             lockedRepName={isRep ? currentRep?.name ?? null : null}
             managerScopeRepIds={managerScopeRepIds}
             managerId={dataManagerId}
+            managerIds={groupIds}
+            groupRepAcIds={groupRepAcIds}
             refreshKey={refreshKey}
           />
         )}
@@ -231,6 +258,7 @@ export default function CompanyWidePage() {
             groupBy="dealer"
             managerScopeRepIds={managerScopeRepIds}
             managerId={dataManagerId}
+            groupRepAcIds={groupRepAcIds}
           />
         )}
         {activeReport === "rep-reporting" && (
@@ -239,6 +267,7 @@ export default function CompanyWidePage() {
             groupByOptions={["rep", "territory"]}
             managerScopeRepIds={managerScopeRepIds}
             managerId={dataManagerId}
+            groupRepAcIds={groupRepAcIds}
           />
         )}
       </section>

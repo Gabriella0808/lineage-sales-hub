@@ -524,9 +524,15 @@ interface Props {
   managerScopeRepIds?: string[] | null;
   groupByOptions?: GroupBy[];
   managerId?: string | null;
+  /**
+   * Acctivate rep codes of the selected manager's team, set only when that manager has
+   * duplicate records ("Will" + "Will Grisack"). The server takes a single manager id, which
+   * can't express both records, so the team is scoped by its reps instead.
+   */
+  groupRepAcIds?: string[] | null;
 }
 
-export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions, managerId }: Props) {
+export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, groupByOptions, managerId, groupRepAcIds }: Props) {
   const today = getReportingToday();
   const { user } = useAuth();
   const showSummaryCards = (user?.email ?? "").toLowerCase() === SUMMARY_CARDS_VISIBLE_TO_EMAIL;
@@ -873,6 +879,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return map;
   }, [reps]);
 
+  // Team rep codes (lowercase) used as the rep filter when no individual rep is picked and the
+  // manager has duplicate records - see groupRepAcIds above. null for everyone else.
+  const teamRepCodes = useMemo<string[] | null>(
+    () => (groupRepAcIds && groupRepAcIds.length > 0 ? groupRepAcIds.map((c) => c.trim().toLowerCase()) : null),
+    [groupRepAcIds],
+  );
+
   // Acctivate rep_ids (lowercase) for the currently selected portal reps.
   const selectedRepAcIds = useMemo(() => {
     const ids = new Set<string>();
@@ -898,7 +911,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       brandCats:   brandCategories.length > 0 ? brandCategories : null,
       collections: collections.length > 0 ? collections : null,
       skus:        skus.length > 0 ? skus : null,
-      repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
+      repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : teamRepCodes,
       managerId:   managerId ?? null,
     },
     useRpcMode && (!isBkMetric || primBkEnabled),
@@ -917,7 +930,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     brandCats:   brandCategories.length > 0 ? brandCategories : null,
     collections: collections.length > 0 ? collections : null,
     skus:        skus.length > 0 ? skus : null,
-    repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
+    repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : teamRepCodes,
     managerId:   managerId ?? null,
   };
   const { data: bookingRows  = [] } = useGroupedRows(
@@ -936,7 +949,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     brandCats:   null,
     collections: null,
     skus:        null,
-    repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null,
+    repIds:      selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : teamRepCodes,
     managerId:   managerId ?? null,
     compFrom:    null as null,
     compTo:      null as null,
@@ -1364,7 +1377,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     const metricStr = metric === "invoices" ? "invoiced" : "bookings";
     const entityKey = drillRow.key;
     const cids      = rpcCustomerIds;
-    const rids      = selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null;
+    const rids      = selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : teamRepCodes;
     const bcs       = brandCategories.length > 0 ? brandCategories : null;
     const cols      = collections.length > 0 ? collections : null;
     const sks       = skus.length > 0 ? skus : null;
@@ -1416,7 +1429,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       };
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRpcMode, drillRow?.key, metric, groupBy, rpcCustomerIds, selectedRepAcIds, brandCategories, collections, skus, managerId]);
+  }, [useRpcMode, drillRow?.key, metric, groupBy, rpcCustomerIds, selectedRepAcIds, teamRepCodes, brandCategories, collections, skus, managerId]);
 
   // Open Sales Orders — current backlog snapshot for the drilled-into rep/dealer.
   // Not date-scoped (unlike drillMakeFetch above): the report's invoice date
@@ -1425,7 +1438,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     if (!useRpcMode || !drillRow) return undefined;
     const entityKey = drillRow.key;
     const cids      = rpcCustomerIds;
-    const rids      = selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : null;
+    const rids      = selectedRepAcIds.size > 0 ? Array.from(selectedRepAcIds) : teamRepCodes;
     const bcs       = brandCategories.length > 0 ? brandCategories : null;
     const sks       = skus.length > 0 ? skus : null;
     const gbStr     = groupBy === "territory" ? "dealer" : groupBy;
@@ -1473,7 +1486,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       }));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRpcMode, drillRow?.key, groupBy, rpcCustomerIds, selectedRepAcIds, brandCategories, skus, managerId]);
+  }, [useRpcMode, drillRow?.key, groupBy, rpcCustomerIds, selectedRepAcIds, teamRepCodes, brandCategories, skus, managerId]);
 
   // ── Render helpers ────────────────────────────────────────────────────────
 

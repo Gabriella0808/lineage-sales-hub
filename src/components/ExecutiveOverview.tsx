@@ -24,7 +24,8 @@ import { TARGET_MONTHS, useRepTargets } from "@/hooks/useRepTargets";
 import { TargetProgressChart } from "@/components/TargetProgressChart";
 
 interface Props {
-  managerId: string | null;
+  /** The selected manager's records (real + any bare duplicates); null = company-wide. */
+  managerIds: string[] | null;
   managerName?: string;
   refreshKey: number;
   onOpenReport: (key: "live-kpi" | "dealer-reporting" | "rep-reporting") => void;
@@ -82,9 +83,9 @@ async function fetchAll<T>(build: (from: number, to: number, withCount: boolean)
 
 const EXEC_ROW_COLUMNS = "metric_type, amount, transaction_date, customer_id, dealer_name, brand_category, product_class, portal_rep_id, rep_name";
 
-function execRowsQuery(year: number, managerId: string | null, refreshKey: number) {
+function execRowsQuery(year: number, managerIds: string[] | null, refreshKey: number) {
   return {
-    queryKey: ["exec_overview_rows_v2", year, managerId, refreshKey],
+    queryKey: ["exec_overview_rows_v2", year, managerIds, refreshKey],
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     queryFn: () => fetchAll<Row>((from, to, withCount) => {
@@ -102,15 +103,15 @@ function execRowsQuery(year: number, managerId: string | null, refreshKey: numbe
         .order("portal_rep_id", { ascending: true })
         .order("amount", { ascending: true })
         .range(from, to);
-      if (managerId) q = q.eq("manager_id", managerId);
+      if (managerIds) q = q.in("manager_id", managerIds);
       return q;
     }),
   };
 }
 
-function execBacklogQuery(managerId: string | null, refreshKey: number) {
+function execBacklogQuery(managerIds: string[] | null, refreshKey: number) {
   return {
-    queryKey: ["exec_overview_backlog", managerId, refreshKey],
+    queryKey: ["exec_overview_backlog", managerIds, refreshKey],
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     queryFn: async () => {
@@ -122,7 +123,7 @@ function execBacklogQuery(managerId: string | null, refreshKey: number) {
           .order("sku", { ascending: true })
           .order("open_so_amount", { ascending: true })
           .range(from, to);
-        if (managerId) q = q.eq("manager_id", managerId);
+        if (managerIds) q = q.in("manager_id", managerIds);
         return q;
       });
       const orders = new Set<string>();
@@ -138,18 +139,18 @@ function execBacklogQuery(managerId: string | null, refreshKey: number) {
 
 // Called from the Company-wide page shortly after it opens so the High-Level
 // Reporting tab is already loaded by the time someone clicks it.
-export function prefetchExecutiveData(qc: QueryClient, managerId: string | null, refreshKey: number) {
+export function prefetchExecutiveData(qc: QueryClient, managerIds: string[] | null, refreshKey: number) {
   const year = new Date().getFullYear();
-  qc.prefetchQuery(execRowsQuery(year, managerId, refreshKey));
-  qc.prefetchQuery(execBacklogQuery(managerId, refreshKey));
+  qc.prefetchQuery(execRowsQuery(year, managerIds, refreshKey));
+  qc.prefetchQuery(execBacklogQuery(managerIds, refreshKey));
 }
 
-function useExecutiveRows(year: number, managerId: string | null, refreshKey: number) {
-  return useQuery({ ...execRowsQuery(year, managerId, refreshKey), placeholderData: keepPreviousData });
+function useExecutiveRows(year: number, managerIds: string[] | null, refreshKey: number) {
+  return useQuery({ ...execRowsQuery(year, managerIds, refreshKey), placeholderData: keepPreviousData });
 }
 
-function useOpenBacklog(managerId: string | null, refreshKey: number) {
-  return useQuery({ ...execBacklogQuery(managerId, refreshKey), placeholderData: keepPreviousData });
+function useOpenBacklog(managerIds: string[] | null, refreshKey: number) {
+  return useQuery({ ...execBacklogQuery(managerIds, refreshKey), placeholderData: keepPreviousData });
 }
 
 interface Win { start: string; end: string; pStart: string | null; pEnd: string | null; label: string; prevLabel: string }
@@ -191,13 +192,13 @@ function buildWindows(today: Date): Record<PeriodKey, Win & { available: boolean
 interface DealerAgg { key: string; name: string; ytd: number; cur: number; prev: number; last: string; first: string }
 interface RepAgg { key: string; name: string; ytdB: number; ytdI: number; cur: number; prev: number; curI: number; dealers: Set<string> }
 
-export function ExecutiveOverview({ managerId, managerName, refreshKey, onOpenReport }: Props) {
+export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenReport }: Props) {
   const today = useMemo(() => new Date(), []);
   const year = today.getFullYear();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: rows = [], isLoading, error, dataUpdatedAt } = useExecutiveRows(year, managerId, refreshKey);
-  const { data: backlog } = useOpenBacklog(managerId, refreshKey);
+  const { data: rows = [], isLoading, error, dataUpdatedAt } = useExecutiveRows(year, managerIds, refreshKey);
+  const { data: backlog } = useOpenBacklog(managerIds, refreshKey);
   const { data: targets = [] } = useRepTargets(year);
   const { data: reps = [] } = useSalesReps();
 
@@ -275,7 +276,7 @@ export function ExecutiveOverview({ managerId, managerName, refreshKey, onOpenRe
     }
 
     // Rep targets are set against invoicing (see Sales Targets page).
-    const inScope = new Set(reps.filter((r) => !managerId || r.manager_id === managerId).map((r) => r.id));
+    const inScope = new Set(reps.filter((r) => !managerIds || (!!r.manager_id && managerIds.includes(r.manager_id))).map((r) => r.id));
     const scoped = targets.filter((t) => inScope.has(t.rep_id));
     const daysInCur = new Date(year, curMonth, 0).getDate();
     const frac = (i: number) => (i < START_MONTH ? 0 : i + 1 < curMonth ? 1 : i + 1 === curMonth ? dayOfMonth / daysInCur : 0);
@@ -319,7 +320,7 @@ export function ExecutiveOverview({ managerId, managerName, refreshKey, onOpenRe
       unassignedShare: bookingRows > 0 ? (unassigned / bookingRows) * 100 : 0,
       quietValue: tabs.quiet.reduce((s, d) => s + d.ytd, 0),
     };
-  }, [rows, targets, reps, managerId, today, year, W]);
+  }, [rows, targets, reps, managerIds, today, year, W]);
 
   const drillModel = useMemo(() => {
     if (!drill) return null;

@@ -209,13 +209,21 @@ function GoalCard({ label, value, goal, actual, visible, goalLabel, fraction, fo
 export function LiveKpiReport({
   managerName,
   managerId,
+  managerIds,
+  groupRepAcIds,
   lockedRepName,
   managerScopeRepIds,
   refreshKey,
 }: {
   managerName?: string;
-  /** managers.id UUID from the URL — passed directly to the reporting RPC. null = all. */
+  /** managers.id UUID from the URL — passed directly to the reporting RPC. null = all
+   *  (also null when the manager has duplicate records - see groupRepAcIds). */
   managerId?: string | null;
+  /** The selected manager's records (the real one + any bare duplicates); null = company-wide. */
+  managerIds?: string[] | null;
+  /** Acctivate rep codes of the team when the manager has duplicate records; scopes the
+   *  numbers by reps because the single managerId above can't express both records. */
+  groupRepAcIds?: string[] | null;
   lockedRepName?: string | null;
   /** Portal rep UUID[] from CompanyWidePage — used for UI scoping (dropdowns, spreadsheet). */
   managerScopeRepIds?: string[] | null;
@@ -372,13 +380,13 @@ export function LiveKpiReport({
     if (lockedRepName) displayNames = [lockedRepName];
     else if (repFilter.length > 0) displayNames = repFilter;
     else if (territoryFilter.length > 0) displayNames = visibleReps.map((r) => r.name);
-    if (displayNames === null) return null;
+    if (displayNames === null) return groupRepAcIds && groupRepAcIds.length > 0 ? groupRepAcIds : null;
     // Translate display names → DB names, then → acctivate_id.
     const dbNames = displayNames.flatMap((n) => REP_NAME_TO_DB_NAMES[n] ?? [n]);
     return dbNames
       .map((dbName) => dbReps.find((r) => r.name === dbName)?.acctivate_id)
       .filter((id): id is string => !!id && id.trim() !== "");
-  }, [lockedRepName, repFilter, territoryFilter, visibleReps, dbReps]);
+  }, [lockedRepName, repFilter, territoryFilter, visibleReps, dbReps, groupRepAcIds]);
 
 
   // Daily actuals — canonical source v_companywide_reporting_actuals.
@@ -796,26 +804,33 @@ export function LiveKpiReport({
   const showI = metricFilter !== "bookings";
 
   // ── Open SO Value KPI — canonical source, same view used by Inventory >
-  // Backlog and the Dealer/Rep Reporting Open SO card. Company-wide total
-  // (unscoped by rep/manager), matching how Inventory > Backlog's own totals
-  // are presented. Paginated via .range() exactly like
-  // useInventoryHub.ts's fetchAllOpenOrders — a single unpaginated request
+  // Backlog and the Dealer/Rep Reporting Open SO card. Follows the same scope as
+  // the rest of this tab: the selected manager (all of that manager's records, so
+  // the duplicate "Will"/"Mateo" rows count too), narrowed to any individual reps
+  // picked; company-wide when neither is chosen. Paginated via .range() exactly
+  // like useInventoryHub.ts's fetchAllOpenOrders — a single unpaginated request
   // is silently truncated at the project's row cap (~1000), which is why
   // this must page through in full rather than rely on .limit().
+  const openSoManagerKey = managerIds ? [...managerIds].sort().join(",") : "all";
   const { data: openSoRows = [] } = useQuery({
-    queryKey: ["live_kpi_open_so_totals"],
+    queryKey: ["live_kpi_open_so_totals", openSoManagerKey],
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true,
     refetchInterval: 5 * 60_000,
     queryFn: async () => {
       const pageSize = 1000;
-      const all: Array<{ order_number: string | null; qty_open: number | string | null; open_so_amount: number | string | null }> = [];
+      const all: Array<{ order_number: string | null; qty_open: number | string | null; open_so_amount: number | string | null; rep_id: string | null }> = [];
       let from = 0;
       while (true) {
-        const { data, error } = await (supabase as any)
+        let q = (supabase as any)
           .from("v_portal_open_sales_order_line_facts")
-          .select("order_number, qty_open, open_so_amount")
+          .select("order_number, qty_open, open_so_amount, rep_id")
+          .order("order_number", { ascending: true })
+          .order("sku", { ascending: true })
+          .order("open_so_amount", { ascending: true })
           .range(from, from + pageSize - 1);
+        if (managerIds && managerIds.length > 0) q = q.in("manager_id", managerIds);
+        const { data, error } = await q;
         if (error) {
           console.error("[live-kpi] open SO totals error:", error.message);
           break;
@@ -833,13 +848,19 @@ export function LiveKpiReport({
     const orderNumbers = new Set<string>();
     let totalUnits = 0;
     let totalValue = 0;
+    // Individual rep picks (or the team's reps for a manager with duplicate records)
+    // narrow the manager scope, matched case-insensitively like the daily numbers.
+    const repSet = selectedRepAcIds && selectedRepAcIds.length > 0
+      ? new Set(selectedRepAcIds.map((id) => id.trim().toLowerCase()))
+      : null;
     for (const r of openSoRows) {
+      if (repSet && !(r.rep_id && repSet.has(r.rep_id.trim().toLowerCase()))) continue;
       if (r.order_number) orderNumbers.add(String(r.order_number));
       totalUnits += Number(r.qty_open) || 0;
       totalValue += Number(r.open_so_amount) || 0;
     }
     return { orderCount: orderNumbers.size, totalUnits, totalValue };
-  }, [openSoRows]);
+  }, [openSoRows, selectedRepAcIds]);
 
   return (
     <div className="space-y-6">

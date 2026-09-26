@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
 import { WhatsNewTour, START_TOUR_EVENT, canUseTour } from "@/components/WhatsNewTour";
 import { getVisibleNavSections, type NavItem, type NavSection } from "@/config/navSections";
+import { usePageAccessOverrides } from "@/hooks/usePageAccessOverrides";
 import { useDesktopWindowTitle } from "@/lib/desktop/useDesktopWindowTitle";
 import { useConnectivity } from "@/lib/desktop/useConnectivity";
 import { OfflineScreen } from "@/components/desktop/OfflineScreen";
@@ -348,7 +349,8 @@ function Shell({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
   const { data: roleInfo } = useUserRole();
   const role: AppRole = roleInfo?.role ?? "rep";
-  const sections = useMemo(() => getVisibleNavSections(role, user), [role, user]);
+  const { overrides: accessOverrides } = usePageAccessOverrides();
+  const sections = useMemo(() => getVisibleNavSections(role, user, accessOverrides), [role, user, accessOverrides]);
   const here = useMemo(() => locate(sections, location.pathname), [sections, location.pathname]);
   const sectionOf = sections.find((s) => s.id === here.sectionId);
   const roleLabel = isCustomerService(user?.email) ? "Customer service" : role;

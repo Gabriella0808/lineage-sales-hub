@@ -12,6 +12,27 @@ const ADMIN_EMAIL_OVERRIDES = new Set([
   "gabriella@lineage-collections.com",
 ]);
 
+/**
+ * The single rule for turning a user's database rows into their effective
+ * role: admin > manager > rep > dealer, defaulting to rep. Shared by the
+ * live portal (useUserRole) and the Portal Access page so they can never
+ * disagree about what role someone has.
+ */
+export function resolveRole(input: {
+  email?: string | null;
+  roles: string[];
+  hasManager: boolean;
+  hasRep: boolean;
+  hasDealer: boolean;
+}): AppRole {
+  const emailOverride = ADMIN_EMAIL_OVERRIDES.has(input.email?.toLowerCase() ?? "");
+  if (input.roles.includes("admin") || emailOverride) return "admin";
+  if (input.roles.includes("manager") || input.hasManager) return "manager";
+  if (input.roles.includes("rep") || input.hasRep) return "rep";
+  if (input.roles.includes("dealer") || input.hasDealer) return "dealer";
+  return "rep";
+}
+
 export interface UserRoleInfo {
   role: AppRole;
   managerId: string | null;
@@ -57,13 +78,7 @@ export function useUserRole() {
       const repId = repIds[0] ?? null;
       const dealerId = dealerRes.data?.dealer_id ?? null;
 
-      let role: AppRole;
-      const emailOverride = ADMIN_EMAIL_OVERRIDES.has(user.email?.toLowerCase() ?? "");
-      if (roles.includes("admin") || emailOverride) role = "admin";
-      else if (roles.includes("manager") || managerId) role = "manager";
-      else if (roles.includes("rep") || repId) role = "rep";
-      else if (roles.includes("dealer") || dealerId) role = "dealer";
-      else role = "rep";
+      const role = resolveRole({ email: user.email, roles, hasManager: !!managerId, hasRep: !!repId, hasDealer: !!dealerId });
 
       return {
         role,

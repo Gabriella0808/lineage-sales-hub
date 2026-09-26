@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useCurrentReportContext } from "@/contexts/ReportContextProvider";
 import { getVisibleNavSections, type NavSection } from "@/config/navSections";
+import { usePageAccessOverrides } from "@/hooks/usePageAccessOverrides";
 
 type PageOption = { title: string; url: string };
 
@@ -80,9 +81,10 @@ export function ReportIssueDialog({ open, onOpenChange }: { open: boolean; onOpe
   const location = useLocation();
   const reportContext = useCurrentReportContext();
 
+  const { overrides: accessOverrides } = usePageAccessOverrides();
   const pageOptions = useMemo(
-    () => flattenPages(getVisibleNavSections(roleInfo?.role ?? "rep", user)),
-    [roleInfo?.role, user],
+    () => flattenPages(getVisibleNavSections(roleInfo?.role ?? "rep", user, accessOverrides)),
+    [roleInfo?.role, user, accessOverrides],
   );
 
   const [form, setForm] = useState<FormState>(() => emptyForm(location.pathname, pageOptions));

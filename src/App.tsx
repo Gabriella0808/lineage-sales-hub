@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CartProvider } from "@/contexts/CartContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import EmailGuard from "@/components/EmailGuard";
+import PageGate from "@/components/PageGate";
 import AppLayout from "@/components/AppLayout";
 import SalesRepsAcctivatePage from "@/pages/SalesRepsAcctivatePage";
 import HighPointAppointmentsPage from "@/pages/HighPointAppointmentsPage";
@@ -50,11 +50,11 @@ import CrmAccountsAnalyticsPage from "@/pages/crm/CrmAccountsAnalyticsPage";
 import CrmAccountDetailPage from "@/pages/crm/CrmAccountDetailPage";
 import CrmNewAccountPage from "@/pages/crm/CrmNewAccountPage";
 import ProspectReportingPage from "@/pages/crm/ProspectReportingPage";
-import CrmGuard from "@/components/CrmGuard";
 import ClearanceProductsPage from "@/pages/ClearanceProductsPage";
 import ClearanceAnalyticsPage from "@/pages/ClearanceAnalyticsPage";
 import LaborDayPromoPage from "@/pages/LaborDayPromoPage";
 import PreSalePage from "@/pages/PreSalePage";
+import PortalAccessPage from "@/pages/PortalAccessPage";
 import MeetingIntelligencePage from "@/pages/MeetingIntelligencePage";
 
 
@@ -80,48 +80,49 @@ const App = () => (
                 <ProtectedRoute>
                   <AppLayout>
                     <Routes>
-                      <Route path="/" element={<CompanyWidePage />} />
-                      <Route path="/managers" element={<ProtectedRoute allow={["admin", "manager"]}><ManagersPage /></ProtectedRoute>} />
-                      <Route path="/reps-acctivate" element={<ProtectedRoute allow={["admin"]}><SalesRepsAcctivatePage /></ProtectedRoute>} />
-                      <Route path="/rep-activity" element={<ProtectedRoute allow={["admin", "manager"]} denyEmails={["kate@lineage-collections.com"]}><RepActivityPage /></ProtectedRoute>} />
-                      <Route path="/desktop-app" element={<ProtectedRoute allowEmails={["gabriella@lineage-collections.com", "justin@lineage-collections.com", "scott@lineage-collections.com"]}><DownloadAppPage /></ProtectedRoute>} />
-                      <Route path="/dealers" element={<DealersPage />} />
-                      <Route path="/directory" element={<ProtectedRoute allow={["admin", "manager"]}><DirectoryPage /></ProtectedRoute>} />
-                      <Route path="/kpi" element={<CompanyWidePage />} />
-                      <Route path="/company-wide" element={<CompanyWidePage />} />
-                      <Route path="/reports/bookings" element={<CompanyWidePage />} />
-                      <Route path="/reports/invoicing" element={<CompanyWidePage />} />
-                      <Route path="/monday-boards" element={<MondayBoardsPage />} />
-                      <Route path="/tasks" element={<TasksPage />} />
-                      <Route path="/sales-targets" element={<ProtectedRoute allow={["admin","manager"]}><SalesTargetsPage /></ProtectedRoute>} />
-                      <Route path="/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
-                      <Route path="/catalog" element={<EmailGuard><CatalogPage /></EmailGuard>} />
-                      <Route path="/catalog/:sku" element={<EmailGuard><ProductDetailPage /></EmailGuard>} />
-                      <Route path="/cart" element={<EmailGuard><CartPage /></EmailGuard>} />
-                      <Route path="/my-quotes" element={<EmailGuard><MyQuotesPage /></EmailGuard>} />
-                      <Route path="/customer-quotes" element={<EmailGuard><CustomerQuotesPage /></EmailGuard>} />
-                      <Route path="/customer-quotes/new" element={<EmailGuard><CustomerQuoteBuilderPage /></EmailGuard>} />
-                      <Route path="/customer-quotes/:id" element={<EmailGuard><CustomerQuoteBuilderPage /></EmailGuard>} />
-                      <Route path="/digital-assets" element={<EmailGuard><DigitalAssetsPage /></EmailGuard>} />
-                      <Route path="/check-ins" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInsPage /></ProtectedRoute>} />
-                      <Route path="/check-ins/analytics" element={<ProtectedRoute allow={["admin", "manager"]}><CheckInAnalyticsPage /></ProtectedRoute>} />
-                      <Route path="/travel-log" element={<ProtectedRoute allow={["admin", "manager"]}><TravelLogPage /></ProtectedRoute>} />
-                      <Route path="/trade-show-leads" element={<ProtectedRoute allow={["admin", "manager"]}><TradeShowLeadsPage /></ProtectedRoute>} />
-                      <Route path="/trade-show-leads/capture" element={<ProtectedRoute allow={["admin", "manager"]}><CaptureLeadsPage /></ProtectedRoute>} />
-                      <Route path="/trade-show-leads/hp-appointments" element={<ProtectedRoute allow={["admin", "manager", "rep"]}><HighPointAppointmentsPage /></ProtectedRoute>} />
-                      <Route path="/clearance" element={<ProtectedRoute allow={["admin","manager","rep"]}><ClearanceProductsPage /></ProtectedRoute>} />
-                      <Route path="/clearance/analytics" element={<ProtectedRoute allow={["admin","manager"]}><ClearanceAnalyticsPage /></ProtectedRoute>} />
-                      <Route path="/promotions/labor-day-promo" element={<ProtectedRoute allow={["admin","manager","rep"]}><LaborDayPromoPage /></ProtectedRoute>} />
-                      <Route path="/promotions/pre-sale" element={<ProtectedRoute allowEmails={["gabriella@lineage-collections.com"]}><PreSalePage /></ProtectedRoute>} />
-                      <Route path="/meeting-intelligence" element={<ProtectedRoute allowEmails={["gmaccioni0808@gmail.com"]}><MeetingIntelligencePage /></ProtectedRoute>} />
-                      <Route path="/org-chart" element={<ProtectedRoute allow={["admin"]} denyEmails={["andrew@lineage-collections.com"]}><OrgChartPage /></ProtectedRoute>} />
-                      <Route path="/crm/accounts" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsPage /></CrmGuard></ProtectedRoute>} />
-                      <Route path="/crm/accounts/analytics" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountsAnalyticsPage /></CrmGuard></ProtectedRoute>} />
-                      <Route path="/prospects/reporting" element={<ProtectedRoute allow={["admin","manager"]} allowEmails={["gabriella@lineage-collections.com"]}><CrmGuard><ProspectReportingPage /></CrmGuard></ProtectedRoute>} />
-                      <Route path="/crm/accounts/new" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmNewAccountPage /></CrmGuard></ProtectedRoute>} />
-                      <Route path="/crm/accounts/:id" element={<ProtectedRoute allow={["admin","manager"]}><CrmGuard><CrmAccountDetailPage /></CrmGuard></ProtectedRoute>} />
+                      <Route path="/" element={<PageGate page="home"><CompanyWidePage /></PageGate>} />
+                      <Route path="/managers" element={<PageGate page="sales-managers"><ManagersPage /></PageGate>} />
+                      <Route path="/reps-acctivate" element={<PageGate page="reps-acctivate"><SalesRepsAcctivatePage /></PageGate>} />
+                      <Route path="/rep-activity" element={<PageGate page="rep-login-activity"><RepActivityPage /></PageGate>} />
+                      <Route path="/desktop-app" element={<PageGate page="desktop-app"><DownloadAppPage /></PageGate>} />
+                      <Route path="/dealers" element={<PageGate page="dealers"><DealersPage /></PageGate>} />
+                      <Route path="/directory" element={<PageGate page="directory"><DirectoryPage /></PageGate>} />
+                      <Route path="/kpi" element={<PageGate page="kpi"><CompanyWidePage /></PageGate>} />
+                      <Route path="/company-wide" element={<PageGate page="company-wide"><CompanyWidePage /></PageGate>} />
+                      <Route path="/reports/bookings" element={<PageGate page="reports-bookings"><CompanyWidePage /></PageGate>} />
+                      <Route path="/reports/invoicing" element={<PageGate page="reports-invoicing"><CompanyWidePage /></PageGate>} />
+                      <Route path="/monday-boards" element={<PageGate page="monday-boards"><MondayBoardsPage /></PageGate>} />
+                      <Route path="/tasks" element={<PageGate page="my-tasks"><TasksPage /></PageGate>} />
+                      <Route path="/sales-targets" element={<PageGate page="sales-targets"><SalesTargetsPage /></PageGate>} />
+                      <Route path="/inventory" element={<PageGate page="inventory"><InventoryPage /></PageGate>} />
+                      <Route path="/catalog" element={<PageGate page="product-catalog"><CatalogPage /></PageGate>} />
+                      <Route path="/catalog/:sku" element={<PageGate page="product-detail"><ProductDetailPage /></PageGate>} />
+                      <Route path="/cart" element={<PageGate page="cart"><CartPage /></PageGate>} />
+                      <Route path="/my-quotes" element={<PageGate page="my-quotes"><MyQuotesPage /></PageGate>} />
+                      <Route path="/customer-quotes" element={<PageGate page="customer-quotes"><CustomerQuotesPage /></PageGate>} />
+                      <Route path="/customer-quotes/new" element={<PageGate page="customer-quote-new"><CustomerQuoteBuilderPage /></PageGate>} />
+                      <Route path="/customer-quotes/:id" element={<PageGate page="customer-quote-edit"><CustomerQuoteBuilderPage /></PageGate>} />
+                      <Route path="/digital-assets" element={<PageGate page="digital-assets"><DigitalAssetsPage /></PageGate>} />
+                      <Route path="/check-ins" element={<PageGate page="field-check-ins"><CheckInsPage /></PageGate>} />
+                      <Route path="/check-ins/analytics" element={<PageGate page="visit-analytics"><CheckInAnalyticsPage /></PageGate>} />
+                      <Route path="/travel-log" element={<PageGate page="travel-log"><TravelLogPage /></PageGate>} />
+                      <Route path="/trade-show-leads" element={<PageGate page="trade-show-leads"><TradeShowLeadsPage /></PageGate>} />
+                      <Route path="/trade-show-leads/capture" element={<PageGate page="capture-leads"><CaptureLeadsPage /></PageGate>} />
+                      <Route path="/trade-show-leads/hp-appointments" element={<PageGate page="hp-appointments"><HighPointAppointmentsPage /></PageGate>} />
+                      <Route path="/clearance" element={<PageGate page="discontinued-products"><ClearanceProductsPage /></PageGate>} />
+                      <Route path="/clearance/analytics" element={<PageGate page="discontinued-analytics"><ClearanceAnalyticsPage /></PageGate>} />
+                      <Route path="/promotions/labor-day-promo" element={<PageGate page="labor-day-promo"><LaborDayPromoPage /></PageGate>} />
+                      <Route path="/promotions/pre-sale" element={<PageGate page="pre-sale"><PreSalePage /></PageGate>} />
+                      <Route path="/meeting-intelligence" element={<PageGate page="meeting-intelligence"><MeetingIntelligencePage /></PageGate>} />
+                      <Route path="/org-chart" element={<PageGate page="org-chart"><OrgChartPage /></PageGate>} />
+                      <Route path="/crm/accounts" element={<PageGate page="prospects"><CrmAccountsPage /></PageGate>} />
+                      <Route path="/crm/accounts/analytics" element={<PageGate page="prospects-analytics"><CrmAccountsAnalyticsPage /></PageGate>} />
+                      <Route path="/prospects/reporting" element={<PageGate page="prospect-reporting"><ProspectReportingPage /></PageGate>} />
+                      <Route path="/crm/accounts/new" element={<PageGate page="prospect-new"><CrmNewAccountPage /></PageGate>} />
+                      <Route path="/crm/accounts/:id" element={<PageGate page="prospect-detail"><CrmAccountDetailPage /></PageGate>} />
 
-                      <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/portal-access" element={<PageGate page="portal-access"><PortalAccessPage /></PageGate>} />
+                      <Route path="/settings" element={<PageGate page="settings"><SettingsPage /></PageGate>} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>

@@ -75,11 +75,23 @@ Write-Host "Using pwsh: $pwshPath" -ForegroundColor DarkGray
 $workingDir = Split-Path -Parent $ScriptPath
 $logPath    = Join-Path $workingDir 'last-run.log'
 
-# Wrap pwsh invocation so stdout/stderr are captured to last-run.log
-$argument = "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`""
-if ($ConfigPath) { $argument += " -ConfigPath `"$ConfigPath`"" }
-if ($Tables)     { $argument += " -Tables $Tables" }
-$argument += " *> `"$logPath`""
+# "*> logpath" is PowerShell redirection syntax - it only works when an
+# interactive shell parses the whole command line. Task Scheduler launches
+# pwsh.exe directly (no shell), so pwsh's own -File argument parser was
+# receiving "*>" and the log path as two literal extra SCRIPT arguments,
+# which the script rejected immediately ("A positional parameter cannot be
+# found that accepts argument '*>'") - exiting before it could do anything,
+# which is also why no log file was ever created. Fix: put the whole
+# invocation, redirection included, inside -Command so pwsh's own parser
+# (which understands "*>") is the one reading it, not its CLI flag parser.
+# Single-quoted inside so the outer double-quoted -Command value (itself one
+# argv token on the Windows command line) doesn't get cut short by a
+# literal " inside a path.
+$inner = "& '$ScriptPath'"
+if ($ConfigPath) { $inner += " -ConfigPath '$ConfigPath'" }
+if ($Tables)     { $inner += " -Tables $Tables" }
+$inner += " *> '$logPath'"
+$argument = "-NoProfile -ExecutionPolicy Bypass -Command `"$inner`""
 
 $action = New-ScheduledTaskAction `
     -Execute $pwshPath `

@@ -3,12 +3,11 @@ import { differenceInCalendarWeeks, format, parseISO } from "date-fns";
 import {
   Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { AlertTriangle, Boxes, ChevronRight, DollarSign, Package, Search, Store, Target, Users } from "lucide-react";
+import { AlertTriangle, Boxes, ChevronRight, DollarSign, Package, Search, Target } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   usePreSaleBookings, usePreSalePoHeaders, usePreSalePoLines, usePreSaleProducts, usePreSaleRepTargets,
@@ -38,6 +37,86 @@ interface CollectionRow {
 }
 const emptyCollectionExtras = () => ({ byDealer: new Map(), byRep: new Map(), bySku: new Map() });
 
+// Andrew's grouping is always ProductClass + ProductType together. ONE shared
+// definition: the collection rows and the per-rep heatmap must build identical
+// keys or every heatmap lookup misses. The separator is an explicit escape so it
+// can never silently drop out (it did once, as an invisible character).
+const classKey = (collection: string | null, type: string | null) => `${collection ?? "Uncategorized"}\u0001${type ?? "-"}`;
+
+// Builds the collection-level rows (with nested dealer/rep/SKU breakdowns)
+// from a given bookings + PO-lines + products dataset. Pulled out as a
+// standalone function so the Breakdown tab can re-run it against a
+// rep/dealer-filtered subset of bookings, and the expanded panel then
+// naturally shows only that filtered activity, with no separate filtering
+// logic needed downstream.
+function buildCollectionRows(
+  bookings: { sku: string | null; amount: number; transaction_date: string; dealer_name: string | null; customer_id: string | null; rep_id: string | null; rep_name: string | null }[],
+  poLines: { product_id: string | null; guid_po: string; line_amount: number; quantity_outstanding: number }[],
+  poHeaders: { guid_po: string; requested_delivery_date: string | null }[],
+  products: { sku: string; name: string | null; collection: string | null; product_type: string | null }[],
+): CollectionRow[] {
+  const productBySku = new Map(products.map((p) => [p.sku, p]));
+  const poHeaderByGuid = new Map(poHeaders.map((h) => [h.guid_po, h]));
+  const byCollection = new Map<string, CollectionRow>();
+
+  for (const b of bookings) {
+    if (!b.sku) continue;
+    const amt = Number(b.amount) || 0;
+    const prod = productBySku.get(b.sku);
+    const key = classKey(prod?.collection ?? null, prod?.product_type ?? null);
+    const c = byCollection.get(key) ?? { key, collection: prod?.collection ?? "Uncategorized", productType: prod?.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null, ...emptyCollectionExtras() };
+    c.booked += amt;
+    c.skus.add(b.sku);
+
+    const repKey = b.rep_id ? b.rep_id.trim().toLowerCase() : "unassigned";
+    const repDisplayName = b.rep_id ? (b.rep_name ?? "Unnamed rep") : "Unassigned";
+
+    if (b.customer_id) {
+      const cd = c.byDealer.get(b.customer_id) ?? { name: b.dealer_name ?? "Unknown dealer", booked: 0 };
+      cd.booked += amt;
+      c.byDealer.set(b.customer_id, cd);
+    }
+    const cr = c.byRep.get(repKey) ?? { name: repDisplayName, booked: 0 };
+    cr.booked += amt;
+    c.byRep.set(repKey, cr);
+    const cs = c.bySku.get(b.sku) ?? { name: prod?.name ?? null, booked: 0, poAmount: 0 };
+    cs.booked += amt;
+    c.bySku.set(b.sku, cs);
+
+    byCollection.set(key, c);
+  }
+
+  for (const l of poLines) {
+    if (!l.product_id) continue;
+    const amt = Number(l.line_amount) || 0;
+    const prod = productBySku.get(l.product_id);
+    const key = classKey(prod?.collection ?? null, prod?.product_type ?? null);
+    const c = byCollection.get(key) ?? { key, collection: prod?.collection ?? "Uncategorized", productType: prod?.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null, ...emptyCollectionExtras() };
+    c.poAmount += amt;
+    c.skus.add(l.product_id);
+    const cs = c.bySku.get(l.product_id) ?? { name: prod?.name ?? null, booked: 0, poAmount: 0 };
+    cs.poAmount += amt;
+    c.bySku.set(l.product_id, cs);
+    // Andrew's FirstPODate: earliest requested delivery date across PO
+    // lines that still have quantity outstanding (i.e. not yet fully in).
+    if ((Number(l.quantity_outstanding) || 0) > 0) {
+      const reqDate = poHeaderByGuid.get(l.guid_po)?.requested_delivery_date ?? null;
+      if (reqDate && (!c.firstPODate || reqDate < c.firstPODate)) c.firstPODate = reqDate;
+    }
+    byCollection.set(key, c);
+  }
+
+  // Ensure every flagged product appears even with zero bookings/PO so far.
+  for (const p of products) {
+    const key = classKey(p.collection, p.product_type);
+    if (!byCollection.has(key)) byCollection.set(key, { key, collection: p.collection ?? "Uncategorized", productType: p.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null, ...emptyCollectionExtras() });
+    if (!byCollection.get(key)!.bySku.has(p.sku)) byCollection.get(key)!.bySku.set(p.sku, { name: p.name, booked: 0, poAmount: 0 });
+    byCollection.get(key)!.skus.add(p.sku);
+  }
+
+  return [...byCollection.values()].sort((a, b) => b.poAmount - a.poAmount);
+}
+
 export default function PreSalePage() {
   const { data: products = [], isLoading: loadingProducts } = usePreSaleProducts();
   const skus = useMemo(() => products.map((p) => p.sku), [products]);
@@ -51,16 +130,25 @@ export default function PreSalePage() {
 
   const isLoading = loadingProducts || loadingBookings || loadingPo || loadingHeaders;
 
+  // "On PO" everywhere except the Purchase Orders tab means still-open
+  // commitments — a Completed PO has already been received, so it's no
+  // longer part of what's outstanding to sell. The raw PosTab list below
+  // still gets every PO line, completed ones included.
+  const activePoLines = useMemo(() => {
+    const completedGuids = new Set(
+      poHeaders.filter((h) => (h.po_status ?? "").toLowerCase() === "completed").map((h) => h.guid_po),
+    );
+    return poLines.filter((l) => !completedGuids.has(l.guid_po));
+  }, [poLines, poHeaders]);
+
   const model = useMemo(() => {
     const productBySku = new Map(products.map((p) => [p.sku, p]));
     const poHeaderByGuid = new Map(poHeaders.map((h) => [h.guid_po, h]));
     // Andrew's grouping is always ProductClass + ProductType together.
-    const classKey = (collection: string | null, type: string | null) => `${collection ?? "Uncategorized"}${type ?? "-"}`;
 
     let totalBooked = 0;
     let earliestBooking: string | null = null;
     const bySku = new Map<string, { booked: number; poAmount: number; poOutstanding: number }>();
-    const byCollection = new Map<string, CollectionRow>();
     const byDealer = new Map<string, { name: string; booked: number; reps: Set<string> }>();
     const byRep = new Map<string, { name: string; booked: number; dealers: Set<string>; byCollection: Map<string, number> }>();
 
@@ -76,26 +164,8 @@ export default function PreSalePage() {
 
       const prod = productBySku.get(b.sku);
       const key = classKey(prod?.collection ?? null, prod?.product_type ?? null);
-      const c = byCollection.get(key) ?? { key, collection: prod?.collection ?? "Uncategorized", productType: prod?.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null, ...emptyCollectionExtras() };
-      c.booked += amt;
-      c.skus.add(b.sku);
-
-      const repKey = b.rep_id ?? "unassigned";
+      const repKey = b.rep_id ? b.rep_id.trim().toLowerCase() : "unassigned";
       const repDisplayName = b.rep_id ? (b.rep_name ?? "Unnamed rep") : "Unassigned";
-
-      if (b.customer_id) {
-        const cd = c.byDealer.get(b.customer_id) ?? { name: b.dealer_name ?? "Unknown dealer", booked: 0 };
-        cd.booked += amt;
-        c.byDealer.set(b.customer_id, cd);
-      }
-      const cr = c.byRep.get(repKey) ?? { name: repDisplayName, booked: 0 };
-      cr.booked += amt;
-      c.byRep.set(repKey, cr);
-      const cs = c.bySku.get(b.sku) ?? { name: prod?.name ?? null, booked: 0, poAmount: 0 };
-      cs.booked += amt;
-      c.bySku.set(b.sku, cs);
-
-      byCollection.set(key, c);
 
       if (b.customer_id) {
         const d = byDealer.get(b.customer_id) ?? { name: b.dealer_name ?? "Unknown dealer", booked: 0, reps: new Set() };
@@ -112,7 +182,7 @@ export default function PreSalePage() {
     }
 
     let totalPoAmount = 0;
-    for (const l of poLines) {
+    for (const l of activePoLines) {
       if (!l.product_id) continue;
       const amt = Number(l.line_amount) || 0;
       totalPoAmount += amt;
@@ -120,58 +190,40 @@ export default function PreSalePage() {
       s.poAmount += amt;
       s.poOutstanding += Number(l.quantity_outstanding) || 0;
       bySku.set(l.product_id, s);
-
-      const prod = productBySku.get(l.product_id);
-      const key = classKey(prod?.collection ?? null, prod?.product_type ?? null);
-      const c = byCollection.get(key) ?? { key, collection: prod?.collection ?? "Uncategorized", productType: prod?.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null, ...emptyCollectionExtras() };
-      c.poAmount += amt;
-      c.skus.add(l.product_id);
-      const cs = c.bySku.get(l.product_id) ?? { name: prod?.name ?? null, booked: 0, poAmount: 0 };
-      cs.poAmount += amt;
-      c.bySku.set(l.product_id, cs);
-      // Andrew's FirstPODate: earliest requested delivery date across PO
-      // lines that still have quantity outstanding (i.e. not yet fully in).
-      if ((Number(l.quantity_outstanding) || 0) > 0) {
-        const reqDate = poHeaderByGuid.get(l.guid_po)?.requested_delivery_date ?? null;
-        if (reqDate && (!c.firstPODate || reqDate < c.firstPODate)) c.firstPODate = reqDate;
-      }
-      byCollection.set(key, c);
     }
 
     // Ensure every flagged product appears even with zero bookings/PO so far.
     for (const p of products) {
       if (!bySku.has(p.sku)) bySku.set(p.sku, { booked: 0, poAmount: 0, poOutstanding: 0 });
-      const key = classKey(p.collection, p.product_type);
-      if (!byCollection.has(key)) byCollection.set(key, { key, collection: p.collection ?? "Uncategorized", productType: p.product_type ?? "-", booked: 0, poAmount: 0, skus: new Set(), firstPODate: null, ...emptyCollectionExtras() });
-      if (!byCollection.get(key)!.bySku.has(p.sku)) byCollection.get(key)!.bySku.set(p.sku, { name: p.name, booked: 0, poAmount: 0 });
-      byCollection.get(key)!.skus.add(p.sku);
     }
 
-    const collectionList = [...byCollection.values()].sort((a, b) => b.poAmount - a.poAmount);
+    const collectionList = buildCollectionRows(bookings, activePoLines, poHeaders, products);
     const repList = [...byRep.entries()].filter(([, r]) => r.booked > 0).sort((a, b) => b[1].booked - a[1].booked);
     const dealerList = [...byDealer.entries()].sort((a, b) => b[1].booked - a[1].booked);
     const skuList = products.map((p) => ({ product: p, ...(bySku.get(p.sku) ?? { booked: 0, poAmount: 0, poOutstanding: 0 }) }));
 
     const targetSum = repTargets.reduce((s, t) => s + t.annual_target, 0);
     const repShare = new Map<string, number>();
-    const repGoal = new Map<string, number>();
     if (targetSum > 0) {
       for (const t of repTargets) {
-        const share = t.annual_target / targetSum;
-        repShare.set(t.rep_id, share);
-        if (totalPoAmount > 0) repGoal.set(t.rep_id, share * totalPoAmount);
+        repShare.set(t.rep_id, t.annual_target / targetSum);
       }
     }
 
     const weeksSinceStart = earliestBooking ? differenceInCalendarWeeks(new Date(), parseISO(earliestBooking)) : null;
 
+    const repOptions = repList.map(([key, r]) => ({ key, name: r.name })).sort((a, b) => a.name.localeCompare(b.name));
+    const dealerOptions = dealerList.map(([id, d]) => ({ id, name: d.name })).sort((a, b) => a.name.localeCompare(b.name));
+    const collectionOptions = [...new Set(collectionList.map((c) => c.collection))].sort();
+
     return {
       totalBooked, totalPoAmount, remaining: Math.max(0, totalPoAmount - totalBooked),
       pctSold: totalPoAmount > 0 ? (totalBooked / totalPoAmount) * 100 : 0,
-      collectionList, repList, dealerList, skuList, repGoal, repShare, targetSum, weeksSinceStart,
+      collectionList, repList, dealerList, skuList, repShare, targetSum, weeksSinceStart,
       dealerCount: byDealer.size, repCount: repList.length, skuCount: products.length,
+      repOptions, dealerOptions, collectionOptions,
     };
-  }, [products, bookings, poLines, poHeaders, repTargets]);
+  }, [products, bookings, activePoLines, poHeaders, repTargets]);
 
   if (isLoading) {
     return (
@@ -203,9 +255,9 @@ export default function PreSalePage() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Pre-Sale</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Pre-Sale - New Product Intros</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {model.skuCount} SKUs currently flagged as a New Product Intro in Acctivate. This list updates automatically — a SKU leaves the moment it's unchecked.
+          {model.skuCount} SKUs currently flagged as a New Product Intro in Acctivate.
         </p>
       </div>
 
@@ -225,21 +277,33 @@ export default function PreSalePage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi icon={DollarSign} label="Total booked" value={money(model.totalBooked)} foot={`${bookings.length.toLocaleString()} booking lines`} />
-        <Kpi icon={Boxes} label="Total on PO" value={money(model.totalPoAmount)} foot={`${poLines.length.toLocaleString()} PO lines`} />
+        <Kpi icon={Boxes} label="Total on PO" value={money(model.totalPoAmount)} foot={`${activePoLines.length.toLocaleString()} PO lines, excl. completed`} />
         <Kpi icon={Target} label="Pre-Sale progress" value={`${Math.round(model.pctSold)}%`} foot="of PO'd value booked" tone={model.pctSold >= 70 ? "good" : model.pctSold >= 40 ? "warn" : "bad"} />
         <Kpi icon={Package} label="Remaining to sell" value={money(model.remaining)} foot={`${model.skuCount} SKUs, ${model.dealerCount} dealers so far`} />
       </div>
 
-      <Tabs value={tab} onValueChange={(v) => { setTab(v as Tab); setSearch(""); }}>
-        <TabsList className="tabs-underline flex-wrap">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="breakdown">By Dealer, Rep, Collection &amp; SKU</TabsTrigger>
-          <TabsTrigger value="pos">Purchase Orders</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-full">
+        {([
+          ["overview", "Overview"],
+          ["breakdown", "By Dealer, Rep, Collection & SKU"],
+          ["pos", "Purchase Orders"],
+        ] as [Tab, string][]).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => { setTab(key); setSearch(""); }}
+            className={cn(
+              "flex-1 h-8 px-3 rounded-md text-[13px] text-center whitespace-nowrap transition-colors",
+              tab === key ? "bg-card font-medium shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {tab === "overview" && <OverviewTab model={model} />}
-      {tab === "breakdown" && <BreakdownTab model={model} search={search} setSearch={setSearch} />}
+      {tab === "breakdown" && <BreakdownTab model={model} bookings={bookings} products={products} search={search} setSearch={setSearch} />}
       {tab === "pos" && <PosTab poLines={poLines} poHeaders={poHeaders} products={products} search={search} setSearch={setSearch} />}
     </div>
   );
@@ -251,8 +315,11 @@ interface Model {
   repList: [string, { name: string; booked: number; dealers: Set<string>; byCollection: Map<string, number> }][];
   dealerList: [string, { name: string; booked: number; reps: Set<string> }][];
   skuList: { product: { sku: string; name: string | null; collection: string | null; category: string | null; base_price: number | null }; booked: number; poAmount: number; poOutstanding: number }[];
-  repGoal: Map<string, number>; repShare: Map<string, number>; targetSum: number; weeksSinceStart: number | null;
+  repShare: Map<string, number>; targetSum: number; weeksSinceStart: number | null;
   dealerCount: number; repCount: number; skuCount: number;
+  repOptions: { key: string; name: string }[];
+  dealerOptions: { id: string; name: string }[];
+  collectionOptions: string[];
 }
 
 function Kpi({ icon: Icon, label, value, foot, tone }: { icon: typeof DollarSign; label: string; value: string; foot: string; tone?: "good" | "warn" | "bad" }) {
@@ -273,9 +340,6 @@ function Kpi({ icon: Icon, label, value, foot, tone }: { icon: typeof DollarSign
 function attainmentTone(pct: number) {
   return pct >= 70 ? "text-success" : pct >= 40 ? "text-warning" : "text-destructive";
 }
-function attainmentBar(pct: number) {
-  return pct >= 70 ? "bg-success" : pct >= 40 ? "bg-warning" : "bg-destructive";
-}
 
 function OverviewTab({ model }: { model: Model }) {
   const label = (c: CollectionRow) => c.productType && c.productType !== "-" ? `${c.collection} · ${c.productType}` : c.collection;
@@ -283,7 +347,7 @@ function OverviewTab({ model }: { model: Model }) {
   const pieData = model.collectionList.slice(0, 6).map((c) => ({ name: label(c), value: Math.round(c.booked) })).filter((d) => d.value > 0);
 
   const heatmapCollections = model.collectionList.slice(0, 8);
-  const heatmapReps = model.repList.slice(0, 10);
+  const heatmapReps = model.repList;
   const collectionPo = new Map(heatmapCollections.map((c) => [c.key, c.poAmount]));
   // Each cell's goal follows Andrew's formula applied per collection: the rep's
   // share of everyone's annual sales target x that collection's PO'd value.
@@ -344,9 +408,10 @@ function OverviewTab({ model }: { model: Model }) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Rep &times; collection heatmap</CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Each cell is that rep's actual bookings in that collection divided by their goal for it (their share of the
-            team's 2026 target &times; that collection's PO'd value). Red under 40%, amber 40&ndash;70%, green 70%+.
+          <p className="text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-destructive/20" />Under 40%</span>
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-warning/20" />40&ndash;70%</span>
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-success/20" />70%+</span>
           </p>
         </CardHeader>
         <CardContent className="overflow-x-auto">
@@ -383,12 +448,6 @@ function OverviewTab({ model }: { model: Model }) {
               </tbody>
             </table>
           )}
-          <p className="text-xs text-muted-foreground mt-3 flex flex-wrap gap-x-4 gap-y-1">
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-destructive/20" />Under 40%</span>
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-warning/20" />40&ndash;70%</span>
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-success/20" />70%+</span>
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-muted/30" />No goal to compare (no target or no PO'd value yet)</span>
-          </p>
         </CardContent>
       </Card>
     </div>
@@ -404,147 +463,230 @@ function SearchBox({ value, onChange, placeholder }: { value: string; onChange: 
   );
 }
 
-function BreakdownTab({ model, search, setSearch }: { model: Model; search: string; setSearch: (v: string) => void }) {
+// Rep -> Dealer -> Collection -> SKU. Everything is built from the (filtered)
+// booking lines; PO amounts and first-PO dates are company-wide facts about a
+// collection/SKU, so they come from the unfiltered collection rows.
+interface TreeSku { name: string | null; booked: number }
+interface TreeCollection { key: string; collection: string; productType: string; booked: number; skus: Map<string, TreeSku> }
+interface TreeDealer { name: string; booked: number; skus: Set<string>; collections: Map<string, TreeCollection> }
+interface TreeRep { name: string; booked: number; skus: Set<string>; dealers: Map<string, TreeDealer> }
+
+interface FlatRow {
+  id: string;
+  level: 0 | 1 | 2 | 3;
+  expandable: boolean;
+  label: string;
+  sublabel?: string;
+  productType: string | null;
+  skuCount: number | null;
+  booked: number;
+  poAmount: number | null;
+  firstPODate: string | null;
+  pctBooked: number | null;
+  goal?: { pct: number | null; amount: number | null };
+  muted?: boolean;
+}
+
+type FlatItem = ({ kind: "row" } & FlatRow) | { kind: "header"; id: string; level: 0 | 1 | 2 | 3 };
+
+// Only the titles that mean something at each level - shown at the top for
+// reps, then again right under every expanded row for the level beneath it.
+const LEVEL_HEADERS: string[][] = [
+  ["Rep", "", "SKUs", "Total Booked", "", "", "% to Goal"],
+  ["Dealer", "", "SKUs", "Total Booked", "", "", ""],
+  ["Collection", "Product Type", "SKUs", "Total Booked", "PO Amount", "First PO Date", ""],
+  ["SKU", "", "", "Total Booked", "PO Amount", "", ""],
+];
+const COL_CLASS = [
+  "py-2 pr-3", "py-2 px-3", "py-2 px-3 text-right", "py-2 px-3 text-right",
+  "py-2 px-3 text-right", "py-2 px-3", "py-2 pl-3 text-right",
+];
+
+function BreakdownTab({ model, bookings, products, search, setSearch }: {
+  model: Model;
+  bookings: { sku: string | null; amount: number; transaction_date: string; dealer_name: string | null; customer_id: string | null; rep_id: string | null; rep_name: string | null }[];
+  products: { sku: string; name: string | null; collection: string | null; product_type: string | null }[];
+  search: string; setSearch: (v: string) => void;
+}) {
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const toggle = (key: string) => setOpen((prev) => {
+  const toggle = (id: string) => setOpen((prev) => {
     const next = new Set(prev);
-    if (next.has(key)) next.delete(key); else next.add(key);
+    if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
 
-  const q = search.toLowerCase();
-  const rows = model.collectionList.filter((c) => !q || c.collection.toLowerCase().includes(q) || c.productType.toLowerCase().includes(q));
+  const [repFilter, setRepFilter] = useState("all");
+  const [dealerFilter, setDealerFilter] = useState("all");
+  const [collectionFilter, setCollectionFilter] = useState("all");
+  const anyFilterActive = repFilter !== "all" || dealerFilter !== "all" || collectionFilter !== "all";
+  const clearFilters = () => { setRepFilter("all"); setDealerFilter("all"); setCollectionFilter("all"); };
 
+  const q = search.trim().toLowerCase();
+
+  const tree = useMemo(() => {
+    const productBySku = new Map(products.map((p) => [p.sku, p]));
+    const reps = new Map<string, TreeRep>();
+    for (const b of bookings) {
+      if (!b.sku) continue;
+      const prod = productBySku.get(b.sku);
+      const repKey = b.rep_id ? b.rep_id.trim().toLowerCase() : "unassigned";
+      const repName = b.rep_id ? (b.rep_name ?? "Unnamed rep") : "Unassigned";
+      const dealerId = b.customer_id ?? "unknown";
+      const dealerName = b.dealer_name ?? "Unknown dealer";
+      const collection = prod?.collection ?? "Uncategorized";
+      const productType = prod?.product_type ?? "-";
+
+      if (repFilter !== "all" && repKey !== repFilter) continue;
+      if (dealerFilter !== "all" && dealerId !== dealerFilter) continue;
+      if (collectionFilter !== "all" && collection !== collectionFilter) continue;
+      if (q && ![repName, dealerName, collection, productType, b.sku, prod?.name ?? ""].some((v) => v.toLowerCase().includes(q))) continue;
+
+      const amt = Number(b.amount) || 0;
+      const rep = reps.get(repKey) ?? { name: repName, booked: 0, skus: new Set<string>(), dealers: new Map<string, TreeDealer>() };
+      rep.booked += amt; rep.skus.add(b.sku);
+      const dealer = rep.dealers.get(dealerId) ?? { name: dealerName, booked: 0, skus: new Set<string>(), collections: new Map<string, TreeCollection>() };
+      dealer.booked += amt; dealer.skus.add(b.sku);
+      const ck = classKey(prod?.collection ?? null, prod?.product_type ?? null);
+      const coll = dealer.collections.get(ck) ?? { key: ck, collection, productType, booked: 0, skus: new Map<string, TreeSku>() };
+      coll.booked += amt;
+      const sk = coll.skus.get(b.sku) ?? { name: prod?.name ?? null, booked: 0 };
+      sk.booked += amt;
+      coll.skus.set(b.sku, sk);
+      dealer.collections.set(ck, coll);
+      rep.dealers.set(dealerId, dealer);
+      reps.set(repKey, rep);
+    }
+    return reps;
+  }, [bookings, products, repFilter, dealerFilter, collectionFilter, q]);
+
+  const flat = useMemo(() => {
+    const collectionByKey = new Map(model.collectionList.map((c) => [c.key, c]));
+    const fullBookedByRep = new Map(model.repList.map(([k, r]) => [k, r.booked]));
+    const byBooked = <T extends { booked: number }>(a: [string, T], b: [string, T]) => b[1].booked - a[1].booked;
+    const out: FlatItem[] = [];
+
+    for (const [repKey, rep] of [...tree.entries()].sort(byBooked)) {
+      const repId = `r:${repKey}`;
+      // Rep goal = their share of everyone's target x total PO'd value. The
+      // % always uses the rep's FULL bookings, never the filtered subset.
+      const share = model.repShare.get(repKey);
+      const goalAmount = share ? share * model.totalPoAmount : null;
+      const fullBooked = fullBookedByRep.get(repKey) ?? rep.booked;
+      out.push({
+        kind: "row", id: repId, level: 0, expandable: true, label: rep.name, productType: null, skuCount: rep.skus.size, booked: rep.booked,
+        poAmount: null, firstPODate: null, pctBooked: null, muted: repKey === "unassigned",
+        goal: { amount: goalAmount, pct: goalAmount && goalAmount > 0 ? (fullBooked / goalAmount) * 100 : null },
+      });
+      if (!open.has(repId)) continue;
+      out.push({ kind: "header", id: `h:${repId}`, level: 1 });
+
+      for (const [dealerId, dealer] of [...rep.dealers.entries()].sort(byBooked)) {
+        const dId = `d:${repKey}:${dealerId}`;
+        out.push({ kind: "row", id: dId, level: 1, expandable: true, label: dealer.name, productType: null, skuCount: dealer.skus.size, booked: dealer.booked, poAmount: null, firstPODate: null, pctBooked: null });
+        if (!open.has(dId)) continue;
+        out.push({ kind: "header", id: `h:${dId}`, level: 2 });
+
+        for (const [ck, coll] of [...dealer.collections.entries()].sort(byBooked)) {
+          const cId = `c:${repKey}:${dealerId}:${ck}`;
+          const global = collectionByKey.get(ck);
+          const po = global?.poAmount ?? 0;
+          out.push({
+            kind: "row", id: cId, level: 2, expandable: true, label: coll.collection, productType: coll.productType, skuCount: coll.skus.size, booked: coll.booked,
+            poAmount: po > 0 ? po : null, firstPODate: global?.firstPODate ?? null, pctBooked: po > 0 ? (coll.booked / po) * 100 : null,
+          });
+          if (!open.has(cId)) continue;
+          out.push({ kind: "header", id: `h:${cId}`, level: 3 });
+
+          for (const [sku, s] of [...coll.skus.entries()].sort(byBooked)) {
+            const skuPo = global?.bySku.get(sku)?.poAmount ?? 0;
+            out.push({
+              kind: "row", id: `${cId}:${sku}`, level: 3, expandable: false, label: sku, sublabel: s.name ?? undefined, productType: null, skuCount: null, booked: s.booked,
+              poAmount: skuPo > 0 ? skuPo : null, firstPODate: null, pctBooked: skuPo > 0 ? (s.booked / skuPo) * 100 : null,
+            });
+          }
+        }
+      }
+    }
+    return out;
+  }, [tree, open, model]);
+
+  const COLS = 8;
   return (
     <Card>
       <CardHeader className="pb-3">
-        <SearchBox value={search} onChange={setSearch} placeholder="Search collections" />
+        <div className="flex flex-wrap items-center gap-2">
+          <SearchBox value={search} onChange={setSearch} placeholder="Search reps, dealers, collections, SKUs" />
+          <select value={repFilter} onChange={(e) => setRepFilter(e.target.value)} className="h-9 rounded-md border bg-card px-3 text-sm" aria-label="Filter by rep">
+            <option value="all">All reps</option>
+            {model.repOptions.map((r) => <option key={r.key} value={r.key}>{r.name}</option>)}
+          </select>
+          <select value={dealerFilter} onChange={(e) => setDealerFilter(e.target.value)} className="h-9 rounded-md border bg-card px-3 text-sm" aria-label="Filter by dealer">
+            <option value="all">All dealers</option>
+            {model.dealerOptions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+          <select value={collectionFilter} onChange={(e) => setCollectionFilter(e.target.value)} className="h-9 rounded-md border bg-card px-3 text-sm" aria-label="Filter by collection">
+            <option value="all">All collections</option>
+            {model.collectionOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          {anyFilterActive && <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>}
+        </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Click a row to see the dealers, reps and SKUs behind it. Each rep's goal is their share of the team's 2026 target applied to this collection's PO'd value &mdash; the same formula as the heatmap above.
+          Click a rep to see their dealers, then a dealer for its collections, then a collection for its SKUs.
         </p>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b">
-            <th className="py-2 pr-3 font-medium">Collection</th>
-            <th className="py-2 px-3 font-medium">Product Type</th>
-            <th className="py-2 px-3 font-medium text-right">SKUs</th>
-            <th className="py-2 px-3 font-medium text-right">Total Booked</th>
-            <th className="py-2 px-3 font-medium text-right">PO Amount</th>
-            <th className="py-2 px-3 font-medium">First PO Date</th>
-            <th className="py-2 pl-3 font-medium w-[160px]">% Booked</th>
-          </tr></thead>
+          <thead>
+            <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b">
+              {LEVEL_HEADERS[0].map((t, i) => <th key={i} className={cn(COL_CLASS[i], "font-medium")}>{t}</th>)}
+            </tr>
+          </thead>
           <tbody>
-            {rows.map((c) => {
-              const pct = c.poAmount > 0 ? (c.booked / c.poAmount) * 100 : 0;
-              const isOpen = open.has(c.key);
-              return (
-                <Fragment key={c.key}>
-                  <tr
-                    onClick={() => toggle(c.key)}
-                    className="border-b last:border-0 cursor-pointer hover:bg-muted/40"
-                  >
-                    <td className="py-2.5 pr-3 font-medium">
-                      <span className="inline-flex items-center gap-1.5">
-                        <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", isOpen && "rotate-90")} />
-                        {c.collection}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-muted-foreground">{c.productType}</td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{c.skus.size}</td>
-                    <td className="py-2.5 px-3 text-right tabular-nums">{money(c.booked)}</td>
-                    <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{c.poAmount > 0 ? money(c.poAmount) : "-"}</td>
-                    <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">{c.firstPODate ? format(parseISO(c.firstPODate), "MMM d, yyyy") : "-"}</td>
-                    <td className="py-2.5 pl-3">
-                      {c.poAmount > 0 ? (
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden"><div className={cn("h-full rounded-full", attainmentBar(pct))} style={{ width: `${Math.min(100, pct)}%` }} /></div>
-                          <span className={cn("text-xs tabular-nums w-10 text-right font-medium", attainmentTone(pct))}>{Math.round(pct)}%</span>
-                        </div>
-                      ) : <span className="text-xs text-muted-foreground">no PO yet</span>}
-                    </td>
+            {flat.map((item) => {
+              if (item.kind === "header") {
+                return (
+                  <tr key={item.id} className="border-b bg-muted/70 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {LEVEL_HEADERS[item.level].map((t, i) => (
+                      <td key={i} className={cn(COL_CLASS[i], "py-1.5 font-medium")} style={i === 0 ? { paddingLeft: item.level * 22 + 20 } : undefined}>{t}</td>
+                    ))}
                   </tr>
-                  {isOpen && (
-                    <tr key={`${c.key}-detail`} className="border-b last:border-0 bg-muted/20">
-                      <td colSpan={7} className="p-4">
-                        <CollectionDetail collection={c} model={model} />
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
+                );
+              }
+              const r = item;
+              const isOpen = open.has(r.id);
+              return (
+                <tr
+                  key={r.id}
+                  onClick={r.expandable ? () => toggle(r.id) : undefined}
+                  className={cn("border-b last:border-0", r.expandable && "cursor-pointer hover:bg-muted/40", r.level > 0 && "bg-muted/20")}
+                >
+                  <td className="py-2.5 pr-3" style={{ paddingLeft: r.level * 22 }}>
+                    <span className="inline-flex items-center gap-1.5">
+                      {r.expandable
+                        ? <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", isOpen && "rotate-90")} />
+                        : <span className="w-3.5 shrink-0" />}
+                      <span className={cn(r.level === 3 ? "font-mono text-xs" : "font-medium", r.muted && "text-muted-foreground italic")}>{r.label}</span>
+                      {r.sublabel && <span className="text-xs text-muted-foreground truncate max-w-[220px]" title={r.sublabel}>{r.sublabel}</span>}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-3 text-muted-foreground">{r.level === 2 ? (r.productType ?? "-") : ""}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{r.level <= 2 ? r.skuCount : ""}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums">{money(r.booked)}</td>
+                  <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{r.level >= 2 ? (r.poAmount ? money(r.poAmount) : "-") : ""}</td>
+                  <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">{r.level === 2 ? (r.firstPODate ? format(parseISO(r.firstPODate), "MMM d, yyyy") : "-") : ""}</td>
+                  <td className="py-2.5 pl-3 text-right">
+                    {r.level === 0 && r.goal && (r.goal.pct !== null
+                      ? <><span className={cn("font-medium tabular-nums", attainmentTone(r.goal.pct))}>{Math.round(r.goal.pct)}%</span><div className="text-[10px] text-muted-foreground tabular-nums">of {money(r.goal.amount ?? 0)}</div></>
+                      : <span className="text-xs text-muted-foreground">no target</span>)}
+                  </td>
+                </tr>
               );
             })}
-            {rows.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">No collections match.</td></tr>}
+            {flat.length === 0 && <tr><td colSpan={COLS} className="py-8 text-center text-muted-foreground">No bookings match.</td></tr>}
           </tbody>
         </table>
       </CardContent>
     </Card>
-  );
-}
-
-function CollectionDetail({ collection, model }: { collection: CollectionRow; model: Model }) {
-  const reps = [...collection.byRep.entries()].sort((a, b) => b[1].booked - a[1].booked);
-  const dealers = [...collection.byDealer.entries()].sort((a, b) => b[1].booked - a[1].booked).slice(0, 8);
-  const skus = [...collection.bySku.entries()].sort((a, b) => b[1].booked - a[1].booked).slice(0, 8);
-
-  return (
-    <div className="grid gap-5 lg:grid-cols-3">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />By rep</p>
-        {reps.length === 0 ? <p className="text-xs text-muted-foreground">No bookings yet.</p> : (
-          <table className="w-full text-xs">
-            <tbody>
-              {reps.map(([key, r]) => {
-                const share = model.repShare.get(key);
-                const goal = share ? share * collection.poAmount : null;
-                const pct = goal && goal > 0 ? (r.booked / goal) * 100 : null;
-                return (
-                  <tr key={key} className="border-b last:border-0">
-                    <td className={cn("py-1.5 pr-2 font-medium", key === "unassigned" && "text-muted-foreground italic")}>{r.name}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">{money(r.booked)}</td>
-                    <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">{goal ? money(goal) : "no target"}</td>
-                    <td className="py-1.5 pl-2 text-right">
-                      {pct !== null ? <span className={cn("font-medium tabular-nums", attainmentTone(pct))}>{Math.round(pct)}%</span> : <span className="text-muted-foreground">n/a</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5"><Store className="h-3.5 w-3.5" />By dealer</p>
-        {dealers.length === 0 ? <p className="text-xs text-muted-foreground">No bookings yet.</p> : (
-          <table className="w-full text-xs">
-            <tbody>
-              {dealers.map(([id, d]) => (
-                <tr key={id} className="border-b last:border-0">
-                  <td className="py-1.5 pr-2 font-medium truncate max-w-[160px]">{d.name}</td>
-                  <td className="py-1.5 pl-2 text-right tabular-nums">{money(d.booked)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5"><Package className="h-3.5 w-3.5" />By SKU</p>
-        {skus.length === 0 ? <p className="text-xs text-muted-foreground">No SKUs.</p> : (
-          <table className="w-full text-xs">
-            <tbody>
-              {skus.map(([sku, s]) => (
-                <tr key={sku} className="border-b last:border-0">
-                  <td className="py-1.5 pr-2 font-mono truncate max-w-[140px]" title={s.name ?? undefined}>{sku}</td>
-                  <td className="py-1.5 px-2 text-right tabular-nums">{money(s.booked)}</td>
-                  <td className="py-1.5 pl-2 text-right tabular-nums text-muted-foreground">{s.poAmount > 0 ? money(s.poAmount) : "-"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -555,41 +697,103 @@ function PosTab({ poLines, poHeaders, products, search, setSearch }: {
   products: { sku: string; name: string | null; collection: string | null }[];
   search: string; setSearch: (v: string) => void;
 }) {
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggle = (key: string) => setOpen((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+
   const productBySku = useMemo(() => new Map(products.map((p) => [p.sku, p])), [products]);
   const headerByGuid = useMemo(() => new Map(poHeaders.map((h) => [h.guid_po, h])), [poHeaders]);
+
+  const byPo = useMemo(() => {
+    const map = new Map<string, { guid_po: string; po_number: string | null; amount: number; qtyOutstanding: number; lines: typeof poLines }>();
+    for (const l of poLines) {
+      const g = map.get(l.guid_po) ?? { guid_po: l.guid_po, po_number: l.po_number, amount: 0, qtyOutstanding: 0, lines: [] };
+      g.amount += Number(l.line_amount) || 0;
+      g.qtyOutstanding += Number(l.quantity_outstanding) || 0;
+      g.lines.push(l);
+      map.set(l.guid_po, g);
+    }
+    return map;
+  }, [poLines]);
+
   const q = search.toLowerCase();
-  const rows = poLines
-    .filter((l) => !q || (l.po_number ?? "").toLowerCase().includes(q) || (l.product_id ?? "").toLowerCase().includes(q))
-    .sort((a, b) => (b.line_amount || 0) - (a.line_amount || 0))
-    .slice(0, 300);
+  const rows = [...byPo.values()]
+    .filter((po) => !q || (po.po_number ?? "").toLowerCase().includes(q) || po.lines.some((l) => (l.product_id ?? "").toLowerCase().includes(q)))
+    .sort((a, b) => b.amount - a.amount);
+
   return (
     <Card>
       <CardHeader className="pb-3"><SearchBox value={search} onChange={setSearch} placeholder="Search PO number or SKU" /></CardHeader>
-      <CardContent className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b">
-            <th className="py-2 pr-3 font-medium">PO #</th>
-            <th className="py-2 px-3 font-medium">Status</th>
-            <th className="py-2 px-3 font-medium">SKU</th>
-            <th className="py-2 px-3 font-medium">Collection</th>
-            <th className="py-2 px-3 font-medium text-right">Qty outstanding</th>
-            <th className="py-2 pl-3 font-medium text-right">Amount</th>
-          </tr></thead>
-          <tbody>
-            {rows.map((l, i) => (
-              <tr key={`${l.po_number}-${l.product_id}-${i}`} className="border-b last:border-0">
-                <td className="py-2.5 pr-3 font-mono text-xs">{l.po_number ?? "-"}</td>
-                <td className="py-2.5 px-3 text-xs text-muted-foreground">{headerByGuid.get(l.guid_po)?.po_status ?? "-"}</td>
-                <td className="py-2.5 px-3 font-mono text-xs">{l.product_id ?? "-"}</td>
-                <td className="py-2.5 px-3 text-muted-foreground">{(l.product_id && productBySku.get(l.product_id)?.collection) ?? "-"}</td>
-                <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{Math.round(Number(l.quantity_outstanding) || 0).toLocaleString()}</td>
-                <td className="py-2.5 pl-3 text-right tabular-nums">{money(Number(l.line_amount) || 0)}</td>
-              </tr>
-            ))}
-            {rows.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">No purchase order lines match.</td></tr>}
-          </tbody>
-        </table>
-        {poLines.length > 300 && <p className="text-xs text-muted-foreground mt-3 text-center">Showing the top 300 of {poLines.length.toLocaleString()} PO lines by amount. Search to narrow further.</p>}
+      <CardContent className="p-0">
+        <div className="overflow-auto max-h-[640px]">
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b bg-card sticky top-0 z-10">
+              <th className="py-2 pl-5 pr-3 font-medium">PO #</th>
+              <th className="py-2 px-3 font-medium">Status</th>
+              <th className="py-2 px-3 font-medium">Requested Delivery</th>
+              <th className="py-2 px-3 font-medium text-right">SKUs</th>
+              <th className="py-2 px-3 font-medium text-right">Qty outstanding</th>
+              <th className="py-2 pl-3 pr-5 font-medium text-right">Amount</th>
+            </tr></thead>
+            <tbody>
+              {rows.map((po) => {
+                const header = headerByGuid.get(po.guid_po);
+                const isOpen = open.has(po.guid_po);
+                return (
+                  <Fragment key={po.guid_po}>
+                    <tr onClick={() => toggle(po.guid_po)} className="border-b last:border-0 cursor-pointer hover:bg-muted/40">
+                      <td className="py-2.5 pl-5 pr-3 font-mono text-xs">
+                        <span className="inline-flex items-center gap-1.5">
+                          <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", isOpen && "rotate-90")} />
+                          {po.po_number ?? "-"}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-xs text-muted-foreground">{header?.po_status ?? "-"}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">{header?.requested_delivery_date ? format(parseISO(header.requested_delivery_date), "MMM d, yyyy") : "-"}</td>
+                      <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{po.lines.length}</td>
+                      <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{Math.round(po.qtyOutstanding).toLocaleString()}</td>
+                      <td className="py-2.5 pl-3 pr-5 text-right tabular-nums">{money(po.amount)}</td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="border-b last:border-0 bg-muted/20">
+                        <td colSpan={6} className="px-5 py-3">
+                          <table className="w-full text-xs">
+                            <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b">
+                              <th className="py-1 pr-2 font-medium">SKU</th>
+                              <th className="py-1 px-2 font-medium">Product</th>
+                              <th className="py-1 px-2 font-medium">Collection</th>
+                              <th className="py-1 px-2 font-medium text-right">Qty outstanding</th>
+                              <th className="py-1 pl-2 font-medium text-right">Amount</th>
+                            </tr></thead>
+                            <tbody>
+                              {[...po.lines].sort((a, b) => (b.line_amount || 0) - (a.line_amount || 0)).map((l, i) => {
+                                const prod = l.product_id ? productBySku.get(l.product_id) : undefined;
+                                return (
+                                  <tr key={`${l.product_id}-${i}`} className="border-b last:border-0">
+                                    <td className="py-1.5 pr-2 font-mono">{l.product_id ?? "-"}</td>
+                                    <td className="py-1.5 px-2 text-muted-foreground truncate max-w-[220px]" title={prod?.name ?? undefined}>{prod?.name ?? "-"}</td>
+                                    <td className="py-1.5 px-2 text-muted-foreground">{prod?.collection ?? "-"}</td>
+                                    <td className="py-1.5 px-2 text-right tabular-nums text-muted-foreground">{Math.round(Number(l.quantity_outstanding) || 0).toLocaleString()}</td>
+                                    <td className="py-1.5 pl-2 text-right tabular-nums">{money(Number(l.line_amount) || 0)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+              {rows.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">No purchase orders match.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-muted-foreground py-3 text-center border-t">{rows.length.toLocaleString()} purchase order{rows.length === 1 ? "" : "s"}, {poLines.length.toLocaleString()} lines total, sorted by amount.</p>
       </CardContent>
     </Card>
   );

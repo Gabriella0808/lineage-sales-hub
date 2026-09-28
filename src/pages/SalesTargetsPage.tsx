@@ -12,6 +12,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+// "Indiana" and "Jones" are bare placeholder sales_reps rows (no Acctivate
+// code, no target) that shouldn't appear on this page's table.
+const HIDDEN_REP_NAMES = new Set(["indiana", "jones"]);
+
 type Draft = Record<string, Partial<RepTarget>>;
 
 export default function SalesTargetsPage() {
@@ -38,6 +42,14 @@ export default function SalesTargetsPage() {
     targets.forEach(t => { m[t.rep_id] = t; });
     return m;
   }, [targets]);
+
+  // Hidden from THIS page's table only - the full `reps` array (used above
+  // for dealer/invoice attribution) is untouched, since Indiana is still a
+  // real rep_id on 2 dealers and their check-ins.
+  const visibleReps = useMemo(
+    () => reps.filter(r => !HIDDEN_REP_NAMES.has((r.name ?? "").trim().toLowerCase())),
+    [reps],
+  );
 
   // Pull all dealer invoices for the selected year (paged) and attribute to reps.
   const { data: invoices = [] } = useQuery({
@@ -237,7 +249,7 @@ export default function SalesTargetsPage() {
                 </tr>
               </thead>
               <tbody>
-                {reps.map(rep => {
+                {visibleReps.map(rep => {
                   const annual = annualSum(rep.id);
                   const actual = actualByRep[rep.id]?.total ?? 0;
                   const pct = annual > 0 ? Math.round((actual / annual) * 100) : 0;
@@ -288,7 +300,7 @@ export default function SalesTargetsPage() {
                     </tr>
                   );
                 })}
-                {reps.length === 0 && (
+                {visibleReps.length === 0 && (
                   <tr><td colSpan={16} className="p-6 text-center text-sm text-muted-foreground">No reps found.</td></tr>
                 )}
               </tbody>

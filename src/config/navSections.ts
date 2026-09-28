@@ -101,7 +101,7 @@ export const NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
-        title: "Holiday Promotions", url: "/promotions/labor-day-promo", icon: Tag, ...access("holiday-promotions"),
+        title: "Sales Initiatives", url: "/promotions/labor-day-promo", icon: Tag, ...access("holiday-promotions"),
         children: [
           { title: "Labor Day Promo", url: "/promotions/labor-day-promo", icon: Tag, ...access("labor-day-promo") },
           { title: "Discontinued Products", url: "/clearance", icon: Tag, ...access("discontinued-products") },

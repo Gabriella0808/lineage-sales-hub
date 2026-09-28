@@ -43,6 +43,7 @@ export interface PageAccess {
 const ALL: AppRole[] = ["admin", "manager", "rep", "dealer"];
 const AM: AppRole[] = ["admin", "manager"];
 const AMR: AppRole[] = ["admin", "manager", "rep"];
+const NOT_REP: AppRole[] = ["admin", "manager", "dealer"];
 
 const GABRIELLA = "gabriella@lineage-collections.com";
 
@@ -95,14 +96,14 @@ export const PAGE_ACCESS: Record<string, PageAccess> = {
     menu: { roles: AMR },
     route: { protected: true, allow: AMR },
   },
-  "holiday-promotions": { title: "Holiday Promotions", menu: { roles: AMR } },
+  "holiday-promotions": { title: "Sales Initiatives", menu: { roles: AMR } },
   "labor-day-promo": { title: "Labor Day Promo", menu: { roles: AMR }, route: { protected: true, allow: AMR } },
   "discontinued-products": { title: "Discontinued Products", menu: { roles: AMR }, route: { protected: true, allow: AMR } },
   "discontinued-analytics": { title: "Discontinued Analytics", menu: { roles: AM }, route: { protected: true, allow: AM } },
   "pre-sale": {
     title: "Pre-Sale - New Product Intros",
-    menu: { roles: AM, allowEmails: [GABRIELLA] },
-    route: { protected: true, allowEmails: [GABRIELLA] },
+    menu: { roles: NOT_REP },
+    route: { protected: true, allow: NOT_REP },
   },
 
   // ── Dealer Network ─────────────────────────────────────────────

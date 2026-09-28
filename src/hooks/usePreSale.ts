@@ -87,7 +87,15 @@ export function usePreSaleBookings(skus: string[]) {
           .eq("metric_type", "bookings")
           .gte("transaction_date", `${year}-01-01`)
           .in("sku", skus)
+          // Ordered by every selected column (not just transaction_date) so
+          // paginated .range() fetches never skip or repeat a row when many
+          // rows share the same date - see ExecutiveOverview.tsx's identical
+          // fix for the same pagination pitfall.
           .order("transaction_date", { ascending: true })
+          .order("customer_id", { ascending: true })
+          .order("sku", { ascending: true })
+          .order("rep_id", { ascending: true })
+          .order("amount", { ascending: true })
           .range(from, to),
       );
     },
@@ -109,7 +117,11 @@ export function usePreSalePoLines(skus: string[]) {
           .from("presale_po_lines")
           .select("product_id, po_number, guid_po, display_amount, quantity_outstanding")
           .in("product_id", skus)
+          // po_number repeats across every line of the same PO, so it alone
+          // isn't a stable pagination sort - same fix as usePreSaleBookings.
           .order("po_number")
+          .order("guid_po")
+          .order("product_id")
           .range(from, to),
       ).then((rows) => rows.map((r: any) => ({ ...r, line_amount: Number(r.display_amount) || 0 }))),
   });
@@ -124,6 +136,10 @@ export function usePreSalePoHeaders() {
         (supabase as any)
           .from("presale_po_summary")
           .select("guid_po, po_status, requested_delivery_date")
+          // guid_po is this table's primary key - ordering by it (this had
+          // no ORDER BY at all before) makes .range() pagination fully
+          // deterministic, same fix as the other two hooks above.
+          .order("guid_po")
           .range(from, to),
       ),
   });
@@ -155,7 +171,10 @@ export function usePreSaleRepTargets(year: number) {
       for (const t of (targets ?? []) as { id: string; rep_id: string; annual_target: number }[]) {
         const rep = repById.get(t.rep_id);
         if (!rep?.acctivate_id) continue;
-        out.push({ id: t.id, rep_id: rep.acctivate_id, name: rep.name, annual_target: Number(t.annual_target) || 0 });
+        // Lowercased so it matches the booking rep_id key exactly - Acctivate's own
+        // casing is inconsistent (e.g. Kate Jones's target is stored as "jones" but her
+        // bookings carry "Jones"), which was silently losing her goal from the heatmap.
+        out.push({ id: t.id, rep_id: rep.acctivate_id.trim().toLowerCase(), name: rep.name, annual_target: Number(t.annual_target) || 0 });
       }
       return out;
     },

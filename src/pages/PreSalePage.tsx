@@ -279,7 +279,7 @@ export default function PreSalePage() {
         <Kpi icon={DollarSign} label="Total booked" value={money(model.totalBooked)} foot={`${bookings.length.toLocaleString()} booking lines`} />
         <Kpi icon={Boxes} label="Total on PO" value={money(model.totalPoAmount)} foot={`${activePoLines.length.toLocaleString()} PO lines, excl. completed`} />
         <Kpi icon={Target} label="Pre-Sale progress" value={`${Math.round(model.pctSold)}%`} foot="of PO'd value booked" tone={model.pctSold >= 70 ? "good" : model.pctSold >= 40 ? "warn" : "bad"} />
-        <Kpi icon={Package} label="Remaining to sell" value={money(model.remaining)} foot={`${model.skuCount} SKUs, ${model.dealerCount} dealers so far`} />
+        <Kpi icon={Package} label="Remainder of goal" value={money(model.remaining)} foot={`${model.skuCount} SKUs, ${model.dealerCount} dealers so far`} />
       </div>
 
       <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-full">

@@ -107,7 +107,7 @@ interface TeamPost extends TeamPostRow {
   /** Read receipts, sourced from the notifications notify-team-post already
    *  creates per recipient. Only meaningful once this is rolled out beyond
    *  Gabriella-only testing - until then every post shows 1 of 1. */
-  seen: { count: number; total: number };
+  seen: { count: number; total: number; seenBy: { userId: string; name: string }[] };
 }
 
 function useTeamPosts() {
@@ -137,7 +137,7 @@ function useTeamPosts() {
         db.from("team_posts").select("id, author_user_id, title, body, created_at, updated_at, pinned").order("created_at", { ascending: false }),
         db.from("team_post_attachments").select("id, post_id, file_path, file_name, content_type, size_bytes"),
         db.from("team_post_reactions").select("post_id, user_id, emoji"),
-        db.from("notifications").select("related_id, read_at").eq("type", "team_post"),
+        db.from("notifications").select("related_id, user_id, read_at").eq("type", "team_post"),
       ]);
       /* eslint-enable @typescript-eslint/no-explicit-any */
       if (postsErr) throw postsErr;
@@ -148,6 +148,7 @@ function useTeamPosts() {
       const authorIds = [...new Set([
         ...(posts ?? []).map((p: TeamPostRow) => p.author_user_id),
         ...(reactions ?? []).map((r: { user_id: string }) => r.user_id),
+        ...(seenRows ?? []).map((s: { user_id: string }) => s.user_id),
       ])] as string[];
       const { data: profiles } = authorIds.length
         ? await supabase.from("profiles").select("user_id, full_name").in("user_id", authorIds)
@@ -173,11 +174,14 @@ function useTeamPosts() {
         reactionsByPost.set(r.post_id, byEmoji);
       }
 
-      const seenByPost = new Map<string, { count: number; total: number }>();
-      for (const s of (seenRows ?? []) as { related_id: string; read_at: string | null }[]) {
-        const cur = seenByPost.get(s.related_id) ?? { count: 0, total: 0 };
+      const seenByPost = new Map<string, { count: number; total: number; seenBy: { userId: string; name: string }[] }>();
+      for (const s of (seenRows ?? []) as { related_id: string; user_id: string; read_at: string | null }[]) {
+        const cur = seenByPost.get(s.related_id) ?? { count: 0, total: 0, seenBy: [] };
         cur.total++;
-        if (s.read_at) cur.count++;
+        if (s.read_at) {
+          cur.count++;
+          cur.seenBy.push({ userId: s.user_id, name: nameById.get(s.user_id) || "Someone" });
+        }
         seenByPost.set(s.related_id, cur);
       }
 
@@ -193,7 +197,7 @@ function useTeamPosts() {
           authorName: nameById.get(p.author_user_id) || "Someone",
           attachments: attByPost.get(p.id) ?? [],
           reactions,
-          seen: seenByPost.get(p.id) ?? { count: 0, total: 0 },
+          seen: seenByPost.get(p.id) ?? { count: 0, total: 0, seenBy: [] },
         };
       });
 
@@ -578,9 +582,24 @@ function PostCard({ post, canManage, isAdmin, currentUserId, highlighted, onEdit
         <div className="flex items-center justify-between pt-1">
           {currentUserId && <ReactionBar postId={post.id} reactions={post.reactions} currentUserId={currentUserId} />}
           {post.seen.total > 0 && (
-            <span className="flex items-center gap-1 text-[11px] text-muted-foreground" title="How many recipients have opened this in their notifications">
-              <Eye className="h-3 w-3" /> Seen by {post.seen.count} of {post.seen.total}
-            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground">
+                  <Eye className="h-3 w-3" /> Seen by {post.seen.count} of {post.seen.total}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-56 p-2">
+                {post.seen.seenBy.length > 0 ? (
+                  <ul className="space-y-1">
+                    {post.seen.seenBy.map((u) => (
+                      <li key={u.userId} className="text-xs px-1 py-0.5">{u.name}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground px-1 py-0.5">No one has seen this yet.</p>
+                )}
+              </PopoverContent>
+            </Popover>
           )}
         </div>
       </CardContent>

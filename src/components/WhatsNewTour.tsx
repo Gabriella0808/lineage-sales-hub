@@ -223,11 +223,28 @@ export function WhatsNewTour() {
 
   // Auto-start the Team Updates walkthrough for the three people trying it
   // out - every time they land on the page, not just once (see
-  // TEAM_UPDATES_TOUR_TESTERS above for why).
+  // TEAM_UPDATES_TOUR_TESTERS above for why), including a plain browser
+  // reload of /team-updates itself, not just arriving via in-app
+  // navigation. A reload is slower (every JS chunk and the posts query
+  // both start from cold), so a single fixed delay that works fine for an
+  // in-app nav can fire before any post has actually rendered - this polls
+  // for real content instead of guessing one delay, and gives up after 8s
+  // so the tour still runs (just skipping content steps via has()) even if
+  // the page for some reason never has anything to show.
   useEffect(() => {
     if (!allowedTeamUpdates || !user?.email || location.pathname !== "/team-updates") return;
-    const t = window.setTimeout(() => runTeamUpdatesTour(), 1500);
-    return () => window.clearTimeout(t);
+    let cancelled = false;
+    const deadline = Date.now() + 8000;
+    const tick = () => {
+      if (cancelled) return;
+      if (has('[data-tour="team-updates-new-post"]') || has('[data-tour="team-updates-post"]') || Date.now() >= deadline) {
+        runTeamUpdatesTour();
+        return;
+      }
+      window.setTimeout(tick, 250);
+    };
+    const t = window.setTimeout(tick, 1000);
+    return () => { cancelled = true; window.clearTimeout(t); };
   }, [allowedTeamUpdates, user?.email, location.pathname]);
 
   // Replay from the account menu - runs whichever tour fits the current

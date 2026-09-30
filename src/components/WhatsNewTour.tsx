@@ -30,6 +30,16 @@ export function canUsePreSaleTour(role?: string) {
 const ANNOUNCEMENT_VERSION = "2026-09-30";
 const ANNOUNCEMENT_SEEN_KEY = "lc.announcementSeen";
 const announcementSeenKeyFor = (email?: string | null) => `${ANNOUNCEMENT_SEEN_KEY}:${(email ?? "").toLowerCase()}`;
+// Andrew's popup got dismissed on his behalf (checking something in his
+// portal) before he'd actually seen it - this makes it show for him once
+// more, without touching anyone who's already genuinely dismissed it.
+// Self-resolving: once he dismisses it, his own stored value becomes this
+// same override version, so it won't show a second time from this alone.
+const ANNOUNCEMENT_VERSION_OVERRIDES: Record<string, string> = {
+  "andrew@lineage-collections.com": "2026-09-30.reshow-1",
+};
+const requiredAnnouncementVersion = (email?: string | null) =>
+  ANNOUNCEMENT_VERSION_OVERRIDES[(email ?? "").toLowerCase()] ?? ANNOUNCEMENT_VERSION;
 
 const has = (sel: string) => !!document.querySelector(sel);
 
@@ -238,14 +248,14 @@ export function WhatsNewTour() {
     if (!user?.email) return;
     let seen: string | null = null;
     try { seen = localStorage.getItem(announcementSeenKeyFor(user.email)); } catch { /* ignore */ }
-    if (seen === ANNOUNCEMENT_VERSION) return;
+    if (seen === requiredAnnouncementVersion(user.email)) return;
     const t = window.setTimeout(() => setAnnouncementOpen(true), 1200);
     return () => window.clearTimeout(t);
   }, [user?.email]);
 
   const dismissAnnouncement = () => {
     setAnnouncementOpen(false);
-    try { if (user?.email) localStorage.setItem(announcementSeenKeyFor(user.email), ANNOUNCEMENT_VERSION); } catch { /* ignore */ }
+    try { if (user?.email) localStorage.setItem(announcementSeenKeyFor(user.email), requiredAnnouncementVersion(user.email)); } catch { /* ignore */ }
   };
 
   // Walks through Team Updates then Pre-Sale, each on its own page, for

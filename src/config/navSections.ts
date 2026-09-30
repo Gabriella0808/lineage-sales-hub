@@ -57,6 +57,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Team Performance", url: "/",  icon: BarChart3, ...access("team-performance") },
       { title: "My Performance",   url: "/",  icon: BarChart3, ...access("my-performance") },
       { title: "My Tasks", url: "/tasks", icon: ListChecks, ...access("my-tasks") },
+      { title: "Team Updates", url: "/team-updates", icon: Megaphone, ...access("team-updates") },
       { title: "Meeting Intelligence", url: "/meeting-intelligence", icon: AudioLines, ...access("meeting-intelligence") },
     ],
   },

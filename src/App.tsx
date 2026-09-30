@@ -55,6 +55,7 @@ import ClearanceAnalyticsPage from "@/pages/ClearanceAnalyticsPage";
 import LaborDayPromoPage from "@/pages/LaborDayPromoPage";
 import PreSalePage from "@/pages/PreSalePage";
 import PortalAccessPage from "@/pages/PortalAccessPage";
+import TeamUpdatesPage from "@/pages/TeamUpdatesPage";
 import MeetingIntelligencePage from "@/pages/MeetingIntelligencePage";
 
 
@@ -93,6 +94,7 @@ const App = () => (
                       <Route path="/reports/invoicing" element={<PageGate page="reports-invoicing"><CompanyWidePage /></PageGate>} />
                       <Route path="/monday-boards" element={<PageGate page="monday-boards"><MondayBoardsPage /></PageGate>} />
                       <Route path="/tasks" element={<PageGate page="my-tasks"><TasksPage /></PageGate>} />
+                      <Route path="/team-updates" element={<PageGate page="team-updates"><TeamUpdatesPage /></PageGate>} />
                       <Route path="/sales-targets" element={<PageGate page="sales-targets"><SalesTargetsPage /></PageGate>} />
                       <Route path="/inventory" element={<PageGate page="inventory"><InventoryPage /></PageGate>} />
                       <Route path="/catalog" element={<PageGate page="product-catalog"><CatalogPage /></PageGate>} />

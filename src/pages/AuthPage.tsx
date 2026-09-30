@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { z } from "zod";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,7 @@ const signUpSchema = signInSchema.extend({
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { session, loading } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -29,12 +30,19 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: "", password: "", fullName: "" });
 
+  // ProtectedRoute sends a logged-out visit to a deep link (e.g. a Team
+  // Updates email's "View message" button) here with the original page in
+  // location.state.from - land back there instead of the homepage once
+  // they're signed in, so the link actually goes where it promised to.
+  const from = (location.state as { from?: string } | null)?.from;
+  const dest = from && from.startsWith("/") ? from : "/";
+
   useEffect(() => {
-    if (session) navigate("/", { replace: true });
-  }, [session, navigate]);
+    if (session) navigate(dest, { replace: true });
+  }, [session, navigate, dest]);
 
   if (loading) return null;
-  if (session) return <Navigate to="/" replace />;
+  if (session) return <Navigate to={dest} replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

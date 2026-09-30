@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";
 
@@ -15,6 +15,7 @@ interface Props {
 export default function ProtectedRoute({ children, allow, denyEmails, allowEmails }: Props) {
   const { session, loading, user } = useAuth();
   const { data: roleInfo, isLoading: roleLoading } = useUserRole();
+  const location = useLocation();
 
   if (loading || (session && roleLoading)) {
     return (
@@ -23,7 +24,10 @@ export default function ProtectedRoute({ children, allow, denyEmails, allowEmail
       </div>
     );
   }
-  if (!session) return <Navigate to="/auth" replace />;
+  // A logged-out person clicking a deep link (e.g. a Team Updates email's
+  // "View message" button) needs to land back on that exact page - not just
+  // the homepage - once they sign in. AuthPage reads this same "from" state.
+  if (!session) return <Navigate to="/auth" state={{ from: `${location.pathname}${location.search}` }} replace />;
 
   if (allow && roleInfo && !allow.includes(roleInfo.role)) {
     return <Navigate to="/" replace />;

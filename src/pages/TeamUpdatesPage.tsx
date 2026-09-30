@@ -121,6 +121,7 @@ function useTeamPosts() {
       .on("postgres_changes", { event: "*", schema: "public", table: "team_posts" }, () => qc.invalidateQueries({ queryKey: ["team_posts"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "team_post_attachments" }, () => qc.invalidateQueries({ queryKey: ["team_posts"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "team_post_reactions" }, () => qc.invalidateQueries({ queryKey: ["team_posts"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "team_post_reads" }, () => qc.invalidateQueries({ queryKey: ["team_posts"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: "type=eq.team_post" }, () => qc.invalidateQueries({ queryKey: ["team_posts"] }))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -133,22 +134,28 @@ function useTeamPosts() {
       // New tables - not in the generated Supabase types yet.
       /* eslint-disable @typescript-eslint/no-explicit-any */
       const db = supabase as any;
-      const [{ data: posts, error: postsErr }, { data: attachments, error: attErr }, { data: reactions, error: reactErr }, { data: seenRows, error: seenErr }] = await Promise.all([
+      const [{ data: posts, error: postsErr }, { data: attachments, error: attErr }, { data: reactions, error: reactErr }, { data: reads, error: readsErr }, { data: audienceSize, error: audienceErr }] = await Promise.all([
         db.from("team_posts").select("id, author_user_id, title, body, created_at, updated_at, pinned").order("created_at", { ascending: false }),
         db.from("team_post_attachments").select("id, post_id, file_path, file_name, content_type, size_bytes"),
         db.from("team_post_reactions").select("post_id, user_id, emoji"),
-        db.from("notifications").select("related_id, user_id, read_at").eq("type", "team_post"),
+        // Who has actually opened this post, independent of who was ever
+        // emailed about it - see the migration's comment for why this
+        // can't just be notifications.read_at.
+        db.from("team_post_reads").select("post_id, user_id, read_at"),
+        db.rpc("team_post_audience_size"),
       ]);
       /* eslint-enable @typescript-eslint/no-explicit-any */
       if (postsErr) throw postsErr;
       if (attErr) throw attErr;
       if (reactErr) throw reactErr;
-      if (seenErr) throw seenErr;
+      if (readsErr) throw readsErr;
+      if (audienceErr) throw audienceErr;
+      const total = (audienceSize as number | null) ?? 0;
 
       const authorIds = [...new Set([
         ...(posts ?? []).map((p: TeamPostRow) => p.author_user_id),
         ...(reactions ?? []).map((r: { user_id: string }) => r.user_id),
-        ...(seenRows ?? []).map((s: { user_id: string }) => s.user_id),
+        ...(reads ?? []).map((s: { user_id: string }) => s.user_id),
       ])] as string[];
       const { data: profiles } = authorIds.length
         ? await supabase.from("profiles").select("user_id, full_name").in("user_id", authorIds)
@@ -174,15 +181,11 @@ function useTeamPosts() {
         reactionsByPost.set(r.post_id, byEmoji);
       }
 
-      const seenByPost = new Map<string, { count: number; total: number; seenBy: { userId: string; name: string }[] }>();
-      for (const s of (seenRows ?? []) as { related_id: string; user_id: string; read_at: string | null }[]) {
-        const cur = seenByPost.get(s.related_id) ?? { count: 0, total: 0, seenBy: [] };
-        cur.total++;
-        if (s.read_at) {
-          cur.count++;
-          cur.seenBy.push({ userId: s.user_id, name: nameById.get(s.user_id) || "Someone" });
-        }
-        seenByPost.set(s.related_id, cur);
+      const seenByPost = new Map<string, { userId: string; name: string }[]>();
+      for (const r of (reads ?? []) as { post_id: string; user_id: string }[]) {
+        const list = seenByPost.get(r.post_id) ?? [];
+        list.push({ userId: r.user_id, name: nameById.get(r.user_id) || "Someone" });
+        seenByPost.set(r.post_id, list);
       }
 
       const mapped = (posts ?? []).map((p: TeamPostRow) => {
@@ -192,12 +195,13 @@ function useTeamPosts() {
         const reactions: ReactionGroup[] = byEmoji
           ? REACTION_EMOJIS.filter((e) => byEmoji.has(e)).map((e) => ({ emoji: e, users: byEmoji.get(e)! }))
           : [];
+        const seenBy = seenByPost.get(p.id) ?? [];
         return {
           ...p,
           authorName: nameById.get(p.author_user_id) || "Someone",
           attachments: attByPost.get(p.id) ?? [],
           reactions,
-          seen: seenByPost.get(p.id) ?? { count: 0, total: 0, seenBy: [] },
+          seen: { count: seenBy.length, total, seenBy },
         };
       });
 
@@ -848,12 +852,10 @@ export default function TeamUpdatesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetPostId, posts.length]);
 
-  // "Seen by" only reflects notifications.read_at, which previously only
-  // got set from the bell dropdown - opening a post straight from the email
-  // link (or just browsing this page) never touched it, so "Seen by" could
-  // sit at 0 forever even after someone had genuinely read it here. Being
-  // on this page at all means every currently-loaded post is visible, so
-  // mark this user's own team_post notifications read as soon as it loads.
+  // Marks the bell notification read too, for anyone who does have one
+  // (currently just Gabriella, while RECIPIENT_MODE is gabriella-only) -
+  // this is about the bell's own unread badge, separate from "Seen by"
+  // below, which tracks real page views for everyone with access.
   useEffect(() => {
     if (!user) return;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -865,6 +867,24 @@ export default function TeamUpdatesPage() {
       .is("read_at", null)
       .then(() => qc.invalidateQueries({ queryKey: ["team_posts"] }));
   }, [user, qc]);
+
+  // "Seen by" needs to count everyone who's actually opened Team Updates
+  // and had a post on their screen - not just people notify-team-post
+  // happened to email (that's gabriella-only right now, so relying on
+  // notifications alone would mean no other admin/manager's view ever
+  // counted). Being on this page at all means every currently-loaded post
+  // is visible, so upsert a team_post_reads row for each one.
+  const postIds = posts.map((p) => p.id).sort().join(",");
+  useEffect(() => {
+    if (!user || !postIds) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabase as any;
+    const rows = postIds.split(",").map((id) => ({ post_id: id, user_id: user.id }));
+    db.from("team_post_reads")
+      .upsert(rows, { onConflict: "post_id,user_id", ignoreDuplicates: true })
+      .then(() => qc.invalidateQueries({ queryKey: ["team_posts"] }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, postIds]);
 
   const openNew = () => { setEditingPost(null); setComposeOpen(true); };
   const openEdit = (p: TeamPost) => { setEditingPost(p); setComposeOpen(true); };

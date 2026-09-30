@@ -1,68 +1,37 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { driver, type DriveStep } from "driver.js";
 import "driver.js/dist/driver.css";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
-// Who sees the tour. Set to "everyone" when it is ready to roll out.
-const TOUR_AUDIENCE: "gabriella" | "everyone" = "everyone";
-const TESTERS = ["gabriella@lineage-collections.com"];
-// Bump this when there is a new tour worth showing again.
-const TOUR_VERSION = "2026-09-22";
-const SEEN_KEY = "lc.tourSeen";
-const seenKeyFor = (email?: string | null) => `${SEEN_KEY}:${(email ?? "").toLowerCase()}`;
 export const START_TOUR_EVENT = "lc:start-tour";
 
-export function canUseTour(email?: string | null) {
-  if (TOUR_AUDIENCE === "everyone") return true;
-  return !!email && TESTERS.includes(email.toLowerCase());
-}
-
-// Separate walkthrough just for Team Updates - a different tour entirely
-// from the main one below (it runs on /team-updates, not the homepage).
-// Was a hardcoded 3-person tester list (Gabriella/Justin/Scott) replaying
-// every visit while the feature was only shown to them; now that it's open
-// to the whole internal team, this matches that same audience (admin or
-// manager - the page's own access rule, see pageAccess.ts's "team-updates"
-// entry) and goes back to the standard once-per-version behavior like the
-// main tour, so it doesn't replay on every single visit at team-wide scale.
-const TEAM_UPDATES_TOUR_VERSION = "2026-09-30.2";
-const TEAM_UPDATES_SEEN_KEY = "lc.teamUpdatesTourSeen";
-const teamUpdatesSeenKeyFor = (email?: string | null) => `${TEAM_UPDATES_SEEN_KEY}:${(email ?? "").toLowerCase()}`;
-
+// Team Updates walkthrough audience - matches the page's own access rule
+// (pageAccess.ts's "team-updates" entry: admin or manager, reps excluded).
 export function canUseTeamUpdatesTour(role?: string) {
   return role === "admin" || role === "manager";
 }
 
-const has = (sel: string) => !!document.querySelector(sel);
-
-function buildSteps(role?: string): DriveStep[] {
-  const isLeader = role === "admin" || role === "manager";
-  const steps: (DriveStep | null)[] = [
-    {
-      popover: {
-        title: "What's new in the portal",
-        description: "A quick tour of the newest features. It takes about a minute, and you can replay it any time from your account menu.",
-      },
-    },
-    has('[data-tour="search"]') ? { element: '[data-tour="search"]', popover: { title: "Jump anywhere", description: "Press Ctrl K (or Cmd K on a Mac) from any page to search for a page and go straight to it." } } : null,
-    has('[data-tour="theme"]') ? { element: '[data-tour="theme"]', popover: { title: "Light and dark mode", description: "Switch the whole portal between light and dark. Your choice is remembered." } } : null,
-    has('[data-tour="account"]') ? { element: '[data-tour="account"]', popover: { title: "Your account menu", description: "Pick how navigation looks (classic sidebar, top bar, bottom dock or right-side drawer), choose light or dark, and replay this tour." } } : null,
-    has('[data-tour="report-tabs"]') ? { element: '[data-tour="report-tabs"]', popover: { title: "All the reports in one place", description: "Switch between Live KPI, Dealer Reporting, Rep Reporting and High-Level Reporting from this bar." } } : null,
-    has('[data-tour="goal-card"]') ? { element: '[data-tour="goal-card"]', popover: { title: "Progress against goal", description: "Bookings and invoicing show how far you are toward the month's goal. The small marker shows where you should be by today, and the bar color tells you if you're ahead or behind." } } : null,
-    has('[data-tour="tab-executive"]') ? { element: '[data-tour="tab-executive"]', popover: { title: "High-Level Reporting", description: "A business overview with a period switch, target progress, dealer health (slowing, growing, gone quiet) and a rep leaderboard. Click any dealer or rep to open their detail." } } : null,
-    {
-      popover: {
-        title: "Also new",
-        description: isLeader
-          ? "Click a rep in Rep Reporting to see their progress against their sales target. On the Inventory page, the Prepaid Inventory card now shows the live QuickBooks balance and its full ledger."
-          : "That's the tour. You can replay it any time from your account menu.",
-      },
-    },
-  ];
-  return steps.filter(Boolean) as DriveStep[];
+// Pre-Sale walkthrough audience - matches the page's own access rule
+// (pageAccess.ts's "pre-sale" entry: admin, manager or dealer - reps
+// excluded there too).
+export function canUsePreSaleTour(role?: string) {
+  return role === "admin" || role === "manager" || role === "dealer";
 }
+
+// The "what's changed" popup - shown to literally everyone, including reps,
+// once per person per version, right after sign-in/reload. Its button walks
+// whoever's eligible through the current feature tours (Team Updates, then
+// Pre-Sale); someone with access to neither (a rep, right now) just closes
+// the popup, since there's nothing else to show them yet.
+const ANNOUNCEMENT_VERSION = "2026-09-30";
+const ANNOUNCEMENT_SEEN_KEY = "lc.announcementSeen";
+const announcementSeenKeyFor = (email?: string | null) => `${ANNOUNCEMENT_SEEN_KEY}:${(email ?? "").toLowerCase()}`;
+
+const has = (sel: string) => !!document.querySelector(sel);
 
 // Team Updates walkthrough - only reachable on /team-updates itself, so
 // every element it targets is real (an actual post, reaction bar, "Seen
@@ -74,7 +43,7 @@ function buildTeamUpdatesSteps(): DriveStep[] {
     {
       popover: {
         title: "Team Updates",
-        description: "A new company blog/announcements section - post news, events and updates for the team, with attachments, reactions and read receipts. You're seeing this early, before it opens up to everyone else.",
+        description: "A new company blog/announcements section - post news, events and updates for the team, with attachments, reactions and read receipts.",
       },
     },
     has('[data-tour="team-updates-new-post"]') ? {
@@ -129,6 +98,48 @@ function buildTeamUpdatesSteps(): DriveStep[] {
   return steps.filter(Boolean) as DriveStep[];
 }
 
+// Pre-Sale walkthrough - only reachable on /promotions/pre-sale itself, so
+// every step targets the real page. Every step but the first is skipped
+// gracefully via has() if there's nothing currently flagged to show.
+function buildPreSaleSteps(): DriveStep[] {
+  const steps: (DriveStep | null)[] = [
+    {
+      popover: {
+        title: "Pre-Sale - New Product Intros",
+        description: "Tracks every SKU currently flagged as a New Product Intro in Acctivate - what's booked, what's on order, and how attainment is tracking.",
+      },
+    },
+    has('[data-tour="presale-kpis"]') ? {
+      element: '[data-tour="presale-kpis"]',
+      popover: {
+        title: "The headline numbers",
+        description: "Total booked, total on PO (excluding completed POs), Pre-Sale progress (% of PO'd value booked), and Remainder of goal - what's still left to sell against what's on order.",
+      },
+    } : null,
+    has('[data-tour="presale-tabs"]') ? {
+      element: '[data-tour="presale-tabs"]',
+      popover: {
+        title: "Three views",
+        description: "Overview for the big picture, \"By Dealer, Rep, Collection & SKU\" to drill all the way down to a rep's or dealer's numbers, and Purchase Orders for the raw PO data behind it all.",
+      },
+    } : null,
+    has('[data-tour="presale-heatmap"]') ? {
+      element: '[data-tour="presale-heatmap"]',
+      popover: {
+        title: "Rep × collection heatmap",
+        description: "Color-coded by attainment - red under 40%, yellow 40-70%, green 70%+ - so you can spot at a glance which rep/collection combinations need attention.",
+      },
+    } : null,
+    {
+      popover: {
+        title: "That's Pre-Sale",
+        description: "That's the tour. You can replay it any time from your account menu.",
+      },
+    },
+  ];
+  return steps.filter(Boolean) as DriveStep[];
+}
+
 let cursorEl: HTMLDivElement | null = null;
 
 function moveCursor(el?: Element) {
@@ -149,28 +160,11 @@ function removeCursor() {
   cursorEl = null;
 }
 
-export function runTour(role?: string, email?: string | null) {
-  const steps = buildSteps(role);
-  const d = driver({
-    showProgress: true,
-    allowClose: true,
-    overlayOpacity: 0.55,
-    stagePadding: 6,
-    stageRadius: 10,
-    nextBtnText: "Next",
-    prevBtnText: "Back",
-    doneBtnText: "Done",
-    steps,
-    onHighlightStarted: (el) => moveCursor(el),
-    onDestroyed: () => {
-      removeCursor();
-      try { localStorage.setItem(seenKeyFor(email), TOUR_VERSION); } catch { /* ignore */ }
-    },
-  });
-  d.drive();
-}
-
-export function runTeamUpdatesTour(email?: string | null) {
+// Neither of these records its own "seen" state - when run from the
+// announcement popup below, that's tracked once at the announcement level;
+// when replayed directly from the account menu, replaying on purpose
+// obviously doesn't need to be remembered as "already seen".
+export function runTeamUpdatesTour(onDone?: () => void) {
   const steps = buildTeamUpdatesSteps();
   const d = driver({
     showProgress: true,
@@ -183,12 +177,49 @@ export function runTeamUpdatesTour(email?: string | null) {
     doneBtnText: "Done",
     steps,
     onHighlightStarted: (el) => moveCursor(el),
-    onDestroyed: () => {
-      removeCursor();
-      try { localStorage.setItem(teamUpdatesSeenKeyFor(email), TEAM_UPDATES_TOUR_VERSION); } catch { /* ignore */ }
-    },
+    onDestroyed: () => { removeCursor(); onDone?.(); },
   });
   d.drive();
+}
+
+export function runPreSaleTour(onDone?: () => void) {
+  const steps = buildPreSaleSteps();
+  const d = driver({
+    showProgress: true,
+    allowClose: true,
+    overlayOpacity: 0.55,
+    stagePadding: 6,
+    stageRadius: 10,
+    nextBtnText: "Next",
+    prevBtnText: "Back",
+    doneBtnText: "Done",
+    steps,
+    onHighlightStarted: (el) => moveCursor(el),
+    onDestroyed: () => { removeCursor(); onDone?.(); },
+  });
+  d.drive();
+}
+
+// Navigates to a tour's page if not already there, waits for its content to
+// actually exist (rather than guessing one fixed delay - a cold page load
+// is much slower than an already-warm in-app navigation), then runs it.
+// Gives up waiting after 8s and runs anyway, so a tour still plays (just
+// skipping content steps via has()) even if the page has nothing to show.
+function goToAndRun(navigate: ReturnType<typeof useNavigate>, currentPath: string, path: string, selectors: string[], run: (onDone: () => void) => void, onDone: () => void) {
+  const waitThenRun = () => {
+    const deadline = Date.now() + 8000;
+    const tick = () => {
+      if (selectors.some(has) || Date.now() >= deadline) { run(onDone); return; }
+      window.setTimeout(tick, 250);
+    };
+    window.setTimeout(tick, 1000);
+  };
+  if (currentPath !== path) {
+    navigate(path);
+    window.setTimeout(waitThenRun, 400);
+  } else {
+    waitThenRun();
+  }
 }
 
 export function WhatsNewTour() {
@@ -197,78 +228,87 @@ export function WhatsNewTour() {
   const navigate = useNavigate();
   const { data: roleInfo } = useUserRole();
   const role = roleInfo?.role;
-  const allowed = canUseTour(user?.email);
   const allowedTeamUpdates = canUseTeamUpdatesTour(role);
+  const allowedPreSale = canUsePreSaleTour(role);
 
-  // Auto-start after sign-in: once per person per tour version, on any page.
-  // If they land somewhere other than Company-wide, take them there first so
-  // the tour can show the full set of highlights. Team Updates is excluded
-  // from that redirect so it doesn't fight with the tour below - someone
-  // landing straight on /team-updates gets that tour first, and picks up
-  // the main tour later from another page instead of being bounced away.
+  // The "what's changed" popup - everyone, including reps, once per
+  // person per version, shortly after sign-in/reload.
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
   useEffect(() => {
-    if (!allowed || !user?.email || !role) return;
+    if (!user?.email) return;
     let seen: string | null = null;
-    try { seen = localStorage.getItem(seenKeyFor(user.email)); } catch { /* ignore */ }
-    if (seen === TOUR_VERSION) return;
-    if (location.pathname !== "/" && location.pathname !== "/team-updates") {
-      navigate("/", { replace: true });
-      return;
-    }
-    if (location.pathname !== "/") return;
-    const t = window.setTimeout(() => runTour(role, user.email), 2500);
+    try { seen = localStorage.getItem(announcementSeenKeyFor(user.email)); } catch { /* ignore */ }
+    if (seen === ANNOUNCEMENT_VERSION) return;
+    const t = window.setTimeout(() => setAnnouncementOpen(true), 1200);
     return () => window.clearTimeout(t);
-  }, [allowed, user?.email, role, location.pathname, navigate]);
+  }, [user?.email]);
 
-  // Auto-start the Team Updates walkthrough once per person per version,
-  // the first time an admin/manager lands on the page - including a plain
-  // browser reload of /team-updates itself, not just arriving via in-app
-  // navigation. A reload is slower (every JS chunk and the posts query
-  // both start from cold), so a single fixed delay that works fine for an
-  // in-app nav can fire before any post has actually rendered - this polls
-  // for real content instead of guessing one delay, and gives up after 8s
-  // so the tour still runs (just skipping content steps via has()) even if
-  // the page for some reason never has anything to show.
-  useEffect(() => {
-    if (!allowedTeamUpdates || !user?.email || location.pathname !== "/team-updates") return;
-    let seen: string | null = null;
-    try { seen = localStorage.getItem(teamUpdatesSeenKeyFor(user.email)); } catch { /* ignore */ }
-    if (seen === TEAM_UPDATES_TOUR_VERSION) return;
-    let cancelled = false;
-    const deadline = Date.now() + 8000;
-    const tick = () => {
-      if (cancelled) return;
-      if (has('[data-tour="team-updates-new-post"]') || has('[data-tour="team-updates-post"]') || Date.now() >= deadline) {
-        runTeamUpdatesTour(user.email);
-        return;
-      }
-      window.setTimeout(tick, 250);
+  const dismissAnnouncement = () => {
+    setAnnouncementOpen(false);
+    try { if (user?.email) localStorage.setItem(announcementSeenKeyFor(user.email), ANNOUNCEMENT_VERSION); } catch { /* ignore */ }
+  };
+
+  // Walks through Team Updates then Pre-Sale, each on its own page, for
+  // whoever has access to them. Someone with access to neither (a rep)
+  // gets nothing further - there's no other tour left to fall back to.
+  const runNewFeatureTours = () => {
+    const queue: { path: string; selectors: string[]; run: (onDone: () => void) => void }[] = [];
+    if (allowedTeamUpdates) queue.push({ path: "/team-updates", selectors: ['[data-tour="team-updates-new-post"]', '[data-tour="team-updates-post"]'], run: runTeamUpdatesTour });
+    if (allowedPreSale) queue.push({ path: "/promotions/pre-sale", selectors: ['[data-tour="presale-kpis"]'], run: runPreSaleTour });
+    if (queue.length === 0) return;
+
+    const step = (i: number, fromPath: string) => {
+      if (i >= queue.length) return;
+      const { path, selectors, run } = queue[i];
+      goToAndRun(navigate, fromPath, path, selectors, run, () => window.setTimeout(() => step(i + 1, path), 400));
     };
-    const t = window.setTimeout(tick, 1000);
-    return () => { cancelled = true; window.clearTimeout(t); };
-  }, [allowedTeamUpdates, user?.email, location.pathname]);
+    step(0, location.pathname);
+  };
 
   // Replay from the account menu - runs whichever tour fits the current
-  // page for people who are eligible for the Team Updates one, otherwise
-  // always the main tour.
+  // page, for people eligible for Team Updates or Pre-Sale. The menu item
+  // itself is hidden for anyone with neither (see AppLayout.tsx), so this
+  // is really just picking between the two.
   useEffect(() => {
-    if (!allowed && !allowedTeamUpdates) return;
+    if (!allowedTeamUpdates && !allowedPreSale) return;
     const onStart = () => {
-      if (allowedTeamUpdates && location.pathname === "/team-updates") {
-        runTeamUpdatesTour(user?.email);
-        return;
-      }
-      if (!allowed) return;
-      if (location.pathname !== "/") {
-        navigate("/");
-        window.setTimeout(() => runTour(role, user?.email), 1500);
-      } else {
-        runTour(role, user?.email);
-      }
+      if (allowedTeamUpdates && location.pathname === "/team-updates") { runTeamUpdatesTour(); return; }
+      if (allowedPreSale && location.pathname === "/promotions/pre-sale") { runPreSaleTour(); return; }
+      // On neither page - run whichever applies, starting there.
+      runNewFeatureTours();
     };
     window.addEventListener(START_TOUR_EVENT, onStart);
     return () => window.removeEventListener(START_TOUR_EVENT, onStart);
-  }, [allowed, allowedTeamUpdates, location.pathname, navigate, role, user?.email]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedTeamUpdates, allowedPreSale, location.pathname]);
 
-  return null;
+  // Everyone (including reps) sees the popup itself, but a rep has nothing
+  // to actually walk through yet - don't offer a button that would do
+  // nothing when clicked.
+  const hasAnyTour = allowedTeamUpdates || allowedPreSale;
+
+  return (
+    <Dialog open={announcementOpen} onOpenChange={(v) => { if (!v) dismissAnnouncement(); }}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>What's new in the portal</DialogTitle>
+          <DialogDescription>
+            {hasAnyTour
+              ? "There have been some changes to the portal - take a quick look at what's new."
+              : "There have been some changes to the portal for admins and managers. Nothing new for your account to walk through just yet."}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          {hasAnyTour ? (
+            <>
+              <Button variant="ghost" onClick={dismissAnnouncement}>Not now</Button>
+              <Button onClick={() => { dismissAnnouncement(); runNewFeatureTours(); }}>See what's new</Button>
+            </>
+          ) : (
+            <Button onClick={dismissAnnouncement}>Got it</Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }

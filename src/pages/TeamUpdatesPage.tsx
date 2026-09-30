@@ -5,7 +5,7 @@ import { AlertCircle, Download, Eye, File as FileIcon, FileArchive, FileSpreadsh
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useUserRole, hasRepViewOverride } from "@/hooks/useUserRole";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -829,7 +829,11 @@ export default function TeamUpdatesPage() {
   const { data: roleInfo } = useUserRole();
   const qc = useQueryClient();
   const isAdmin = roleInfo?.role === "admin";
-  const canPost = isAdmin || roleInfo?.role === "manager";
+  // Kate has a 'manager' role but gets the same view+react-only experience
+  // as a rep here specifically - see REP_VIEW_OVERRIDE_EMAILS in
+  // useUserRole.ts for why this isn't just a role change.
+  const isRepView = hasRepViewOverride(user?.email);
+  const canPost = (isAdmin || roleInfo?.role === "manager") && !isRepView;
   const { data: posts = [], isLoading, error } = useTeamPosts();
   const [composeOpen, setComposeOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<TeamPost | null>(null);
@@ -889,7 +893,7 @@ export default function TeamUpdatesPage() {
 
   const openNew = () => { setEditingPost(null); setComposeOpen(true); };
   const openEdit = (p: TeamPost) => { setEditingPost(p); setComposeOpen(true); };
-  const canManage = (p: TeamPost) => isAdmin || (roleInfo?.role === "manager" && p.author_user_id === user?.id);
+  const canManage = (p: TeamPost) => isAdmin || (roleInfo?.role === "manager" && !isRepView && p.author_user_id === user?.id);
 
   const togglePin = useMutation({
     mutationFn: async (p: TeamPost) => {

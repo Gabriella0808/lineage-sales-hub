@@ -12,6 +12,21 @@ const ADMIN_EMAIL_OVERRIDES = new Set([
   "gabriella@lineage-collections.com",
 ]);
 
+// Kate has a 'manager' user_roles row (for other pages she legitimately
+// needs manager access to), but in Pre-Sale and Team Updates specifically
+// she should be treated exactly like a rep - her own data/activity only,
+// no company-wide view, no posting rights. This is a data-scoping/UI
+// decision each page makes for itself (see PreSalePage.tsx's "isRep"
+// check and TeamUpdatesPage.tsx's "canPost"), not a role change - her
+// resolved role from resolveRole() stays 'manager' everywhere else.
+const REP_VIEW_OVERRIDE_EMAILS = new Set([
+  "kate@lineage-collections.com",
+]);
+
+export function hasRepViewOverride(email?: string | null) {
+  return !!email && REP_VIEW_OVERRIDE_EMAILS.has(email.toLowerCase());
+}
+
 /**
  * The single rule for turning a user's database rows into their effective
  * role: admin > manager > rep > dealer, defaulting to rep. Shared by the

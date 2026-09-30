@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import {
   usePreSaleBookings, usePreSalePoHeaders, usePreSalePoLines, usePreSaleProducts, usePreSaleRepTargets,
 } from "@/hooks/usePreSale";
+import { useUserRole, hasRepViewOverride } from "@/hooks/useUserRole";
+import { useAuth } from "@/contexts/AuthContext";
 
 const money = (n: number) => {
   const a = Math.abs(n);
@@ -124,11 +126,34 @@ export default function PreSalePage() {
   const { data: poLines = [], isLoading: loadingPo } = usePreSalePoLines(skus);
   const { data: poHeaders = [], isLoading: loadingHeaders } = usePreSalePoHeaders();
   const { data: repTargets = [] } = usePreSaleRepTargets(new Date().getFullYear());
+  const { user } = useAuth();
+  const { data: roleInfo } = useUserRole();
+  const isRep = roleInfo?.role === "rep" || hasRepViewOverride(user?.email);
 
   const [tab, setTab] = useState<Tab>("overview");
   const [search, setSearch] = useState("");
 
   const isLoading = loadingProducts || loadingBookings || loadingPo || loadingHeaders;
+
+  // A rep only gets to see their own booked activity here - not other
+  // reps' or dealers' numbers. PO data (totalPoAmount, the heatmap's goal
+  // denominator, the raw Purchase Orders tab) stays company-wide on
+  // purpose: it isn't attributable to any one person, it's just supply
+  // commitments from the vendor, so showing it isn't "someone else's
+  // information" the way another rep's booked total would be. repTargets
+  // also stays unfiltered for the same reason AND because the math needs
+  // it whole - a rep's heatmap "goal" is their share of the REAL
+  // company-wide target total, not their target divided by only itself.
+  //
+  // Matched on portal_rep_id (sales_reps.id, a UUID) rather than rep_id
+  // (the Acctivate text code) - useUserRole()'s repIds are themselves
+  // sales_reps.id values from user_reps, not Acctivate codes, so this
+  // needs no extra join to line up correctly.
+  const repIdSet = useMemo(() => new Set((roleInfo?.repIds ?? []).map((id) => id.toLowerCase())), [roleInfo?.repIds]);
+  const visibleBookings = useMemo(
+    () => (isRep ? bookings.filter((b) => !!b.portal_rep_id && repIdSet.has(b.portal_rep_id.toLowerCase())) : bookings),
+    [bookings, isRep, repIdSet],
+  );
 
   // "On PO" everywhere except the Purchase Orders tab means still-open
   // commitments — a Completed PO has already been received, so it's no
@@ -152,7 +177,7 @@ export default function PreSalePage() {
     const byDealer = new Map<string, { name: string; booked: number; reps: Set<string> }>();
     const byRep = new Map<string, { name: string; booked: number; dealers: Set<string>; byCollection: Map<string, number> }>();
 
-    for (const b of bookings) {
+    for (const b of visibleBookings) {
       if (!b.sku) continue;
       const amt = Number(b.amount) || 0;
       totalBooked += amt;
@@ -197,7 +222,7 @@ export default function PreSalePage() {
       if (!bySku.has(p.sku)) bySku.set(p.sku, { booked: 0, poAmount: 0, poOutstanding: 0 });
     }
 
-    const collectionList = buildCollectionRows(bookings, activePoLines, poHeaders, products);
+    const collectionList = buildCollectionRows(visibleBookings, activePoLines, poHeaders, products);
     const repList = [...byRep.entries()].filter(([, r]) => r.booked > 0).sort((a, b) => b[1].booked - a[1].booked);
     const dealerList = [...byDealer.entries()].sort((a, b) => b[1].booked - a[1].booked);
     const skuList = products.map((p) => ({ product: p, ...(bySku.get(p.sku) ?? { booked: 0, poAmount: 0, poOutstanding: 0 }) }));
@@ -223,7 +248,7 @@ export default function PreSalePage() {
       dealerCount: byDealer.size, repCount: repList.length, skuCount: products.length,
       repOptions, dealerOptions, collectionOptions,
     };
-  }, [products, bookings, activePoLines, poHeaders, repTargets]);
+  }, [products, visibleBookings, activePoLines, poHeaders, repTargets]);
 
   if (isLoading) {
     return (
@@ -241,6 +266,17 @@ export default function PreSalePage() {
         <CardContent className="p-8 text-center">
           <p className="text-sm font-medium">No products are currently flagged as a New Product Intro in Acctivate.</p>
           <p className="text-xs text-muted-foreground mt-1">This page updates automatically once staff check that box on a product and it syncs.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isRep && visibleBookings.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center">
+          <p className="text-sm font-medium">No Pre-Sale bookings on your account yet.</p>
+          <p className="text-xs text-muted-foreground mt-1">This page only shows your own booked activity - once you've booked a New Product Intro SKU, it'll show up here.</p>
         </CardContent>
       </Card>
     );
@@ -275,18 +311,21 @@ export default function PreSalePage() {
         </Card>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi icon={DollarSign} label="Total booked" value={money(model.totalBooked)} foot={`${bookings.length.toLocaleString()} booking lines`} />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="presale-kpis">
+        <Kpi icon={DollarSign} label="Total booked" value={money(model.totalBooked)} foot={`${visibleBookings.length.toLocaleString()} booking lines`} />
         <Kpi icon={Boxes} label="Total on PO" value={money(model.totalPoAmount)} foot={`${activePoLines.length.toLocaleString()} PO lines, excl. completed`} />
         <Kpi icon={Target} label="Pre-Sale progress" value={`${Math.round(model.pctSold)}%`} foot="of PO'd value booked" tone={model.pctSold >= 70 ? "good" : model.pctSold >= 40 ? "warn" : "bad"} />
         <Kpi icon={Package} label="Remainder of goal" value={money(model.remaining)} foot={`${model.skuCount} SKUs, ${model.dealerCount} dealers so far`} />
       </div>
 
-      <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-full">
+      <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-full" data-tour="presale-tabs">
         {([
           ["overview", "Overview"],
           ["breakdown", "By Dealer, Rep, Collection & SKU"],
-          ["pos", "Purchase Orders"],
+          // Purchase Orders is raw company-wide PO data with no rep
+          // attribution at all - not filterable to "their information",
+          // so it's left out for reps rather than shown unscoped.
+          ...(isRep ? [] : [["pos", "Purchase Orders"]]),
         ] as [Tab, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -303,8 +342,8 @@ export default function PreSalePage() {
       </div>
 
       {tab === "overview" && <OverviewTab model={model} />}
-      {tab === "breakdown" && <BreakdownTab model={model} bookings={bookings} products={products} search={search} setSearch={setSearch} />}
-      {tab === "pos" && <PosTab poLines={poLines} poHeaders={poHeaders} products={products} search={search} setSearch={setSearch} />}
+      {tab === "breakdown" && <BreakdownTab model={model} bookings={visibleBookings} products={products} search={search} setSearch={setSearch} />}
+      {tab === "pos" && !isRep && <PosTab poLines={poLines} poHeaders={poHeaders} products={products} search={search} setSearch={setSearch} />}
     </div>
   );
 }
@@ -405,7 +444,7 @@ function OverviewTab({ model }: { model: Model }) {
         </Card>
       </div>
 
-      <Card>
+      <Card data-tour="presale-heatmap">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Rep &times; collection heatmap</CardTitle>
           <p className="text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">

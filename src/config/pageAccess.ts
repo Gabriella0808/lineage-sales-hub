@@ -112,10 +112,14 @@ export const PAGE_ACCESS: Record<string, PageAccess> = {
   "labor-day-promo": { title: "Labor Day Promo", menu: { roles: AMR }, route: { protected: true, allow: AMR } },
   "discontinued-products": { title: "Discontinued Products", menu: { roles: AMR }, route: { protected: true, allow: AMR } },
   "discontinued-analytics": { title: "Discontinued Analytics", menu: { roles: AM }, route: { protected: true, allow: AM } },
+  // Open to reps too now, but PreSalePage.tsx itself scopes a rep's view
+  // down to just their own bookings - reps never see other reps' or
+  // dealers' numbers, or the raw Purchase Orders tab (not attributable to
+  // any one person). See its "isRep"/"visibleBookings" handling.
   "pre-sale": {
     title: "Pre-Sale - New Product Intros",
-    menu: { roles: NOT_REP },
-    route: { protected: true, allow: NOT_REP },
+    menu: { roles: ALL },
+    route: { protected: true, allow: ALL },
   },
 
   // ── Dealer Network ─────────────────────────────────────────────

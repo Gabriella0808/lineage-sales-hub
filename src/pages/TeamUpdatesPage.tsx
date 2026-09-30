@@ -829,6 +829,24 @@ export default function TeamUpdatesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetPostId, posts.length]);
 
+  // "Seen by" only reflects notifications.read_at, which previously only
+  // got set from the bell dropdown - opening a post straight from the email
+  // link (or just browsing this page) never touched it, so "Seen by" could
+  // sit at 0 forever even after someone had genuinely read it here. Being
+  // on this page at all means every currently-loaded post is visible, so
+  // mark this user's own team_post notifications read as soon as it loads.
+  useEffect(() => {
+    if (!user) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = supabase as any;
+    db.from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .eq("type", "team_post")
+      .is("read_at", null)
+      .then(() => qc.invalidateQueries({ queryKey: ["team_posts"] }));
+  }, [user, qc]);
+
   const openNew = () => { setEditingPost(null); setComposeOpen(true); };
   const openEdit = (p: TeamPost) => { setEditingPost(p); setComposeOpen(true); };
   const canManage = (p: TeamPost) => isAdmin || (roleInfo?.role === "manager" && p.author_user_id === user?.id);

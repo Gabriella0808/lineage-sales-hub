@@ -22,16 +22,15 @@ export function canUseTour(email?: string | null) {
 // Separate walkthrough just for Team Updates, gated to the three people
 // trying the feature before it's opened up further - same testers list
 // pattern as the Gabriella-only phase above, just a different roster and a
-// different tour entirely (it runs on /team-updates, not the homepage, and
-// has its own version/seen-key so it doesn't interfere with the main tour).
+// different tour entirely (it runs on /team-updates, not the homepage).
+// Deliberately NOT a once-per-version tour like the main one below - it
+// replays every single time one of these three lands on the page, for as
+// long as the feature is still in this trial phase with just them.
 const TEAM_UPDATES_TOUR_TESTERS = [
   "gabriella@lineage-collections.com",
   "justin@lineage-collections.com",
   "scott@lineage-collections.com",
 ];
-const TEAM_UPDATES_TOUR_VERSION = "2026-09-30";
-const TEAM_UPDATES_SEEN_KEY = "lc.teamUpdatesTourSeen";
-const teamUpdatesSeenKeyFor = (email?: string | null) => `${TEAM_UPDATES_SEEN_KEY}:${(email ?? "").toLowerCase()}`;
 
 export function canUseTeamUpdatesTour(email?: string | null) {
   return !!email && TEAM_UPDATES_TOUR_TESTERS.includes(email.toLowerCase());
@@ -172,7 +171,7 @@ export function runTour(role?: string, email?: string | null) {
   d.drive();
 }
 
-export function runTeamUpdatesTour(email?: string | null) {
+export function runTeamUpdatesTour() {
   const steps = buildTeamUpdatesSteps();
   const d = driver({
     showProgress: true,
@@ -185,10 +184,10 @@ export function runTeamUpdatesTour(email?: string | null) {
     doneBtnText: "Done",
     steps,
     onHighlightStarted: (el) => moveCursor(el),
-    onDestroyed: () => {
-      removeCursor();
-      try { localStorage.setItem(teamUpdatesSeenKeyFor(email), TEAM_UPDATES_TOUR_VERSION); } catch { /* ignore */ }
-    },
+    // No "seen" bookkeeping, unlike the main tour - this one is meant to
+    // replay every time (see TEAM_UPDATES_TOUR_TESTERS above), so there's
+    // nothing to record here.
+    onDestroyed: () => removeCursor(),
   });
   d.drive();
 }
@@ -223,13 +222,11 @@ export function WhatsNewTour() {
   }, [allowed, user?.email, role, location.pathname, navigate]);
 
   // Auto-start the Team Updates walkthrough for the three people trying it
-  // out, once per person per version, whenever they land on the page.
+  // out - every time they land on the page, not just once (see
+  // TEAM_UPDATES_TOUR_TESTERS above for why).
   useEffect(() => {
     if (!allowedTeamUpdates || !user?.email || location.pathname !== "/team-updates") return;
-    let seen: string | null = null;
-    try { seen = localStorage.getItem(teamUpdatesSeenKeyFor(user.email)); } catch { /* ignore */ }
-    if (seen === TEAM_UPDATES_TOUR_VERSION) return;
-    const t = window.setTimeout(() => runTeamUpdatesTour(user.email), 1500);
+    const t = window.setTimeout(() => runTeamUpdatesTour(), 1500);
     return () => window.clearTimeout(t);
   }, [allowedTeamUpdates, user?.email, location.pathname]);
 
@@ -240,7 +237,7 @@ export function WhatsNewTour() {
     if (!allowed && !allowedTeamUpdates) return;
     const onStart = () => {
       if (allowedTeamUpdates && location.pathname === "/team-updates") {
-        runTeamUpdatesTour(user?.email);
+        runTeamUpdatesTour();
         return;
       }
       if (!allowed) return;

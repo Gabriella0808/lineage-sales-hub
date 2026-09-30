@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 export const START_TOUR_EVENT = "lc:start-tour";
 
 // Team Updates walkthrough audience - matches the page's own access rule
-// (pageAccess.ts's "team-updates" entry: admin or manager, reps excluded).
+// (pageAccess.ts's "team-updates" entry: everyone).
 export function canUseTeamUpdatesTour(role?: string) {
-  return role === "admin" || role === "manager";
+  return role === "admin" || role === "manager" || role === "rep";
 }
 
 // Pre-Sale walkthrough audience - matches the page's own access rule

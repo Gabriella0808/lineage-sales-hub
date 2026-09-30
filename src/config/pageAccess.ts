@@ -57,17 +57,14 @@ export const PAGE_ACCESS: Record<string, PageAccess> = {
   "reports-bookings": { title: "Bookings report", route: {} },
   "reports-invoicing": { title: "Invoicing report", route: {} },
   "my-tasks": { title: "My Tasks", menu: { roles: AMR }, route: {} },
-  // Live for admin+manager; reps excluded for now (RLS enforces this too,
-  // not just this nav/route gate - see 20260930020000_team_updates_exclude_reps.sql).
-  // Email notifications are still Gabriella-only regardless of who's posting -
-  // that's a separate toggle (RECIPIENT_MODE in notify-team-post/index.ts).
-  // Widen to `menu: { roles: AMR }` / `route: { protected: true, allow: AMR }`
-  // (and update team_post_recipients()'s role filter + the RLS policies
-  // above back to admin/manager/rep) to include reps later.
+  // Live for everyone (RLS enforces this too, not just this nav/route gate -
+  // see 20260930060000_team_updates_open_to_reps.sql). Reps get view +
+  // react only - posting/editing/pinning/deleting stays admin/manager only
+  // at the RLS layer regardless of this page-access rule.
   "team-updates": {
     title: "Team Updates",
-    menu: { roles: AM },
-    route: { protected: true, allow: AM },
+    menu: { roles: AMR },
+    route: { protected: true, allow: AMR },
   },
   "monday-boards": { title: "Monday boards", route: {} },
   "meeting-intelligence": {

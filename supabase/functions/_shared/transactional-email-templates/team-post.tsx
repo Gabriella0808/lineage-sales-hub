@@ -10,17 +10,16 @@ interface TeamPostProps {
   recipientName?: string
   authorName?: string
   title?: string
-  excerpt?: string
-  attachmentCount?: number
   link?: string
 }
 
+// Deliberately does NOT show the post body or an attachment count here -
+// the whole point is that a recipient has no choice but to open the portal
+// to actually read the message, not skim it from the inbox.
 const TeamPostEmail = ({
   recipientName,
   authorName,
   title,
-  excerpt,
-  attachmentCount,
   link,
 }: TeamPostProps) => (
   <Html lang="en" dir="ltr">
@@ -36,12 +35,6 @@ const TeamPostEmail = ({
           {authorName ? <strong>{authorName}</strong> : 'Someone'} sent you a message
           {title ? <> - <strong>{title}</strong></> : null}.
         </Text>
-        {excerpt ? <Text style={quote}>{excerpt}</Text> : null}
-        {attachmentCount ? (
-          <Text style={text}>
-            {attachmentCount} attachment{attachmentCount === 1 ? '' : 's'} included.
-          </Text>
-        ) : null}
         {link ? (
           <Button href={link} style={button}>
             View message
@@ -63,8 +56,6 @@ export const template = {
     recipientName: 'Gabriella',
     authorName: 'Justin',
     title: 'New showroom hours starting next week',
-    excerpt: 'Starting Monday the High Point showroom will open an hour earlier - 8am instead of 9am - through market week.',
-    attachmentCount: 1,
     link: 'https://lineage-collections-portal.com/team-updates?post=00000000-0000-0000-0000-000000000000',
   },
 } satisfies TemplateEntry
@@ -78,15 +69,6 @@ const h1 = {
   margin: '0 0 20px',
 }
 const text = { fontSize: '14px', color: '#333', lineHeight: '1.6', margin: '0 0 16px' }
-const quote = {
-  fontSize: '14px',
-  color: '#444',
-  borderLeft: '3px solid hsl(214, 80%, 36%)',
-  padding: '10px 14px',
-  backgroundColor: 'hsl(214, 40%, 97%)',
-  margin: '0 0 20px',
-  whiteSpace: 'pre-wrap' as const,
-}
 const button = {
   backgroundColor: '#C9A24B',
   color: '#1a1a1a',

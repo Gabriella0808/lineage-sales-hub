@@ -19,21 +19,20 @@ export function canUseTour(email?: string | null) {
   return !!email && TESTERS.includes(email.toLowerCase());
 }
 
-// Separate walkthrough just for Team Updates, gated to the three people
-// trying the feature before it's opened up further - same testers list
-// pattern as the Gabriella-only phase above, just a different roster and a
-// different tour entirely (it runs on /team-updates, not the homepage).
-// Deliberately NOT a once-per-version tour like the main one below - it
-// replays every single time one of these three lands on the page, for as
-// long as the feature is still in this trial phase with just them.
-const TEAM_UPDATES_TOUR_TESTERS = [
-  "gabriella@lineage-collections.com",
-  "justin@lineage-collections.com",
-  "scott@lineage-collections.com",
-];
+// Separate walkthrough just for Team Updates - a different tour entirely
+// from the main one below (it runs on /team-updates, not the homepage).
+// Was a hardcoded 3-person tester list (Gabriella/Justin/Scott) replaying
+// every visit while the feature was only shown to them; now that it's open
+// to the whole internal team, this matches that same audience (admin or
+// manager - the page's own access rule, see pageAccess.ts's "team-updates"
+// entry) and goes back to the standard once-per-version behavior like the
+// main tour, so it doesn't replay on every single visit at team-wide scale.
+const TEAM_UPDATES_TOUR_VERSION = "2026-09-30.2";
+const TEAM_UPDATES_SEEN_KEY = "lc.teamUpdatesTourSeen";
+const teamUpdatesSeenKeyFor = (email?: string | null) => `${TEAM_UPDATES_SEEN_KEY}:${(email ?? "").toLowerCase()}`;
 
-export function canUseTeamUpdatesTour(email?: string | null) {
-  return !!email && TEAM_UPDATES_TOUR_TESTERS.includes(email.toLowerCase());
+export function canUseTeamUpdatesTour(role?: string) {
+  return role === "admin" || role === "manager";
 }
 
 const has = (sel: string) => !!document.querySelector(sel);
@@ -123,7 +122,7 @@ function buildTeamUpdatesSteps(): DriveStep[] {
     {
       popover: {
         title: "That's Team Updates",
-        description: "Emails are still going to me only while this is being tested - once it's ready for everyone, all users will start getting notified too. Any feedback, let me know.",
+        description: "That's the tour. Post something, react to a post, or just browse what's already here.",
       },
     },
   ];
@@ -171,7 +170,7 @@ export function runTour(role?: string, email?: string | null) {
   d.drive();
 }
 
-export function runTeamUpdatesTour() {
+export function runTeamUpdatesTour(email?: string | null) {
   const steps = buildTeamUpdatesSteps();
   const d = driver({
     showProgress: true,
@@ -184,10 +183,10 @@ export function runTeamUpdatesTour() {
     doneBtnText: "Done",
     steps,
     onHighlightStarted: (el) => moveCursor(el),
-    // No "seen" bookkeeping, unlike the main tour - this one is meant to
-    // replay every time (see TEAM_UPDATES_TOUR_TESTERS above), so there's
-    // nothing to record here.
-    onDestroyed: () => removeCursor(),
+    onDestroyed: () => {
+      removeCursor();
+      try { localStorage.setItem(teamUpdatesSeenKeyFor(email), TEAM_UPDATES_TOUR_VERSION); } catch { /* ignore */ }
+    },
   });
   d.drive();
 }
@@ -199,7 +198,7 @@ export function WhatsNewTour() {
   const { data: roleInfo } = useUserRole();
   const role = roleInfo?.role;
   const allowed = canUseTour(user?.email);
-  const allowedTeamUpdates = canUseTeamUpdatesTour(user?.email);
+  const allowedTeamUpdates = canUseTeamUpdatesTour(role);
 
   // Auto-start after sign-in: once per person per tour version, on any page.
   // If they land somewhere other than Company-wide, take them there first so
@@ -221,10 +220,9 @@ export function WhatsNewTour() {
     return () => window.clearTimeout(t);
   }, [allowed, user?.email, role, location.pathname, navigate]);
 
-  // Auto-start the Team Updates walkthrough for the three people trying it
-  // out - every time they land on the page, not just once (see
-  // TEAM_UPDATES_TOUR_TESTERS above for why), including a plain browser
-  // reload of /team-updates itself, not just arriving via in-app
+  // Auto-start the Team Updates walkthrough once per person per version,
+  // the first time an admin/manager lands on the page - including a plain
+  // browser reload of /team-updates itself, not just arriving via in-app
   // navigation. A reload is slower (every JS chunk and the posts query
   // both start from cold), so a single fixed delay that works fine for an
   // in-app nav can fire before any post has actually rendered - this polls
@@ -233,12 +231,15 @@ export function WhatsNewTour() {
   // the page for some reason never has anything to show.
   useEffect(() => {
     if (!allowedTeamUpdates || !user?.email || location.pathname !== "/team-updates") return;
+    let seen: string | null = null;
+    try { seen = localStorage.getItem(teamUpdatesSeenKeyFor(user.email)); } catch { /* ignore */ }
+    if (seen === TEAM_UPDATES_TOUR_VERSION) return;
     let cancelled = false;
     const deadline = Date.now() + 8000;
     const tick = () => {
       if (cancelled) return;
       if (has('[data-tour="team-updates-new-post"]') || has('[data-tour="team-updates-post"]') || Date.now() >= deadline) {
-        runTeamUpdatesTour();
+        runTeamUpdatesTour(user.email);
         return;
       }
       window.setTimeout(tick, 250);
@@ -254,7 +255,7 @@ export function WhatsNewTour() {
     if (!allowed && !allowedTeamUpdates) return;
     const onStart = () => {
       if (allowedTeamUpdates && location.pathname === "/team-updates") {
-        runTeamUpdatesTour();
+        runTeamUpdatesTour(user?.email);
         return;
       }
       if (!allowed) return;

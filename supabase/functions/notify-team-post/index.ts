@@ -26,11 +26,11 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const EXCERPT_MAX = 200;
 
-// Testing phase: only Gabriella gets notified/emailed, regardless of who
-// actually posts, so this can be tried out without alerting the whole team.
-// Set to "internal-staff" for the real rollout (uses team_post_recipients(),
-// same as the page's own "internal staff" access rule already implements).
-const RECIPIENT_MODE: "gabriella-only" | "internal-staff" = "gabriella-only";
+// Real rollout: every admin/manager with page access gets notified/emailed
+// (team_post_recipients() matches the page's own access rule - see
+// 20260930020000_team_updates_exclude_reps.sql, which also excludes reps
+// and CS-flagged accounts from that function, same as the page itself).
+const RECIPIENT_MODE: "gabriella-only" | "internal-staff" = "internal-staff";
 const GABRIELLA_EMAIL = "gabriella@lineage-collections.com";
 
 function jsonResponse(body: unknown, status = 200) {

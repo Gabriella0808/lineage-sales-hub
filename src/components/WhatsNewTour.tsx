@@ -300,10 +300,7 @@ export function WhatsNewTour() {
         </DialogHeader>
         <DialogFooter>
           {hasAnyTour ? (
-            <>
-              <Button variant="ghost" onClick={dismissAnnouncement}>Not now</Button>
-              <Button onClick={() => { dismissAnnouncement(); runNewFeatureTours(); }}>See what's new</Button>
-            </>
+            <Button onClick={() => { dismissAnnouncement(); runNewFeatureTours(); }}>See what's new</Button>
           ) : (
             <Button onClick={dismissAnnouncement}>Got it</Button>
           )}

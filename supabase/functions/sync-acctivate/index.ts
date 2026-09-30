@@ -218,9 +218,23 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // A per-table error above must not be swallowed - callers (Sync-Acctivate.ps1's
+    // Send-Batch) only check this top-level `success` flag, so if any table in this
+    // request failed, the whole response has to say so. Previously this always
+    // returned success:true/200 even when every row in `results` had an `error`,
+    // which let real upsert failures (e.g. products.new_intro_unavail silently not
+    // writing) look identical to a real success in the script's own log output.
+    const failedTables = Object.entries(results).filter(([, r]) => r.error);
+    const success = failedTables.length === 0;
+
     return new Response(
-      JSON.stringify({ success: true, synced_at: new Date().toISOString(), results }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      JSON.stringify({
+        success,
+        synced_at: new Date().toISOString(),
+        results,
+        ...(success ? {} : { error: failedTables.map(([t, r]) => `${t}: ${r.error}`).join("; ") }),
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: success ? 200 : 500 }
     );
   } catch (error: unknown) {
     console.error("Sync ingestion error:", error);

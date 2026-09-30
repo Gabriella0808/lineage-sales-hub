@@ -376,10 +376,16 @@ function Send-Batch {
           -TimeoutSec $RequestTimeoutSeconds
         break
       } catch {
+        # On a non-2xx response, $_.Exception.Message is just ".NET"'s generic
+        # "status code does not indicate success" text - the edge function's
+        # actual JSON body (with the real per-table error, e.g. a Postgres
+        # error message) lands in $_.ErrorDetails.Message instead. Always
+        # prefer that when it's there, so a real failure is actually
+        # diagnosable instead of just "500 Internal Server Error".
         if ($attempt -ge $MaxRetries) {
-          throw "Sync failed for $Table batch starting $i after $attempt attempts: $($_.Exception.Message)"
+          throw "Sync failed for $Table batch starting $i after $attempt attempts: $(if ($_.ErrorDetails -and $_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { $_.Exception.Message })"
         }
-        Write-Warning "[$Table] batch starting $i failed on attempt $attempt/$MaxRetries; retrying in $RetryDelaySeconds seconds: $($_.Exception.Message)"
+        Write-Warning "[$Table] batch starting $i failed on attempt $attempt/$MaxRetries; retrying in $RetryDelaySeconds seconds: $(if ($_.ErrorDetails -and $_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { $_.Exception.Message })"
         Start-Sleep -Seconds $RetryDelaySeconds
       }
     }

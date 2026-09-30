@@ -400,7 +400,7 @@ function AttachmentGrid({ attachments, onOpen }: { attachments: TeamPostAttachme
   const files = attachments.filter((a) => !isImage(a.content_type) && !isVideo(a.content_type));
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-tour="team-updates-attachment">
       {images.length === 1 && (
         <ImageTile a={images[0]} className="h-72 w-full" onOpen={() => onOpen(images[0])} />
       )}
@@ -482,7 +482,7 @@ function ReactionBar({ postId, reactions, currentUserId }: { postId: string; rea
   });
 
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="flex items-center gap-1.5 flex-wrap" data-tour="team-updates-reaction">
       {reactions.map((group) => (
         <ReactionPill
           key={group.emoji}
@@ -537,6 +537,7 @@ function PostCard({ post, canManage, isAdmin, currentUserId, highlighted, onEdit
   return (
     <Card
       id={`post-${post.id}`}
+      data-tour="team-updates-post"
       className={cn(
         post.pinned && "border-accent/60 bg-accent/[0.04]",
         highlighted && "ring-2 ring-accent transition-shadow duration-1000",
@@ -564,7 +565,7 @@ function PostCard({ post, canManage, isAdmin, currentUserId, highlighted, onEdit
           {(canManage || isAdmin) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button type="button" className="h-7 w-7 shrink-0 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted" aria-label="Post actions">
+                <button type="button" data-tour="team-updates-post-menu" className="h-7 w-7 shrink-0 rounded-md flex items-center justify-center text-muted-foreground hover:bg-muted" aria-label="Post actions">
                   <MoreVertical className="h-4 w-4" />
                 </button>
               </DropdownMenuTrigger>
@@ -588,7 +589,7 @@ function PostCard({ post, canManage, isAdmin, currentUserId, highlighted, onEdit
           {post.seen.total > 0 && (
             <Popover>
               <PopoverTrigger asChild>
-                <button type="button" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground">
+                <button type="button" data-tour="team-updates-seen-by" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground">
                   <Eye className="h-3 w-3" /> Seen by {post.seen.count} of {post.seen.total}
                 </button>
               </PopoverTrigger>
@@ -906,7 +907,7 @@ export default function TeamUpdatesPage() {
         title="Team Updates"
         subtitle="News, events and announcements from the team - newest first."
         actions={canPost ? (
-          <Button onClick={openNew}>
+          <Button onClick={openNew} data-tour="team-updates-new-post">
             <Plus className="h-4 w-4 mr-1.5" /> New post
           </Button>
         ) : undefined}

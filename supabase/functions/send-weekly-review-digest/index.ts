@@ -276,6 +276,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Acctivate writes some managers as a bare short name next to their real
+    // record (e.g. "Will" alongside "Will Grisack") - a save can land on
+    // either id if something elsewhere ever points at the wrong one of the
+    // pair (it did, once: see the Oct 2026 Will Grisack false "not
+    // completed" email). expectedManagers is already just the real,
+    // email-matched records, but this check falls back to any bare
+    // duplicate's saved response too, so a stray save under the wrong
+    // twin still counts as "completed" here rather than firing a false
+    // missing-review notice.
+    const siblingIds = (m: { id: string; name: string }) => {
+      const first = m.name.trim().toLowerCase().split(/\s+/)[0];
+      if (!first || first === m.name.trim().toLowerCase()) return [] as string[];
+      return (managers ?? [])
+        .filter((o: any) => o.id !== m.id && !(o.email ?? "").trim() && o.name.trim().toLowerCase() === first)
+        .map((o: any) => o.id);
+    };
+
     let sentReview = 0;
     let sentMissing = 0;
     for (const m of expectedManagers) {
@@ -284,7 +301,8 @@ Deno.serve(async (req) => {
         : isTest
         ? `${m.id}-test-${Date.now()}`
         : `${m.id}-${weekStart}`;
-      const responses = reviewByManager.get(m.id);
+      const responses = reviewByManager.get(m.id)
+        ?? siblingIds(m).map((id) => reviewByManager.get(id)).find((r) => r && Object.keys(r).length > 0);
       if (responses && Object.keys(responses).length > 0) {
         sentReview += await sendReview(m.name, m.email, responses, tagBase);
       } else {

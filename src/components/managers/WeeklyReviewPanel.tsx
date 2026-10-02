@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { managerGroupIds } from "@/utils/managerGroups";
 
 type Responses = Record<string, string>;
 
@@ -186,11 +187,11 @@ export function WeeklyReviewPanel({
       const end = format(addDays(parseISO(weekStart), 6), "yyyy-MM-dd");
 
       const [
-        { data: mgr },
+        { data: allManagers },
         { data: dealers },
         { data: checkIns },
       ] = await Promise.all([
-        supabase.from("managers").select("name,email").eq("id", managerId).maybeSingle(),
+        supabase.from("managers").select("id,name,email"),
         supabase.from("dealers").select("id,rep_id,rep_owner"),
         supabase
           .from("dealer_check_ins")
@@ -198,19 +199,13 @@ export function WeeklyReviewPanel({
           .gte("visit_date", start)
           .lte("visit_date", end),
       ]);
+      const mgr = (allManagers ?? []).find((m: any) => m.id === managerId);
 
-      // Collect ALL manager IDs sharing the same email (deduped manager records)
-      // so user_managers and sales_reps lookups cover all sibling records.
-      const allManagerIds = [managerId];
-      if (mgr?.email) {
-        const { data: siblings } = await supabase
-          .from("managers")
-          .select("id")
-          .eq("email", mgr.email);
-        siblings?.forEach((s: any) => {
-          if (s.id && !allManagerIds.includes(s.id)) allManagerIds.push(s.id);
-        });
-      }
+      // Same bare-duplicate-manager-record group used Company-wide (Acctivate
+      // writes a manager as just "Will" next to the real "Will Grisack" record,
+      // splitting reps/dealers across the two) - matching by same email alone
+      // missed this, since the bare record has no email to match on at all.
+      const allManagerIds = managerGroupIds(managerId, (allManagers ?? []) as { id: string; name: string; email?: string | null }[]);
 
       const [{ data: ums }, { data: allUms }, { data: reps }] = await Promise.all([
         supabase.from("user_managers").select("user_id").in("manager_id", allManagerIds),

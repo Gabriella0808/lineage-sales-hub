@@ -62,9 +62,19 @@ export default function ManagersPage() {
     const out: typeof filtered = [];
     const idMap = new Map<string, string>();
     groups.forEach((arr) => {
-      const winner = [...arr].sort((a, b) =>
-        (repCountByMgr.get(b.id) ?? 0) - (repCountByMgr.get(a.id) ?? 0)
-      )[0];
+      // The real record always has an email; Acctivate's bare short-name
+      // duplicate never does (same rule managerGroupIds() uses elsewhere) -
+      // that has to win regardless of rep count, or this page keeps
+      // operating on (and saving weekly reviews against) the wrong id even
+      // though it *displays* the real manager's name. Rep count is only a
+      // tie-break for the pathological case of two records both having an
+      // email, which shouldn't happen but shouldn't crash sorting either.
+      const winner = [...arr].sort((a, b) => {
+        const aEmail = !!(a.email ?? "").trim();
+        const bEmail = !!(b.email ?? "").trim();
+        if (aEmail !== bEmail) return aEmail ? -1 : 1;
+        return (repCountByMgr.get(b.id) ?? 0) - (repCountByMgr.get(a.id) ?? 0);
+      })[0];
       const bestName = [...arr]
         .map((m) => m.name.trim())
         .sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length || b.length - a.length)[0];

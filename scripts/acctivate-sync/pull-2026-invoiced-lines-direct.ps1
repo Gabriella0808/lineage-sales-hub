@@ -253,7 +253,12 @@ function Send-Batch {
       Write-Host "  upserted rows $($StartIndex + 1)–$end of $Total" -ForegroundColor DarkCyan
       return
     } catch {
-      $msg = $_.Exception.Message
+      # On a non-2xx response, $_.Exception.Message is just ".NET"'s generic
+      # "status code does not indicate success" text - PostgREST's actual
+      # error body (why the 400 really happened) lands in
+      # $_.ErrorDetails.Message instead. Same fix as Sync-Acctivate.ps1's
+      # Send-Batch after the same class of bug there.
+      $msg = if ($_.ErrorDetails -and $_.ErrorDetails.Message) { $_.ErrorDetails.Message } else { $_.Exception.Message }
       if ($attempt -ge $MaxRetries) {
         throw "Batch starting row $($StartIndex + 1) failed after $MaxRetries attempts: $msg"
       }

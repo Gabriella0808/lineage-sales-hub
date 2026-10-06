@@ -81,7 +81,8 @@ export const PAGE_ACCESS: Record<string, PageAccess> = {
   "customer-quotes": { title: "Customer Quotes", menu: { roles: ALL }, route: { guard: "email" } },
   "customer-quote-new": { title: "New customer quote", route: { guard: "email" } },
   "customer-quote-edit": { title: "Edit customer quote", route: { guard: "email" } },
-  "digital-assets": { title: "Digital Assets", menu: { roles: ALL }, route: { protected: true, allow: ALL } },
+  // Hidden from reps for now (menu + direct URL) - admin/manager/dealer only.
+  "digital-assets": { title: "Digital Assets", menu: { roles: NOT_REP }, route: { protected: true, allow: NOT_REP } },
 
   // ── Sales Operations ───────────────────────────────────────────
   "sales-targets": { title: "Sales Targets", menu: { roles: AM }, route: { protected: true, allow: AM } },

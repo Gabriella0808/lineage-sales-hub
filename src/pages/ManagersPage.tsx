@@ -75,9 +75,17 @@ export default function ManagersPage() {
         if (aEmail !== bEmail) return aEmail ? -1 : 1;
         return (repCountByMgr.get(b.id) ?? 0) - (repCountByMgr.get(a.id) ?? 0);
       })[0];
+      // Display Acctivate's own (shorter) name when there's a duplicate pair -
+      // e.g. "Mateo" not "Mateo De Lisa", "Will" not "Will Grisack" - since
+      // that's the name Acctivate itself uses for this manager. Confirmed via
+      // acctivate_sales_reps.manager_name: it's reliably the shorter of the
+      // two names in every duplicate pair found. A manager with no duplicate
+      // (Chris De Lisa, Justin Jeangerard, Kate Jones, Scott Grisack, Sergio -
+      // none of whom Acctivate has a code for at all) is unaffected, since
+      // there's only one name in their group either way.
       const bestName = [...arr]
         .map((m) => m.name.trim())
-        .sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length || b.length - a.length)[0];
+        .sort((a, b) => a.split(/\s+/).length - b.split(/\s+/).length || a.length - b.length)[0];
       out.push({ ...winner, name: bestName });
       arr.forEach((m) => idMap.set(m.id, winner.id));
     });

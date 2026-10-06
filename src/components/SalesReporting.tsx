@@ -728,9 +728,13 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // ── Hierarchical filter helpers ───────────────────────────────────────────
 
   const visibleReps = useMemo(() => {
-    // Only show real Acctivate reps — entries without acctivate_id are pseudo-reps
-    // (e.g., territories that were accidentally added to the sales_reps table).
-    let list = reps.filter((r) => r.acctivate_id !== null && r.acctivate_id !== "");
+    // Only show reps whose acctivate_id currently matches an ACTIVE row in
+    // the live Acctivate sync - not just "has some acctivate_id text set",
+    // which could be stale (no longer in the sync, or now inactive there).
+    const activeAcIds = new Set(
+      acctivateRepsForLabels.filter((r) => r.active !== false).map((r) => r.acctivate_id.toLowerCase()),
+    );
+    let list = reps.filter((r) => r.acctivate_id && activeAcIds.has(r.acctivate_id.toLowerCase()));
     if (managerScopeRepIds) list = list.filter((r) => managerScopeRepIds.includes(r.id));
     if (territoryIds.length > 0) {
       const realIds = territoryIds.filter((id) => id !== UNASSIGNED_TERRITORY);
@@ -742,7 +746,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       list = list.filter((r) => allowedRepIds.has(r.id));
     }
     return list;
-  }, [reps, managerScopeRepIds, territoryIds, repTerritories]);
+  }, [reps, managerScopeRepIds, territoryIds, repTerritories, acctivateRepsForLabels]);
 
   const matchesTerritoryFilter = (territoryId: string | null | undefined) => {
     if (territoryIds.length === 0) return true;
@@ -750,13 +754,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     return territoryIds.includes(UNASSIGNED_TERRITORY);
   };
 
+  // Dealer filter must only ever list real, active Acctivate dealers - not
+  // `dealers` (which includes field_only/crm_prospect/inactive/junk rows,
+  // and has status hardcoded to "active" regardless of the real value).
+  // canonicalActiveDealers applies the same source='acctivate' + status +
+  // no-UUID/ChIJ filter as get_sales_reporting_grouped_rows' own roster.
   const visibleDealers = useMemo(() => {
-    let list = dealers;
+    let list = canonicalActiveDealers;
     if (managerScopeRepIds) list = list.filter((d) => d.rep_id && managerScopeRepIds.includes(d.rep_id));
     if (territoryIds.length > 0) list = list.filter((d) => matchesTerritoryFilter(d.territory_id));
     if (repIds.length > 0)       list = list.filter((d) => d.rep_id && repIds.includes(d.rep_id));
     return list;
-  }, [dealers, managerScopeRepIds, territoryIds, repIds]);
+  }, [canonicalActiveDealers, managerScopeRepIds, territoryIds, repIds]);
 
   // Canonical active dealers matching the current manager/territory/rep/dealer
   // filters, for seeding $0 rows in line-mode aggregation (Monthly view /

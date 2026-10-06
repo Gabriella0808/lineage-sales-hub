@@ -14,6 +14,7 @@ import { Calendar, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { managerGroupIds } from "@/utils/managerGroups";
+import { isMeetingCheckIn } from "@/utils/checkIns";
 
 type Responses = Record<string, string>;
 
@@ -237,14 +238,10 @@ export function WeeklyReviewPanel({
         }
       });
 
-      // Meetings only — matches the Visit Analytics filter. log_type can be a
-      // comma-joined multi-select (e.g. "meeting,follow_up"), so membership is
-      // checked per-value rather than with strict equality.
-      const isMeeting = (c: any) =>
-        ((c.log_type ?? "") as string).split(",").map((v) => v.trim()).includes("meeting");
-
+      // Meetings only — same isMeetingCheckIn() Visit Analytics uses, so the
+      // two pages can't silently drift apart on what counts as a check-in.
       const rows = (checkIns ?? []).filter((c: any) => {
-        if (!isMeeting(c)) return false;
+        if (!isMeetingCheckIn(c)) return false;
         if (c.user_id && userIds.has(c.user_id)) return true;
         // If the user belongs to any other manager, don't override via dealer — same as
         // Visit Analytics where user attribution always takes priority over dealer.

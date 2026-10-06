@@ -35,6 +35,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 
 // ── Constants & helpers ───────────────────────────────────────────────────────
 
@@ -131,6 +132,39 @@ export function HighPointAppointmentsModule() {
   const currentRepIds     = roleInfo?.repIds ?? [];
   const currentManagerId = roleInfo?.managerId ?? null;
 
+  // Rep/manager filters and the appointment form's rep picker list names
+  // directly from the live, active Acctivate sync - not the portal
+  // managers/sales_reps tables, which can carry stale/duplicate rows (see
+  // useAcctivateRepCatalog). The id each entry carries is still the real
+  // portal public.sales_reps.id / public.managers.id, since
+  // market_appointments.rep_id is a real FK into sales_reps - only the
+  // NAME/selectable-list source changed, not the id space appointments are
+  // actually stored against. A rep/manager with no live Acctivate match is
+  // simply not selectable here (consistent with "strictly from Acctivate"
+  // elsewhere) - existing appointments already on such a rep still display
+  // that rep's real name via the sales_reps join below, untouched.
+  const { activeReps: hpActiveReps, managers: hpAcctivateManagerNames, getSalesRepIdByAcId: hpGetRepId, getManagerIdByName: hpGetManagerId } = useAcctivateRepCatalog();
+  const reps: RepInfo[] = useMemo(() => {
+    return hpActiveReps
+      .map((r) => {
+        const id = hpGetRepId(r.acctivate_id);
+        if (!id) return null;
+        const manager_id = r.manager_name ? hpGetManagerId(r.manager_name) ?? null : null;
+        return { id, name: r.name, manager_id };
+      })
+      .filter((r): r is RepInfo => !!r)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [hpActiveReps, hpGetRepId, hpGetManagerId]);
+  const managers: ManagerInfo[] = useMemo(() => {
+    return hpAcctivateManagerNames
+      .map((name) => {
+        const id = hpGetManagerId(name);
+        return id ? { id, name } : null;
+      })
+      .filter((m): m is ManagerInfo => !!m)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [hpAcctivateManagerNames, hpGetManagerId]);
+
   // Event / phase
   const [events, setEvents]               = useState<ApptEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
@@ -138,8 +172,6 @@ export function HighPointAppointmentsModule() {
 
   // Data
   const [appointments, setAppointments]   = useState<MarketAppt[]>([]);
-  const [reps, setReps]                   = useState<RepInfo[]>([]);
-  const [managers, setManagers]           = useState<ManagerInfo[]>([]);
   const [loading, setLoading]             = useState(true);
 
   // Form
@@ -389,60 +421,6 @@ export function HighPointAppointmentsModule() {
     if (list.length > 0) setSelectedEventId((id: string) => id || list[0].id);
   };
 
-  const loadRepData = async () => {
-    const [mgrResult, repResult] = await Promise.all([
-      supabase.from("managers").select("id, name, email").order("created_at"),
-      supabase.from("sales_reps").select("id, name, manager_id").order("name"),
-    ]);
-
-    if (!repResult.error) setReps((repResult.data ?? []) as RepInfo[]);
-
-    if (!mgrResult.error) {
-      const allMgrs = (mgrResult.data ?? []) as { id: string; name: string; email: string | null }[];
-      const allReps = (repResult.data ?? []) as RepInfo[];
-
-      // Mirror ManagersPage exclusions
-      const filtered = allMgrs.filter((m) => {
-        const n = m.name.trim().toLowerCase();
-        const e = m.email?.trim().toLowerCase();
-        if (n === "sales" || e === "sales@lineage-collections.com") return false;
-        if (n === "scott grisack") return false;
-        return true;
-      });
-
-      // Mirror ManagersPage deduplication: group by first-name token,
-      // keep the record with the most reps, display the longest full name
-      const repCountByMgr = new Map<string, number>();
-      allReps.forEach((r) => {
-        if (!r.manager_id) return;
-        repCountByMgr.set(r.manager_id, (repCountByMgr.get(r.manager_id) ?? 0) + 1);
-      });
-
-      const groups = new Map<string, typeof filtered>();
-      filtered.forEach((m) => {
-        const key = m.name.trim().split(/\s+/)[0].toLowerCase();
-        const arr = groups.get(key) ?? [];
-        arr.push(m);
-        groups.set(key, arr);
-      });
-
-      const deduped: ManagerInfo[] = [];
-      groups.forEach((arr) => {
-        const winner = [...arr].sort(
-          (a, b) => (repCountByMgr.get(b.id) ?? 0) - (repCountByMgr.get(a.id) ?? 0)
-        )[0];
-        const bestName = [...arr]
-          .map((m) => m.name.trim())
-          .sort((a, b) =>
-            b.split(/\s+/).length - a.split(/\s+/).length || b.length - a.length
-          )[0];
-        deduped.push({ id: winner.id, name: bestName });
-      });
-
-      setManagers(deduped.sort((a, b) => a.name.localeCompare(b.name)));
-    }
-  };
-
   const loadAppointments = async (eventId: string, ph: string) => {
     setLoading(true);
     let query = (supabase as any)
@@ -467,7 +445,6 @@ export function HighPointAppointmentsModule() {
   useEffect(() => {
     if (roleInfo !== undefined) {
       loadEvents();
-      loadRepData();
     }
   }, [!!roleInfo]);
 

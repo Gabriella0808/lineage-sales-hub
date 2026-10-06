@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 
 const CRM_STALE_TIME = 60_000;
 
@@ -104,6 +106,12 @@ export interface Rep {
   name: string;
   email: string | null;
   manager_id: string | null;
+  /** True when this rep's name was resolved from the live Acctivate sync.
+   *  Pages should filter to acctivateMatched when rendering the "assign to"
+   *  picker (strictly Acctivate-sourced, per instruction) - every row stays
+   *  in this array regardless, so an existing prospect already assigned to
+   *  a non-matched rep still resolves and displays its name correctly. */
+  acctivateMatched: boolean;
 }
 
 
@@ -156,8 +164,15 @@ export function useCrmAccount(id: string | undefined) {
   });
 }
 
+// Prospects assignment still stores a real public.sales_reps.id FK
+// (crm_accounts.assigned_rep_id) - Prospects' own data was explicitly left
+// out of the manager/rep dedup migration, so that FK space is untouched.
+// This only overlays the display name with Acctivate's name where a rep has
+// a matching Acctivate code; a rep with no Acctivate match keeps their
+// portal name rather than disappearing from the assignment picker.
 export function useCrmReps() {
-  return useQuery({
+  const { activeReps, getSalesRepIdByAcId } = useAcctivateRepCatalog();
+  const query = useQuery({
     queryKey: ["crm_reps"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -169,16 +184,51 @@ export function useCrmReps() {
     },
     staleTime: 5 * 60_000,
   });
+
+  const data = useMemo(() => {
+    if (!query.data) return query.data;
+    const acctivateNameById = new Map<string, string>();
+    for (const r of activeReps) {
+      const id = getSalesRepIdByAcId(r.acctivate_id);
+      if (id) acctivateNameById.set(id, r.name);
+    }
+    return query.data
+      .map((r) => {
+        const acctivateName = acctivateNameById.get(r.id);
+        return { ...r, name: acctivateName ?? r.name, acctivateMatched: !!acctivateName };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [query.data, activeReps, getSalesRepIdByAcId]);
+
+  return { ...query, data };
 }
 
 export interface Manager {
   id: string;
   name: string;
   email: string | null;
+  /** True when this manager's name is one of Acctivate's own (Hospitality/
+   *  House/Mateo/Will). The other 5 real portal managers (Chris De Lisa,
+   *  Justin, Kate, Scott, Sergio) have no Acctivate code at all - kept in
+   *  this array (per the "combine both sources" decision for Prospects
+   *  specifically) but flagged false so a strict picker can distinguish
+   *  them if needed. */
+  acctivateMatched: boolean;
 }
 
+// Prospects assignment stores a real public.managers.id FK
+// (crm_accounts.assigned_manager_id). The bare duplicate manager rows
+// ("Mateo"/"Will" alongside "Mateo De Lisa"/"Will Grisack") that used to
+// live here are gone now (20261006030000 repointed every remaining
+// crm_accounts reference, 20261006040000 deleted the now-fully-orphaned
+// rows) - every manager returned here is real. Names are relabeled to
+// Acctivate's own name where resolvable; the 5 real managers with no
+// Acctivate code (Chris De Lisa, Justin, Kate, Scott, Sergio) keep their
+// portal name and acctivateMatched: false, since Prospects intentionally
+// keeps using them (unlike the strict-Acctivate-only pages elsewhere).
 export function useCrmManagers() {
-  return useQuery({
+  const { managers: acctivateManagerNames } = useAcctivateRepCatalog();
+  const query = useQuery({
     queryKey: ["crm_managers"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -190,6 +240,22 @@ export function useCrmManagers() {
     },
     staleTime: 5 * 60_000,
   });
+
+  const data = useMemo(() => {
+    if (!query.data) return query.data;
+    const acctivateByFirstName = new Map(
+      acctivateManagerNames.map((n) => [n.split(/\s+/)[0].toLowerCase(), n]),
+    );
+    return query.data.map((m) => {
+      const firstName = m.name.trim().split(/\s+/)[0].toLowerCase();
+      const acctivateName = acctivateByFirstName.get(firstName);
+      return acctivateName
+        ? { ...m, name: acctivateName, acctivateMatched: true }
+        : { ...m, acctivateMatched: false };
+    });
+  }, [query.data, acctivateManagerNames]);
+
+  return { ...query, data };
 }
 
 export function useUpdateAccount() {

@@ -6,6 +6,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useSalesReps, useTerritories, useDealers, useManagers, formatCurrency, getRepName, getTerritoryName } from "@/hooks/usePortalData";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -43,6 +44,30 @@ export default function DealersPage() {
   const { data: territories = [] } = useTerritories();
   const { data: managers = [] } = useManagers();
   const { data: dealers = [], isLoading } = useDealers();
+
+  // Filter dropdown labels come from Acctivate's own names ("Mateo" not
+  // "Mateo De Lisa", "Robertson" not "Brad Robertson") where resolvable -
+  // the filter VALUE stays each rep/manager's real portal id, since that's
+  // what's matched against dealers.rep_id/manager_id. A rep/manager with no
+  // Acctivate match keeps their portal name rather than disappearing.
+  const { activeReps, managers: acctivateManagerNames } = useAcctivateRepCatalog();
+  const repNameById = useMemo(() => {
+    const acctivateByAcId = new Map(activeReps.map((r) => [r.acctivate_id.toLowerCase(), r.name]));
+    return new Map(
+      reps.map((r: any) => [
+        r.id,
+        r.acctivate_id ? acctivateByAcId.get(String(r.acctivate_id).toLowerCase()) ?? r.name : r.name,
+      ]),
+    );
+  }, [reps, activeReps]);
+  const managerNameById = useMemo(() => {
+    const acctivateByFirstName = new Map(
+      acctivateManagerNames.map((n) => [n.split(/\s+/)[0].toLowerCase(), n]),
+    );
+    return new Map(
+      managers.map((m) => [m.id, acctivateByFirstName.get(m.name.trim().split(/\s+/)[0].toLowerCase()) ?? m.name]),
+    );
+  }, [managers, acctivateManagerNames]);
   const { data: dealerIdsWithCheckIns = new Set<string>() } = useQuery({
     queryKey: ["dealer_check_in_dealer_ids"],
     queryFn: fetchDealerIdsWithCheckIns,
@@ -165,8 +190,8 @@ export default function DealersPage() {
         onSearchChange={setSearch}
         filters={[
           { label: "Territory", value: territoryFilter, onChange: setTerritoryFilter, options: territories.map(t => ({ label: t.name, value: t.id })) },
-          ...(isRep ? [] : [{ label: "Rep", value: repFilter, onChange: setRepFilter, options: reps.map(r => ({ label: r.name, value: r.id })) }]),
-          { label: "Manager", value: managerFilter, onChange: setManagerFilter, options: managers.map(m => ({ label: m.name, value: m.id })) },
+          ...(isRep ? [] : [{ label: "Rep", value: repFilter, onChange: setRepFilter, options: reps.map(r => ({ label: repNameById.get(r.id) ?? r.name, value: r.id })) }]),
+          { label: "Manager", value: managerFilter, onChange: setManagerFilter, options: managers.map(m => ({ label: managerNameById.get(m.id) ?? m.name, value: m.id })) },
         ]}
       />
 

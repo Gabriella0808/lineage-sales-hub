@@ -65,6 +65,7 @@ const parseDateOnly = (s: string | null | undefined): Date => {
 import { MapPin, Calendar, NotebookPen, Search, Loader2, Trash2, Users, Navigation, Pencil } from "lucide-react";
 import { STATE_TO_TERRITORY, STATE_NAME_TO_CODE, colorForTerritory } from "@/lib/territoryMap";
 import { AssigneePicker, type AssignableUser } from "@/components/AssigneePicker";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 
 // Team member -  match config. We match dealers by rep_owner (authoritative
 // when present, e.g. "will") OR by state code (so reps without a rep_owner
@@ -336,19 +337,27 @@ export default function CheckInsPage() {
     buying_group: "",
   });
 
-  // Load sales reps and managers
+  // Rep/manager picker here sets a real FK (dealers.rep_id / dealers.manager_id
+  // via the "Edit Details" panel below), so the label shows Acctivate's name
+  // but the value submitted stays the real public.sales_reps.id /
+  // public.managers.id - same pattern as Capture Leads. Entries with no
+  // resolvable portal id are left out (nothing to submit if picked). Prior
+  // check-ins themselves are unaffected either way: dealer_check_ins stores
+  // only user_id/dealer_id, never a rep_id/manager_id of its own.
+  const { activeReps, managersWithPortalOnly, getSalesRepIdByAcId, getManagerIdByName } = useAcctivateRepCatalog();
   useEffect(() => {
-    (async () => {
-      const [repsRes, managersRes] = await Promise.all([
-        supabase.from("sales_reps").select("id, name").eq("status", "active").order("name"),
-        supabase.from("managers").select("id, name").order("name"),
-      ]);
-      setSalesReps((repsRes.data ?? []) as { id: string; name: string }[]);
-      const map: Record<string, string> = {};
-      (managersRes.data ?? []).forEach((m: { id: string; name: string }) => { map[m.id] = m.name; });
-      setManagersMap(map);
-    })();
-  }, []);
+    const reps = activeReps
+      .map((r) => ({ id: getSalesRepIdByAcId(r.acctivate_id), name: r.name }))
+      .filter((r): r is { id: string; name: string } => !!r.id)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    setSalesReps(reps);
+    const map: Record<string, string> = {};
+    managersWithPortalOnly.forEach((name) => {
+      const id = getManagerIdByName(name);
+      if (id) map[id] = name;
+    });
+    setManagersMap(map);
+  }, [activeReps, managersWithPortalOnly, getSalesRepIdByAcId, getManagerIdByName]);
 
   // Detect which teammate is logged in from their email so new dealers
   // automatically belong to that person's accounts.

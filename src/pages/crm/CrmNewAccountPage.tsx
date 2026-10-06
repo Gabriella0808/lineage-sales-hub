@@ -106,7 +106,7 @@ export default function CrmNewAccountPage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Unassigned</SelectItem>
-                  {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                  {reps.filter((r) => r.acctivateMatched).map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

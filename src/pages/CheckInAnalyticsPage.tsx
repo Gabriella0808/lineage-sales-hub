@@ -28,6 +28,7 @@ import {
   subMonths,
   format,
 } from "date-fns";
+import { isMeetingCheckIn } from "@/utils/checkIns";
 
 type TeamId = "will" | "mateo" | "chris" | "justin";
 const TEAM: { id: TeamId; name: string; emails: string[]; repOwners: string[] }[] = [
@@ -44,12 +45,6 @@ interface CheckInRow {
   visit_date: string;
   new_placement: string | null;
   log_type: string | null;
-}
-
-// log_type can be a comma-joined multi-select (e.g. "meeting,follow_up"),
-// so membership must be checked per-value rather than with strict equality.
-function isMeetingCheckIn(row: { log_type: string | null }): boolean {
-  return (row.log_type ?? "").split(",").map((v) => v.trim()).includes("meeting");
 }
 
 interface UserManagerRow {
@@ -365,6 +360,12 @@ export default function CheckInAnalyticsPage() {
     });
 
     checkIns.forEach((c) => {
+      // Visit Analytics counts meetings only - a phone call, email, letter,
+      // or follow-up-only log, or a "conversion" auto-generated artifact
+      // from a CRM account conversion, isn't a visit. Weekly Review uses
+      // this same isMeetingCheckIn() check, so the two pages can't drift
+      // apart on what counts as a check-in again.
+      if (!isMeetingCheckIn(c)) return;
       // Attribute to the user who logged the check-in; fall back to dealer ownership.
       const team = userToTeam[c.user_id] || (c.dealer_id && dealerToTeam[c.dealer_id]);
       if (!team) return;

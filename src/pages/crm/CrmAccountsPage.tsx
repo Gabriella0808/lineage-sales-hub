@@ -158,6 +158,12 @@ export default function CrmAccountsPage() {
   const repMap = useMemo(() => new Map(reps.map((r) => [r.id, r])), [reps]);
   const managerMap = useMemo(() => new Map(managers.map((m) => [m.id, m])), [managers]);
   const repName = (id: string | null) => (id ? repMap.get(id)?.name ?? "-" : "Unassigned");
+  // Rep assignment picker is strictly Acctivate-sourced (every real rep has
+  // an Acctivate code) - repMap above still covers every rep for display,
+  // so an account already on a non-matched rep (e.g. the handful of
+  // still-unresolved Jordan Shindell prospects) keeps showing its name
+  // correctly, it just isn't a re-selectable option going forward.
+  const pickableReps = useMemo(() => reps.filter((r) => r.acctivateMatched), [reps]);
   const managerName = (id: string | null) => (id ? managerMap.get(id)?.name ?? "-" : "Unassigned");
 
   // Normalize text for forgiving search: lowercase, fold curly quotes to straight,
@@ -436,7 +442,7 @@ export default function CrmAccountsPage() {
             <SelectContent>
               <SelectItem value="all">All reps</SelectItem>
               <SelectItem value="unassigned">Unassigned</SelectItem>
-              {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+              {pickableReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={managerFilter} onValueChange={setManagerFilter}>
@@ -708,7 +714,7 @@ export default function CrmAccountsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="unassigned">Unassigned</SelectItem>
-                          {reps.map((r) => (
+                          {pickableReps.map((r) => (
                             <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
                           ))}
                         </SelectContent>

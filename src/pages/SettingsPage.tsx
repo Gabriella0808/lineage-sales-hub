@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";
@@ -11,6 +11,7 @@ import { Loader2, ShieldCheck, UserCog, Users, KeyRound, Trash2, UserPlus } from
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AboutLineage } from "@/components/desktop/AboutLineage";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 
 interface UserRow {
   user_id: string;
@@ -22,7 +23,7 @@ interface UserRow {
 }
 
 interface ManagerOpt { id: string; name: string }
-interface RepOpt { id: string; name: string }
+interface RepOpt { id: string; name: string; acctivate_id: string | null }
 
 // supabase-js only gives a generic "Edge Function returned a non-2xx status
 // code" message on error - the function's own { error: "..." } body is on
@@ -208,6 +209,25 @@ function RoleAdminPanel() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [managers, setManagers] = useState<ManagerOpt[]>([]);
   const [reps, setReps] = useState<RepOpt[]>([]);
+  // Dropdown labels only - the value submitted (user_managers.manager_id /
+  // user_reps.rep_id) stays the real portal id from managers/reps above.
+  const { activeReps: acctivateActiveReps, managersWithPortalOnly: acctivateManagerNames } = useAcctivateRepCatalog();
+  const repsLabeled = useMemo(() => {
+    const acctivateByAcId = new Map(acctivateActiveReps.map((r) => [r.acctivate_id.toLowerCase(), r.name]));
+    return reps.map((r) => ({
+      ...r,
+      name: r.acctivate_id ? acctivateByAcId.get(String(r.acctivate_id).toLowerCase()) ?? r.name : r.name,
+    }));
+  }, [reps, acctivateActiveReps]);
+  const managersLabeled = useMemo(() => {
+    const acctivateByFirstName = new Map(
+      acctivateManagerNames.map((n) => [n.split(/\s+/)[0].toLowerCase(), n]),
+    );
+    return managers.map((m) => ({
+      ...m,
+      name: acctivateByFirstName.get(m.name.trim().split(/\s+/)[0].toLowerCase()) ?? m.name,
+    }));
+  }, [managers, acctivateManagerNames]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
 
@@ -225,7 +245,7 @@ function RoleAdminPanel() {
       supabase.from("user_managers").select("user_id, manager_id"),
       supabase.from("user_reps").select("user_id, rep_id"),
       supabase.from("managers").select("id, name").order("name"),
-      supabase.from("sales_reps").select("id, name").order("name"),
+      supabase.from("sales_reps").select("id, name, acctivate_id").order("name"),
       supabase.functions.invoke("admin-manage-users", { body: { action: "list_emails" } }),
     ]);
 
@@ -426,7 +446,7 @@ function RoleAdminPanel() {
                           <SelectTrigger className="h-8 w-44"><SelectValue placeholder="No manager link" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">--- No link ---</SelectItem>
-                            {managers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                            {managersLabeled.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </td>
@@ -439,7 +459,7 @@ function RoleAdminPanel() {
                           <SelectTrigger className="h-8 w-44"><SelectValue placeholder="No rep link" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">--- No link ---</SelectItem>
-                            {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                            {repsLabeled.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </td>

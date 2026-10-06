@@ -9,6 +9,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSalesReps, useManagers } from "@/hooks/usePortalData";
 import { useRepLastLogins } from "@/hooks/useSignInFeed";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { cn } from "@/lib/utils";
 
 export default function RepActivityPage() {
@@ -19,27 +20,63 @@ export default function RepActivityPage() {
   const { data: managers = [] } = useManagers();
 
   const repsById = useMemo(() => new Map(reps.map((r) => [r.id, r])), [reps]);
-  const managerNameById = useMemo(() => new Map(managers.map((m) => [m.id, m.name])), [managers]);
+  // Display/filter by Acctivate's manager name (e.g. "Mateo" not "Mateo De
+  // Lisa") where resolvable - same rule as the Weekly Review picker and
+  // Prospects' manager dropdown.
+  const { managers: acctivateManagerNames, activeReps: acctivateActiveReps } = useAcctivateRepCatalog();
+  const acctivateNameByAcId = useMemo(
+    () => new Map(acctivateActiveReps.map((r) => [r.acctivate_id.toLowerCase(), r.name])),
+    [acctivateActiveReps],
+  );
+  const managerNameById = useMemo(() => {
+    const acctivateByFirstName = new Map(
+      acctivateManagerNames.map((n) => [n.split(/\s+/)[0].toLowerCase(), n]),
+    );
+    return new Map(
+      managers.map((m) => {
+        const firstName = m.name.trim().split(/\s+/)[0].toLowerCase();
+        return [m.id, acctivateByFirstName.get(firstName) ?? m.name];
+      }),
+    );
+  }, [managers, acctivateManagerNames]);
 
   const isLoading = loginsLoading || repsLoading;
 
   // get_rep_last_logins() already scopes rows to what the caller is allowed
-  // to see (all reps for admin, only their own for a manager) and returns
-  // the real login email directly — sales_reps.email is blank for several
-  // real, actively-used accounts, so it's only used here for status/manager.
+  // to see (all reps for admin, only their own for a manager), dedupes
+  // correctly at the SQL level (one row per real login account, grouped by
+  // user_id - a rep linked to multiple sales_reps rows, e.g. a multi-
+  // territory split, already collapses to one row there), and returns the
+  // real login email directly — sales_reps.email is blank for several real,
+  // actively-used accounts, so it's only used here for status/manager.
+  //
+  // Two real, distinct login accounts can legitimately share one rep record
+  // (e.g. "Doug Brown and Gavin Dietz" - two different people covering one
+  // territory) - that's not a duplicate, but with an identical name shown
+  // for both it can look like one. Rather than guess a split name from the
+  // email, append the real email inline whenever the same name would
+  // otherwise appear on more than one row - fully accurate, no inference.
   const rows = useMemo(() => {
-    return repLastLogins.map((r) => {
+    const base = repLastLogins.map((r) => {
       const rep = repsById.get(r.rep_id);
+      const acctivateName = rep?.acctivate_id ? acctivateNameByAcId.get(rep.acctivate_id.toLowerCase()) : undefined;
       return {
         rep_id: r.rep_id,
-        rep_name: r.rep_name,
+        rep_name: acctivateName ?? r.rep_name,
         email: r.email,
         status: rep?.status ?? null,
         manager_name: rep?.manager_id ? managerNameById.get(rep.manager_id) ?? null : null,
         last_signed_in_at: r.last_signed_in_at,
       };
     });
-  }, [repLastLogins, repsById, managerNameById]);
+    const nameCounts = new Map<string, number>();
+    for (const r of base) nameCounts.set(r.rep_name, (nameCounts.get(r.rep_name) ?? 0) + 1);
+    return base.map((r) =>
+      (nameCounts.get(r.rep_name) ?? 0) > 1 && r.email
+        ? { ...r, rep_name: `${r.rep_name} (${r.email})` }
+        : r,
+    );
+  }, [repLastLogins, repsById, managerNameById, acctivateNameByAcId]);
 
   const DAY = 86_400_000;
   const bucketOf = (iso: string | null): "active" | "quiet" | "inactive" | "never" => {

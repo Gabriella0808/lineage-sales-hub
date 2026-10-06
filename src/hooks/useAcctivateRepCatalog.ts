@@ -23,12 +23,34 @@
  *   const ids = getRepsByTerritory("Mid Atlantic");
  *   rows.filter(r => ids.has(r.rep_id))
  *
- * Pages that DO NOT use this hook: Trade Show Leads, Capture Leads.
+ * FK-requiring pickers (Capture Leads, task/lead assignment, etc.) that still
+ * need to submit a real public.sales_reps.id / public.managers.id:
+ *   const { getSalesRepIdByAcId, managersWithPortalOnly, getManagerIdByName } =
+ *     useAcctivateRepCatalog();
+ *   // label = r.name (Acctivate's name), value submitted = getSalesRepIdByAcId(r.acctivate_id)
+ *
+ * `managers` (Acctivate-only, 4 names: Hospitality/House/Mateo/Will) is kept
+ * for places that only need Acctivate's own manager labels. `managersWithPortalOnly`
+ * adds the small, fixed set of real portal managers who have no Acctivate
+ * salesperson code at all (Chris De Lisa, Justin Jeangerard, Kate Jones,
+ * Scott Grisack, Sergio) so they don't disappear from manager pickers.
  */
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+
+// Real portal managers with no Acctivate salesperson code at all (confirmed
+// 2026-10-06: acctivate_sales_reps.manager_name only ever has 4 distinct
+// values - Hospitality, House, Mateo, Will - these 5 never appear there even
+// though they're real, actively-used managers today).
+const PORTAL_ONLY_MANAGERS: { name: string; managersTableName: string }[] = [
+  { name: "Chris De Lisa", managersTableName: "Chris De Lisa" },
+  { name: "Justin Jeangerard", managersTableName: "Justin Jeangerard" },
+  { name: "Kate Jones", managersTableName: "Kate Jones" },
+  { name: "Scott Grisack", managersTableName: "Scott Grisack" },
+  { name: "Sergio", managersTableName: "Sergio" },
+];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -67,10 +89,40 @@ function useRawAcctivateReps() {
   });
 }
 
+// Lightweight lookup of the portal's own id space, used only to resolve an
+// Acctivate-labeled dropdown selection to the real FK a form needs to submit.
+// Kept separate from the main acctivate_sales_reps fetch (different table,
+// different staleness needs - these ids don't change often).
+function usePortalIdLookup() {
+  return useQuery({
+    queryKey: ["portal_rep_manager_id_lookup"],
+    staleTime: 15 * 60 * 1000,
+    queryFn: async () => {
+      const [repsRes, managersRes] = await Promise.all([
+        supabase.from("sales_reps").select("id, acctivate_id"),
+        supabase.from("managers").select("id, name"),
+      ]);
+      if (repsRes.error) throw repsRes.error;
+      if (managersRes.error) throw managersRes.error;
+      return {
+        repsByAcId: new Map(
+          (repsRes.data ?? [])
+            .filter((r) => r.acctivate_id)
+            .map((r) => [String(r.acctivate_id).toLowerCase(), r.id as string]),
+        ),
+        managersByName: new Map(
+          (managersRes.data ?? []).map((m) => [String(m.name).toLowerCase(), m.id as string]),
+        ),
+      };
+    },
+  });
+}
+
 // ── Main hook ─────────────────────────────────────────────────────────────────
 
 export function useAcctivateRepCatalog() {
   const { data: reps = [], isLoading, error } = useRawAcctivateReps();
+  const { data: portalIds } = usePortalIdLookup();
 
   // Active reps only — use for dropdowns
   const activeReps = useMemo(
@@ -160,16 +212,48 @@ export function useAcctivateRepCatalog() {
     return getRepByAcId(repId);
   }
 
+  // For FK-requiring pickers only (Capture Leads, task/lead assignment):
+  // resolve an Acctivate rep's acctivate_id to the real public.sales_reps.id
+  // a form needs to submit. Label still comes from the Acctivate entry's
+  // `name` - this only resolves the value. Returns undefined if this
+  // Acctivate rep has no matching portal sales_reps row yet (e.g. a stale
+  // "Old ..." code, or a newly-added Acctivate rep not yet created in the
+  // portal) - callers should treat that as "not selectable" for a form that
+  // must submit a real FK.
+  function getSalesRepIdByAcId(acId: string | null | undefined): string | undefined {
+    if (!acId || !portalIds) return undefined;
+    return portalIds.repsByAcId.get(acId.toLowerCase());
+  }
+
+  // Acctivate-only manager names (4: Hospitality, House, Mateo, Will).
+  // Use `managersWithPortalOnly` instead for any picker where a real manager
+  // disappearing would be a problem - see note above PORTAL_ONLY_MANAGERS.
+  const managersWithPortalOnly = useMemo(() => {
+    const combined = new Set(managers);
+    for (const m of PORTAL_ONLY_MANAGERS) combined.add(m.name);
+    return Array.from(combined).sort();
+  }, [managers]);
+
+  // For FK-requiring manager pickers: resolve a manager display name (as
+  // shown in managersWithPortalOnly) to the real public.managers.id.
+  function getManagerIdByName(name: string | null | undefined): string | undefined {
+    if (!name || !portalIds) return undefined;
+    return portalIds.managersByName.get(name.toLowerCase());
+  }
+
   return {
     reps,
     activeReps,
     territories,
     managers,
+    managersWithPortalOnly,
     isLoading,
     error,
     getRepByAcId,
     getRepsByTerritory,
     getRepsByManager,
     resolveReportingRepId,
+    getSalesRepIdByAcId,
+    getManagerIdByName,
   };
 }

@@ -75,24 +75,6 @@ const REP_BOOK = [
 ];
 
 
-// Maps Live KPI display rep names -  matching name(s) in the sales_reps table
-// (used to pull `rep_targets` for the 26 Proj column). Names not listed fall
-// back to an exact match against the display name.
-const REP_NAME_TO_DB_NAMES: Record<string, string[]> = {
-  "Hospitality":     ["Sergio - Hospitality"],
-  "Jordan Shindell": ["Jordan Shindell", "Shindell - PA/OH"],
-};
-
-// Reverse of REP_NAME_TO_DB_NAMES: DB rep name (lowercased) → spreadsheet display name.
-// Used when we receive portal rep UUIDs from the manager scope to map back to display names.
-// Any DB name not listed here falls back to itself (identity mapping).
-const DB_NAME_TO_DISPLAY: Record<string, string> = Object.fromEntries(
-  Object.entries(REP_NAME_TO_DB_NAMES).flatMap(([display, dbNames]) =>
-    dbNames.map((n) => [n.toLowerCase(), display]),
-  ),
-);
-
-
 // Maps REP_BOOK display names -  list of territory names they cover.
 // Used by the Territory filter on the Live KPI report.
 const REP_TO_TERRITORIES: Record<string, string[]> = {
@@ -246,7 +228,7 @@ export function LiveKpiReport({
   // Acctivate rep catalog — used for territory and manager labelling/filtering.
   // Falls back to the hardcoded REP_TO_TERRITORIES map when territory data is
   // not yet populated in acctivate_sales_reps (e.g., before first enriched sync).
-  const { reps: acctivateReps } = useAcctivateRepCatalog();
+  const { reps: acctivateReps, activeReps: activeAcctivateReps } = useAcctivateRepCatalog();
 
   // Map: acctivate_id (lowercase) → territory_name from Acctivate rep catalog.
   const acctivateIdToTerritory = useMemo(() => {
@@ -257,20 +239,51 @@ export function LiveKpiReport({
     return m;
   }, [acctivateReps]);
 
-  // Map: rep display name → [territory names] built from Acctivate data via dbReps.acctivate_id.
-  // Prefers Acctivate-sourced territory; falls back to hardcoded REP_TO_TERRITORIES.
-  const dbRepNameToTerritory = useMemo(() => {
-    const m = new Map<string, string[]>();
+  // Core name-resolution maps for the rep picker going forward - the picker's
+  // selectable names are now Acctivate's own `name` field directly, not the
+  // old REP_BOOK display names, so every place that used to resolve a
+  // REP_BOOK name → DB name → id now resolves an Acctivate name → id
+  // directly, via acctivate_id (the one field both sides agree on).
+  //
+  // name (Acctivate, lowercased) → acctivate_id. Used to resolve
+  // selectedRepAcIds (the RPC scope param) directly from a picked name.
+  const acctivateNameToAcId = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of acctivateReps) m.set(r.name.toLowerCase(), r.acctivate_id);
+    return m;
+  }, [acctivateReps]);
+  // acctivate_id (lowercase) → name. Used to resolve a portal rep's own
+  // acctivate_id back to the Acctivate display name (manager-scope path).
+  const acctivateIdToName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of acctivateReps) m.set(r.acctivate_id.toLowerCase(), r.name);
+    return m;
+  }, [acctivateReps]);
+  // name (Acctivate, lowercased) → portal public.sales_reps.id. Used only
+  // where a real portal rep UUID is required downstream (rep_targets.rep_id
+  // is a portal FK, not an Acctivate code) - joins through acctivate_id.
+  const acctivateNameToDbRepId = useMemo(() => {
+    const m = new Map<string, string>();
     for (const rep of dbReps) {
       if (!rep.acctivate_id) continue;
-      const territory = acctivateIdToTerritory.get(rep.acctivate_id.toLowerCase());
-      if (!territory) continue;
-      const displayName = DB_NAME_TO_DISPLAY[rep.name.toLowerCase()] ?? rep.name;
-      const existing = m.get(displayName) ?? [];
-      if (!existing.includes(territory)) m.set(displayName, [...existing, territory]);
+      const name = acctivateIdToName.get(rep.acctivate_id.toLowerCase());
+      if (name) m.set(name.toLowerCase(), rep.id);
     }
     return m;
-  }, [dbReps, acctivateIdToTerritory]);
+  }, [dbReps, acctivateIdToName]);
+
+  // Map: Acctivate rep name → [territory names]. Built directly from the live
+  // catalog (each entry already carries its own territory_name) - no portal
+  // round-trip needed now that the picker's names are Acctivate's own.
+  const acctivateNameToTerritories = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const r of acctivateReps) {
+      if (!r.territory_name) continue;
+      const existing = m.get(r.name) ?? [];
+      if (!existing.includes(r.territory_name)) m.set(r.name, [...existing, r.territory_name]);
+    }
+    return m;
+  }, [acctivateReps]);
 
   const allowedRepNames = useMemo(() => {
     if (lockedRepName) return [lockedRepName];
@@ -281,14 +294,15 @@ export function LiveKpiReport({
     if (managerScopeRepIds !== undefined) {
       if (managerScopeRepIds === null) return null; // "All managers" → show everything
       if (managerScopeRepIds.length === 0) return []; // manager exists but has no reps
-      // Map portal UUIDs → DB rep names → spreadsheet display names.
-      // Unknown DB names (not in DB_NAME_TO_DISPLAY) map to themselves so live data
-      // still flows through useDealerSalesAggregates correctly.
+      // Map portal UUIDs → acctivate_id → Acctivate name. A portal rep with no
+      // acctivate_id, or whose acctivate_id isn't in the live sync, is simply
+      // left out - consistent with "reps strictly from Acctivate" elsewhere.
       return Array.from(new Set(
         managerScopeRepIds
-          .map((id) => dbReps.find((r) => r.id === id)?.name)
-          .filter((n): n is string => Boolean(n))
-          .map((n) => DB_NAME_TO_DISPLAY[n.toLowerCase()] ?? n),
+          .map((id) => dbReps.find((r) => r.id === id)?.acctivate_id)
+          .filter((acId): acId is string => Boolean(acId))
+          .map((acId) => acctivateIdToName.get(acId.toLowerCase()))
+          .filter((n): n is string => Boolean(n)),
       ));
     }
 
@@ -296,33 +310,31 @@ export function LiveKpiReport({
     if (!managerName) return null;
     const list = MANAGER_TO_REPS[managerName.trim().toLowerCase()];
     return list ?? [];
-  }, [managerName, lockedRepName, managerScopeRepIds, dbReps]);
+  }, [managerName, lockedRepName, managerScopeRepIds, dbReps, acctivateIdToName]);
 
   const [territoryFilter, setTerritoryFilter] = useState<string[]>([]);
   const [territoryPickerOpen, setTerritoryPickerOpen] = useState(false);
   const [dailyDate, setDailyDate] = useState<Date>(() => getReportingToday());
   const [dailyDatePickerOpen, setDailyDatePickerOpen] = useState(false);
 
-  // Merge REP_BOOK (which has the spreadsheet figures) with all reps from the DB,
-  // so the dropdown lists every rep even if they don't have KPI workbook data yet.
-  const allReps = useMemo(() => {
-    const byName = new Map<string, { name: string; book: number; pct: number }>();
-    for (const r of REP_BOOK) byName.set(r.name, r);
-    for (const r of dbReps) {
-      if (!byName.has(r.name)) byName.set(r.name, { name: r.name, book: 0, pct: 0 });
-    }
-    return Array.from(byName.values());
-  }, [dbReps]);
+  // Rep picker names come directly from the live, active Acctivate sync -
+  // not the old REP_BOOK snapshot, and not every portal sales_reps row
+  // (which can include stale/inactive/no-longer-synced entries).
+  const allReps = useMemo(
+    () => activeAcctivateReps.map((r) => ({ name: r.name, book: 0, pct: 0 })),
+    [activeAcctivateReps],
+  );
 
-  // Returns territories for a rep display name.
-  // Prefers DB-sourced data from acctivate_sales_reps; falls back to hardcoded map.
+  // Returns territories for a rep's Acctivate name.
+  // Falls back to the hardcoded map only for a name with no live match at all
+  // (shouldn't normally happen now that allReps' names ARE Acctivate names).
   const getRepTerritories = useMemo(() => {
     return (repName: string): string[] => {
-      const fromDb = dbRepNameToTerritory.get(repName);
-      if (fromDb && fromDb.length > 0) return fromDb;
+      const fromLive = acctivateNameToTerritories.get(repName);
+      if (fromLive && fromLive.length > 0) return fromLive;
       return REP_TO_TERRITORIES[repName] ?? [];
     };
-  }, [dbRepNameToTerritory]);
+  }, [acctivateNameToTerritories]);
 
   const visibleReps = useMemo(() => {
     let reps = allowedRepNames === null
@@ -371,22 +383,18 @@ export function LiveKpiReport({
   // When no individual rep is selected, managerId drives aggregation scope via
   // get_manager_reporting_monthly's canonical manager join — no name resolution needed.
   //
-  // Display names (from REP_BOOK / allowedRepNames) may differ from DB names —
-  // e.g. "Hospitality" in the spreadsheet vs "Sergio - Hospitality" in sales_reps.
-  // REP_NAME_TO_DB_NAMES maps display → DB name(s); fall back to the display name
-  // itself for reps whose DB name already matches.
+  // Names here are Acctivate's own `name` field directly (the picker's source),
+  // so this resolves straight through acctivateNameToAcId - no DB round-trip.
   const selectedRepAcIds = useMemo<string[] | null>(() => {
     let displayNames: string[] | null = null;
     if (lockedRepName) displayNames = [lockedRepName];
     else if (repFilter.length > 0) displayNames = repFilter;
     else if (territoryFilter.length > 0) displayNames = visibleReps.map((r) => r.name);
     if (displayNames === null) return groupRepAcIds && groupRepAcIds.length > 0 ? groupRepAcIds : null;
-    // Translate display names → DB names, then → acctivate_id.
-    const dbNames = displayNames.flatMap((n) => REP_NAME_TO_DB_NAMES[n] ?? [n]);
-    return dbNames
-      .map((dbName) => dbReps.find((r) => r.name === dbName)?.acctivate_id)
+    return displayNames
+      .map((n) => acctivateNameToAcId.get(n.toLowerCase()))
       .filter((id): id is string => !!id && id.trim() !== "");
-  }, [lockedRepName, repFilter, territoryFilter, visibleReps, dbReps, groupRepAcIds]);
+  }, [lockedRepName, repFilter, territoryFilter, visibleReps, acctivateNameToAcId, groupRepAcIds]);
 
 
   // Daily actuals — canonical source v_companywide_reporting_actuals.
@@ -449,6 +457,16 @@ export function LiveKpiReport({
   const { data: liveAgg } = useDealerSalesAggregates({
     managerId: managerId ?? null,
     repAcIds: selectedRepAcIds,
+    refreshKey,
+  });
+
+  // Always-unscoped company-wide totals - denominator for the Line view's
+  // live rep-share calculation below. Separate from liveAgg above (which is
+  // scoped to the current manager/rep filter) so both the current
+  // selection's total and the company-wide total are available at once.
+  const { data: companyWideAgg } = useDealerSalesAggregates({
+    managerId: null,
+    repAcIds: null,
     refreshKey,
   });
 
@@ -516,23 +534,25 @@ export function LiveKpiReport({
     flP: overrides.line?.[r.m]?.flP ?? r.flP,
   })), [overrides]);
 
-  // Per-rep slicing: when a rep is selected, use that rep's actual monthly figures
-  // from the spreadsheet (REP_MONTHLY). Otherwise use the team Summary totals
-  // (or the sum of the manager's reps when scoped to a manager).
-  const totalRepBook = REP_BOOK.reduce((s, r) => s + r.book, 0);
-  const selectedRepObjs = useMemo(
-    () => repFilter.map((n) => REP_BOOK.find((r) => r.name === n)).filter(Boolean) as typeof REP_BOOK,
-    [repFilter],
-  );
   const hasRepSelection = repFilter.length > 0;
-  const managerRepBook = useMemo(
-    () => visibleReps.reduce((s, r) => s + r.book, 0),
-    [visibleReps],
-  );
-  const selectedRepBook = selectedRepObjs.reduce((s, r) => s + r.book, 0);
-  const repShare = hasRepSelection
-    ? (totalRepBook > 0 ? selectedRepBook / totalRepBook : 0)
-    : (allowedRepNames === null ? 1 : (totalRepBook > 0 ? managerRepBook / totalRepBook : 0));
+
+  // Live rep-share for the Line view (luxP/swP/flP/luxA/swA/flA) - replaces
+  // the old static REP_BOOK snapshot. There's no live per-rep brand/line
+  // split source, so this estimates it proportionally: the current
+  // selection's (rep/manager/company) share of the live company-wide total,
+  // computed separately per metric since P (projected/booked) and A
+  // (actual/invoiced) are different underlying numbers. liveAgg is already
+  // scoped to the current manager/rep filter by useDealerSalesAggregates
+  // (same RPC the Actuals section uses, unscaled) - companyWideAgg is the
+  // same call with no scope at all, as the denominator. When nothing is
+  // filtered, liveAgg === companyWideAgg and both shares naturally resolve
+  // to 1 with no special-casing needed.
+  const companyWideYtdB = useMemo(() => companyWideAgg.reduce((s, r) => s + (r.ytdB || 0), 0), [companyWideAgg]);
+  const companyWideYtdI = useMemo(() => companyWideAgg.reduce((s, r) => s + (r.ytdI || 0), 0), [companyWideAgg]);
+  const selectionYtdB = useMemo(() => liveAgg.reduce((s, r) => s + (r.ytdB || 0), 0), [liveAgg]);
+  const selectionYtdI = useMemo(() => liveAgg.reduce((s, r) => s + (r.ytdI || 0), 0), [liveAgg]);
+  const bookingsShare = companyWideYtdB > 0 ? selectionYtdB / companyWideYtdB : 0;
+  const invoicedShare = companyWideYtdI > 0 ? selectionYtdI / companyWideYtdI : 0;
 
   // Actuals (ytdB, ytdI, b25, i25, all branch-splits) are already scoped to the
   // selected manager / rep by useDealerSalesAggregates → get_manager_reporting_monthly.
@@ -553,22 +573,25 @@ export function LiveKpiReport({
     let repIdFilter: Set<string> | null = null; // null = company-wide
 
     if (hasRepSelection) {
-      // Display name → DB name(s) → portal UUID
-      const dbNames = new Set(repFilter.flatMap(n => REP_NAME_TO_DB_NAMES[n] ?? [n]));
-      repIdFilter = new Set(dbReps.filter(r => dbNames.has(r.name)).map(r => r.id));
+      // Acctivate name → portal UUID, via acctivate_id.
+      repIdFilter = new Set(
+        repFilter.map(n => acctivateNameToDbRepId.get(n.toLowerCase())).filter((id): id is string => !!id),
+      );
     } else if (territoryFilter.length > 0) {
       // visibleReps is already scoped to the selected territory
-      const dbNames = new Set(visibleReps.flatMap(r => REP_NAME_TO_DB_NAMES[r.name] ?? [r.name]));
-      repIdFilter = new Set(dbReps.filter(r => dbNames.has(r.name)).map(r => r.id));
+      repIdFilter = new Set(
+        visibleReps.map(r => acctivateNameToDbRepId.get(r.name.toLowerCase())).filter((id): id is string => !!id),
+      );
     } else if (managerScopeRepIds !== undefined && managerScopeRepIds !== null) {
       // Manager scope: CompanyWidePage passes portal UUIDs directly — use them without
       // any name round-trip so no rep is silently dropped by a name-mapping gap.
       repIdFilter = new Set(managerScopeRepIds);
     } else if (managerScopeRepIds === undefined && allowedRepNames !== null) {
-      // Fallback for direct KpiPage renders (no managerScopeRepIds prop): use the
-      // hardcoded MANAGER_TO_REPS map to resolve display names → DB names → UUIDs.
-      const dbNames = new Set(allowedRepNames.flatMap(n => REP_NAME_TO_DB_NAMES[n] ?? [n]));
-      repIdFilter = new Set(dbReps.filter(r => dbNames.has(r.name)).map(r => r.id));
+      // Fallback for direct KpiPage renders (no managerScopeRepIds prop): resolve
+      // Acctivate names → portal UUIDs the same way as above.
+      repIdFilter = new Set(
+        allowedRepNames.map(n => acctivateNameToDbRepId.get(n.toLowerCase())).filter((id): id is string => !!id),
+      );
     }
 
     // Company-wide (repIdFilter === null): restrict to reps currently in sales_reps so
@@ -586,7 +609,7 @@ export function LiveKpiReport({
       sums[row.m] = total;
     }
     return { sums, scoped };
-  }, [targets2026, dbReps, hasRepSelection, repFilter, territoryFilter, visibleReps, allowedRepNames, managerScopeRepIds]);
+  }, [targets2026, dbReps, hasRepSelection, repFilter, territoryFilter, visibleReps, allowedRepNames, managerScopeRepIds, acctivateNameToDbRepId]);
 
   const { sums: targetSums, scoped: targetScoped } = targetByMonth;
 
@@ -670,10 +693,10 @@ export function LiveKpiReport({
 
   const scaledLine = useMemo(() => baseLine.map((r) => ({
     ...r,
-    luxP: r.luxP * repShare, luxA: r.luxA * repShare,
-    swP: r.swP * repShare,   swA: r.swA * repShare,
-    flP: r.flP * repShare,   flA: r.flA * repShare,
-  })), [repShare, baseLine]);
+    luxP: r.luxP * bookingsShare, luxA: r.luxA * invoicedShare,
+    swP: r.swP * bookingsShare,   swA: r.swA * invoicedShare,
+    flP: r.flP * bookingsShare,   flA: r.flA * invoicedShare,
+  })), [bookingsShare, invoicedShare, baseLine]);
 
   const applyBrandFilter = (rows: typeof scaledMonthly) => {
     if (monthlyLineFilter.length === 0) return rows;

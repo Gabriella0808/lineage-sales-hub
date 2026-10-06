@@ -303,7 +303,7 @@ export default function ProspectReportingPage() {
               <SelectTrigger className="h-9 w-[170px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Reps</SelectItem>
-                {reps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                {reps.filter((r) => r.acctivateMatched).map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

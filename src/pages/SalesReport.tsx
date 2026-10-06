@@ -10,6 +10,7 @@ import {
   useSalesReps, useTerritories, useDealers, useManagers,
   useDealerSales, formatCurrency,
 } from "@/hooks/usePortalData";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +39,16 @@ type SortDir = "asc" | "desc";
 export default function SalesReport({ metric }: SalesReportProps) {
   const navigate = useNavigate();
   const { data: reps = [], isLoading: l1 } = useSalesReps();
+  const { activeReps: acctivateActiveReps } = useAcctivateRepCatalog();
+  const repNameById = useMemo(() => {
+    const acctivateByAcId = new Map(acctivateActiveReps.map((r) => [r.acctivate_id.toLowerCase(), r.name]));
+    return new Map(
+      reps.map((r: any) => [
+        r.id,
+        r.acctivate_id ? acctivateByAcId.get(String(r.acctivate_id).toLowerCase()) ?? r.name : r.name,
+      ]),
+    );
+  }, [reps, acctivateActiveReps]);
   const { data: territories = [], isLoading: l2 } = useTerritories();
   const { data: dealers = [], isLoading: l3 } = useDealers();
   const { data: managers = [], isLoading: l4 } = useManagers();
@@ -72,14 +83,38 @@ export default function SalesReport({ metric }: SalesReportProps) {
   const title = metric === "bookings" ? "YTD Bookings Report" : "YTD Invoicing Report";
   const valueLabel = metric === "bookings" ? "Bookings" : "Invoices";
 
-  const visibleManagers = useMemo(
-    () => managers.filter(m => {
+  // Dedupe bare manager duplicates ("Mateo" alongside "Mateo De Lisa") the
+  // same way ManagersPage/CompanyWidePage do - keep the id with an email
+  // (the one dealers/reps actually point to after the manager merge), label
+  // it with Acctivate's own name where resolvable.
+  const { managers: acctivateManagerNames } = useAcctivateRepCatalog();
+  const visibleManagers = useMemo(() => {
+    const base = managers.filter(m => {
       const n = m.name.trim().toLowerCase();
       const e = m.email?.trim().toLowerCase();
       return n !== "sales" && e !== "sales@lineage-collections.com";
-    }),
-    [managers],
-  );
+    });
+    const acctivateByFirstName = new Map(
+      acctivateManagerNames.map((n) => [n.split(/\s+/)[0].toLowerCase(), n]),
+    );
+    const groups = new Map<string, typeof base>();
+    base.forEach((m) => {
+      const key = m.name.trim().split(/\s+/)[0].toLowerCase();
+      const arr = groups.get(key) ?? [];
+      arr.push(m);
+      groups.set(key, arr);
+    });
+    const out: typeof base = [];
+    groups.forEach((arr, firstName) => {
+      const winner = [...arr].sort((a, b) => {
+        const aEmail = !!(a.email ?? "").trim();
+        const bEmail = !!(b.email ?? "").trim();
+        return aEmail === bEmail ? 0 : aEmail ? -1 : 1;
+      })[0];
+      out.push({ ...winner, name: acctivateByFirstName.get(firstName) ?? winner.name });
+    });
+    return out.sort((a, b) => a.name.localeCompare(b.name));
+  }, [managers, acctivateManagerNames]);
 
   const repsById = useMemo(() => new Map(reps.map(r => [r.id, r])), [reps]);
   const territoriesById = useMemo(() => new Map(territories.map(t => [t.id, t])), [territories]);
@@ -394,7 +429,7 @@ export default function SalesReport({ metric }: SalesReportProps) {
                 <FilterSection
                   label="Reps"
                   count={selectedRepIds.length}
-                  items={reps.map(r => ({ id: r.id, label: r.name }))}
+                  items={reps.map(r => ({ id: r.id, label: repNameById.get(r.id) ?? r.name }))}
                   selected={selectedRepIds}
                   onToggle={(id) => toggle(selectedRepIds, setSelectedRepIds, id)}
                   onClear={() => setSelectedRepIds([])}

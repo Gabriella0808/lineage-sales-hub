@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { AssigneePicker, type AssignableUser } from "@/components/AssigneePicker";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 
 type Market = {
   id: string;
@@ -88,7 +89,21 @@ export default function CaptureLeadsPage() {
   const { user } = useAuth();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [salesReps, setSalesReps] = useState<SalesRep[]>([]);
+  // Rep list for the "Sales Rep" picker: label comes directly from Acctivate
+  // (acctivate_sales_reps.name), but the value submitted stays the real
+  // public.sales_reps.id - a lead's sales_rep_id is a real FK, so this only
+  // swaps the display name, not the stored id space. Acctivate reps with no
+  // matching portal sales_reps row (stale "Old ..." codes) are left out,
+  // since there'd be nothing to submit if one were picked.
+  const { activeReps, getSalesRepIdByAcId } = useAcctivateRepCatalog();
+  const salesReps: SalesRep[] = useMemo(
+    () =>
+      activeReps
+        .map((r) => ({ id: getSalesRepIdByAcId(r.acctivate_id), name: r.name, email: r.email }))
+        .filter((r): r is SalesRep => !!r.id)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [activeReps, getSalesRepIdByAcId],
+  );
   const [loading, setLoading] = useState(true);
 
   const [marketDialog, setMarketDialog] = useState(false);
@@ -106,10 +121,9 @@ export default function CaptureLeadsPage() {
 
   const load = async () => {
     setLoading(true);
-    const [m, l, r] = await Promise.all([
+    const [m, l] = await Promise.all([
       supabase.from("trade_show_markets").select("*"),
       supabase.from("trade_show_leads").select("*").order("created_at", { ascending: false }),
-      supabase.from("sales_reps").select("id,name,email").order("name"),
     ]);
     if (m.error) toast.error(m.error.message);
     else {
@@ -139,7 +153,6 @@ export default function CaptureLeadsPage() {
       setMarkets(sorted);
     }
     if (l.error) toast.error(l.error.message); else setLeads((l.data ?? []) as Lead[]);
-    if (r.error) toast.error(r.error.message); else setSalesReps((r.data ?? []) as SalesRep[]);
     setLoading(false);
   };
 

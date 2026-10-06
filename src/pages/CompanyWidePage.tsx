@@ -18,6 +18,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { useAuth } from "@/contexts/AuthContext";
 import { RepNotConfigured } from "@/components/RepNotConfigured";
 import { managerGroupIds } from "@/utils/managerGroups";
+import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 
 type ReportKey = "executive" | "live-kpi" | "dealer-reporting" | "rep-reporting";
 
@@ -96,6 +97,26 @@ export default function CompanyWidePage() {
     });
   }, [managers, isRep, repManagerId]);
 
+  // Company-Wide's manager filter must list ONLY managers that come from
+  // the live Acctivate sync (Hospitality/House/Mateo/Will) - not the extra
+  // portal-only managers with no Acctivate code (Chris De Lisa, Justin,
+  // Kate, Scott, Sergio), even though those are real, currently-used
+  // managers elsewhere (e.g. Prospects' assignment picker intentionally
+  // keeps them, since that page isn't Acctivate-only). The dedup above
+  // already picked the right id per Acctivate name (the one dealers/reps
+  // actually point to after the manager merge) - this both relabels AND
+  // drops anything with no Acctivate match.
+  const { managers: acctivateManagerNames } = useAcctivateRepCatalog();
+  const visibleManagersLabeled = useMemo(() => {
+    const acctivateByFirstName = new Map(
+      acctivateManagerNames.map((n) => [n.split(/\s+/)[0].toLowerCase(), n]),
+    );
+    return visibleManagers
+      .map((m) => ({ ...m, acctivateName: acctivateByFirstName.get(m.name.trim().split(/\s+/)[0].toLowerCase()) }))
+      .filter((m): m is typeof m & { acctivateName: string } => !!m.acctivateName)
+      .map((m) => ({ ...m, name: m.acctivateName }));
+  }, [visibleManagers, acctivateManagerNames]);
+
   const effectiveManagerId = isRep && repManagerId ? repManagerId : managerParam;
   // The manager_id actually sent to the data-fetching RPCs. For a rep's own
   // view, managerScopeRepIds (their own, server-enforced rep code set) is
@@ -165,7 +186,7 @@ export default function CompanyWidePage() {
 
   const managerName = effectiveManagerId === "all"
     ? undefined
-    : visibleManagers.find((m) => m.id === effectiveManagerId)?.name;
+    : visibleManagersLabeled.find((m) => m.id === effectiveManagerId)?.name;
 
   if (isRep && !roleInfo?.repId) {
     return (
@@ -200,7 +221,7 @@ export default function CompanyWidePage() {
             </SelectTrigger>
             <SelectContent>
               {!isRep && <SelectItem value="all">All managers</SelectItem>}
-              {visibleManagers.map((m) => (
+              {visibleManagersLabeled.map((m) => (
                 <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
               ))}
             </SelectContent>

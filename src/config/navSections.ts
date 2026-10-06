@@ -58,6 +58,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "My Performance",   url: "/",  icon: BarChart3, ...access("my-performance") },
       { title: "My Tasks", url: "/tasks", icon: ListChecks, ...access("my-tasks") },
       { title: "Team Updates", url: "/team-updates", icon: Megaphone, ...access("team-updates") },
+      { title: "Digital Assets", url: "/digital-assets", icon: FolderOpen, ...access("digital-assets") },
       { title: "Meeting Intelligence", url: "/meeting-intelligence", icon: AudioLines, ...access("meeting-intelligence") },
     ],
   },
@@ -69,7 +70,6 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Cart", url: "/cart", icon: ShoppingCart, ...access("cart") },
       { title: "My Quotes", url: "/my-quotes", icon: FileText, ...access("my-quotes") },
       { title: "Customer Quotes", url: "/customer-quotes", icon: Send, ...access("customer-quotes") },
-      { title: "Digital Assets", url: "/digital-assets", icon: FolderOpen, ...access("digital-assets") },
     ],
   },
   {

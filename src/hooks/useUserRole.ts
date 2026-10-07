@@ -29,16 +29,23 @@ export function hasRepViewOverride(email?: string | null) {
 
 /**
  * Digital Assets upload/manage access (create, rename, move, delete) is
- * restricted to these 4 named people specifically, not the admin/manager
+ * restricted to these named people specifically, not the admin/manager
  * role generally - everyone else (including other admins/managers) gets
- * view + download only, the same as a rep. Reuses the same override list
- * as admin-email resolution above (there's no one else it should be),
- * but as its own explicit check so it stays correct even if ADMIN_EMAIL_
- * OVERRIDES is ever broadened for unrelated reasons. Mirrors
- * public.is_digital_assets_manager() on the backend (RLS) - keep in sync.
+ * view + download only, the same as a rep. This is its own list, separate
+ * from ADMIN_EMAIL_OVERRIDES above - Sergio has upload access here without
+ * becoming a full admin everywhere else. Mirrors public.is_digital_assets_
+ * manager() on the backend (RLS) - keep in sync.
  */
+const DIGITAL_ASSETS_MANAGER_EMAILS = new Set([
+  "justin@lineage-collections.com",
+  "scott@lineage-collections.com",
+  "andrew@lineage-collections.com",
+  "gabriella@lineage-collections.com",
+  "sergio@lineage-collections.com",
+]);
+
 export function isDigitalAssetsManager(email?: string | null) {
-  return !!email && ADMIN_EMAIL_OVERRIDES.has(email.toLowerCase());
+  return !!email && DIGITAL_ASSETS_MANAGER_EMAILS.has(email.toLowerCase());
 }
 
 /**

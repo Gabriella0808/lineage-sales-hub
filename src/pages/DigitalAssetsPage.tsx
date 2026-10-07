@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUserRole } from "@/hooks/useUserRole";
+import { isDigitalAssetsManager } from "@/hooks/useUserRole";
 import {
   DIGITAL_ASSETS_BUCKET, useAllFolders, useAllAssets, useCreateFolder,
   useRenameFolder, useMoveFolder, useDeleteFolder, useRenameAsset,
@@ -88,8 +88,11 @@ const DRAG_MIME = "application/x-digital-asset";
 
 export default function DigitalAssetsPage() {
   const { user } = useAuth();
-  const { data: roleInfo } = useUserRole();
-  const canManage = !!(roleInfo?.isAdmin || roleInfo?.isManager);
+  // Upload/manage (create, rename, move, delete) is restricted to 4 named
+  // people, not the admin/manager role generally - everyone else gets view
+  // + download only, same as a rep. Mirrors public.is_digital_assets_
+  // manager() on the backend (RLS) - see 20261008040000 migration.
+  const canManage = isDigitalAssetsManager(user?.email);
 
   const { data: folders = [], isLoading: foldersLoading } = useAllFolders();
   const { data: assets = [], isLoading: assetsLoading } = useAllAssets();

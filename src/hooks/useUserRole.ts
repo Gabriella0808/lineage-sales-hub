@@ -28,6 +28,20 @@ export function hasRepViewOverride(email?: string | null) {
 }
 
 /**
+ * Digital Assets upload/manage access (create, rename, move, delete) is
+ * restricted to these 4 named people specifically, not the admin/manager
+ * role generally - everyone else (including other admins/managers) gets
+ * view + download only, the same as a rep. Reuses the same override list
+ * as admin-email resolution above (there's no one else it should be),
+ * but as its own explicit check so it stays correct even if ADMIN_EMAIL_
+ * OVERRIDES is ever broadened for unrelated reasons. Mirrors
+ * public.is_digital_assets_manager() on the backend (RLS) - keep in sync.
+ */
+export function isDigitalAssetsManager(email?: string | null) {
+  return !!email && ADMIN_EMAIL_OVERRIDES.has(email.toLowerCase());
+}
+
+/**
  * The single rule for turning a user's database rows into their effective
  * role: admin > manager > rep > dealer, defaulting to rep. Shared by the
  * live portal (useUserRole) and the Portal Access page so they can never

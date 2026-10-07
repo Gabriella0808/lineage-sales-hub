@@ -725,7 +725,30 @@ export function LiveKpiReport({
 
   const chartMonthly = useMemo(() => applyBrandFilter(scaledMonthlyWithTargets), [scaledMonthlyWithTargets, monthlyLineFilter, scaledLine]);
   const monthly = useMemo(() => {
-    return monthFilter === "All" ? chartMonthly : chartMonthly.filter((r) => r.m === monthFilter);
+    // Same cutoff the Monthly Results table already applies per-cell (no
+    // reliable data before Jul 2026 - Acctivate import-transition period):
+    // bookings via isBookingVisible, invoiced via the same Jan-Jun index
+    // check. Zeroed here once, at the one place that feeds the chart, the
+    // table, and the total-row sums, instead of each needing its own copy
+    // of this rule - the chart previously had none at all, which is why its
+    // Jan-Jun bars were showing despite the table already hiding them.
+    // Per explicit instruction, the chart also hides the Goal bars for
+    // those same hidden months (b26p/i26p) - unlike the table, which still
+    // shows goals/projections for every month regardless of this cutoff.
+    const filtered = monthFilter === "All" ? chartMonthly : chartMonthly.filter((r) => r.m === monthFilter);
+    return filtered.map((r) => {
+      const idx = MONTH_NAMES_ALL.indexOf(r.m);
+      const bkVisible = idx >= 0 && isBookingVisible(reportingYear, idx + 1);
+      const invVisible = idx >= 0 && idx >= 6;
+      if (bkVisible && invVisible) return r;
+      return {
+        ...r,
+        ytdB: bkVisible ? r.ytdB : 0,
+        ytdI: invVisible ? r.ytdI : 0,
+        b26p: bkVisible ? r.b26p : 0,
+        i26p: invVisible ? r.i26p : 0,
+      };
+    });
   }, [monthFilter, chartMonthly]);
 
   const sum = (arr: typeof MONTHLY, k: keyof typeof MONTHLY[number]) =>
@@ -1267,13 +1290,41 @@ export function LiveKpiReport({
               />
               <Tooltip
                 cursor={{ fill: "hsl(var(--muted) / 0.4)" }}
-                contentStyle={{
-                  background: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: 8,
-                  fontSize: 12,
+                content={(props: any) => {
+                  const { active, payload, label } = props;
+                  if (!active || !payload?.length) return null;
+                  const boxStyle: React.CSSProperties = {
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    padding: "8px 12px",
+                  };
+                  const idx = MONTH_NAMES_ALL.indexOf(label);
+                  // Same cutoff the Monthly Results table already explains per-row -
+                  // show the same reason here instead of a confusing literal "$0"
+                  // for a month we don't actually have trustworthy data for.
+                  const bkVisible = idx >= 0 && isBookingVisible(reportingYear, idx + 1);
+                  const invVisible = idx >= 0 && idx >= 6;
+                  if (!bkVisible && !invVisible) {
+                    return (
+                      <div style={boxStyle}>
+                        <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
+                        <p style={{ color: "hsl(var(--muted-foreground))", fontStyle: "italic", maxWidth: 220 }}>
+                          Excluded import-transition data before July 2026 - no reliable bookings or invoiced data for this month.
+                        </p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div style={boxStyle}>
+                      <p style={{ fontWeight: 600, marginBottom: 4 }}>{label}</p>
+                      {payload.map((p: any) => (
+                        <p key={p.name} style={{ color: p.color }}>{p.name} : {formatCurrency(p.value)}</p>
+                      ))}
+                    </div>
+                  );
                 }}
-                formatter={(v: number, name: string) => [formatCurrency(v), name]}
               />
               {showB && <Bar dataKey="b26p" name="Bookings Goal" fill="hsl(var(--primary) / 0.7)" radius={[3, 3, 0, 0]} />}
               {showB && <Bar dataKey="ytdB" name="Bookings MTD" fill="hsl(var(--accent))" radius={[3, 3, 0, 0]} />}

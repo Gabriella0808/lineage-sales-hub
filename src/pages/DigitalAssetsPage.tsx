@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   Folder, FolderPlus, Upload, Search, Grid3x3, List, MoreVertical,
   Download, Pencil, FolderInput, Trash2, ChevronRight, Home, Loader2, X,
-  Star, Clock, ChevronLeft,
+  Star, Clock, ChevronLeft, ChevronDown, FileUp, FolderUp,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -119,6 +119,7 @@ export default function DigitalAssetsPage() {
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null | "root">(null);
   const [uploads, setUploads] = useState<UploadState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const suggestedScrollRef = useRef<HTMLDivElement>(null);
 
   const [newFolderOpen, setNewFolderOpen] = useState(false);
@@ -242,7 +243,7 @@ export default function DigitalAssetsPage() {
     }
   }
 
-  async function uploadFiles(files: FileList | File[]) {
+  async function uploadFiles(files: FileList | File[], targetFolderId: string | null = currentFolderId) {
     if (!user) return;
     const list = Array.from(files);
     for (const file of list) {
@@ -256,7 +257,7 @@ export default function DigitalAssetsPage() {
       }
       const uploadState: UploadState = { file, loaded: 0, total: file.size };
       setUploads((prev) => [...prev, uploadState]);
-      const path = `${currentFolderId ?? "root"}/${crypto.randomUUID()}-${file.name}`;
+      const path = `${targetFolderId ?? "root"}/${crypto.randomUUID()}-${file.name}`;
       try {
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData.session?.access_token;
@@ -266,7 +267,7 @@ export default function DigitalAssetsPage() {
         });
         await createAssetRecord.mutateAsync({
           name: file.name,
-          folderId: currentFolderId,
+          folderId: targetFolderId,
           filePath: path,
           contentType: file.type,
           sizeBytes: file.size,
@@ -276,6 +277,67 @@ export default function DigitalAssetsPage() {
       } catch (e: any) {
         setUploads((prev) => prev.map((u) => (u.file === file ? { ...u, error: e?.message ?? "Upload failed" } : u)));
       }
+    }
+  }
+
+  // Uploading a whole folder (webkitdirectory) - recreates the folder's own
+  // sub-structure under the current folder, then uploads each file into the
+  // right spot. Resolves/creates every needed sub-folder first (shallowest
+  // first, so a parent always exists before its child is created, and each
+  // path is only ever created once even if many files share it), then
+  // uploads files against the resolved folder ids via the same uploadFiles
+  // used for a plain file upload.
+  async function uploadFolderTree(fileList: FileList) {
+    if (!user) return;
+    const files = Array.from(fileList);
+    const withPaths = files
+      .map((file) => ({ file, relPath: (file as any).webkitRelativePath as string | undefined }))
+      .filter((f): f is { file: File; relPath: string } => !!f.relPath);
+    if (withPaths.length === 0) return;
+
+    // Unique directory paths, e.g. "MyFolder", "MyFolder/Sub" - shallowest first.
+    const dirPaths = Array.from(new Set(
+      withPaths.map(({ relPath }) => relPath.split("/").slice(0, -1).join("/")),
+    )).sort((a, b) => a.split("/").length - b.split("/").length);
+
+    const pathToFolderId = new Map<string, string | null>();
+    pathToFolderId.set("", currentFolderId);
+
+    for (const dirPath of dirPaths) {
+      const parts = dirPath.split("/");
+      let builtPath = "";
+      for (const part of parts) {
+        const parentPath = builtPath;
+        builtPath = builtPath ? `${builtPath}/${part}` : part;
+        if (pathToFolderId.has(builtPath)) continue;
+        const parentId = pathToFolderId.get(parentPath) ?? null;
+        // Already exists (from a prior sync, or someone else's upload) - reuse it rather than fail on the duplicate-name constraint.
+        const existing = folders.find((f) => f.parent_folder_id === parentId && f.name.toLowerCase() === part.toLowerCase());
+        if (existing) {
+          pathToFolderId.set(builtPath, existing.id);
+          continue;
+        }
+        try {
+          const created = await createFolder.mutateAsync({ name: part, parentFolderId: parentId, userId: user.id });
+          pathToFolderId.set(builtPath, created.id);
+        } catch (e: any) {
+          toast.error(`Couldn't create folder "${part}": ${e?.message ?? "unknown error"}`);
+          pathToFolderId.set(builtPath, parentId); // fall back to the parent so its files still upload somewhere
+        }
+      }
+    }
+
+    // Group files by their resolved target folder and upload each group.
+    const byFolder = new Map<string | null, File[]>();
+    for (const { file, relPath } of withPaths) {
+      const dirPath = relPath.split("/").slice(0, -1).join("/");
+      const folderId = pathToFolderId.get(dirPath) ?? currentFolderId;
+      const arr = byFolder.get(folderId) ?? [];
+      arr.push(file);
+      byFolder.set(folderId, arr);
+    }
+    for (const [folderId, groupFiles] of byFolder) {
+      await uploadFiles(groupFiles, folderId);
     }
   }
 
@@ -375,9 +437,21 @@ export default function DigitalAssetsPage() {
         </div>
         {canManage && (
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-              <Upload className="h-4 w-4 mr-1.5" /> Upload
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm">
+                  <Upload className="h-4 w-4 mr-1.5" /> Upload <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                  <FileUp className="h-3.5 w-3.5 mr-2" /> File
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => folderInputRef.current?.click()}>
+                  <FolderUp className="h-3.5 w-3.5 mr-2" /> Folder
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="outline" size="sm" onClick={() => setNewFolderOpen(true)}>
               <FolderPlus className="h-4 w-4 mr-1.5" /> New folder
             </Button>
@@ -385,6 +459,12 @@ export default function DigitalAssetsPage() {
               ref={fileInputRef} type="file" multiple className="hidden"
               accept={[...ALLOWED_TYPES].join(",")}
               onChange={(e) => { if (e.target.files) uploadFiles(e.target.files); e.target.value = ""; }}
+            />
+            <input
+              ref={folderInputRef} type="file" multiple className="hidden"
+              // @ts-expect-error - webkitdirectory/directory aren't in React's standard input typings, but are real, broadly-supported attributes for a folder picker.
+              webkitdirectory="" directory=""
+              onChange={(e) => { if (e.target.files?.length) uploadFolderTree(e.target.files); e.target.value = ""; }}
             />
           </div>
         )}

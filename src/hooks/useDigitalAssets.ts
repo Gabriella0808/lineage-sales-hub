@@ -55,12 +55,13 @@ export function useCreateFolder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ name, parentFolderId, userId }: { name: string; parentFolderId: string | null; userId: string }) => {
-      const { error } = await supabase.from("digital_asset_folders").insert({
+      const { data, error } = await supabase.from("digital_asset_folders").insert({
         name: name.trim(),
         parent_folder_id: parentFolderId,
         created_by: userId,
-      });
+      }).select().single();
       if (error) throw error;
+      return data as DigitalFolder;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: FOLDERS_KEY }),
   });

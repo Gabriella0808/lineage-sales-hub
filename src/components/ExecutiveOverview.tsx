@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery, type QueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { addDays, differenceInCalendarDays, endOfMonth, format, parseISO, subDays } from "date-fns";
+import { getReportingToday, getReportingHour, formatReportingTime } from "@/utils/reportingDate";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -193,7 +194,7 @@ interface DealerAgg { key: string; name: string; ytd: number; cur: number; prev:
 interface RepAgg { key: string; name: string; ytdB: number; ytdI: number; cur: number; prev: number; curI: number; dealers: Set<string> }
 
 export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenReport }: Props) {
-  const today = useMemo(() => new Date(), []);
+  const today = useMemo(() => getReportingToday(), []);
   const year = today.getFullYear();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -374,7 +375,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
   const change = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null);
   const attainment = m.hasTargets && m.targetYtd > 0 ? (m.ytdI / m.targetYtd) * 100 : null;
   const first = (user?.email ?? "").split("@")[0].split(/[._-]/)[0];
-  const hour = today.getHours();
+  const hour = getReportingHour();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   const insights: { tone: "good" | "warn" | "bad"; title: string; text: string }[] = [];
@@ -421,7 +422,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{managerName ?? "All managers"} · {format(today, "EEEE, MMMM d")}</p>
           <h2 className="text-2xl sm:font-serif text-4xl font-medium tracking-tight mt-1">{greeting}{first ? `, ${first[0].toUpperCase()}${first.slice(1)}` : ""}</h2>
-          <p className="text-sm text-muted-foreground mt-1">Here is how the business is performing. Data updated {format(new Date(dataUpdatedAt || Date.now()), "h:mm a")}.</p>
+          <p className="text-sm text-muted-foreground mt-1">Here is how the business is performing. Data updated {formatReportingTime(dataUpdatedAt || Date.now())} ET.</p>
         </div>
         <ToggleGroup type="single" value={period} onValueChange={(v) => v && setPeriod(v as PeriodKey)} className="bg-muted p-1 rounded-lg self-start">
           {([["mtd", "Month"], ["qtd", "Quarter"], ["d30", "30 days"], ["d90", "90 days"], ["ytd", "Since Jul 1"]] as [PeriodKey, string][]).map(([k, label]) => (

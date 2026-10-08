@@ -15,7 +15,6 @@ import {
   useManagers, useSalesReps,
 } from "@/hooks/usePortalData";
 import { useUserRole } from "@/hooks/useUserRole";
-import { useAuth } from "@/contexts/AuthContext";
 import { RepNotConfigured } from "@/components/RepNotConfigured";
 import { managerGroupIds } from "@/utils/managerGroups";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
@@ -52,9 +51,9 @@ export default function CompanyWidePage() {
   const { data: managers = [] } = useManagers();
   const { data: reps = [] } = useSalesReps();
   const { data: roleInfo } = useUserRole();
-  const { user } = useAuth();
-  // High-Level Reporting is limited to one account while it is being reviewed.
-  const canSeeExecutive = user?.email?.toLowerCase() === "gabriella@lineage-collections.com";
+  // High-Level Reporting is open to all admin and manager portal roles
+  // (not reps/dealers) — was limited to one account while it was in review.
+  const canSeeExecutive = !!(roleInfo?.isAdmin || roleInfo?.isManager);
   const isRep = !!roleInfo?.isRep;
   const currentRep = useMemo(
     () => (roleInfo?.repId ? reps.find((r) => r.id === roleInfo.repId) ?? null : null),

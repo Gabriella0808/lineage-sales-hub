@@ -34,6 +34,36 @@ export function getReportingMonth(): number {
 }
 
 /**
+ * Returns the current hour of day (0-23) in Eastern Time. Use this instead
+ * of `new Date().getHours()` for anything time-of-day sensitive (e.g. a
+ * "good morning/afternoon/evening" greeting) so it reflects the business's
+ * own clock, not the viewer's device timezone.
+ */
+export function getReportingHour(): number {
+  return Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: REPORTING_TIME_ZONE,
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date())
+  ) % 24; // Intl can return "24" for midnight with hour12: false
+}
+
+/**
+ * Formats a timestamp (Date or epoch ms) as a time-of-day string in Eastern
+ * Time, e.g. "4:56 PM". Use this for any "as of"/"last updated" timestamp
+ * instead of date-fns' format(), which reads the browser's local timezone.
+ */
+export function formatReportingTime(date: Date | number): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: REPORTING_TIME_ZONE,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+/**
  * Formats a YYYY-MM-DD date string for display using the ET reporting timezone.
  * Example: "2026-08-18" → "Aug 18, 2026"
  * If no dateString is provided, formats the current ET date.

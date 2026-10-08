@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { startOfMonth, endOfMonth, format } from "date-fns";
+import { getReportingToday } from "@/utils/reportingDate";
 
 export default function CrmAccountsAnalyticsPage() {
   const { data: accounts = [], isLoading: loadingAccounts } = useCrmAccounts();
@@ -19,7 +20,7 @@ export default function CrmAccountsAnalyticsPage() {
 
   const loading = loadingAccounts || loadingReps;
 
-  const now = new Date();
+  const now = getReportingToday();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 

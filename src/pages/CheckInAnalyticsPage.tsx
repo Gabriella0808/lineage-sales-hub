@@ -29,6 +29,7 @@ import {
   format,
 } from "date-fns";
 import { isMeetingCheckIn } from "@/utils/checkIns";
+import { getReportingToday, getReportingTodayStr, getReportingYear } from "@/utils/reportingDate";
 
 type TeamId = "will" | "mateo" | "chris" | "justin";
 const TEAM: { id: TeamId; name: string; emails: string[]; repOwners: string[] }[] = [
@@ -310,7 +311,7 @@ export default function CheckInAnalyticsPage() {
         .insert({
           dealer_id: dealer.id,
           user_id: currentUserId,
-          visit_date: new Date().toISOString().slice(0, 10),
+          visit_date: getReportingTodayStr(),
           new_placement: "yes",
           notes: "[debug] test check-in from analytics page",
         })
@@ -344,7 +345,7 @@ export default function CheckInAnalyticsPage() {
     }
   }
 
-  const periods = useMemo(() => buildPeriods(new Date()), []);
+  const periods = useMemo(() => buildPeriods(getReportingToday()), []);
 
   const stats = useMemo(() => {
     const result: Record<TeamId, Record<string, { checkIns: number; placements: number }>> = {
@@ -630,7 +631,7 @@ export default function CheckInAnalyticsPage() {
 
         <Card className="border-border/60">
           <CardHeader>
-            <CardTitle className="font-display text-xl">{new Date().getFullYear()} Year-to-Date</CardTitle>
+            <CardTitle className="font-display text-xl">{getReportingYear()} Year-to-Date</CardTitle>
             <CardDescription>Total check-ins and placements by manager.</CardDescription>
           </CardHeader>
           <CardContent>

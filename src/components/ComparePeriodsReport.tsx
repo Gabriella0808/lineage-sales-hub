@@ -8,6 +8,7 @@ import { Pencil, Check, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { getReportingToday } from "@/utils/reportingDate";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import {
   Search, Download, ChevronRight, ChevronDown, TrendingUp, TrendingDown,
@@ -64,7 +65,7 @@ const SEED = seed as SeedShape;
 const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function buildRollingWindow(windowSize = 6) {
-  const now = new Date();
+  const now = getReportingToday();
   // End at last completed month
   const end = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const labels: string[] = [];

@@ -59,6 +59,7 @@ import {
 import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
 
 import { format, addDays, endOfDay, endOfWeek, isWithinInterval, parseISO, startOfDay, startOfWeek } from "date-fns";
+import { getReportingToday } from "@/utils/reportingDate";
 
 type DueFilter = "any" | "overdue" | "today" | "this_week" | "next_7" | "none";
 import { parseDateOnly } from "@/lib/utils";
@@ -1497,7 +1498,7 @@ export default function TaskBoardsView() {
               if (dueFilter === "none") return !t.due_date;
               if (!t.due_date) return false;
               const d = parseISO(t.due_date);
-              const now = new Date();
+              const now = getReportingToday();
               if (dueFilter === "overdue") return d < startOfDay(now) && t.status !== "done";
               if (dueFilter === "today")
                 return isWithinInterval(d, { start: startOfDay(now), end: endOfDay(now) });

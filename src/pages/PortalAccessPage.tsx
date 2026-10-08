@@ -17,6 +17,7 @@ import {
   LOCKED_PAGES, profileFor, type AccessHalf, type AccessOverrides, type AccessProfile,
 } from "@/config/accessOverrides";
 import { PAGE_KEYS, canOpenPage, hasHalf, menuKeysFor, pageState, verdict, type Verdict } from "@/config/accessMatrix";
+import { formatReportingDateTime } from "@/utils/reportingDate";
 
 interface PortalUserRow {
   user_id: string;
@@ -328,7 +329,7 @@ export default function PortalAccessPage() {
                 {" · "}{PAGE_ACCESS[a.page_key]?.title ?? a.page_key}
                 <span className="text-muted-foreground">{a.action === "reset" ? " reset to default" : `: ${describeChange(a)}`}</span>
               </span>
-              <span className="text-xs text-muted-foreground">{new Date(a.changed_at).toLocaleString()} · {a.changed_by ?? "unknown"}</span>
+              <span className="text-xs text-muted-foreground">{formatReportingDateTime(a.changed_at)} · {a.changed_by ?? "unknown"}</span>
             </div>
           ))}
         </CardContent>
@@ -390,7 +391,7 @@ function PersonEditor({ user, overrides, setPerson, saving }: { user: PortalUser
           {user.profile !== user.role && <p>Saved role: {user.role} (treated as {PROFILE_LABEL[user.profile].toLowerCase()} for page access)</p>}
           {user.manager_names.length > 0 && <p>Manager profile: {user.manager_names.join(", ")}</p>}
           {user.rep_names.length > 0 && <p>Rep profile: {user.rep_names.join(", ")}</p>}
-          {user.last_sign_in_at && <p>Last sign-in: {new Date(user.last_sign_in_at).toLocaleString()}</p>}
+          {user.last_sign_in_at && <p>Last sign-in: {formatReportingDateTime(user.last_sign_in_at)}</p>}
         </div>
       </CardHeader>
       <CardContent className="p-0">

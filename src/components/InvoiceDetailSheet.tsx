@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import {
-  format, startOfDay, startOfMonth, endOfMonth, subMonths,
+  format, startOfDay, startOfMonth, endOfMonth, subMonths, subDays,
 } from "date-fns";
 import Papa from "papaparse";
 import { ChevronRight, Download, Printer } from "lucide-react";
 import { isBookingVisibleDate, BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
+import { getReportingToday } from "@/utils/reportingDate";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
@@ -598,8 +599,8 @@ export function InvoiceDetailSheet({
     [openOrderLines],
   );
 
-  const today     = useMemo(() => startOfDay(new Date()), []);
-  const yesterday = useMemo(() => startOfDay(new Date(Date.now() - 86400000)), []);
+  const today     = useMemo(() => getReportingToday(), []);
+  const yesterday = useMemo(() => subDays(today, 1), [today]);
 
   const localFrom = useMemo<Date>(() => {
     switch (preset) {

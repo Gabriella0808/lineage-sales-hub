@@ -14,6 +14,7 @@ import { WeeklyReviewPanel } from "@/components/managers/WeeklyReviewPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useRepTargets } from "@/hooks/useRepTargets";
+import { getReportingYear } from "@/utils/reportingDate";
 
 export default function ManagersPage() {
   const { user } = useAuth();
@@ -27,7 +28,7 @@ export default function ManagersPage() {
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: dealers = [] } = useDealers();
   const { data: repTerritories = [] } = useRepTerritories();
-  const currentYear = new Date().getFullYear();
+  const currentYear = getReportingYear();
   const { data: repTargets = [] } = useRepTargets(currentYear);
   const targetByRep = useMemo(
     () => new Map(repTargets.map((t) => [t.rep_id, Number(t.annual_target) || 0])),

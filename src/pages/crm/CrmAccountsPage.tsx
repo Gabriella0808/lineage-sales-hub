@@ -13,6 +13,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, ArrowLeft, ChevronDown, Trash2, X, Download, RotateCcw } from "lucide-react";
 import { ImportAccountsDialog } from "@/components/ImportAccountsDialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { formatDateOnly } from "@/lib/utils";
+import { formatReportingDate } from "@/utils/reportingDate";
+
+// lastContactedMap mixes two source shapes: a plain "YYYY-MM-DD" from
+// dealer_check_ins.visit_date (date-only), or a full ISO timestamp from
+// crm_account_notes.created_at (timestamptz) - whichever is more recent.
+// Dispatch on the string shape so each is parsed/displayed correctly.
+function formatLastContact(s: string | null | undefined): string {
+  if (!s) return "";
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? formatDateOnly(s) : formatReportingDate(s);
+}
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
@@ -377,8 +388,8 @@ export default function CrmAccountsPage() {
         managerName(a.assigned_manager_id),
         a.account_type ?? "prospect",
         accTypes.join("; "),
-        a.created_at ? new Date(a.created_at).toLocaleDateString("en-US") : "",
-        lastC ? new Date(lastC).toLocaleDateString("en-US") : "",
+        a.created_at ? formatReportingDate(a.created_at) : "",
+        formatLastContact(lastC),
         a.buying_group,
         a.notes,
       ].map(escape).join(",");

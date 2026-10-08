@@ -64,6 +64,44 @@ export function formatReportingTime(date: Date | number): string {
 }
 
 /**
+ * Formats a timestamp (Date, epoch ms, or an ISO string) as a date + time
+ * string in Eastern Time, e.g. "Oct 8, 2026, 4:56 PM". Use this for audit
+ * logs, "last sign-in", "last synced" etc. instead of .toLocaleString(),
+ * which reads the browser's local timezone.
+ */
+export function formatReportingDateTime(date: Date | number | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: REPORTING_TIME_ZONE,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(d) + " ET";
+}
+
+/**
+ * Formats a real timestamp (Date, epoch ms, or an ISO string with a time
+ * component - e.g. a "synced_at"/"created_at" column) as a date-only
+ * string in Eastern Time, e.g. "Oct 8, 2026". Use this instead of
+ * .toLocaleDateString(), which reads the browser's local timezone and can
+ * land on the wrong calendar day near midnight ET.
+ * For a YYYY-MM-DD date-only string, use formatReportingDisplayDate below
+ * instead - it's already timezone-safe without needing this.
+ */
+export function formatReportingDate(date: Date | number | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: REPORTING_TIME_ZONE,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(d);
+}
+
+/**
  * Formats a YYYY-MM-DD date string for display using the ET reporting timezone.
  * Example: "2026-08-18" → "Aug 18, 2026"
  * If no dateString is provided, formats the current ET date.

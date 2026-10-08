@@ -6,6 +6,7 @@ import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, T
 import { supabase } from "@/integrations/supabase/client";
 import { TARGET_MONTHS, type RepTarget } from "@/hooks/useRepTargets";
 import { cn } from "@/lib/utils";
+import { getReportingToday } from "@/utils/reportingDate";
 
 // Reports count bookings and invoices from July onward only.
 const FIRST_MONTH = 6;
@@ -24,7 +25,7 @@ interface ChartProps {
   asOf?: Date;
 }
 
-export function TargetProgressChart({ target, monthlyBookings, monthlyInvoiced, asOf = new Date() }: ChartProps) {
+export function TargetProgressChart({ target, monthlyBookings, monthlyInvoiced, asOf = getReportingToday() }: ChartProps) {
   const [open, setOpen] = useState(false);
   const curMonth = asOf.getMonth() + 1;
   const daysInCur = new Date(asOf.getFullYear(), curMonth, 0).getDate();

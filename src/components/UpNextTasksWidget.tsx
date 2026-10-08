@@ -19,6 +19,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Calendar, Check, ListChecks, MessageSquarePlus } from "lucide-react";
 import { format } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
+import { getReportingTodayStr } from "@/utils/reportingDate";
 import { TaskUpdatesDialog } from "@/components/TaskUpdatesDialog";
 
 type Status = "todo" | "in_progress" | "blocked" | "done";
@@ -221,7 +222,7 @@ export default function UpNextTasksWidget() {
               const ownerIds = getAssigneeIds(t);
               const owners = ownerIds.map((uid) => ({ id: uid, name: assigneeName(uid) ?? "Unknown" }));
               const assignedToMe = !!user && t.user_id !== user.id && ownerIds.includes(user.id);
-              const isOverdue = t.due_date && new Date(t.due_date) < new Date(new Date().toDateString()) && t.status !== "done";
+              const isOverdue = t.due_date && t.due_date < getReportingTodayStr() && t.status !== "done";
 
               return (
                 <li

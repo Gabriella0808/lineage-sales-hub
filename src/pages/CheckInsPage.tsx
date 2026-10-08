@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "@/integrations/supabase/client";
+import { getReportingToday } from "@/utils/reportingDate";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -391,7 +392,7 @@ export default function CheckInsPage() {
     return [...dealers, ...prospectDealers].map((d) => {
       const last = lastVisitMap.get(d.id) ?? null;
       const days = last
-        ? Math.floor((Date.now() - new Date(last).getTime()) / 86400000)
+        ? Math.floor((getReportingToday().getTime() - new Date(last).getTime()) / 86400000)
         : null;
       return { ...d, lastVisit: last, daysSince: days };
     });
@@ -1919,9 +1920,9 @@ export default function CheckInsPage() {
                             return <span className="text-muted-foreground italic">No check-ins</span>;
                           return (
                             <>
-                              {format(new Date(last), "MMM d, yyyy")}{" "}
+                              {format(parseDateOnly(last), "MMM d, yyyy")}{" "}
                               <span className="text-muted-foreground">
-                                ({formatDistanceToNow(new Date(last), { addSuffix: true })})
+                                ({formatDistanceToNow(parseDateOnly(last), { addSuffix: true })})
                               </span>
                             </>
                           );

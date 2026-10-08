@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { RepNotConfigured } from "@/components/RepNotConfigured";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getReportingToday } from "@/utils/reportingDate";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1573,7 +1574,7 @@ function CalendarView({
 
   // Default to the month of the earliest appointment, or current month
   const defaultDate = (() => {
-    if (scheduled.length === 0) return new Date();
+    if (scheduled.length === 0) return getReportingToday();
     const earliest = [...scheduled].sort((a, b) =>
       a.appointment_day!.localeCompare(b.appointment_day!)
     )[0];
@@ -1615,7 +1616,7 @@ function CalendarView({
   ];
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const today = new Date();
+  const today = getReportingToday();
   const isToday   = (d: number) => today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
   const dayKey    = (d: number) => `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const monthLabel = new Date(year, month, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });

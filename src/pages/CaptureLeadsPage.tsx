@@ -25,6 +25,7 @@ import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { AssigneePicker, type AssignableUser } from "@/components/AssigneePicker";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
+import { getReportingTodayStr, getReportingMonth, getReportingYear, formatReportingDate } from "@/utils/reportingDate";
 
 type Market = {
   id: string;
@@ -83,7 +84,7 @@ const seasonFromMonth = (m: number): string => {
   if (m >= 9 && m <= 11) return "Fall";
   return "Winter";
 };
-const emptyMarket = { name: "", location: "", month: new Date().getMonth() + 1, year: new Date().getFullYear() };
+const emptyMarket = { name: "", location: "", month: getReportingMonth(), year: getReportingYear() };
 
 export default function CaptureLeadsPage() {
   const { user } = useAuth();
@@ -463,7 +464,7 @@ export default function CaptureLeadsPage() {
       notes: leadForm.notes.trim() || null,
       market_id: leadDialog,
       trade_show: market?.name ?? null,
-      lead_date: new Date().toISOString().slice(0, 10),
+      lead_date: getReportingTodayStr(),
       created_by: user?.id ?? null,
       prospect_types: leadForm.prospect_types ?? [],
     } as any);
@@ -1009,7 +1010,7 @@ export default function CaptureLeadsPage() {
                   <DetailRow
                     icon={Clock}
                     label="Captured"
-                    value={new Date(viewingLead.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                    value={formatReportingDate(viewingLead.created_at)}
                   />
                 </DetailSection>
 

@@ -18,6 +18,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { RepNotConfigured } from "@/components/RepNotConfigured";
 import { managerGroupIds } from "@/utils/managerGroups";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
+import { formatReportingTime } from "@/utils/reportingDate";
 
 type ReportKey = "executive" | "live-kpi" | "dealer-reporting" | "rep-reporting";
 
@@ -205,7 +206,7 @@ export default function CompanyWidePage() {
           <h1 className="page-title">Company-Wide</h1>
           {lastRefreshed && (
             <span className="text-xs text-muted-foreground hidden sm:inline">
-              Refreshed {lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              Refreshed {formatReportingTime(lastRefreshed)} ET
             </span>
           )}
         </div>

@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { openExternal } from "@/lib/desktop";
+import { parseDateOnly } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -263,7 +264,7 @@ export default function CrmAccountDetailPage() {
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="h-4 w-4" />Last visited</CardTitle></CardHeader>
             <CardContent>
               {lastVisited ? (
-                <div className="text-sm text-foreground">{format(new Date(lastVisited), "MMM d, yyyy")}</div>
+                <div className="text-sm text-foreground">{format(parseDateOnly(lastVisited)!, "MMM d, yyyy")}</div>
               ) : (
                 <div className="text-sm text-muted-foreground italic">Never visited</div>
               )}

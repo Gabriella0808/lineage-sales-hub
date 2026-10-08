@@ -33,9 +33,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { format, isBefore, startOfDay } from "date-fns";
+import { format, isBefore } from "date-fns";
 import { parseDateOnly } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { getReportingToday } from "@/utils/reportingDate";
 import {
   Plus,
   ChevronDown,
@@ -105,7 +106,7 @@ function getDueBucket(due_date: string | null, status: Status): DueBucket {
   if (status === "done") return "done";
   if (!due_date) return "none";
   const d = parseDateOnly(due_date);
-  const today = startOfDay(new Date());
+  const today = getReportingToday();
   if (isBefore(d, today)) return "overdue";
   if (d.getTime() === today.getTime()) return "today";
   return "upcoming";
@@ -145,7 +146,7 @@ const STATUS_COLORS: Record<Status, string> = {
 
 function formatDueDate(due_date: string): string {
   const d = parseDateOnly(due_date);
-  const today = startOfDay(new Date());
+  const today = getReportingToday();
   if (d.getTime() === today.getTime()) return "Today";
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);

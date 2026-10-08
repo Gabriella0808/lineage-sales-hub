@@ -8,6 +8,7 @@ import { ArrowLeft, ChevronDown, ChevronUp, RotateCcw, FileText } from "lucide-r
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
+import { formatReportingDate } from "@/utils/reportingDate";
 import { useToast } from "@/hooks/use-toast";
 
 type QuoteItem = {
@@ -37,7 +38,7 @@ function formatPrice(n: number | null | undefined) {
 
 function formatDate(s: string | null) {
   if (!s) return "-";
-  return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return formatReportingDate(s);
 }
 
 const statusStyle: Record<string, string> = {

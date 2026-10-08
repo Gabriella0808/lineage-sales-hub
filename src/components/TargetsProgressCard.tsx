@@ -6,6 +6,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getReportingYear, getReportingMonth } from "@/utils/reportingDate";
 
 const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -82,8 +83,8 @@ function ProgressRing({ pct, size = 64, label }: { pct: number; size?: number; l
 export function TargetsProgressCard() {
   const { data: roleInfo } = useUserRole();
   const role = roleInfo?.role ?? "rep";
-  const year = new Date().getFullYear();
-  const monthIdx = new Date().getMonth(); // 0-based
+  const year = getReportingYear();
+  const monthIdx = getReportingMonth() - 1; // 0-based
   const currentMonthKey = MONTH_LABEL_TO_KEY[MONTH_ORDER[monthIdx]];
 
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();

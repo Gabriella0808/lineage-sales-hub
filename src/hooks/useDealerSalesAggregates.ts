@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isBookingVisible } from "@/utils/bookingCutoff";
+import { getReportingYear } from "@/utils/reportingDate";
 
 export type MonthlyAgg = {
   /** Long month name, e.g. "January" */
@@ -76,7 +77,7 @@ export function useDealerSalesAggregates(params: {
 
   useEffect(() => {
     let cancelled = false;
-    const currentYear = new Date().getFullYear();
+    const currentYear = getReportingYear();
     const prevYear = currentYear - 1;
 
     (async () => {

@@ -11,6 +11,7 @@ import { useSalesReps, useManagers } from "@/hooks/usePortalData";
 import { useRepLastLogins } from "@/hooks/useSignInFeed";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { cn } from "@/lib/utils";
+import { formatReportingDateTime } from "@/utils/reportingDate";
 
 export default function RepActivityPage() {
   const [query, setQuery] = useState("");
@@ -200,7 +201,7 @@ export default function RepActivityPage() {
                   </TableCell>
                   <TableCell
                     className="text-sm"
-                    title={r.last_signed_in_at ? new Date(r.last_signed_in_at).toLocaleString() : undefined}
+                    title={r.last_signed_in_at ? formatReportingDateTime(r.last_signed_in_at) : undefined}
                   >
                     <span className="inline-flex items-center gap-2">
                       <span className={cn("h-2 w-2 rounded-full shrink-0", BUCKETS[bucketOf(r.last_signed_in_at)].dot)} />

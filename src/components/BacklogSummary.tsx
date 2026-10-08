@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, formatDateOnly } from "@/lib/utils";
 import { useOpenSalesOrders } from "@/hooks/useOpenSalesOrders";
 
 type DetailRow = {
@@ -511,7 +511,7 @@ function BacklogOrderTable({
                   <td className="px-3 py-2 text-xs">{first.rep ?? "-"}</td>
                   <td className="px-3 py-2 text-xs">{first.territory}</td>
                   <td className="px-3 py-2 text-xs">
-                    {earliestShip ? new Date(earliestShip).toLocaleDateString() : "-"}
+                    {formatDateOnly(earliestShip)}
                   </td>
                   {showStockClass && (
                     <td className="px-3 py-2">
@@ -571,7 +571,7 @@ function BacklogOrderTable({
                                 )}
                               </td>
                               <td className="py-1 pr-3">
-                                {l.shipDate ? new Date(l.shipDate).toLocaleDateString() : "-"}
+                                {formatDateOnly(l.shipDate)}
                               </td>
                               <td className="py-1 pr-3 text-right tabular-nums">
                                 {fmtMoney(l.amount)}

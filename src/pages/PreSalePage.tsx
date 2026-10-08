@@ -13,6 +13,7 @@ import {
   usePreSaleBookings, usePreSalePoHeaders, usePreSalePoLines, usePreSaleProducts, usePreSaleRepTargets,
 } from "@/hooks/usePreSale";
 import { useUserRole, hasRepViewOverride } from "@/hooks/useUserRole";
+import { getReportingYear, getReportingToday } from "@/utils/reportingDate";
 import { useAuth } from "@/contexts/AuthContext";
 
 const money = (n: number) => {
@@ -125,7 +126,7 @@ export default function PreSalePage() {
   const { data: bookings = [], isLoading: loadingBookings } = usePreSaleBookings(skus);
   const { data: poLines = [], isLoading: loadingPo } = usePreSalePoLines(skus);
   const { data: poHeaders = [], isLoading: loadingHeaders } = usePreSalePoHeaders();
-  const { data: repTargets = [] } = usePreSaleRepTargets(new Date().getFullYear());
+  const { data: repTargets = [] } = usePreSaleRepTargets(getReportingYear());
   const { user } = useAuth();
   const { data: roleInfo } = useUserRole();
   const isRep = roleInfo?.role === "rep" || hasRepViewOverride(user?.email);
@@ -235,7 +236,7 @@ export default function PreSalePage() {
       }
     }
 
-    const weeksSinceStart = earliestBooking ? differenceInCalendarWeeks(new Date(), parseISO(earliestBooking)) : null;
+    const weeksSinceStart = earliestBooking ? differenceInCalendarWeeks(getReportingToday(), parseISO(earliestBooking)) : null;
 
     const repOptions = repList.map(([key, r]) => ({ key, name: r.name })).sort((a, b) => a.name.localeCompare(b.name));
     const dealerOptions = dealerList.map(([id, d]) => ({ id, name: d.name })).sort((a, b) => a.name.localeCompare(b.name));

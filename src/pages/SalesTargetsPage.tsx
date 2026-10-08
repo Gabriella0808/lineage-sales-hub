@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getReportingYear } from "@/utils/reportingDate";
 
 const MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -21,7 +22,7 @@ type Draft = Record<string, Partial<RepTarget>>;
 export default function SalesTargetsPage() {
   const { data: roleInfo, isLoading: roleLoading } = useUserRole();
   const role = roleInfo?.role;
-  const currentYear = new Date().getFullYear();
+  const currentYear = getReportingYear();
   const [year, setYear] = useState(currentYear);
   const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
 

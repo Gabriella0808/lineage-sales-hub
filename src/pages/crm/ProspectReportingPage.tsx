@@ -21,6 +21,7 @@ import {
   type ProspectReportingRow, type ContactHealth,
 } from "@/hooks/useProspectReporting";
 import { useCrmManagers, useCrmReps } from "@/hooks/useCrm";
+import { getReportingToday } from "@/utils/reportingDate";
 import { Loader2, Download } from "lucide-react";
 
 // crm_account_events only exists from this date onward — see the note
@@ -108,7 +109,7 @@ export default function ProspectReportingPage() {
   // Prospect Activity tab pre-filtered to that slice.
   const [drillFilter, setDrillFilter] = useState<{ label: string; test: (r: ProspectReportingRow) => boolean } | null>(null);
 
-  const now = useMemo(() => new Date(), []);
+  const now = useMemo(() => getReportingToday(), []);
   const weekStart = useMemo(() => startOfDay(startOfWeek(subWeeks(now, weekOffset), { weekStartsOn: 1 })), [now, weekOffset]);
   const weekEnd = useMemo(() => endOfDay(endOfWeek(subWeeks(now, weekOffset), { weekStartsOn: 1 })), [now, weekOffset]);
   const inWeek = (s: string | null) => !!s && isWithinInterval(new Date(s), { start: weekStart, end: weekEnd });

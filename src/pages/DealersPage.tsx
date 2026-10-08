@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NoteToTask } from "@/components/NoteToTask";
-import { cn } from "@/lib/utils";
+import { cn, formatDateOnly } from "@/lib/utils";
+import { getReportingYear } from "@/utils/reportingDate";
 
 async function fetchDealerIdsWithCheckIns(): Promise<Set<string>> {
   const ids = new Set<string>();
@@ -73,7 +74,7 @@ export default function DealersPage() {
     queryFn: fetchDealerIdsWithCheckIns,
   });
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = getReportingYear();
   const { data: ytdRevenueByDealer = new Map<string, number>() } = useQuery({
     queryKey: ["dealer_ytd_revenue_invoices", currentYear],
     queryFn: async () => {
@@ -322,7 +323,7 @@ export default function DealersPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">YTD Gross Revenue</p><p className="text-lg font-semibold">{formatCurrency(getYtd(dealer.id))}</p></div>
-                  <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">Last Contact</p><p className="text-lg font-semibold">{dealer.last_contact ? new Date(dealer.last_contact).toLocaleDateString() : '---'}</p></div>
+                  <div className="stat-card"><p className="text-[11px] text-muted-foreground uppercase">Last Contact</p><p className="text-lg font-semibold">{dealer.last_contact ? formatDateOnly(dealer.last_contact) : '---'}</p></div>
                 </div>
 
                 <div className="space-y-3">

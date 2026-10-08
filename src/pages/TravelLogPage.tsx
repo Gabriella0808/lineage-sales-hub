@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
+import { getReportingToday, getReportingTodayStr } from "@/utils/reportingDate";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,15 +93,15 @@ export default function TravelLogPage() {
   const [travel, setTravel] = useState<TravelEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [cursor, setCursor] = useState<Date>(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [cursor, setCursor] = useState<Date>(getReportingToday());
+  const [selectedDate, setSelectedDate] = useState<Date>(getReportingToday());
   const [addOpen, setAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     salesperson_name: "",
     state_visited: "",
     purpose: "",
-    travel_date: format(new Date(), "yyyy-MM-dd"),
+    travel_date: getReportingTodayStr(),
     travel_end_date: "",
     notes: "",
   });
@@ -173,7 +174,7 @@ export default function TravelLogPage() {
       salesperson_name: "",
       state_visited: "",
       purpose: "",
-      travel_date: format(new Date(), "yyyy-MM-dd"),
+      travel_date: getReportingTodayStr(),
       travel_end_date: "",
       notes: "",
     });
@@ -220,8 +221,7 @@ export default function TravelLogPage() {
 
   // Last traveled per salesperson (most recent past trip - start date before today)
   const lastTraveled = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getReportingToday();
     const todayKey = format(today, "yyyy-MM-dd");
     const m = new Map<string, TravelEntry>();
     for (const t of travel) {
@@ -327,8 +327,7 @@ export default function TravelLogPage() {
 
   // Upcoming trips (today or future), sorted by start date
   const upcomingTrips = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getReportingToday();
     return travel
       .filter((t) => {
         const end = t.travel_end_date ? parseISO(t.travel_end_date) : parseISO(t.travel_date);
@@ -481,7 +480,7 @@ export default function TravelLogPage() {
             <p className="text-xs text-muted-foreground">{format(cursor, "MMMM yyyy")}</p>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm" onClick={() => setCursor(new Date())} className="h-8">
+            <Button variant="outline" size="sm" onClick={() => setCursor(getReportingToday())} className="h-8">
               Today
             </Button>
             <Button variant="ghost" size="icon" onClick={() => setCursor((c) => subMonths(c, 1))} className="h-8 w-8">
@@ -509,7 +508,7 @@ export default function TravelLogPage() {
             const trips = tripsByDay.get(key) ?? [];
             const inMonth = isSameMonth(d, cursor);
             const isSel = isSameDay(d, selectedDate);
-            const isToday = isSameDay(d, new Date());
+            const isToday = isSameDay(d, getReportingToday());
             const dayBtn = (
               <button
                 key={key}

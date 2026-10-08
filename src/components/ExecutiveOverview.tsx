@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery, type QueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { addDays, differenceInCalendarDays, endOfMonth, format, parseISO, subDays } from "date-fns";
-import { getReportingToday, getReportingHour, formatReportingTime } from "@/utils/reportingDate";
+import { getReportingToday, getReportingYear, getReportingHour, formatReportingTime } from "@/utils/reportingDate";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -141,7 +141,7 @@ function execBacklogQuery(managerIds: string[] | null, refreshKey: number) {
 // Called from the Company-wide page shortly after it opens so the High-Level
 // Reporting tab is already loaded by the time someone clicks it.
 export function prefetchExecutiveData(qc: QueryClient, managerIds: string[] | null, refreshKey: number) {
-  const year = new Date().getFullYear();
+  const year = getReportingYear();
   qc.prefetchQuery(execRowsQuery(year, managerIds, refreshKey));
   qc.prefetchQuery(execBacklogQuery(managerIds, refreshKey));
 }

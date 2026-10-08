@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
+import { formatReportingDate } from "@/utils/reportingDate";
 
 type QuoteData = {
   id: string;
@@ -71,7 +72,7 @@ export default function CustomerQuoteViewPage() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">Quote</div>
               <div className="font-mono text-xs">#{quote.id.slice(0, 8)}</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {new Date(quote.sent_at || quote.created_at).toLocaleDateString()}
+                {formatReportingDate(quote.sent_at || quote.created_at)}
               </div>
             </div>
           </div>

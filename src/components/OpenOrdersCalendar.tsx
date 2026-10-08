@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useOpenSOCalendar, type CalendarEvent, type MonthSummary } from "@/hooks/useOpenSOCalendar";
+import { formatReportingDate } from "@/utils/reportingDate";
 
 // ── Formatters ─────────────────────────────────────────────────────────────────
 
@@ -471,7 +472,7 @@ export function OpenOrdersCalendar() {
         <div className="ml-auto flex items-center gap-2">
           {syncedAt && (
             <span className="text-[10px] text-muted-foreground hidden sm:inline">
-              Synced {new Date(syncedAt).toLocaleDateString()}
+              Synced {formatReportingDate(syncedAt)}
             </span>
           )}
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1"

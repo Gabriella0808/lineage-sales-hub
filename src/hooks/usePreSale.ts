@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getReportingYear } from "@/utils/reportingDate";
 
 // "Pre-Sale" = every product Acctivate currently has flagged as a New
 // Product Intro (products.new_intro_unavail, synced from Acctivate's
@@ -79,7 +80,7 @@ export function usePreSaleBookings(skus: string[]) {
     enabled: skus.length > 0,
     staleTime: 5 * 60_000,
     queryFn: () => {
-      const year = new Date().getFullYear();
+      const year = getReportingYear();
       return fetchAll<PreSaleBookingLine>((from, to) =>
         (supabase as any)
           .from("v_companywide_reporting_actuals")

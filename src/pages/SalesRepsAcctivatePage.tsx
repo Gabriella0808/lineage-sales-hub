@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { formatReportingDateTime } from "@/utils/reportingDate";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -86,7 +87,7 @@ export default function SalesRepsAcctivatePage() {
             : `${filtered.length} of ${rows.length} reps  (${activeCount} active)`}
           {!loading && lastSynced && (
             <div className="text-xs">
-              Last synced: {new Date(lastSynced).toLocaleString()}
+              Last synced: {formatReportingDateTime(lastSynced)}
             </div>
           )}
         </div>

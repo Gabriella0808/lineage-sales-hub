@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import DealerBrandingDialog from "@/components/DealerBrandingDialog";
+import { formatReportingDate } from "@/utils/reportingDate";
 
 type Row = {
   id: string;
@@ -103,7 +104,7 @@ export default function CustomerQuotesPage() {
                   <Badge variant={statusVariant(q.status)} className="capitalize">{q.status}</Badge>
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {q.customer_company || q.customer_email || "-"} · {new Date(q.created_at).toLocaleDateString()}
+                  {q.customer_company || q.customer_email || "-"} · {formatReportingDate(q.created_at)}
                 </div>
               </div>
               <div className="text-right font-medium">{fmt(Number(q.total))}</div>

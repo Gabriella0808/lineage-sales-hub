@@ -20,12 +20,13 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, parseDateOnly, formatDateOnly } from "@/lib/utils";
 import { weeksOfSupply, weeksTone, LEAD_TIME_WEEKS } from "@/lib/inventoryMath";
 import ComparePeriodsReport from "@/components/ComparePeriodsReport";
 import { QboPrepaidReport } from "@/components/QboPrepaidReport";
 import { useQboPrepaidSummary } from "@/hooks/useQboPrepaid";
 import { useUserRole } from "@/hooks/useUserRole";
+import { getReportingToday } from "@/utils/reportingDate";
 import { BacklogSummary } from "@/components/BacklogSummary";
 import { OpenOrdersCalendar } from "@/components/OpenOrdersCalendar";
 
@@ -248,7 +249,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
     const m = new Map<string, number>();
     for (const r of filtered) {
       if (!r.estimated_arrival) continue;
-      const d = new Date(r.estimated_arrival);
+      const d = parseDateOnly(r.estimated_arrival)!;
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       m.set(key, (m.get(key) ?? 0) + 1);
     }
@@ -290,7 +291,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
     const rows = filtered
       .filter((r) => {
         if (!r.estimated_arrival) return false;
-        const d = new Date(r.estimated_arrival);
+        const d = parseDateOnly(r.estimated_arrival)!;
         const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
         return k === data.key;
       })
@@ -311,7 +312,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
     setSelectedPO(r);
   };
 
-  const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString() : "-");
+  const fmtDate = formatDateOnly;
   const fmtPct = (n: number | null) => (n != null ? `${Number(n).toFixed(0)}%` : "-");
 
   const selectedLines = useMemo(
@@ -714,7 +715,7 @@ function ReportBacklog({ rows }: { rows: { id: string; order_number: string | nu
             <td className="px-3 py-2 text-right tabular-nums">{fmtNum(Number(r.qty_open))}</td>
             <td className="px-3 py-2 text-right tabular-nums">${Math.round(Number(r.unit_price)).toLocaleString()}</td>
             <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(Number(r.extended_value))}</td>
-            <td className="px-3 py-2 text-xs">{r.promised_date ? new Date(r.promised_date).toLocaleDateString() : "-"}</td>
+            <td className="px-3 py-2 text-xs">{formatDateOnly(r.promised_date)}</td>
           </tr>
         ))}
       </tbody>
@@ -940,7 +941,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   // When no real PO data is synced, synthesize POs from the same vendor data
   // shown in "Performance by Vendor" so the calendar is consistent with that view.
   const poBuckets = useMemo(() => {
-    const today = new Date();
+    const today = getReportingToday();
     const buckets = { late: [] as PurchaseOrder[], d30: [] as PurchaseOrder[], d60: [] as PurchaseOrder[], d90: [] as PurchaseOrder[] };
 
     let source: PurchaseOrder[] = hub.purchaseOrders;
@@ -1108,7 +1109,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
     const skuToSupplier = new Map<string, string>();
     for (const it of items) skuToSupplier.set(it.sku, it.supplier ?? "-");
 
-    const now = new Date();
+    const now = getReportingToday();
     const thisYear = now.getFullYear();
     const lastYear = thisYear - 1;
     // Day-of-year cutoff for like-for-like YTD comparison
@@ -1231,7 +1232,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // YTD Purchase Orders by SKU (current year vs prior year YTD)
   const itemPoYtd = useMemo(() => {
-    const now = new Date();
+    const now = getReportingToday();
     const thisYear = now.getFullYear();
     const lastYear = thisYear - 1;
     const cutoffMs = now.getTime() - new Date(thisYear, 0, 1).getTime();
@@ -1304,7 +1305,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
 
   // Inventory aging (received_date based - only available items shown)
   const aging = useMemo(() => {
-    const today = Date.now();
+    const today = getReportingToday().getTime();
     const buckets = { d030: 0, d3160: 0, d6190: 0, d90plus: 0, unknown: 0 };
     for (const it of items) {
       const received = (it as any).received_date as string | undefined;
@@ -1478,7 +1479,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
   // Uses the same weekly-sales / lead-time logic as Reorder, plus a projected stockout date
   // and an Order Decision verdict.
   const buyNowRows = useMemo(() => {
-    const today = Date.now();
+    const today = getReportingToday().getTime();
     // Map of next ETA per SKU from PO lines
     const nextEtaBySku = new Map<string, string>();
     for (const l of hub.poLines) {

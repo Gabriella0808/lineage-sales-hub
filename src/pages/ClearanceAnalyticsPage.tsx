@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getReportingToday } from "@/utils/reportingDate";
 
 // --------- Types ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -36,16 +37,6 @@ interface RepRow {
 }
 
 // --------- Helpers ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-/** Returns today's calendar date in America/New_York as a plain Date at local midnight. */
-function getTodayET(): Date {
-  const etStr = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(new Date());
-  const [y, m, d] = etStr.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
 
 /**
  * Returns the current Friday if today is Friday, otherwise the NEXT upcoming Friday.
@@ -76,7 +67,7 @@ const MANAGER_NAMES = new Set(["will", "mateo", "chris"]);
 
 export default function ClearanceAnalyticsPage() {
   // anchor = the END Friday of the displayed period, computed in ET timezone
-  const [anchor, setAnchor] = useState<Date>(() => currentOrNextFriday(getTodayET()));
+  const [anchor, setAnchor] = useState<Date>(() => currentOrNextFriday(getReportingToday()));
 
   const periodEnd   = anchor;               // end Friday (inclusive, displayed)
   const periodStart = addDays(anchor, -6);  // Saturday 6 days before (Sat–Fri, no overlap)
@@ -86,7 +77,7 @@ export default function ClearanceAnalyticsPage() {
   const filterEndStr   = format(filterEnd,   "yyyy-MM-dd");
   const weekLabel      = fmtWeekLabel(periodStart, periodEnd);
 
-  const isCurrentWeek = format(anchor, "yyyy-MM-dd") === format(currentOrNextFriday(getTodayET()), "yyyy-MM-dd");
+  const isCurrentWeek = format(anchor, "yyyy-MM-dd") === format(currentOrNextFriday(getReportingToday()), "yyyy-MM-dd");
 
   const [salesRows, setSalesRows]       = useState<SalesRow[]>([]);
   const [loadingData, setLoadingData]   = useState(true);
@@ -200,7 +191,7 @@ export default function ClearanceAnalyticsPage() {
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setAnchor(currentOrNextFriday(getTodayET()))}>
+        <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setAnchor(currentOrNextFriday(getReportingToday()))}>
           This Week
         </Button>
       </div>

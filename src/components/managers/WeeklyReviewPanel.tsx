@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { managerGroupIds } from "@/utils/managerGroups";
 import { isMeetingCheckIn } from "@/utils/checkIns";
+import { getReportingToday } from "@/utils/reportingDate";
 
 type Responses = Record<string, string>;
 
@@ -116,7 +117,7 @@ const SECTIONS: Section[] = [
 ];
 
 // Monday of current week (week the Friday email is sent for)
-function currentMonday(d = new Date()): string {
+function currentMonday(d = getReportingToday()): string {
   const monday = startOfWeek(d, { weekStartsOn: 1 });
   return format(monday, "yyyy-MM-dd");
 }

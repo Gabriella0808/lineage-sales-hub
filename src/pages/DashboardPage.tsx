@@ -11,6 +11,7 @@ import { formatDistanceToNow, format, parseISO } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { getReportingYear } from "@/utils/reportingDate";
 
 const MONTH_ORDER = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -25,7 +26,7 @@ export default function DashboardPage() {
   const { data: repTerritories = [] } = useRepTerritories();
   const { data: managers = [] } = useManagers();
 
-  const currentYear = new Date().getFullYear();
+  const currentYear = getReportingYear();
 
   // Authoritative monthly revenue per dealer for current + prev year - pulled directly
   // from dealer_invoices (same source as the Sales Targets card).

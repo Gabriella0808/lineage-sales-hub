@@ -16,3 +16,19 @@ export function parseDateOnly(value: string | null | undefined): Date | null {
   if (!m) return new Date(value);
   return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
 }
+
+/**
+ * Formats a SQL `date` string (YYYY-MM-DD, e.g. requested_ship_date,
+ * estimated_arrival, last_contact) for display, e.g. "Oct 8, 2026".
+ * Uses parseDateOnly() under the hood so it never shifts to the wrong
+ * calendar day - unlike `new Date(dateString).toLocaleDateString()`, which
+ * parses the string as UTC midnight and can land on the previous day in
+ * any negative-UTC-offset timezone (including Eastern).
+ * For a real timestamp (timestamptz), use formatReportingDate() from
+ * @/utils/reportingDate instead - this is only for date-only columns.
+ */
+export function formatDateOnly(value: string | null | undefined): string {
+  const d = parseDateOnly(value);
+  if (!d) return "-";
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(d);
+}

@@ -424,7 +424,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
           <h2 className="text-2xl sm:font-serif text-4xl font-medium tracking-tight mt-1">{greeting}{first ? `, ${first[0].toUpperCase()}${first.slice(1)}` : ""}</h2>
           <p className="text-sm text-muted-foreground mt-1">Here is how the business is performing. Data updated {formatReportingTime(dataUpdatedAt || Date.now())} ET.</p>
         </div>
-        <ToggleGroup type="single" value={period} onValueChange={(v) => v && setPeriod(v as PeriodKey)} className="bg-muted p-1 rounded-lg self-start">
+        <ToggleGroup data-tour="hlr-period" type="single" value={period} onValueChange={(v) => v && setPeriod(v as PeriodKey)} className="bg-muted p-1 rounded-lg self-start">
           {([["mtd", "Month"], ["qtd", "Quarter"], ["d30", "30 days"], ["d90", "90 days"], ["ytd", "Since Jul 1"]] as [PeriodKey, string][]).map(([k, label]) => (
             <ToggleGroupItem key={k} value={k} disabled={!windows[k].available} className="h-8 px-3 text-[13px] data-[state=on]:bg-card data-[state=on]:shadow-sm">{label}</ToggleGroupItem>
           ))}
@@ -432,7 +432,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
       </div>
 
       {/* Insight strip */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div data-tour="hlr-insights" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {insights.slice(0, 4).map((x, i) => (
           <div key={i} className={cn("rounded-xl border p-3.5 flex gap-3 bg-card", x.tone === "bad" && "border-destructive/40", x.tone === "warn" && "border-warning/50")}>
             {x.tone === "good" ? <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" /> : <AlertTriangle className={cn("h-5 w-5 shrink-0 mt-0.5", x.tone === "bad" ? "text-destructive" : "text-warning")} />}
@@ -442,7 +442,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
       </div>
 
       {/* KPI cards */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div data-tour="hlr-kpis" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label={`Bookings · ${W.label}`} value={money(m.curB)} delta={hasPrev ? change(m.curB, m.prevB) : null} deltaLabel={W.prevLabel} spark={m.sparkB} color="--chart-1" onOpen={() => onOpenReport("live-kpi")} hint="Open Live KPI" foot={`${money(m.ytdB)} ${SINCE}`} />
         <Kpi label={`Invoiced · ${W.label}`} value={money(m.curI)} delta={hasPrev ? change(m.curI, m.prevI) : null} deltaLabel={W.prevLabel} spark={m.sparkI} color="--chart-2" onOpen={() => onOpenReport("live-kpi")} hint="Open Live KPI" foot={`${money(m.ytdI)} ${SINCE}`} />
         <Kpi label={`Active dealers · ${W.label}`} value={m.activeDealers.toLocaleString()} delta={hasPrev ? change(m.activeDealers, m.prevActiveDealers) : null} deltaLabel={W.prevLabel} spark={m.sparkD} color="--chart-3" onOpen={() => onOpenReport("dealer-reporting")} hint="Open Dealer Reporting" foot={`of ${m.totalDealers.toLocaleString()} that ordered ${SINCE}`} />
@@ -511,7 +511,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
               </div>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Tabs value={tab} onValueChange={(v) => { setTab(v as DealerTab); setShowAll(false); }}>
+              <Tabs data-tour="hlr-dealer-tabs" value={tab} onValueChange={(v) => { setTab(v as DealerTab); setShowAll(false); }}>
                 <TabsList className="h-auto flex-wrap">
                   <TabsTrigger value="top">Top ({m.tabs.top.length})</TabsTrigger>
                   {hasPrev && <TabsTrigger value="slowing">Slowing ({m.tabs.slowing.length})</TabsTrigger>}

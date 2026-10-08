@@ -216,7 +216,7 @@ export default function CompanyWidePage() {
           </Button>
           <span className="text-xs text-muted-foreground hidden sm:inline">Manager</span>
           <Select value={effectiveManagerId} onValueChange={setManager} disabled={isRep}>
-            <SelectTrigger className="w-[220px] h-9">
+            <SelectTrigger data-tour="hlr-manager-filter" className="w-[220px] h-9">
               <SelectValue placeholder="All managers" />
             </SelectTrigger>
             <SelectContent>

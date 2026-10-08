@@ -9,140 +9,74 @@ import { Button } from "@/components/ui/button";
 
 export const START_TOUR_EVENT = "lc:start-tour";
 
-// Team Updates walkthrough audience - matches the page's own access rule
-// (pageAccess.ts's "team-updates" entry: everyone).
-export function canUseTeamUpdatesTour(role?: string) {
-  return role === "admin" || role === "manager" || role === "rep";
+// High-Level Reporting walkthrough audience - matches the page's own
+// access rule (CompanyWidePage.tsx's canSeeExecutive: admin/manager only,
+// reps and dealers excluded).
+export function canUseHighLevelReportingTour(role?: string) {
+  return role === "admin" || role === "manager";
 }
 
-// Pre-Sale walkthrough audience - matches the page's own access rule
-// (pageAccess.ts's "pre-sale" entry: admin, manager or dealer - reps
-// excluded there too).
-export function canUsePreSaleTour(role?: string) {
-  return role === "admin" || role === "manager" || role === "dealer";
-}
-
-// The "what's changed" popup - shown to literally everyone, including reps,
-// once per person per version, right after sign-in/reload. Its button walks
-// whoever's eligible through the current feature tours (Team Updates, then
-// Pre-Sale); someone with access to neither (a rep, right now) just closes
-// the popup, since there's nothing else to show them yet.
-const ANNOUNCEMENT_VERSION = "2026-09-30";
+// The "what's changed" popup - shown only to admin/manager accounts (the
+// only audience with anything to see right now), once per person per
+// version, shortly after sign-in/reload. Reps and dealers get nothing -
+// there's no rep/dealer-facing feature to announce here.
+const ANNOUNCEMENT_VERSION = "2026-10-08";
 const ANNOUNCEMENT_SEEN_KEY = "lc.announcementSeen";
 const announcementSeenKeyFor = (email?: string | null) => `${ANNOUNCEMENT_SEEN_KEY}:${(email ?? "").toLowerCase()}`;
-// Andrew's popup got dismissed on his behalf (checking something in his
-// portal) before he'd actually seen it - this makes it show for him once
-// more, without touching anyone who's already genuinely dismissed it.
-// Self-resolving: once he dismisses it, his own stored value becomes this
-// same override version, so it won't show a second time from this alone.
-const ANNOUNCEMENT_VERSION_OVERRIDES: Record<string, string> = {
-  "andrew@lineage-collections.com": "2026-09-30.reshow-1",
-};
-const requiredAnnouncementVersion = (email?: string | null) =>
-  ANNOUNCEMENT_VERSION_OVERRIDES[(email ?? "").toLowerCase()] ?? ANNOUNCEMENT_VERSION;
 
 const has = (sel: string) => !!document.querySelector(sel);
 
-// Team Updates walkthrough - only reachable on /team-updates itself, so
-// every element it targets is real (an actual post, reaction bar, "Seen
-// by" button, attachment) rather than a mock. Every step but the first two
-// is skipped gracefully via has() if the feed happens to be empty when
-// someone first lands here.
-function buildTeamUpdatesSteps(): DriveStep[] {
+// High-Level Reporting walkthrough - only reachable on the Company-wide
+// page with the executive tab active (/company-wide?report=executive), so
+// every element it targets is real rather than a mock. Every step but the
+// first two is skipped gracefully via has() if something isn't on screen
+// yet (e.g. the manager filter for someone scoped to a single manager).
+function buildHighLevelReportingSteps(): DriveStep[] {
   const steps: (DriveStep | null)[] = [
     {
       popover: {
-        title: "Team Updates",
-        description: "A new company blog/announcements section - post news, events and updates for the team, with attachments, reactions and read receipts.",
+        title: "High-Level Reporting",
+        description: "A new executive-style overview - revenue, targets, dealer health and rep performance at a glance, all on one page.",
       },
     },
-    has('[data-tour="team-updates-new-post"]') ? {
-      element: '[data-tour="team-updates-new-post"]',
+    has('[data-tour="hlr-insights"]') ? {
+      element: '[data-tour="hlr-insights"]',
       popover: {
-        title: "Post an update",
-        description: "Admins and managers can post here. Add a title and/or body text, and up to 6 attachments - images, video, PDFs, Word/Excel/PowerPoint, even zip files, up to 500MB each. Everyone with access gets an in-portal notification and an email as soon as it's posted.",
+        title: "Insights",
+        description: "The headline call-outs - invoicing pace vs target, how bookings are trending, dealers that have gone quiet, and how concentrated revenue is in your top dealers.",
       },
     } : null,
-    has('[data-tour="team-updates-post"]') ? {
-      element: '[data-tour="team-updates-post"]',
+    has('[data-tour="hlr-kpis"]') ? {
+      element: '[data-tour="hlr-kpis"]',
       popover: {
-        title: "A post",
-        description: "Pinned posts (admin-only) always float to the top; everything else is newest-first below. The ⋮ menu on a post lets its author (or any admin) pin, edit or delete it.",
+        title: "The numbers",
+        description: "Bookings, invoiced, active dealers and open order backlog, each with a trend line and a comparison to the prior period.",
       },
     } : null,
-    has('[data-tour="team-updates-attachment"]') ? {
-      element: '[data-tour="team-updates-attachment"]',
+    has('[data-tour="hlr-period"]') ? {
+      element: '[data-tour="hlr-period"]',
       popover: {
-        title: "Click into an attachment",
-        description: "Click any attachment to preview it right in the portal - images and video play inline, PDFs render in the browser's own viewer. Whatever the type, the preview always fits the screen and has a Download button, so nothing forces a new tab.",
+        title: "Change the period",
+        description: "Switch between Month, Quarter, 30 days, 90 days or Since Jul 1 - everything on the page updates to match.",
       },
     } : null,
-    has('[data-tour="team-updates-reaction"]') ? {
-      element: '[data-tour="team-updates-reaction"]',
+    has('[data-tour="hlr-manager-filter"]') ? {
+      element: '[data-tour="hlr-manager-filter"]',
       popover: {
-        title: "React with more than one emoji",
-        description: "Not just a single like - click the smiley to react with 👍 ❤️ 😂 😮 🎉 or 👏, and you can pick more than one on the same post. Each emoji gets its own pill with a live count; hover one to see who reacted.",
+        title: "Filter by manager",
+        description: "Admins can scope the whole page to one sales manager's team; managers see their own team automatically.",
       },
     } : null,
-    has('[data-tour="team-updates-seen-by"]') ? {
-      element: '[data-tour="team-updates-seen-by"]',
+    has('[data-tour="hlr-dealer-tabs"]') ? {
+      element: '[data-tour="hlr-dealer-tabs"]',
       popover: {
-        title: "See who's actually read it",
-        description: "\"Seen by\" is a real read receipt, not a guess - it counts everyone with access who's genuinely opened Team Updates with this post on their screen. Click it to see exactly who, by name.",
-      },
-    } : null,
-    has('[data-tour="team-updates-post-menu"]') ? {
-      element: '[data-tour="team-updates-post-menu"]',
-      popover: {
-        title: "Managing a post",
-        description: "Admins can pin an important post to the top, and edit or delete any post; managers can edit or delete their own.",
+        title: "Dealer movement",
+        description: "Top, Slowing, Growing, Gone quiet and New - click into any of these to see exactly which dealers, and export the list to CSV.",
       },
     } : null,
     {
       popover: {
-        title: "That's Team Updates",
-        description: "That's the tour. Post something, react to a post, or just browse what's already here.",
-      },
-    },
-  ];
-  return steps.filter(Boolean) as DriveStep[];
-}
-
-// Pre-Sale walkthrough - only reachable on /promotions/pre-sale itself, so
-// every step targets the real page. Every step but the first is skipped
-// gracefully via has() if there's nothing currently flagged to show.
-function buildPreSaleSteps(): DriveStep[] {
-  const steps: (DriveStep | null)[] = [
-    {
-      popover: {
-        title: "Pre-Sale - New Product Intros",
-        description: "Tracks every SKU currently flagged as a New Product Intro in Acctivate - what's booked, what's on order, and how attainment is tracking.",
-      },
-    },
-    has('[data-tour="presale-kpis"]') ? {
-      element: '[data-tour="presale-kpis"]',
-      popover: {
-        title: "The headline numbers",
-        description: "Total booked, total on PO (excluding completed POs), Pre-Sale progress (% of PO'd value booked), and Remainder of goal - what's still left to sell against what's on order.",
-      },
-    } : null,
-    has('[data-tour="presale-tabs"]') ? {
-      element: '[data-tour="presale-tabs"]',
-      popover: {
-        title: "Three views",
-        description: "Overview for the big picture, \"By Dealer, Rep, Collection & SKU\" to drill all the way down to a rep's or dealer's numbers, and Purchase Orders for the raw PO data behind it all.",
-      },
-    } : null,
-    has('[data-tour="presale-heatmap"]') ? {
-      element: '[data-tour="presale-heatmap"]',
-      popover: {
-        title: "Rep × collection heatmap",
-        description: "Color-coded by attainment - red under 40%, yellow 40-70%, green 70%+ - so you can spot at a glance which rep/collection combinations need attention.",
-      },
-    } : null,
-    {
-      popover: {
-        title: "That's Pre-Sale",
+        title: "That's High-Level Reporting",
         description: "That's the tour. You can replay it any time from your account menu.",
       },
     },
@@ -170,12 +104,12 @@ function removeCursor() {
   cursorEl = null;
 }
 
-// Neither of these records its own "seen" state - when run from the
-// announcement popup below, that's tracked once at the announcement level;
-// when replayed directly from the account menu, replaying on purpose
-// obviously doesn't need to be remembered as "already seen".
-export function runTeamUpdatesTour(onDone?: () => void) {
-  const steps = buildTeamUpdatesSteps();
+// Doesn't record its own "seen" state - when run from the announcement
+// popup below, that's tracked once at the announcement level; when
+// replayed directly from the account menu, replaying on purpose obviously
+// doesn't need to be remembered as "already seen".
+export function runHighLevelReportingTour(onDone?: () => void) {
+  const steps = buildHighLevelReportingSteps();
   const d = driver({
     showProgress: true,
     allowClose: true,
@@ -192,45 +126,30 @@ export function runTeamUpdatesTour(onDone?: () => void) {
   d.drive();
 }
 
-export function runPreSaleTour(onDone?: () => void) {
-  const steps = buildPreSaleSteps();
-  const d = driver({
-    showProgress: true,
-    allowClose: true,
-    overlayOpacity: 0.55,
-    stagePadding: 6,
-    stageRadius: 10,
-    nextBtnText: "Next",
-    prevBtnText: "Back",
-    doneBtnText: "Done",
-    steps,
-    onHighlightStarted: (el) => moveCursor(el),
-    onDestroyed: () => { removeCursor(); onDone?.(); },
-  });
-  d.drive();
-}
-
-// Navigates to a tour's page if not already there, waits for its content to
-// actually exist (rather than guessing one fixed delay - a cold page load
-// is much slower than an already-warm in-app navigation), then runs it.
-// Gives up waiting after 8s and runs anyway, so a tour still plays (just
-// skipping content steps via has()) even if the page has nothing to show.
-function goToAndRun(navigate: ReturnType<typeof useNavigate>, currentPath: string, path: string, selectors: string[], run: (onDone: () => void) => void, onDone: () => void) {
-  const waitThenRun = () => {
+// Navigates to the tour's page (including its ?report= query, so it lands
+// on the right tab even when the pathname alone already matches - e.g.
+// someone on Dealer Reporting replaying the tour from the account menu),
+// waits for its content to actually exist (rather than guessing one fixed
+// delay - a cold page load is much slower than an already-warm in-app
+// navigation), then runs it. Gives up waiting after 8s and runs anyway, so
+// the tour still plays (just skipping content steps via has()) even if
+// the page has nothing to show yet. navigate() to the same resolved URL
+// is a harmless no-op in React Router, so this always re-navigates rather
+// than trying to detect whether it's already needed.
+function goToAndRun(navigate: ReturnType<typeof useNavigate>, path: string, selectors: string[], run: (onDone: () => void) => void, onDone: () => void) {
+  navigate(path);
+  window.setTimeout(() => {
     const deadline = Date.now() + 8000;
     const tick = () => {
       if (selectors.some(has) || Date.now() >= deadline) { run(onDone); return; }
       window.setTimeout(tick, 250);
     };
-    window.setTimeout(tick, 1000);
-  };
-  if (currentPath !== path) {
-    navigate(path);
-    window.setTimeout(waitThenRun, 400);
-  } else {
-    waitThenRun();
-  }
+    tick();
+  }, 400);
 }
+
+const HLR_PATH = "/company-wide?report=executive";
+const HLR_SELECTORS = ['[data-tour="hlr-insights"]', '[data-tour="hlr-kpis"]'];
 
 export function WhatsNewTour() {
   const { user } = useAuth();
@@ -238,82 +157,53 @@ export function WhatsNewTour() {
   const navigate = useNavigate();
   const { data: roleInfo } = useUserRole();
   const role = roleInfo?.role;
-  const allowedTeamUpdates = canUseTeamUpdatesTour(role);
-  const allowedPreSale = canUsePreSaleTour(role);
+  const allowed = canUseHighLevelReportingTour(role);
 
-  // The "what's changed" popup - everyone, including reps, once per
-  // person per version, shortly after sign-in/reload.
+  // The "what's changed" popup - admin/manager only, once per person per
+  // version, shortly after sign-in/reload. Reps and dealers never see it.
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.email || !allowed) return;
     let seen: string | null = null;
     try { seen = localStorage.getItem(announcementSeenKeyFor(user.email)); } catch { /* ignore */ }
-    if (seen === requiredAnnouncementVersion(user.email)) return;
+    if (seen === ANNOUNCEMENT_VERSION) return;
     const t = window.setTimeout(() => setAnnouncementOpen(true), 1200);
     return () => window.clearTimeout(t);
-  }, [user?.email]);
+  }, [user?.email, allowed]);
 
   const dismissAnnouncement = () => {
     setAnnouncementOpen(false);
-    try { if (user?.email) localStorage.setItem(announcementSeenKeyFor(user.email), requiredAnnouncementVersion(user.email)); } catch { /* ignore */ }
+    try { if (user?.email) localStorage.setItem(announcementSeenKeyFor(user.email), ANNOUNCEMENT_VERSION); } catch { /* ignore */ }
   };
 
-  // Walks through Team Updates then Pre-Sale, each on its own page, for
-  // whoever has access to them. Someone with access to neither (a rep)
-  // gets nothing further - there's no other tour left to fall back to.
-  const runNewFeatureTours = () => {
-    const queue: { path: string; selectors: string[]; run: (onDone: () => void) => void }[] = [];
-    if (allowedTeamUpdates) queue.push({ path: "/team-updates", selectors: ['[data-tour="team-updates-new-post"]', '[data-tour="team-updates-post"]'], run: runTeamUpdatesTour });
-    if (allowedPreSale) queue.push({ path: "/promotions/pre-sale", selectors: ['[data-tour="presale-kpis"]'], run: runPreSaleTour });
-    if (queue.length === 0) return;
-
-    const step = (i: number, fromPath: string) => {
-      if (i >= queue.length) return;
-      const { path, selectors, run } = queue[i];
-      goToAndRun(navigate, fromPath, path, selectors, run, () => window.setTimeout(() => step(i + 1, path), 400));
-    };
-    step(0, location.pathname);
+  const runNewFeatureTour = () => {
+    if (!allowed) return;
+    goToAndRun(navigate, HLR_PATH, HLR_SELECTORS, runHighLevelReportingTour, () => {});
   };
 
-  // Replay from the account menu - runs whichever tour fits the current
-  // page, for people eligible for Team Updates or Pre-Sale. The menu item
-  // itself is hidden for anyone with neither (see AppLayout.tsx), so this
-  // is really just picking between the two.
+  // Replay from the account menu - admin/manager only (the menu item
+  // itself is hidden for anyone else, see AppLayout.tsx).
   useEffect(() => {
-    if (!allowedTeamUpdates && !allowedPreSale) return;
-    const onStart = () => {
-      if (allowedTeamUpdates && location.pathname === "/team-updates") { runTeamUpdatesTour(); return; }
-      if (allowedPreSale && location.pathname === "/promotions/pre-sale") { runPreSaleTour(); return; }
-      // On neither page - run whichever applies, starting there.
-      runNewFeatureTours();
-    };
+    if (!allowed) return;
+    const onStart = () => runNewFeatureTour();
     window.addEventListener(START_TOUR_EVENT, onStart);
     return () => window.removeEventListener(START_TOUR_EVENT, onStart);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowedTeamUpdates, allowedPreSale, location.pathname]);
+  }, [allowed, location.pathname]);
 
-  // Everyone (including reps) sees the popup itself, but a rep has nothing
-  // to actually walk through yet - don't offer a button that would do
-  // nothing when clicked.
-  const hasAnyTour = allowedTeamUpdates || allowedPreSale;
+  if (!allowed) return null;
 
   return (
     <Dialog open={announcementOpen} onOpenChange={(v) => { if (!v) dismissAnnouncement(); }}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>What's new in the portal</DialogTitle>
+          <DialogTitle>What's new in High-Level Reporting</DialogTitle>
           <DialogDescription>
-            {hasAnyTour
-              ? "There have been some changes to the portal - take a quick look at what's new."
-              : "There have been some changes to the portal for admins and managers. Nothing new for your account to walk through just yet."}
+            A new executive-style overview page - revenue, targets, dealer health and rep performance at a glance. Take a quick look at what's new.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          {hasAnyTour ? (
-            <Button onClick={() => { dismissAnnouncement(); runNewFeatureTours(); }}>See what's new</Button>
-          ) : (
-            <Button onClick={dismissAnnouncement}>Got it</Button>
-          )}
+          <Button onClick={() => { dismissAnnouncement(); runNewFeatureTour(); }}>See what's new</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

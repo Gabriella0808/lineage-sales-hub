@@ -2,16 +2,17 @@ import { useMemo, useState } from "react";
 import { keepPreviousData, useQuery, type QueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { addDays, differenceInCalendarDays, endOfMonth, format, parseISO, subDays } from "date-fns";
-import { getReportingToday, getReportingYear, getReportingHour, formatReportingTime } from "@/utils/reportingDate";
+import { getReportingToday, getReportingYear, getReportingHour, formatReportingTime, formatReportingDateTime } from "@/utils/reportingDate";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import {
-  AlertTriangle, ArrowDownRight, ArrowUpRight, Boxes, CheckCircle2, ChevronRight, Download, Search, Store, Users,
+  AlertTriangle, ArrowDownRight, ArrowUpRight, Boxes, CheckCircle2, ChevronRight, Download, Info, Search, Store, Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip as UiTooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -154,6 +155,24 @@ function useOpenBacklog(managerIds: string[] | null, refreshKey: number) {
   return useQuery({ ...execBacklogQuery(managerIds, refreshKey), placeholderData: keepPreviousData });
 }
 
+// When the underlying Acctivate data (bookings, invoices, open SOs) was
+// actually last synced - not when the browser last fetched its query
+// cache (react-query's own dataUpdatedAt), which can be much staler if a
+// tab's been open a while. See get_portal_data_sync_status() - MIN of the
+// bookings/open-SO sync and the invoice sync, so the shown time is never
+// stale for any of the three.
+function useDataSyncStatus() {
+  return useQuery({
+    queryKey: ["portal_data_sync_status"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_portal_data_sync_status").single();
+      if (error) throw error;
+      return data as { bookings_and_open_so_synced_at: string | null; invoices_synced_at: string | null; last_synced_at: string | null };
+    },
+    staleTime: 5 * 60_000,
+  });
+}
+
 interface Win { start: string; end: string; pStart: string | null; pEnd: string | null; label: string; prevLabel: string }
 
 function buildWindows(today: Date): Record<PeriodKey, Win & { available: boolean }> {
@@ -198,8 +217,9 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
   const year = today.getFullYear();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: rows = [], isLoading, error, dataUpdatedAt } = useExecutiveRows(year, managerIds, refreshKey);
+  const { data: rows = [], isLoading, error } = useExecutiveRows(year, managerIds, refreshKey);
   const { data: backlog } = useOpenBacklog(managerIds, refreshKey);
+  const { data: syncStatus } = useDataSyncStatus();
   const { data: targets = [] } = useRepTargets(year);
   const { data: reps = [] } = useSalesReps();
 
@@ -221,8 +241,6 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
 
     const monthB = Array(12).fill(0) as number[];
     const monthI = Array(12).fill(0) as number[];
-    const weekB = Array(12).fill(0) as number[];
-    const weekI = Array(12).fill(0) as number[];
     const weekDealers: Set<string>[] = Array.from({ length: 12 }, () => new Set<string>());
     const dealers = new Map<string, DealerAgg>();
     const repAgg = new Map<string, RepAgg>();
@@ -258,7 +276,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
         dl.ytd += a;
         if (d > dl.last) dl.last = d;
         if (d < dl.first) dl.first = d;
-        if (wk >= 0 && wk < 12) { weekB[wk] += a; weekDealers[wk].add(dKey); }
+        if (wk >= 0 && wk < 12) weekDealers[wk].add(dKey);
         if (inCur(d)) {
           curB += a; dl.cur += a; rep.cur += a; rep.dealers.add(dKey); curDealers.add(dKey);
           const brand = (r.brand_category ?? "").trim() || "Unclassified";
@@ -270,7 +288,6 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
         }
       } else {
         ytdI += a; monthI[mi] += a; rep.ytdI += a;
-        if (wk >= 0 && wk < 12) weekI[wk] += a;
         if (inCur(d)) { curI += a; rep.curI += a; }
         else if (inPrev(d)) prevI += a;
       }
@@ -307,7 +324,19 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
     ];
     const top10Share = ytdB > 0 ? ([...list].sort((a, b) => b.ytd - a.ytd).slice(0, 10).reduce((s, d) => s + d.ytd, 0) / ytdB) * 100 : 0;
 
-    const spark = (arr: number[]) => arr.map((v, i) => ({ i, v })).reverse();
+    // i = how many 7-day buckets back from today (0 = this week). Attach
+    // the actual date range so the hover tooltip is self-explanatory -
+    // this is a rolling 12-week trend, a different window than whatever
+    // period is selected above it, so a bare number here is ambiguous.
+    const spark = (arr: number[]) => arr.map((v, i) => ({
+      i, v,
+      label: `${format(subDays(today, i * 7 + 6), "MMM d")}–${format(subDays(today, i * 7), "MMM d")}`,
+    })).reverse();
+    // Bookings/Invoiced sparklines read by calendar month (Jul onward),
+    // same months as the chart below, rather than the last 12 weeks -
+    // already in chronological order, unlike spark()'s weekly arrays
+    // (which are most-recent-first and need the reverse()).
+    const sparkMonthly = (arr: number[]) => arr.slice(START_MONTH, curMonth).map((v, i) => ({ i, v, label: MONTH_LABELS[START_MONTH + i] }));
     const chart = MONTH_LABELS.slice(START_MONTH, curMonth).map((label, k) => { const i = k + START_MONTH; return {
       label, Bookings: Math.round(monthB[i]), Invoiced: Math.round(monthI[i]),
       Target: monthTarget[i] > 0 ? Math.round(monthTarget[i]) : undefined,
@@ -317,7 +346,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
       T, ytdB, ytdI, curB, prevB, curI, prevI, chart, tabs, repList, brandList, collectionList, top10Share,
       activeDealers: curDealers.size, prevActiveDealers: prevDealers.size, totalDealers: list.length,
       annualTarget, targetYtd, targetByRep, hasTargets: annualTarget > 0, projectedInvoiced,
-      sparkB: spark(weekB), sparkI: spark(weekI), sparkD: spark(weekDealers.map((s) => s.size)),
+      sparkB: sparkMonthly(monthB), sparkI: sparkMonthly(monthI), sparkD: spark(weekDealers.map((s) => s.size)),
       unassignedShare: bookingRows > 0 ? (unassigned / bookingRows) * 100 : 0,
       quietValue: tabs.quiet.reduce((s, d) => s + d.ytd, 0),
     };
@@ -422,7 +451,12 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{managerName ?? "All managers"} · {format(today, "EEEE, MMMM d")}</p>
           <h2 className="text-2xl sm:font-serif text-4xl font-medium tracking-tight mt-1">{greeting}{first ? `, ${first[0].toUpperCase()}${first.slice(1)}` : ""}</h2>
-          <p className="text-sm text-muted-foreground mt-1">Here is how the business is performing. Data updated {formatReportingTime(dataUpdatedAt || Date.now())} ET.</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Here is how the business is performing.{" "}
+            {syncStatus?.last_synced_at
+              ? `Last synced at ${formatReportingDateTime(syncStatus.last_synced_at)}.`
+              : `Data updated ${formatReportingTime(Date.now())} ET.`}
+          </p>
         </div>
         <ToggleGroup data-tour="hlr-period" type="single" value={period} onValueChange={(v) => v && setPeriod(v as PeriodKey)} className="bg-muted p-1 rounded-lg self-start">
           {([["mtd", "Month"], ["qtd", "Quarter"], ["d30", "30 days"], ["d90", "90 days"], ["ytd", "Since Jul 1"]] as [PeriodKey, string][]).map(([k, label]) => (
@@ -443,9 +477,9 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
 
       {/* KPI cards */}
       <div data-tour="hlr-kpis" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi label={`Bookings · ${W.label}`} value={money(m.curB)} delta={hasPrev ? change(m.curB, m.prevB) : null} deltaLabel={W.prevLabel} spark={m.sparkB} color="--chart-1" onOpen={() => onOpenReport("live-kpi")} hint="Open Live KPI" foot={`${money(m.ytdB)} ${SINCE}`} />
-        <Kpi label={`Invoiced · ${W.label}`} value={money(m.curI)} delta={hasPrev ? change(m.curI, m.prevI) : null} deltaLabel={W.prevLabel} spark={m.sparkI} color="--chart-2" onOpen={() => onOpenReport("live-kpi")} hint="Open Live KPI" foot={`${money(m.ytdI)} ${SINCE}`} />
-        <Kpi label={`Active dealers · ${W.label}`} value={m.activeDealers.toLocaleString()} delta={hasPrev ? change(m.activeDealers, m.prevActiveDealers) : null} deltaLabel={W.prevLabel} spark={m.sparkD} color="--chart-3" onOpen={() => onOpenReport("dealer-reporting")} hint="Open Dealer Reporting" foot={`of ${m.totalDealers.toLocaleString()} that ordered ${SINCE}`} />
+        <Kpi label={`Bookings · ${W.label}`} value={money(m.curB)} delta={hasPrev ? change(m.curB, m.prevB) : null} deltaLabel={W.prevLabel} spark={m.sparkB} sparkFmt={money} color="--chart-1" onOpen={() => onOpenReport("live-kpi")} hint="Open Live KPI" foot={`${money(m.ytdB)} ${SINCE}`} />
+        <Kpi label={`Invoiced · ${W.label}`} value={money(m.curI)} delta={hasPrev ? change(m.curI, m.prevI) : null} deltaLabel={W.prevLabel} spark={m.sparkI} sparkFmt={money} color="--chart-2" onOpen={() => onOpenReport("live-kpi")} hint="Open Live KPI" foot={`${money(m.ytdI)} ${SINCE}`} />
+        <Kpi label={`Active dealers · ${W.label}`} value={m.activeDealers.toLocaleString()} delta={hasPrev ? change(m.activeDealers, m.prevActiveDealers) : null} deltaLabel={W.prevLabel} spark={m.sparkD} sparkFmt={(n) => `${Math.round(n).toLocaleString()} dealer${n === 1 ? "" : "s"}`} color="--chart-3" onOpen={() => onOpenReport("dealer-reporting")} hint="Open Dealer Reporting" foot={`of ${m.totalDealers.toLocaleString()} that ordered ${SINCE}`} info={`The number above is distinct dealers with at least one booking in ${W.label.toLowerCase()} - invoices don't count, and it's a headcount, not weighted by order size. The trend line below is on its own fixed rolling-12-week window (not the period selected above) - hover a point to see which week and how many dealers.`} />
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Open order backlog</p><Boxes className="h-4 w-4 text-muted-foreground" /></div>
@@ -719,14 +753,27 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "go
   );
 }
 
-function Kpi({ label, value, delta, deltaLabel, spark, color, foot, onOpen, hint }: {
-  label: string; value: string; delta: number | null; deltaLabel: string; spark: { i: number; v: number }[]; color: string; foot: string; onOpen: () => void; hint: string;
+function Kpi({ label, value, delta, deltaLabel, spark, sparkFmt, color, foot, onOpen, hint, info }: {
+  label: string; value: string; delta: number | null; deltaLabel: string; spark: { i: number; v: number; label?: string }[]; sparkFmt: (n: number) => string; color: string; foot: string; onOpen: () => void; hint: string; info?: string;
 }) {
   const id = `g${color.replace(/\W/g, "")}`;
   return (
     <Card className="overflow-hidden cursor-pointer transition-shadow hover:shadow-md hover:border-foreground/25 group" role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} title={hint}>
       <CardContent className="p-5 pb-0">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate flex items-center gap-1">
+          {label}
+          {info && (
+            <UiTooltip>
+              <TooltipTrigger asChild>
+                <Info
+                  className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-56 normal-case text-xs font-normal">{info}</TooltipContent>
+            </UiTooltip>
+          )}
+        </p>
         <div className="flex items-end justify-between gap-2 mt-3">
           <p className="font-serif text-4xl font-medium tracking-tight">{value}</p>
           {delta !== null && <Chip value={delta} />}
@@ -738,7 +785,21 @@ function Kpi({ label, value, delta, deltaLabel, spark, color, foot, onOpen, hint
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={spark} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
             <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={`hsl(var(${color}))`} stopOpacity={0.35} /><stop offset="100%" stopColor={`hsl(var(${color}))`} stopOpacity={0} /></linearGradient></defs>
-            <Area type="monotone" dataKey="v" stroke={`hsl(var(${color}))`} strokeWidth={2} fill={`url(#${id})`} isAnimationActive={false} />
+            <Area type="monotone" dataKey="v" stroke={`hsl(var(${color}))`} strokeWidth={2} fill={`url(#${id})`} isAnimationActive={false} dot={false} activeDot={{ r: 3.5 }} />
+            <Tooltip
+              isAnimationActive={false}
+              cursor={{ stroke: `hsl(var(${color}))`, strokeWidth: 1, strokeDasharray: "3 3" }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const pointLabel = (payload[0].payload as { label?: string }).label;
+                return (
+                  <div className="rounded-md border bg-popover px-2 py-1 text-xs font-medium shadow-md">
+                    {pointLabel && <span className="text-muted-foreground font-normal mr-1">{pointLabel}</span>}
+                    {sparkFmt(payload[0].value as number)}
+                  </div>
+                );
+              }}
+            />
           </AreaChart>
         </ResponsiveContainer>
       </div>

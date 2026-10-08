@@ -551,7 +551,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     to:   subYears(today, 1),
   });
   type CompareMode = "prev-year" | "prev-period" | "custom" | "none";
-  const [compareMode, setCompareMode] = useState<CompareMode>("prev-year");
+  // Defaults to no comparison — we don't have comparative (prior-period)
+  // data yet. Still fully switchable to Previous year/period/Custom from
+  // the dropdown once that data exists.
+  const [compareMode, setCompareMode] = useState<CompareMode>("none");
   const [metric,  setMetric]  = useState<Metric>("invoices");
   const [display, setDisplay] = useState<Display>("total");
   // Tracks which Quick Range preset (if any) is currently selected, purely
@@ -1686,8 +1689,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 const now = getReportingToday();
                 const fromReset = display === "total" && metric === "invoices" ? startOfYear(now) : startOfMonth(now);
                 setQuickRangePreset("");
-                setCompareMode("prev-year");
-                applyPrimary(fromReset, now, "prev-year");
+                setCompareMode("none");
+                applyPrimary(fromReset, now, "none");
                 setTerritoryIds([]);
                 setRepIds([]);
                 setDealerIds([]);
@@ -1818,7 +1821,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               <CardTitle className="text-base font-semibold tracking-tight">
                 {metric === "invoices" ? "Invoices" : "Bookings"} by {leftHeader}
               </CardTitle>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{tableRangeLabel}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {tableRangeLabel}
+                {compareMode !== "none" && <> vs {compRangeLabel}</>}
+              </p>
               {metric === "invoices" && primary.from < INVOICE_CUTOFF_DATE && (
                 <p className="text-[11px] text-muted-foreground/70 italic mt-1">
                   Invoice actuals before July 2026 are excluded due to Acctivate import-transition data.

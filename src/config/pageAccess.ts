@@ -134,7 +134,7 @@ export const PAGE_ACCESS: Record<string, PageAccess> = {
   "sales-managers": { title: "Sales Managers", menu: { roles: AM }, route: { protected: true, allow: AM } },
   "reps-acctivate": { title: "Sales Rep Database (Acctivate)", menu: { roles: ["admin"] }, route: { protected: true, allow: ["admin"] } },
   "rep-login-activity": {
-    title: "Rep Login Activity",
+    title: "Rep Portal Activity",
     menu: { roles: AM, denyEmails: ["kate@lineage-collections.com"] },
     route: { protected: true, allow: AM, denyEmails: ["kate@lineage-collections.com"] },
   },

@@ -6937,6 +6937,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          last_activity_at: string | null
           updated_at: string
           user_id: string
         }
@@ -6944,6 +6945,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          last_activity_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -6951,6 +6953,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          last_activity_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -10118,6 +10121,16 @@ export type Database = {
           rep_name: string
         }[]
       }
+      get_rep_portal_activity: {
+        Args: never
+        Returns: {
+          email: string
+          last_activity_at: string
+          last_signed_in_at: string
+          rep_id: string
+          rep_name: string
+        }[]
+      }
       get_sales_reporting_detail_lines: {
         Args: {
           p_brand_cats?: string[]
@@ -10375,6 +10388,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      touch_last_activity: { Args: never; Returns: undefined }
       trigger_clearance_weekly_report: { Args: never; Returns: undefined }
       trigger_notify_weekly_checkins: { Args: never; Returns: undefined }
       trigger_qbo_vendor_prepayments_sync_5am_5pm_et: {

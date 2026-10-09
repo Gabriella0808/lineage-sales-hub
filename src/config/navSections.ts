@@ -134,7 +134,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { title: "Organizational Chart", url: "/org-chart", icon: Network, ...access("org-chart") },
       { title: "Sales Managers", url: "/managers", icon: UserCog, ...access("sales-managers") },
       { title: "Sales Rep Database (Acctivate)", url: "/reps-acctivate", icon: Database, ...access("reps-acctivate") },
-      { title: "Rep Login Activity", url: "/rep-activity", icon: Clock, ...access("rep-login-activity") },
+      { title: "Rep Portal Activity", url: "/rep-activity", icon: Clock, ...access("rep-login-activity") },
       { title: "Portal Access", url: "/portal-access", icon: ShieldCheck, ...access("portal-access") },
       { title: "Desktop App", url: "/desktop-app", icon: Download, ...access("desktop-app") },
       { title: "Settings",       url: "/settings", icon: Settings, ...access("settings") },

@@ -59,12 +59,15 @@ function Register-SyncTask {
     $trigger2 = New-ScheduledTaskTrigger -Daily -At "$($Hour2):00"
 
     # Settings
+    # Note: -DisallowStartIfOnBatteries is deliberately omitted - not every
+    # Windows build's ScheduledTasks module exposes it as a named parameter
+    # (hit a ParameterBindingException for it on this VM), and it has no
+    # practical effect on a server that's never running on battery anyway.
     $settings = New-ScheduledTaskSettingsSet `
         -StartWhenAvailable `
         -MultipleInstances IgnoreNew `
         -ExecutionTimeLimit (New-TimeSpan -Hours 2) `
-        -RunOnlyIfNetworkAvailable:$false `
-        -DisallowStartIfOnBatteries:$false
+        -RunOnlyIfNetworkAvailable:$false
 
     # Principal (run as SYSTEM)
     $principal = New-ScheduledTaskPrincipal `
@@ -91,7 +94,7 @@ function Register-SyncTask {
     Write-Host ''
     Write-Host "  Task registered: '$TaskName'" -ForegroundColor Green
     Write-Host "    Script  : $scriptPath"
-    Write-Host "    Triggers: $Hour1:00 AM and $Hour2:00 PM (local VM time)"
+    Write-Host "    Triggers: ${Hour1}:00 AM and ${Hour2}:00 PM (local VM time)"
     Write-Host "    Run as  : $RunAs"
 }
 

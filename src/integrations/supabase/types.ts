@@ -4615,6 +4615,109 @@ export type Database = {
           },
         ]
       }
+      digital_asset_folders: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          parent_folder_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          parent_folder_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          parent_folder_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_asset_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "digital_asset_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      digital_asset_stars: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      digital_assets: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          file_path: string
+          folder_id: string | null
+          id: string
+          name: string
+          size_bytes: number | null
+          updated_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          file_path: string
+          folder_id?: string | null
+          id?: string
+          name: string
+          size_bytes?: number | null
+          updated_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          file_path?: string
+          folder_id?: string | null
+          id?: string
+          name?: string
+          size_bytes?: number | null
+          updated_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digital_assets_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "digital_asset_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -5603,6 +5706,120 @@ export type Database = {
           },
         ]
       }
+      page_access_audit: {
+        Row: {
+          action: string
+          changed_at: string
+          changed_by: string | null
+          id: number
+          new_menu: boolean | null
+          new_route: boolean | null
+          old_menu: boolean | null
+          old_route: boolean | null
+          page_key: string
+          scope: string
+          target: string
+        }
+        Insert: {
+          action: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: number
+          new_menu?: boolean | null
+          new_route?: boolean | null
+          old_menu?: boolean | null
+          old_route?: boolean | null
+          page_key: string
+          scope: string
+          target: string
+        }
+        Update: {
+          action?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: number
+          new_menu?: boolean | null
+          new_route?: boolean | null
+          old_menu?: boolean | null
+          old_route?: boolean | null
+          page_key?: string
+          scope?: string
+          target?: string
+        }
+        Relationships: []
+      }
+      page_access_role_overrides: {
+        Row: {
+          menu: boolean | null
+          page_key: string
+          profile: string
+          route: boolean | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          menu?: boolean | null
+          page_key: string
+          profile: string
+          route?: boolean | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          menu?: boolean | null
+          page_key?: string
+          profile?: string
+          route?: boolean | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      page_access_user_overrides: {
+        Row: {
+          email: string
+          menu: boolean | null
+          page_key: string
+          route: boolean | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          email: string
+          menu?: boolean | null
+          page_key: string
+          route?: boolean | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          email?: string
+          menu?: boolean | null
+          page_key?: string
+          route?: boolean | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      portal_access_profiles: {
+        Row: {
+          created_at: string
+          email: string
+          profile: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          profile: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          profile?: string
+        }
+        Relationships: []
+      }
       portal_acctivate_discontinued_inventory: {
         Row: {
           active_product: string | null
@@ -6025,6 +6242,7 @@ export type Database = {
           branch_id: string | null
           completed: boolean | null
           customer_id: string | null
+          customer_po_number: string | null
           discount_amount: string | null
           entry_date: string | null
           fob: string | null
@@ -6055,6 +6273,7 @@ export type Database = {
           branch_id?: string | null
           completed?: boolean | null
           customer_id?: string | null
+          customer_po_number?: string | null
           discount_amount?: string | null
           entry_date?: string | null
           fob?: string | null
@@ -6085,6 +6304,7 @@ export type Database = {
           branch_id?: string | null
           completed?: boolean | null
           customer_id?: string | null
+          customer_po_number?: string | null
           discount_amount?: string | null
           entry_date?: string | null
           fob?: string | null
@@ -6467,6 +6687,126 @@ export type Database = {
         }
         Relationships: []
       }
+      portal_qbo_vendor_prepayment_lines: {
+        Row: {
+          amount: number
+          doc_num: string | null
+          id: string
+          memo: string | null
+          qbo_account_id: string
+          qbo_txn_id: string | null
+          running_balance: number | null
+          synced_at: string
+          transaction_date: string
+          transaction_type: string | null
+          vendor_name: string | null
+        }
+        Insert: {
+          amount: number
+          doc_num?: string | null
+          id?: string
+          memo?: string | null
+          qbo_account_id: string
+          qbo_txn_id?: string | null
+          running_balance?: number | null
+          synced_at?: string
+          transaction_date: string
+          transaction_type?: string | null
+          vendor_name?: string | null
+        }
+        Update: {
+          amount?: number
+          doc_num?: string | null
+          id?: string
+          memo?: string | null
+          qbo_account_id?: string
+          qbo_txn_id?: string | null
+          running_balance?: number | null
+          synced_at?: string
+          transaction_date?: string
+          transaction_type?: string | null
+          vendor_name?: string | null
+        }
+        Relationships: []
+      }
+      portal_qbo_vendor_prepayments: {
+        Row: {
+          current_balance: number
+          id: string
+          qbo_account_id: string
+          qbo_account_name: string
+          synced_at: string
+        }
+        Insert: {
+          current_balance: number
+          id?: string
+          qbo_account_id: string
+          qbo_account_name: string
+          synced_at?: string
+        }
+        Update: {
+          current_balance?: number
+          id?: string
+          qbo_account_id?: string
+          qbo_account_name?: string
+          synced_at?: string
+        }
+        Relationships: []
+      }
+      presale_po_lines: {
+        Row: {
+          display_amount: number
+          guid_po: string
+          guid_po_detail: string
+          po_number: string | null
+          product_id: string
+          quantity_outstanding: number
+          synced_at: string
+        }
+        Insert: {
+          display_amount?: number
+          guid_po: string
+          guid_po_detail: string
+          po_number?: string | null
+          product_id: string
+          quantity_outstanding?: number
+          synced_at?: string
+        }
+        Update: {
+          display_amount?: number
+          guid_po?: string
+          guid_po_detail?: string
+          po_number?: string | null
+          product_id?: string
+          quantity_outstanding?: number
+          synced_at?: string
+        }
+        Relationships: []
+      }
+      presale_po_summary: {
+        Row: {
+          guid_po: string
+          po_number: string | null
+          po_status: string | null
+          requested_delivery_date: string | null
+          synced_at: string
+        }
+        Insert: {
+          guid_po: string
+          po_number?: string | null
+          po_status?: string | null
+          requested_delivery_date?: string | null
+          synced_at?: string
+        }
+        Update: {
+          guid_po?: string
+          po_number?: string | null
+          po_status?: string | null
+          requested_delivery_date?: string | null
+          synced_at?: string
+        }
+        Relationships: []
+      }
       product_collections: {
         Row: {
           created_at: string
@@ -6540,6 +6880,8 @@ export type Database = {
           is_active: boolean
           last_synced_at: string | null
           name: string | null
+          new_intro_unavail: boolean
+          product_type: string | null
           sku: string
           stock_status: string | null
           updated_at: string
@@ -6560,6 +6902,8 @@ export type Database = {
           is_active?: boolean
           last_synced_at?: string | null
           name?: string | null
+          new_intro_unavail?: boolean
+          product_type?: string | null
           sku: string
           stock_status?: string | null
           updated_at?: string
@@ -6580,6 +6924,8 @@ export type Database = {
           is_active?: boolean
           last_synced_at?: string | null
           name?: string | null
+          new_intro_unavail?: boolean
+          product_type?: string | null
           sku?: string
           stock_status?: string | null
           updated_at?: string
@@ -7331,16 +7677,19 @@ export type Database = {
       }
       sign_in_log: {
         Row: {
+          admin_actor_user_id: string | null
           id: string
           signed_in_at: string
           user_id: string
         }
         Insert: {
+          admin_actor_user_id?: string | null
           id?: string
           signed_in_at?: string
           user_id: string
         }
         Update: {
+          admin_actor_user_id?: string | null
           id?: string
           signed_in_at?: string
           user_id?: string
@@ -8382,6 +8731,129 @@ export type Database = {
           },
         ]
       }
+      team_post_attachments: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          file_name: string
+          file_path: string
+          id: string
+          post_id: string
+          size_bytes: number | null
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          file_name: string
+          file_path: string
+          id?: string
+          post_id: string
+          size_bytes?: number | null
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          id?: string
+          post_id?: string
+          size_bytes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_post_attachments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "team_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_post_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_post_reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "team_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_post_reads: {
+        Row: {
+          post_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          post_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          post_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_post_reads_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "team_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_posts: {
+        Row: {
+          author_user_id: string
+          body: string | null
+          created_at: string
+          id: string
+          pinned: boolean
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_user_id: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_user_id?: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       territories: {
         Row: {
           acctivate_id: string | null
@@ -9301,6 +9773,7 @@ export type Database = {
           branch_id: string | null
           brand_category: string | null
           customer_id: string | null
+          customer_po_number: string | null
           dealer_name: string | null
           description: string | null
           fulfillment_type: string | null
@@ -9415,6 +9888,21 @@ export type Database = {
       _post_task_assigned_email: {
         Args: { _assigner_id: string; _task_id: string; _user_id: string }
         Returns: undefined
+      }
+      admin_list_portal_users: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string
+          has_dealer_link: boolean
+          has_manager_link: boolean
+          has_rep_link: boolean
+          last_sign_in_at: string
+          manager_names: string[]
+          rep_names: string[]
+          roles: string[]
+          user_id: string
+        }[]
       }
       assignable_users: {
         Args: never
@@ -9543,6 +10031,7 @@ export type Database = {
         Returns: {
           brand_category: string
           customer_id: string
+          customer_po_number: string
           dealer_name: string
           description: string
           fulfillment_type: string
@@ -9561,6 +10050,14 @@ export type Database = {
           sku: string
           unit_price: number
           warehouse: string
+        }[]
+      }
+      get_portal_data_sync_status: {
+        Args: never
+        Returns: {
+          bookings_and_open_so_synced_at: string
+          invoices_synced_at: string
+          last_synced_at: string
         }[]
       }
       get_portal_dealer_rep_reporting_lines: {
@@ -9610,6 +10107,15 @@ export type Database = {
           sku: string
           transaction_date: string
           year: number
+        }[]
+      }
+      get_rep_last_logins: {
+        Args: never
+        Returns: {
+          email: string
+          last_signed_in_at: string
+          rep_id: string
+          rep_name: string
         }[]
       }
       get_sales_reporting_detail_lines: {
@@ -9675,6 +10181,10 @@ export type Database = {
           warehouse_amt: number
         }[]
       }
+      has_effective_role: {
+        Args: { _role: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -9684,7 +10194,9 @@ export type Database = {
       }
       is_admin: { Args: never; Returns: boolean }
       is_assigned_manager: { Args: { _manager_id: string }; Returns: boolean }
+      is_digital_assets_manager: { Args: never; Returns: boolean }
       is_manager_task_creator: { Args: { _task_id: string }; Returns: boolean }
+      is_portal_access_admin: { Args: never; Returns: boolean }
       is_portal_invoice_category: {
         Args: { product_class: string }
         Returns: boolean
@@ -9854,8 +10366,21 @@ export type Database = {
           added_rep_name: string
         }[]
       }
+      team_post_audience_size: { Args: never; Returns: number }
+      team_post_recipients: {
+        Args: { p_exclude_user_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          user_id: string
+        }[]
+      }
       trigger_clearance_weekly_report: { Args: never; Returns: undefined }
       trigger_notify_weekly_checkins: { Args: never; Returns: undefined }
+      trigger_qbo_vendor_prepayments_sync_5am_5pm_et: {
+        Args: never
+        Returns: undefined
+      }
       trigger_send_daily_performance_email: { Args: never; Returns: undefined }
       trigger_send_labor_day_promo_email: { Args: never; Returns: undefined }
       trigger_send_weekly_review_digest: { Args: never; Returns: undefined }

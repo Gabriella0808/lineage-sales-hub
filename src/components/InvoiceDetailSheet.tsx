@@ -3,7 +3,8 @@ import {
   format, startOfDay, startOfMonth, endOfMonth, subMonths, subDays,
 } from "date-fns";
 import Papa from "papaparse";
-import { ChevronRight, Download, Printer } from "lucide-react";
+import { ChevronRight, Download, Printer, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { isBookingVisibleDate, BOOKINGS_VISIBLE_FROM } from "@/utils/bookingCutoff";
 import { getReportingToday } from "@/utils/reportingDate";
 import {
@@ -37,6 +38,7 @@ export interface OpenOrderLine {
   unit_price:             number;
   line_discount_pct:      number;
   net_open_amount:        number;
+  customer_po_number:     string | null;
 }
 
 type FetchOpenOrdersFn = (params: { limit: number; offset: number }) => Promise<OpenOrderLine[]>;
@@ -394,6 +396,7 @@ type OpenOrderEntry = {
   dealer_name:  string;
   customer_id:  string | null;
   rep_name:     string;
+  customer_po_number: string | null;
   total:        number;
   lines:        OpenOrderLine[];
 };
@@ -409,6 +412,9 @@ function buildOpenOrdersHierarchy(lines: OpenOrderLine[]): OpenOrderEntry[] {
         dealer_name:  l.dealer_name ?? l.customer_id ?? "Unknown",
         customer_id:  l.customer_id,
         rep_name:     l.rep_name ?? "Unassigned",
+        // Header-level field - same value on every line of this order, so
+        // the first line's value is authoritative.
+        customer_po_number: l.customer_po_number ?? null,
         total:        0,
         lines:        [],
       });
@@ -454,7 +460,7 @@ function summaryBlockHtml(summary: Array<[string, string]>): string {
 function openOrdersTableHtml(orders: OpenOrderEntry[], total: number): string {
   let rows = "";
   for (const so of orders) {
-    rows += `<tr class="so-row"><td colspan="6"><strong>${so.order_number}</strong> — ${so.dealer_name} (${so.rep_name})${so.order_date ? ` · ${so.order_date}` : ""}</td><td class="amt"><strong>${formatCurrency(so.total)}</strong></td></tr>`;
+    rows += `<tr class="so-row"><td colspan="6"><strong>${so.order_number}</strong> — ${so.dealer_name} (${so.rep_name})${so.order_date ? ` · ${so.order_date}` : ""}${so.customer_po_number ? ` · PO ${so.customer_po_number}` : ""}</td><td class="amt"><strong>${formatCurrency(so.total)}</strong></td></tr>`;
     for (const l of so.lines) {
       rows += `<tr class="line-row"><td style="padding-left:12px;font-family:monospace;font-size:10px">${l.sku ?? "—"}</td><td>${l.description ?? ""}</td><td>${l.brand_category ?? ""}</td><td>${l.warehouse ?? l.fulfillment_type ?? ""}</td><td class="amt">${Number(l.qty_ordered).toLocaleString()}</td><td class="amt">${Number(l.qty_open).toLocaleString()}</td><td class="amt">${formatCurrency(Number(l.net_open_amount))}</td></tr>`;
     }
@@ -552,6 +558,7 @@ export function InvoiceDetailSheet({
   const [loadingOpenOrders,   setLoadingOpenOrders]   = useState(false);
   const [showOpenOrdersDetail, setShowOpenOrdersDetail] = useState(false);
   const [expandedOpenOrders,  setExpandedOpenOrders]  = useState<Set<string>>(new Set());
+  const [openSoSearch, setOpenSoSearch] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -593,6 +600,18 @@ export function InvoiceDetailSheet({
 
   const openOrdersTotal     = useMemo(() => sumOpenAmount(openOrderLines), [openOrderLines]);
   const openOrdersHierarchy = useMemo(() => buildOpenOrdersHierarchy(openOrderLines), [openOrderLines]);
+  // Client-side search — all pages of openOrderLines are already loaded by
+  // the time this renders (see the fetch loop above), so there's nothing
+  // held back server-side to search past. Customer PO number only — this
+  // drill-down is already scoped to one dealer (or one rep's own orders),
+  // so SO number/customer name aren't useful filters here.
+  const filteredOpenOrdersHierarchy = useMemo(() => {
+    const q = openSoSearch.trim().toLowerCase();
+    if (!q) return openOrdersHierarchy;
+    return openOrdersHierarchy.filter((so) =>
+      (so.customer_po_number ?? "").toLowerCase().includes(q),
+    );
+  }, [openOrdersHierarchy, openSoSearch]);
   const openOrdersCount     = openOrdersHierarchy.length;
   const openOrdersUnits     = useMemo(
     () => openOrderLines.reduce((s, l) => s + Number(l.qty_open), 0),
@@ -841,6 +860,7 @@ export function InvoiceDetailSheet({
         Dealer:                l.dealer_name ?? "",
         "Customer ID":         l.customer_id ?? "",
         Rep:                   l.rep_name ?? "",
+        "Customer PO #":       l.customer_po_number ?? "",
         "Order Date":          l.order_date ?? "",
         SKU:                   l.sku ?? "",
         Product:               l.description ?? "",
@@ -1186,13 +1206,25 @@ export function InvoiceDetailSheet({
               <p className="text-sm text-muted-foreground">No open sales orders for this selection.</p>
             ) : (
               <>
+                <div className="relative mb-2">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <Input
+                    value={openSoSearch}
+                    onChange={(e) => setOpenSoSearch(e.target.value)}
+                    placeholder="Search by customer PO number..."
+                    className="h-8 pl-8 text-xs"
+                  />
+                </div>
                 <div className="flex gap-4 mb-2 text-[11px] text-muted-foreground">
-                  <span><strong className="text-foreground">{openOrdersCount}</strong> open order{openOrdersCount !== 1 ? "s" : ""}</span>
+                  <span><strong className="text-foreground">{openSoSearch.trim() ? filteredOpenOrdersHierarchy.length : openOrdersCount}</strong> open order{(openSoSearch.trim() ? filteredOpenOrdersHierarchy.length : openOrdersCount) !== 1 ? "s" : ""}</span>
                   <span><strong className="text-foreground">{openOrderLines.length}</strong> open line{openOrderLines.length !== 1 ? "s" : ""}</span>
                   <span><strong className="text-foreground">{openOrdersUnits.toLocaleString()}</strong> open units</span>
                 </div>
+                {openSoSearch.trim() && filteredOpenOrdersHierarchy.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-3">No open sales orders match "{openSoSearch}".</p>
+                ) : (
                 <div className="border rounded-md overflow-hidden divide-y">
-                  {openOrdersHierarchy.map((so) => {
+                  {filteredOpenOrdersHierarchy.map((so) => {
                     const isOpen = expandedOpenOrders.has(so.guid_order);
                     return (
                       <div key={so.guid_order}>
@@ -1212,6 +1244,11 @@ export function InvoiceDetailSheet({
                             )}
                             {so.order_date && (
                               <span className="text-[10px] text-muted-foreground flex-shrink-0">{so.order_date}</span>
+                            )}
+                            {so.customer_po_number && (
+                              <Badge variant="outline" className="text-[9px] h-4 px-1 font-normal flex-shrink-0 font-mono" title="Customer PO Number">
+                                PO {so.customer_po_number}
+                              </Badge>
                             )}
                             <Badge variant="secondary" className="text-[9px] h-4 px-1 font-normal flex-shrink-0">
                               {so.lines.length} line{so.lines.length !== 1 ? "s" : ""}
@@ -1262,6 +1299,7 @@ export function InvoiceDetailSheet({
                     );
                   })}
                 </div>
+                )}
               </>
             )}
           </div>

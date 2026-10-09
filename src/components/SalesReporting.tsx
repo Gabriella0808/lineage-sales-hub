@@ -1495,6 +1495,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
         unit_price:          Number(r.unit_price) || 0,
         line_discount_pct:   Number(r.line_discount_pct) || 0,
         net_open_amount:     Number(r.net_open_amount) || 0,
+        customer_po_number:  r.customer_po_number ?? null,
       }));
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps

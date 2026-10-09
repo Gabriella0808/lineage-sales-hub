@@ -124,10 +124,17 @@ function Test-ColumnExists {
 Write-Host 'Checking dbo.Orders schema for optional columns...' -ForegroundColor Cyan
 $hasSoldToName = Test-ColumnExists -Table 'Orders' -Column 'SoldToName'
 $hasShipToDesc = Test-ColumnExists -Table 'Orders' -Column 'ShipToDescription'
+$hasCustomerPO = Test-ColumnExists -Table 'Orders' -Column 'PO'
 
 $soldToNameExpr = if ($hasSoldToName) { "CAST(ISNULL(o.SoldToName,       '') AS NVARCHAR(500))" } else { "CAST('' AS NVARCHAR(500))" }
 $shipToDescExpr = if ($hasShipToDesc) { "CAST(ISNULL(o.ShipToDescription,'') AS NVARCHAR(500))" } else { "CAST('' AS NVARCHAR(500))" }
 $discCodeExpr   = "CAST(NULLIF(RTRIM(ISNULL(od._DiscType, '')), '') AS NVARCHAR(50))"
+# Customer PO Number (Sales Order > Reference tab in Acctivate). Confirmed
+# live against dbo.Orders.PO for orders 0181740 ("73469 Freight"), 0179723
+# and 0181414 — not Reference/Reference2, which hold a different code.
+# ISNULL -> trim -> NULLIF back to NULL so a PO that's pure whitespace is
+# stored as NULL, not an empty string.
+$customerPoExpr = if ($hasCustomerPO) { "CAST(NULLIF(RTRIM(LTRIM(ISNULL(o.PO, ''))), '') AS NVARCHAR(100))" } else { "CAST(NULL AS NVARCHAR(100))" }
 
 # ---------------------------------------------------------------------------
 # SQL: Orders — every order currently in an open WorkflowStatus, no date bound
@@ -150,7 +157,8 @@ SELECT
     CAST(ISNULL(o.CustomerID, '')     AS NVARCHAR(100))                                 AS customer_id,
     $soldToNameExpr                                                                     AS sold_to_name,
     $shipToDescExpr                                                                     AS ship_to_description,
-    CAST(ISNULL(o.BranchID, '')      AS NVARCHAR(50))                                  AS branch_id
+    CAST(ISNULL(o.BranchID, '')      AS NVARCHAR(50))                                  AS branch_id,
+    $customerPoExpr                                                                     AS customer_po_number
 FROM dbo.Orders o
 WHERE o.WorkFlowStatus IN ($OpenStatusList)
 ORDER BY o.OrderDate, o.OrderNumber
@@ -273,7 +281,7 @@ $OrderAllowedCols = @{
     'guid_salesperson'    = 1; 'rep1'                = 1; 'rep2'                = 1
     'subtotal'            = 1; 'synced_at'           = 1
     'customer_id'         = 1; 'sold_to_name'        = 1; 'ship_to_description' = 1
-    'branch_id'           = 1
+    'branch_id'           = 1; 'customer_po_number'  = 1
 }
 
 $LineAllowedCols = @{

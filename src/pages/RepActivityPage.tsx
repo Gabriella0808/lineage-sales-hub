@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSalesReps, useManagers } from "@/hooks/usePortalData";
-import { useRepLastLogins } from "@/hooks/useSignInFeed";
+import { useRepPortalActivity } from "@/hooks/useSignInFeed";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
 import { cn } from "@/lib/utils";
 import { formatReportingDateTime } from "@/utils/reportingDate";
@@ -16,7 +16,7 @@ import { formatReportingDateTime } from "@/utils/reportingDate";
 export default function RepActivityPage() {
   const [query, setQuery] = useState("");
 
-  const { data: repLastLogins = [], isLoading: loginsLoading } = useRepLastLogins();
+  const { data: repPortalActivity = [], isLoading: loginsLoading } = useRepPortalActivity();
   const { data: reps = [], isLoading: repsLoading } = useSalesReps();
   const { data: managers = [] } = useManagers();
 
@@ -58,7 +58,7 @@ export default function RepActivityPage() {
   // email, append the real email inline whenever the same name would
   // otherwise appear on more than one row - fully accurate, no inference.
   const rows = useMemo(() => {
-    const base = repLastLogins.map((r) => {
+    const base = repPortalActivity.map((r) => {
       const rep = repsById.get(r.rep_id);
       const acctivateName = rep?.acctivate_id ? acctivateNameByAcId.get(rep.acctivate_id.toLowerCase()) : undefined;
       return {
@@ -68,6 +68,7 @@ export default function RepActivityPage() {
         status: rep?.status ?? null,
         manager_name: rep?.manager_id ? managerNameById.get(rep.manager_id) ?? null : null,
         last_signed_in_at: r.last_signed_in_at,
+        last_activity_at: r.last_activity_at,
       };
     });
     const nameCounts = new Map<string, number>();
@@ -77,9 +78,14 @@ export default function RepActivityPage() {
         ? { ...r, rep_name: `${r.rep_name} (${r.email})` }
         : r,
     );
-  }, [repLastLogins, repsById, managerNameById, acctivateNameByAcId]);
+  }, [repPortalActivity, repsById, managerNameById, acctivateNameByAcId]);
 
   const DAY = 86_400_000;
+  // Active/Quiet/Inactive is driven by last_activity_at (real portal usage:
+  // page loads, check-ins, team update reads) - NOT last_signed_in_at, which
+  // only reflects a fresh authentication event and can lag real usage for
+  // weeks under a persistent session. last_signed_in_at is still shown as a
+  // secondary "Last Login" audit column below, untouched.
   const bucketOf = (iso: string | null): "active" | "quiet" | "inactive" | "never" => {
     if (!iso) return "never";
     const age = Date.now() - new Date(iso).getTime();
@@ -89,38 +95,38 @@ export default function RepActivityPage() {
     active: { label: "Active this week", dot: "bg-success" },
     quiet: { label: "Quiet, 7 to 30 days", dot: "bg-warning" },
     inactive: { label: "Inactive, 30+ days", dot: "bg-destructive" },
-    never: { label: "Never logged in", dot: "bg-muted-foreground/40" },
+    never: { label: "No activity yet", dot: "bg-muted-foreground/40" },
   } as const;
 
   const [bucketFilter, setBucketFilter] = useState<"all" | keyof typeof BUCKETS>("all");
   const [managerFilter, setManagerFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"recent" | "name">("recent");
 
-  const counts = rows.reduce((m, r) => { m[bucketOf(r.last_signed_in_at)]++; return m; }, { active: 0, quiet: 0, inactive: 0, never: 0 });
+  const counts = rows.reduce((m, r) => { m[bucketOf(r.last_activity_at)]++; return m; }, { active: 0, quiet: 0, inactive: 0, never: 0 });
   const managerOptions = [...new Set(rows.map((r) => r.manager_name).filter(Boolean) as string[])].sort();
 
   const q = query.trim().toLowerCase();
   const filtered = rows.filter((r) => {
-    if (bucketFilter !== "all" && bucketOf(r.last_signed_in_at) !== bucketFilter) return false;
+    if (bucketFilter !== "all" && bucketOf(r.last_activity_at) !== bucketFilter) return false;
     if (managerFilter !== "all" && r.manager_name !== managerFilter) return false;
     if (!q) return true;
     return [r.rep_name, r.email, r.manager_name].filter(Boolean).some((v) => String(v).toLowerCase().includes(q));
   });
 
-  // Most-recently-logged-in reps first, never-logged-in reps last.
+  // Most-recently-active reps first, reps with no recorded activity last.
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === "name") return a.rep_name.localeCompare(b.rep_name);
-    if (!a.last_signed_in_at && !b.last_signed_in_at) return a.rep_name.localeCompare(b.rep_name);
-    if (!a.last_signed_in_at) return 1;
-    if (!b.last_signed_in_at) return -1;
-    return new Date(b.last_signed_in_at).getTime() - new Date(a.last_signed_in_at).getTime();
+    if (!a.last_activity_at && !b.last_activity_at) return a.rep_name.localeCompare(b.rep_name);
+    if (!a.last_activity_at) return 1;
+    if (!b.last_activity_at) return -1;
+    return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime();
   });
 
   return (
     <div className="animate-fade-in space-y-5">
       <PageHeader
-        title="Rep Login Activity"
-        subtitle="See when each sales rep last logged into their portal."
+        title="Rep Portal Activity"
+        subtitle="See when each sales rep last actually used the portal, and when they last logged in."
       />
 
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
@@ -162,7 +168,7 @@ export default function RepActivityPage() {
           className="h-9 rounded-md border bg-card px-3 text-sm"
           aria-label="Sort"
         >
-          <option value="recent">Most recent login first</option>
+          <option value="recent">Most recently active first</option>
           <option value="name">Name A to Z</option>
         </select>
         <span className="ml-auto text-sm text-muted-foreground">
@@ -178,6 +184,7 @@ export default function RepActivityPage() {
               <TableHead>Email</TableHead>
               <TableHead>Sales Manager</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Last Activity</TableHead>
               <TableHead>Last Login</TableHead>
             </TableRow>
           </TableHeader>
@@ -185,7 +192,7 @@ export default function RepActivityPage() {
             {isLoading &&
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={5}><Skeleton className="h-5 w-full" /></TableCell>
+                  <TableCell colSpan={6}><Skeleton className="h-5 w-full" /></TableCell>
                 </TableRow>
               ))}
             {!isLoading &&
@@ -201,20 +208,28 @@ export default function RepActivityPage() {
                   </TableCell>
                   <TableCell
                     className="text-sm"
-                    title={r.last_signed_in_at ? formatReportingDateTime(r.last_signed_in_at) : undefined}
+                    title={r.last_activity_at ? formatReportingDateTime(r.last_activity_at) : undefined}
                   >
                     <span className="inline-flex items-center gap-2">
-                      <span className={cn("h-2 w-2 rounded-full shrink-0", BUCKETS[bucketOf(r.last_signed_in_at)].dot)} />
-                      {r.last_signed_in_at
-                        ? formatDistanceToNow(new Date(r.last_signed_in_at), { addSuffix: true })
-                        : <span className="text-muted-foreground">Never logged in</span>}
+                      <span className={cn("h-2 w-2 rounded-full shrink-0", BUCKETS[bucketOf(r.last_activity_at)].dot)} />
+                      {r.last_activity_at
+                        ? formatDistanceToNow(new Date(r.last_activity_at), { addSuffix: true })
+                        : <span className="text-muted-foreground">No activity yet</span>}
                     </span>
+                  </TableCell>
+                  <TableCell
+                    className="text-sm text-muted-foreground"
+                    title={r.last_signed_in_at ? formatReportingDateTime(r.last_signed_in_at) : undefined}
+                  >
+                    {r.last_signed_in_at
+                      ? formatDistanceToNow(new Date(r.last_signed_in_at), { addSuffix: true })
+                      : "Never logged in"}
                   </TableCell>
                 </TableRow>
               ))}
             {!isLoading && filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
                   {rows.length === 0 ? "No reps found." : "No reps match your filters."}
                 </TableCell>
               </TableRow>

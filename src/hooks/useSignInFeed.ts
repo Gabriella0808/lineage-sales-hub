@@ -119,3 +119,33 @@ export function useRepLastLogins() {
     refetchInterval: 60000,
   });
 }
+
+export interface RepPortalActivity {
+  rep_id: string;
+  rep_name: string;
+  email: string | null;
+  last_signed_in_at: string | null;
+  last_activity_at: string | null;
+}
+
+// Same access pattern as useRepLastLogins (same WHERE-clause scoping, same
+// SECURITY DEFINER need), but the RPC also returns last_activity_at - real
+// portal usage (page load, check-in created, team update read), separate
+// from last_signed_in_at, which is only a fresh-login event. Feeds "Rep
+// Portal Activity". get_rep_last_logins()/useRepLastLogins() above is left
+// untouched and still login-only, for anything still relying on that.
+export function useRepPortalActivity() {
+  const { data: roleInfo } = useUserRole();
+  const enabled = !!roleInfo?.isAdmin || !!roleInfo?.isManager;
+
+  return useQuery({
+    queryKey: ["rep-portal-activity"],
+    queryFn: async (): Promise<RepPortalActivity[]> => {
+      const { data, error } = await (supabase as any).rpc("get_rep_portal_activity");
+      if (error) throw error;
+      return (data ?? []) as RepPortalActivity[];
+    },
+    enabled,
+    refetchInterval: 60000,
+  });
+}

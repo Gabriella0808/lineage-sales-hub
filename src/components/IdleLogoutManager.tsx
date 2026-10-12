@@ -30,11 +30,13 @@ function writeLastActivity(ts: number) {
  * WARNING_MS countdown dialog first so nobody loses unsaved work by
  * surprise. "Activity" (mouse, keyboard, scroll, touch) is recorded to
  * localStorage rather than only component state, so every open tab shares
- * one clock: being active in one tab keeps all of them signed in, and the
- * `storage` event lets this tab's warning dismiss itself the moment another
- * tab records activity. The sign-out itself is just a normal signOut() -
- * ProtectedRoute already redirects to /auth on its own once session is
- * null, so there's no separate navigation to do here.
+ * one clock for deciding WHEN to warn - but once the warning dialog is up
+ * in a given tab, it's sticky: only an explicit "Stay signed in" click
+ * dismisses it there. Incidental mouse movement on the way to the button
+ * (or activity elsewhere) no longer makes it vanish before it can be used.
+ * The sign-out itself is just a normal signOut() - ProtectedRoute already
+ * redirects to /auth on its own once session is null, so there's no
+ * separate navigation to do here.
  *
  * Mounted once in AppLayout's Shell, so it's only ever active while there's
  * a real session (every route it covers is already behind ProtectedRoute).
@@ -44,20 +46,25 @@ export function IdleLogoutManager() {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const lastWriteRef = useRef(0);
   const loggingOutRef = useRef(false);
+  // Mirrors secondsLeft !== null, readable inside event handlers without
+  // needing secondsLeft in the effect's dependency array (which would tear
+  // down and re-add every listener on every tick of the countdown).
+  const warningShownRef = useRef(false);
 
   useEffect(() => {
     if (!session) {
+      warningShownRef.current = false;
       setSecondsLeft(null);
       return;
     }
     writeLastActivity(Date.now());
     loggingOutRef.current = false;
+    warningShownRef.current = false;
 
     const recordActivity = () => {
-      // Dismiss the warning immediately on any real interaction - cheap
-      // React state, not throttled. Only the localStorage write (and thus
-      // the cross-tab broadcast) is throttled.
-      setSecondsLeft(null);
+      // Once the warning is up, nothing but the button dismisses it - not
+      // mouse movement, not typing, not another tab's activity.
+      if (warningShownRef.current) return;
       const now = Date.now();
       if (now - lastWriteRef.current < WRITE_THROTTLE_MS) return;
       lastWriteRef.current = now;
@@ -65,34 +72,45 @@ export function IdleLogoutManager() {
     };
     ACTIVITY_EVENTS.forEach((e) => window.addEventListener(e, recordActivity, { passive: true }));
 
-    // Another tab recorded activity (or extended the session) - follow suit.
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === ACTIVITY_KEY) setSecondsLeft(null);
-    };
-    window.addEventListener("storage", onStorage);
-
     const interval = window.setInterval(() => {
-      if (loggingOutRef.current) return;
+      if (loggingOutRef.current || warningShownRef.current) return;
       const elapsed = Date.now() - readLastActivity();
       if (elapsed >= IDLE_TIMEOUT_MS) {
         loggingOutRef.current = true;
         setSecondsLeft(null);
         void signOut();
       } else if (elapsed >= IDLE_TIMEOUT_MS - WARNING_MS) {
+        warningShownRef.current = true;
         setSecondsLeft(Math.max(0, Math.ceil((IDLE_TIMEOUT_MS - elapsed) / 1000)));
-      } else {
-        setSecondsLeft(null);
       }
+    }, CHECK_INTERVAL_MS);
+
+    // While the warning is showing, keep counting down toward the actual
+    // sign-out on its own clock - independent of readLastActivity(), since
+    // that's now frozen (recordActivity is a no-op while warningShownRef
+    // is true).
+    const countdown = window.setInterval(() => {
+      if (!warningShownRef.current || loggingOutRef.current) return;
+      setSecondsLeft((s) => {
+        if (s === null) return s;
+        if (s <= 1) {
+          loggingOutRef.current = true;
+          void signOut();
+          return null;
+        }
+        return s - 1;
+      });
     }, CHECK_INTERVAL_MS);
 
     return () => {
       ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, recordActivity));
-      window.removeEventListener("storage", onStorage);
       window.clearInterval(interval);
+      window.clearInterval(countdown);
     };
   }, [session, signOut]);
 
   const stayActive = () => {
+    warningShownRef.current = false;
     lastWriteRef.current = Date.now();
     writeLastActivity(Date.now());
     setSecondsLeft(null);
@@ -101,8 +119,13 @@ export function IdleLogoutManager() {
   if (!session || secondsLeft === null) return null;
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) stayActive(); }}>
-      <DialogContent className="sm:max-w-sm">
+    <Dialog open onOpenChange={() => { /* only the button below can dismiss this */ }}>
+      <DialogContent
+        className="sm:max-w-sm"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        hideCloseButton
+      >
         <DialogHeader>
           <DialogTitle>Still there?</DialogTitle>
           <DialogDescription>

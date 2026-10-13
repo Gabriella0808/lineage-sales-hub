@@ -83,31 +83,34 @@ async function fetchAll<T>(build: (from: number, to: number, withCount: boolean)
   return firstRows.concat(...pages);
 }
 
-const EXEC_ROW_COLUMNS = "metric_type, amount, transaction_date, customer_id, dealer_name, brand_category, product_class, portal_rep_id, rep_name";
-
+// Bug sweep fix: both queries below used to hit
+// v_companywide_reporting_actuals / v_portal_open_sales_order_line_facts
+// directly - the manager_id filter was the only scoping, and it's a
+// client-side-only check (no RLS on these views). Repointed at
+// get_companywide_actuals_scoped / get_open_so_lines_scoped, which enforce
+// the same rep-only scoping server-side every other reporting RPC in this
+// app already has. Executive Overview is admin/manager-only in the normal
+// UI, so admin/manager behavior here (unrestricted + manager_id
+// narrowing) is unchanged - this closes the same gap other call sites of
+// these views had, consistently.
 function execRowsQuery(year: number, managerIds: string[] | null, refreshKey: number) {
   return {
     queryKey: ["exec_overview_rows_v2", year, managerIds, refreshKey],
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
-    queryFn: () => fetchAll<Row>((from, to, withCount) => {
-      // Ordered by every selected column so parallel pages never skip or repeat a row.
-      let q = (supabase as any)
-        .from("v_companywide_reporting_actuals")
-        .select(EXEC_ROW_COLUMNS, withCount ? { count: "exact" } : undefined)
-        .gte("transaction_date", `${year}-07-01`)
-        .in("metric_type", ["bookings", "invoiced"])
-        .order("transaction_date", { ascending: true })
-        .order("customer_id", { ascending: true })
-        .order("metric_type", { ascending: true })
-        .order("product_class", { ascending: true })
-        .order("brand_category", { ascending: true })
-        .order("portal_rep_id", { ascending: true })
-        .order("amount", { ascending: true })
-        .range(from, to);
-      if (managerIds) q = q.in("manager_id", managerIds);
-      return q;
-    }),
+    queryFn: () => fetchAll<Row>((from, to, withCount) =>
+      (supabase as any).rpc(
+        "get_companywide_actuals_scoped",
+        {
+          p_date_from: `${year}-07-01`,
+          p_metric_types: ["bookings", "invoiced"],
+          p_manager_ids: managerIds ?? null,
+          p_limit: to - from + 1,
+          p_offset: from,
+        },
+        withCount ? { count: "exact" } : undefined,
+      ),
+    ),
   };
 }
 
@@ -117,17 +120,13 @@ function execBacklogQuery(managerIds: string[] | null, refreshKey: number) {
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     queryFn: async () => {
-      const rows = await fetchAll<{ open_so_amount: number | string | null; order_number: string | null }>((from, to, withCount) => {
-        let q = (supabase as any)
-          .from("v_portal_open_sales_order_line_facts")
-          .select("open_so_amount, order_number", withCount ? { count: "exact" } : undefined)
-          .order("order_number", { ascending: true })
-          .order("sku", { ascending: true })
-          .order("open_so_amount", { ascending: true })
-          .range(from, to);
-        if (managerIds) q = q.in("manager_id", managerIds);
-        return q;
-      });
+      const rows = await fetchAll<{ open_so_amount: number | string | null; order_number: string | null }>((from, to, withCount) =>
+        (supabase as any).rpc(
+          "get_open_so_lines_scoped",
+          { p_manager_ids: managerIds ?? null, p_limit: to - from + 1, p_offset: from },
+          withCount ? { count: "exact" } : undefined,
+        ),
+      );
       const orders = new Set<string>();
       let total = 0;
       for (const r of rows) {
@@ -219,7 +218,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
   const navigate = useNavigate();
   const { data: rows = [], isLoading, error } = useExecutiveRows(year, managerIds, refreshKey);
   const { data: backlog } = useOpenBacklog(managerIds, refreshKey);
-  const { data: syncStatus } = useDataSyncStatus();
+  const { data: syncStatus, isLoading: syncStatusLoading, isError: syncStatusError } = useDataSyncStatus();
   const { data: targets = [] } = useRepTargets(year);
   const { data: reps = [] } = useSalesReps();
 
@@ -453,9 +452,21 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
           <h2 className="text-2xl sm:font-serif text-4xl font-medium tracking-tight mt-1">{greeting}{first ? `, ${first[0].toUpperCase()}${first.slice(1)}` : ""}</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Here is how the business is performing.{" "}
-            {syncStatus?.last_synced_at
-              ? `Last synced at ${formatReportingDateTime(syncStatus.last_synced_at)}.`
-              : `Data updated ${formatReportingTime(Date.now())} ET.`}
+            {
+              // Bug sweep fix (Finding 12.1): this used to fall back to
+              // Date.now() whenever syncStatus was still loading OR had
+              // errored OR genuinely had no value - actively asserting
+              // freshness ("Data updated 2:14 PM ET") with no evidence,
+              // including right after a sync-status outage. Loading and
+              // error are now their own distinct, honest states.
+              syncStatus?.last_synced_at
+                ? `Last synced at ${formatReportingDateTime(syncStatus.last_synced_at)}.`
+                : syncStatusLoading
+                  ? "Checking data freshness…"
+                  : syncStatusError
+                    ? "Sync status unavailable right now."
+                    : `Data updated ${formatReportingTime(Date.now())} ET.`
+            }
           </p>
         </div>
         <ToggleGroup data-tour="hlr-period" type="single" value={period} onValueChange={(v) => v && setPeriod(v as PeriodKey)} className="bg-muted p-1 rounded-lg self-start">

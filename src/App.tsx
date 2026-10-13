@@ -90,8 +90,14 @@ const App = () => (
                       <Route path="/directory" element={<PageGate page="directory"><DirectoryPage /></PageGate>} />
                       <Route path="/kpi" element={<PageGate page="kpi"><CompanyWidePage /></PageGate>} />
                       <Route path="/company-wide" element={<PageGate page="company-wide"><CompanyWidePage /></PageGate>} />
-                      <Route path="/reports/bookings" element={<PageGate page="reports-bookings"><CompanyWidePage /></PageGate>} />
-                      <Route path="/reports/invoicing" element={<PageGate page="reports-invoicing"><CompanyWidePage /></PageGate>} />
+                      {/* Bug sweep fix (Finding 2a): these two routes rendered
+                          CompanyWidePage - the dedicated BookingsReportPage/
+                          InvoicingReportPage components were imported but never
+                          mounted anywhere, so visiting either URL just showed
+                          whatever CompanyWidePage's default tab is, with no
+                          bookings/invoicing-specific content at all. */}
+                      <Route path="/reports/bookings" element={<PageGate page="reports-bookings"><BookingsReportPage /></PageGate>} />
+                      <Route path="/reports/invoicing" element={<PageGate page="reports-invoicing"><InvoicingReportPage /></PageGate>} />
                       <Route path="/monday-boards" element={<PageGate page="monday-boards"><MondayBoardsPage /></PageGate>} />
                       <Route path="/tasks" element={<PageGate page="my-tasks"><TasksPage /></PageGate>} />
                       <Route path="/team-updates" element={<PageGate page="team-updates"><TeamUpdatesPage /></PageGate>} />

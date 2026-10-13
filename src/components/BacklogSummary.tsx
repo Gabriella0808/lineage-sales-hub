@@ -18,6 +18,9 @@ type DetailRow = {
   item: string | null;
   description: string | null;
   memo: string | null;
+  // Bug sweep fix (Finding 1): missing entirely before - see
+  // useOpenSalesOrders.ts's comment on why.
+  customerPoNumber: string | null;
   amount: number;
   openBalance: number;
   grossAmount: number;
@@ -104,6 +107,7 @@ export function BacklogSummary() {
       item: r.sku,
       description: r.description,
       memo: null,
+      customerPoNumber: r.customer_po_number,
       amount: r.open_so_amount,
       openBalance: r.open_so_amount,
       grossAmount: r.open_so_gross_amount,
@@ -151,7 +155,9 @@ export function BacklogSummary() {
         const q = skuQuery.toLowerCase();
         const match = (r.item ?? "").toLowerCase().includes(q) ||
           (r.description ?? "").toLowerCase().includes(q) ||
-          (r.customer ?? "").toLowerCase().includes(q);
+          (r.customer ?? "").toLowerCase().includes(q) ||
+          // Bug sweep fix (Finding 1): PO number wasn't searchable here at all.
+          (r.customerPoNumber ?? "").toLowerCase().includes(q);
         if (!match) return false;
       }
       return true;
@@ -257,7 +263,7 @@ export function BacklogSummary() {
               <label className="text-[10px] uppercase tracking-wider font-medium text-muted-foreground">SKU / Search</label>
               <Input
                 className="h-8 w-[180px] text-xs"
-                placeholder="SKU, item, customer..."
+                placeholder="SKU, item, customer, PO..."
                 value={skuQuery}
                 onChange={(e) => setSkuQuery(e.target.value)}
               />
@@ -543,6 +549,7 @@ function BacklogOrderTable({
                           <tr>
                             <th className="text-left py-1 pr-3">Item</th>
                             <th className="text-left py-1 pr-3 max-w-[280px]">Description</th>
+                            <th className="text-left py-1 pr-3">Customer PO</th>
                             <th className="text-left py-1 pr-3">Class</th>
                             <th className="text-left py-1 pr-3">Ship Date</th>
                             <th className="text-right py-1 pr-3">Amount</th>
@@ -556,6 +563,7 @@ function BacklogOrderTable({
                               <td className="py-1 pr-3 max-w-[280px] truncate text-muted-foreground">
                                 {l.description ?? "-"}
                               </td>
+                              <td className="py-1 pr-3 font-mono">{l.customerPoNumber ?? "-"}</td>
                               <td className="py-1 pr-3">
                                 {l.stockClass ? (
                                   <span

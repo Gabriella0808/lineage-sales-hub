@@ -21,11 +21,27 @@ import { PAGE_ACCESS } from "@/config/pageAccess";
  */
 export default function PageGate({ page, children }: { page: string; children: React.ReactNode }) {
   const { user } = useAuth();
-  const { data: roleInfo } = useUserRole();
+  const { data: roleInfo, isError: roleError, refetch: refetchRole } = useUserRole();
   const { overrides, loading } = usePageAccessOverrides();
 
   const rule = PAGE_ACCESS[page]?.route;
   if (!rule) return <Navigate to="/" replace />;
+
+  // Bug sweep fix (Finding 1d): the comment below says "if the lookup
+  // fails, loading ends and the coded rules take over" - but `loading`
+  // here is usePageAccessOverrides()'s loading state, not the role
+  // query's. If useUserRole() permanently errors, roleInfo never becomes
+  // truthy and (user && !roleInfo) stays true forever - every role-gated
+  // page showed an unending "Loading…" spinner with no way out but a hard
+  // refresh. An explicit error+retry state replaces that dead end.
+  if (user && roleError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-muted-foreground">
+        <p>Couldn't verify your access.</p>
+        <button type="button" onClick={() => refetchRole()} className="text-sm underline hover:text-foreground">Try again</button>
+      </div>
+    );
+  }
 
   // Wait for the answer before showing (or hiding) a page, so a blocked page
   // never flashes on screen first. If the lookup fails, `loading` ends and the

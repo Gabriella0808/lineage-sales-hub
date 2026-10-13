@@ -74,6 +74,14 @@ export function usePreSaleProducts() {
 // Bookings since Jan 1 of the current year for exactly the currently-flagged
 // SKUs. Fetched by explicit SKU list rather than a SQL join so the frontend
 // can show "matched N of M flagged SKUs" without a bespoke view/RPC.
+//
+// Bug sweep fix: this used to query v_companywide_reporting_actuals
+// directly with NO role scoping at all (not even client-side) - since
+// Pre-Sale is explicitly open to reps, any rep viewing this page received
+// every dealer's/rep's bookings for these SKUs company-wide, not just
+// their own. get_companywide_actuals_scoped enforces the same rep-only
+// scoping server-side that every other reporting RPC in this app already
+// has; admin/manager behavior is unchanged (still unrestricted).
 export function usePreSaleBookings(skus: string[]) {
   return useQuery({
     queryKey: ["presale_bookings", skus],
@@ -82,22 +90,13 @@ export function usePreSaleBookings(skus: string[]) {
     queryFn: () => {
       const year = getReportingYear();
       return fetchAll<PreSaleBookingLine>((from, to) =>
-        (supabase as any)
-          .from("v_companywide_reporting_actuals")
-          .select("sku, amount, transaction_date, dealer_name, customer_id, rep_id, rep_name, portal_rep_id")
-          .eq("metric_type", "bookings")
-          .gte("transaction_date", `${year}-01-01`)
-          .in("sku", skus)
-          // Ordered by every selected column (not just transaction_date) so
-          // paginated .range() fetches never skip or repeat a row when many
-          // rows share the same date - see ExecutiveOverview.tsx's identical
-          // fix for the same pagination pitfall.
-          .order("transaction_date", { ascending: true })
-          .order("customer_id", { ascending: true })
-          .order("sku", { ascending: true })
-          .order("rep_id", { ascending: true })
-          .order("amount", { ascending: true })
-          .range(from, to),
+        (supabase as any).rpc("get_companywide_actuals_scoped", {
+          p_date_from: `${year}-01-01`,
+          p_metric_types: ["bookings"],
+          p_skus: skus,
+          p_limit: to - from + 1,
+          p_offset: from,
+        }),
       );
     },
   });

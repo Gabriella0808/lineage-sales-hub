@@ -1389,7 +1389,6 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       if (basis === "L6M" && wkL6 != null) salesPerWeek = wkL6;
       else if (basis === "L3M" && wkL3 != null) salesPerWeek = wkL3;
       else if (basis === "OVERRIDE" && overrideWk != null) salesPerWeek = overrideWk;
-      else if (overrideWk != null && basis === "OVERRIDE") salesPerWeek = overrideWk;
 
       const newMin = salesPerWeek * 4.35 * leadMonths;
       const onPo = it.onPo ?? 0;

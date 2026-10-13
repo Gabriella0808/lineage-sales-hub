@@ -180,11 +180,16 @@ export function useInventoryHub() {
       let from = 0;
       let index = 0;
       while (true) {
-        const { data, error } = await (supabase as any)
-          .from("v_portal_open_sales_order_line_facts")
-          .select("guid_order, order_number, sku, dealer_name, qty_open, unit_price, open_so_amount, order_date, requested_ship_date")
-          .range(from, from + pageSize - 1);
-        if (error) { console.error("[useInventoryHub] v_portal_open_sales_order_line_facts:", error); break; }
+        // Bug sweep fix: used to query v_portal_open_sales_order_line_facts
+        // directly with NO scoping at all - see useOpenSalesOrders.ts's
+        // identical fix for why (this page is dealer-reachable today).
+        // get_open_so_lines_scoped enforces the same rep-only scoping
+        // server-side every other reporting RPC in this app already has.
+        const { data, error } = await (supabase as any).rpc("get_open_so_lines_scoped", {
+          p_limit: pageSize,
+          p_offset: from,
+        });
+        if (error) { console.error("[useInventoryHub] get_open_so_lines_scoped:", error); break; }
         if (!data || data.length === 0) break;
         for (const r of data as any[]) {
           all.push({

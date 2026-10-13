@@ -47,23 +47,29 @@ function StatusPill({ available }: { available: number }) {
 export default function ClearanceProductsPage() {
   const [items,            setItems]            = useState<ClearanceItem[]>([]);
   const [loading,          setLoading]          = useState(true);
+  // Bug sweep fix (Finding 12.2): this view has a confirmed history of
+  // returning 0 rows / failing outright due to RLS/security_invoker
+  // interactions (see 20260821000600/20260820000400). A failed fetch used
+  // to leave items=[] with the error logged only to console - visually
+  // identical to "clearance is genuinely empty today," with no way for a
+  // user to tell the two apart or know to retry.
+  const [loadError,        setLoadError]        = useState<string | null>(null);
   const [search,           setSearch]           = useState("");
   const [collectionFilter, setCollectionFilter] = useState("all");
 
   const load = useCallback(async () => {
     setLoading(true);
-    console.log("[clearance] querying v_portal_clearance_products...");
+    setLoadError(null);
     const { data, error } = await (supabase as any)
       .from("v_portal_clearance_products")
       .select("id, sku, product, warehouse, collection, available, on_hand, list_price, retail_value, inventory_value, status, retail_value_price_source")
       .order("collection", { nullsFirst: false })
       .order("sku");
 
-    console.log("[clearance] rows returned:", (data ?? []).length, "| error:", error);
-    if ((data ?? []).length > 0) console.log("[clearance] first 5 rows:", (data as any[]).slice(0, 5));
-
     if (error) {
       console.error("[clearance] fetch failed — code:", error.code, "| message:", error.message, "| details:", error.details, "| hint:", error.hint);
+      setLoadError(error.message || "Couldn't load discontinued products.");
+      setItems([]);
       setLoading(false);
       return;
     }
@@ -187,6 +193,11 @@ export default function ClearanceProductsPage() {
         <div className="text-center py-16 text-muted-foreground text-sm">
           <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3 text-primary" />
           Loading discontinued products...
+        </div>
+      ) : loadError ? (
+        <div className="text-center py-16 text-sm space-y-3">
+          <p className="text-destructive">Couldn't load discontinued products - {loadError}</p>
+          <Button variant="outline" size="sm" onClick={() => void load()}>Try again</Button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">

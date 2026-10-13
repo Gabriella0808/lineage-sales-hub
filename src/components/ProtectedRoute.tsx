@@ -14,7 +14,7 @@ interface Props {
 
 export default function ProtectedRoute({ children, allow, denyEmails, allowEmails }: Props) {
   const { session, loading, user } = useAuth();
-  const { data: roleInfo, isLoading: roleLoading } = useUserRole();
+  const { data: roleInfo, isLoading: roleLoading, isError: roleError } = useUserRole();
   const location = useLocation();
 
   if (loading || (session && roleLoading)) {
@@ -29,7 +29,13 @@ export default function ProtectedRoute({ children, allow, denyEmails, allowEmail
   // the homepage - once they sign in. AuthPage reads this same "from" state.
   if (!session) return <Navigate to="/auth" state={{ from: `${location.pathname}${location.search}` }} replace />;
 
-  if (allow && roleInfo && !allow.includes(roleInfo.role)) {
+  // Bug sweep fix (Finding 1c): this only redirected when roleInfo was
+  // truthy - if the role query ends in an error (rather than staying in
+  // isLoading) instead of resolving, roleInfo stays undefined forever and
+  // this whole gate was silently skipped, rendering the page for ANY
+  // signed-in user regardless of role. An errored role check must deny,
+  // not fail open.
+  if (allow && (roleError || !roleInfo || !allow.includes(roleInfo.role))) {
     return <Navigate to="/" replace />;
   }
   if (denyEmails && user?.email && denyEmails.map(e => e.toLowerCase()).includes(user.email.toLowerCase())) {

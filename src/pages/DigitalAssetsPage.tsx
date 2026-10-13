@@ -553,7 +553,7 @@ export default function DigitalAssetsPage() {
                   ) : (
                     <BreadcrumbLink asChild>
                       <button
-                        type="button" onClick={() => { setCurrentFolderId(f.id); setQuickFilter("all"); }}
+                        type="button" onClick={() => { setCurrentFolderId(f.id); setSearch(""); setQuickFilter("all"); }}
                         onDragOver={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId(f.id); } }}
                         onDragLeave={() => setDragOverFolderId(null)}
                         onDrop={(e) => handleDropOnFolder(e, f.id)}
@@ -970,11 +970,17 @@ function AssetRow({ asset, canManage, starred, onToggleStar, onOpen, onDownload,
 function AssetPreviewBody({ asset }: { asset: DigitalAsset }) {
   const { data: url, isLoading } = useSignedUrl(asset.file_path);
   const { icon: Icon, label } = fileCategory(asset.content_type);
+  // Bug sweep fix (Finding 6): a valid signed URL doesn't guarantee the
+  // underlying object itself still loads (deleted/corrupted out-of-band,
+  // 404 from storage, truncated file) - none of img/video/iframe had an
+  // error path, so that case silently rendered a broken image icon / empty
+  // player / blank frame with no indication anything was wrong.
+  const [loadFailed, setLoadFailed] = useState(false);
   if (isLoading) return <div className="h-80 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
-  if (!url) return <div className="h-80 flex items-center justify-center text-muted-foreground text-sm">Couldn't load preview</div>;
-  if (isImage(asset.content_type)) return <img src={url} alt={asset.name} className="max-h-[70vh] w-full object-contain rounded-md bg-muted" />;
-  if (isVideo(asset.content_type)) return <video src={url} controls className="max-h-[70vh] w-full rounded-md bg-black" />;
-  if (isPdf(asset.content_type)) return <iframe src={url} className="w-full h-[70vh] rounded-md border" title={asset.name} />;
+  if (!url || loadFailed) return <div className="h-80 flex items-center justify-center text-muted-foreground text-sm">Couldn't load preview</div>;
+  if (isImage(asset.content_type)) return <img src={url} alt={asset.name} onError={() => setLoadFailed(true)} className="max-h-[70vh] w-full object-contain rounded-md bg-muted" />;
+  if (isVideo(asset.content_type)) return <video src={url} controls onError={() => setLoadFailed(true)} className="max-h-[70vh] w-full rounded-md bg-black" />;
+  if (isPdf(asset.content_type)) return <iframe src={url} onError={() => setLoadFailed(true)} className="w-full h-[70vh] rounded-md border" title={asset.name} />;
   return (
     <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground">
       <Icon className="h-10 w-10" />

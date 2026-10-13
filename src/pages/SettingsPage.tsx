@@ -317,7 +317,12 @@ function RoleAdminPanel() {
 
   useEffect(() => { load(); }, []);
 
-  const setRole = async (userId: string, role: AppRole) => {
+  const setRole = async (userId: string, role: AppRole, label: string) => {
+    // Bug sweep fix (Finding 3a): this had no confirmation at all, unlike
+    // deleteUser above - a misclick on the role dropdown (e.g. demoting an
+    // admin to "rep") took effect immediately with no undo and less
+    // friction than deleting a user.
+    if (!confirm(`Change ${label}'s role to ${role}?`)) return;
     setSavingId(userId);
     // Replace all roles for this user with the chosen one
     const { error: delErr } = await supabase.from("user_roles").delete().eq("user_id", userId);
@@ -427,7 +432,7 @@ function RoleAdminPanel() {
                         </div>
                       </td>
                       <td className="py-2 pr-3">
-                        <Select value={currentRole} onValueChange={(v: AppRole) => setRole(u.user_id, v)} disabled={busy}>
+                        <Select value={currentRole} onValueChange={(v: AppRole) => setRole(u.user_id, v, label)} disabled={busy}>
                           <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="admin">Admin</SelectItem>

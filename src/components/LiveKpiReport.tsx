@@ -414,29 +414,39 @@ export function LiveKpiReport({
   // Daily actuals: bookings use dailyDateStr (default today), invoiced use
   // invoiceDateStr (day before) because Acctivate invoice sync runs overnight.
   // Both dates are fetched in one query and split client-side by metric_type.
+  //
+  // Bug sweep fix: this used to query v_companywide_reporting_actuals and
+  // v_daily_invoiced_actuals directly - the manager_id filter below only
+  // ever applied when NO individual rep was selected, and even then it's
+  // a client-side-only check (no RLS on these views). Any rep with a
+  // selectedRepAcIds filter in play, or simply inspecting network traffic
+  // on an admin/manager-driven view, received the FULL company-wide
+  // dataset for that day. get_companywide_actuals_scoped/
+  // get_daily_invoiced_actuals_scoped enforce the same rep-only scoping
+  // server-side; admin/manager behavior (manager_id / rep selection
+  // narrowing) is unchanged - the client-side selectedRepAcIds filter
+  // below is now redundant defense-in-depth rather than the only check.
   const { data: rawDailyRows = [] } = useQuery({
     queryKey: ["daily_actuals_v2", dailyDateStr, invoiceDateStr, managerId ?? null, repQueryKey],
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: true,
     refetchInterval: 5 * 60_000,
     queryFn: async () => {
-      // Bookings: selected date, from the canonical companywide view (unchanged).
-      let bkgQ = (supabase as any)
-        .from("v_companywide_reporting_actuals")
-        .select("metric_type, brand_category, amount, rep_id, transaction_date")
-        .eq("metric_type", "bookings")
-        .eq("transaction_date", dailyDateStr);
-      // Invoiced: prior day, from the dedicated daily-invoices view (fixes FIN=$0 —
-      // v_companywide_reporting_actuals' display_category mis-routes FINNLOU into SW).
-      let invQ = (supabase as any)
-        .from("v_daily_invoiced_actuals")
-        .select("metric_type, brand_category, amount, rep_id, transaction_date")
-        .eq("transaction_date", invoiceDateStr);
-      if (managerId && !(selectedRepAcIds && selectedRepAcIds.length > 0)) {
-        bkgQ = bkgQ.eq("manager_id", managerId);
-        invQ = invQ.eq("manager_id", managerId);
-      }
-      const [bkgRes, invRes] = await Promise.all([bkgQ, invQ]);
+      const useManagerFilter = managerId && !(selectedRepAcIds && selectedRepAcIds.length > 0);
+      const [bkgRes, invRes] = await Promise.all([
+        (supabase as any).rpc("get_companywide_actuals_scoped", {
+          p_date_from: dailyDateStr,
+          p_date_to: dailyDateStr,
+          p_metric_types: ["bookings"],
+          p_manager_ids: useManagerFilter ? [managerId] : null,
+          p_rep_ac_ids: selectedRepAcIds && selectedRepAcIds.length > 0 ? selectedRepAcIds : null,
+        }),
+        (supabase as any).rpc("get_daily_invoiced_actuals_scoped", {
+          p_date: invoiceDateStr,
+          p_manager_ids: useManagerFilter ? [managerId] : null,
+          p_rep_ac_ids: selectedRepAcIds && selectedRepAcIds.length > 0 ? selectedRepAcIds : null,
+        }),
+      ]);
       if (bkgRes.error) console.error("[daily] bookings actuals error:", bkgRes.error.message);
       if (invRes.error) console.error("[daily] invoiced actuals error:", invRes.error.message);
       let rows = [
@@ -853,10 +863,18 @@ export function LiveKpiReport({
   // Backlog and the Dealer/Rep Reporting Open SO card. Follows the same scope as
   // the rest of this tab: the selected manager (all of that manager's records, so
   // the duplicate "Will"/"Mateo" rows count too), narrowed to any individual reps
-  // picked; company-wide when neither is chosen. Paginated via .range() exactly
-  // like useInventoryHub.ts's fetchAllOpenOrders — a single unpaginated request
+  // picked; company-wide when neither is chosen. Paginated exactly like
+  // useInventoryHub.ts's fetchAllOpenOrders — a single unpaginated request
   // is silently truncated at the project's row cap (~1000), which is why
   // this must page through in full rather than rely on .limit().
+  //
+  // Bug sweep fix: this used to query v_portal_open_sales_order_line_facts
+  // directly and rely on the manager_id filter above as the ONLY scoping -
+  // that's a client-side-only check, not a security boundary (the view has
+  // no RLS). get_open_so_lines_scoped enforces the same rep-only scoping
+  // server-side every other reporting RPC in this app already has;
+  // admin/manager behavior (including this manager_id narrowing) is
+  // unchanged.
   const openSoManagerKey = managerIds ? [...managerIds].sort().join(",") : "all";
   const { data: openSoRows = [] } = useQuery({
     queryKey: ["live_kpi_open_so_totals", openSoManagerKey],
@@ -868,15 +886,11 @@ export function LiveKpiReport({
       const all: Array<{ order_number: string | null; qty_open: number | string | null; open_so_amount: number | string | null; rep_id: string | null }> = [];
       let from = 0;
       while (true) {
-        let q = (supabase as any)
-          .from("v_portal_open_sales_order_line_facts")
-          .select("order_number, qty_open, open_so_amount, rep_id")
-          .order("order_number", { ascending: true })
-          .order("sku", { ascending: true })
-          .order("open_so_amount", { ascending: true })
-          .range(from, from + pageSize - 1);
-        if (managerIds && managerIds.length > 0) q = q.in("manager_id", managerIds);
-        const { data, error } = await q;
+        const { data, error } = await (supabase as any).rpc("get_open_so_lines_scoped", {
+          p_manager_ids: managerIds && managerIds.length > 0 ? managerIds : null,
+          p_limit: pageSize,
+          p_offset: from,
+        });
         if (error) {
           console.error("[live-kpi] open SO totals error:", error.message);
           break;

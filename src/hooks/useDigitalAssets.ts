@@ -114,7 +114,18 @@ export function useDeleteFolder() {
         .in("folder_id", Array.from(subtree));
       if (aErr) throw aErr;
       const paths = (assetsToRemove ?? []).map((a) => a.file_path);
-      if (paths.length) await supabase.storage.from(DIGITAL_ASSETS_BUCKET).remove(paths);
+      if (paths.length) {
+        // Bug sweep fix (Finding 5): this return value was never checked -
+        // a failed storage removal (permission hiccup, network blip, path
+        // mismatch) was silently ignored, the DB rows got deleted anyway,
+        // and the confirm dialog showed "Deleted" even though the files
+        // were still sitting in the bucket with no UI path left to find
+        // them. Throwing here instead keeps the DB rows and storage
+        // objects in sync - the folder delete is aborted and the existing
+        // catch in DigitalAssetsPage.tsx surfaces a real error toast.
+        const { error: storageError } = await supabase.storage.from(DIGITAL_ASSETS_BUCKET).remove(paths);
+        if (storageError) throw storageError;
+      }
       const { error } = await supabase.from("digital_asset_folders").delete().eq("id", id);
       if (error) throw error;
     },
@@ -151,7 +162,10 @@ export function useDeleteAsset() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (asset: Pick<DigitalAsset, "id" | "file_path">) => {
-      await supabase.storage.from(DIGITAL_ASSETS_BUCKET).remove([asset.file_path]);
+      // Bug sweep fix (Finding 5): same silently-ignored storage error as
+      // useDeleteFolder above - see that comment.
+      const { error: storageError } = await supabase.storage.from(DIGITAL_ASSETS_BUCKET).remove([asset.file_path]);
+      if (storageError) throw storageError;
       const { error } = await supabase.from("digital_assets").delete().eq("id", asset.id);
       if (error) throw error;
     },

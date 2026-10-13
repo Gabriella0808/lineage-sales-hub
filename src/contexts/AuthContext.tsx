@@ -7,7 +7,12 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signOut: () => Promise<void>;
+  // Bug sweep fix (Finding 1b): scope defaults to 'global' (every tab/
+  // device, same as before - a deliberate, user-initiated "log out"
+  // should still end every session). IdleLogoutManager passes 'local'
+  // explicitly so one idle tab's timeout can't end a session in a
+  // different, actively-used tab that never showed its own warning.
+  signOut: (opts?: { scope?: "global" | "local" }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -82,8 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [queryClient]);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const signOut = async (opts?: { scope?: "global" | "local" }) => {
+    await supabase.auth.signOut({ scope: opts?.scope ?? "global" });
   };
 
   return (

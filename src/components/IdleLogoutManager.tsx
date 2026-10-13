@@ -78,7 +78,12 @@ export function IdleLogoutManager() {
       if (elapsed >= IDLE_TIMEOUT_MS) {
         loggingOutRef.current = true;
         setSecondsLeft(null);
-        void signOut();
+        // Bug sweep fix (Finding 1b): local-only - this tab's own idle
+        // timeout must not end a session in a different, actively-used
+        // tab that never showed its own warning (see this component's own
+        // "sticky once shown" comment above for why that scenario is
+        // real).
+        void signOut({ scope: "local" });
       } else if (elapsed >= IDLE_TIMEOUT_MS - WARNING_MS) {
         warningShownRef.current = true;
         setSecondsLeft(Math.max(0, Math.ceil((IDLE_TIMEOUT_MS - elapsed) / 1000)));
@@ -95,7 +100,7 @@ export function IdleLogoutManager() {
         if (s === null) return s;
         if (s <= 1) {
           loggingOutRef.current = true;
-          void signOut();
+          void signOut({ scope: "local" });
           return null;
         }
         return s - 1;

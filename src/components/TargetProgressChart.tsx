@@ -99,16 +99,23 @@ export function RepTargetPanel({ repCode, target, year }: { repCode: string; tar
     staleTime: 5 * 60_000,
     enabled: !!repCode,
     queryFn: async () => {
+      // Bug sweep fix: used to query v_companywide_reporting_actuals
+      // directly, filtered only by .eq("rep_id", repCode) - a client-side
+      // check, not a security boundary (no RLS on that view). A rep
+      // caller now gets this server-enforced too: get_companywide_
+      // actuals_scoped's effective-CTE intersects repCode against the
+      // caller's OWN rep ids, so a rep passing someone else's code here
+      // gets 0 rows rather than that rep's real numbers; admin/manager
+      // behavior (viewing any rep's panel) is unchanged.
       const rows: { metric_type: string | null; amount: number | string | null; transaction_date: string | null }[] = [];
       for (let start = 0; ; start += 1000) {
-        const { data: batch, error } = await (supabase as any)
-          .from("v_companywide_reporting_actuals")
-          .select("metric_type, amount, transaction_date")
-          .eq("rep_id", repCode)
-          .gte("transaction_date", `${year}-07-01`)
-          .in("metric_type", ["bookings", "invoiced"])
-          .order("transaction_date", { ascending: true })
-          .range(start, start + 999);
+        const { data: batch, error } = await (supabase as any).rpc("get_companywide_actuals_scoped", {
+          p_date_from: `${year}-07-01`,
+          p_metric_types: ["bookings", "invoiced"],
+          p_rep_ac_ids: [repCode],
+          p_limit: 1000,
+          p_offset: start,
+        });
         if (error) throw error;
         rows.push(...(batch ?? []));
         if (!batch || batch.length < 1000) break;

@@ -26,6 +26,12 @@ export interface OpenSalesOrderRow {
   requested_ship_date: string | null;
   branch_id: string | null;
   fulfillment_type: string | null;
+  // Bug sweep fix (Finding 1): this was missing entirely - the
+  // functionally-identical Dealer/Rep Reporting Open SO drawer
+  // (InvoiceDetailSheet.tsx) has shown/searched customer_po_number since
+  // 20261009000000_open_so_customer_po_number.sql; this Inventory >
+  // Backlog table never picked up that change.
+  customer_po_number: string | null;
 }
 
 export function useOpenSalesOrders() {
@@ -43,10 +49,20 @@ export function useOpenSalesOrders() {
         let from = 0;
         let index = 0;
         while (true) {
-          const { data, error } = await (supabase as any)
-            .from("v_portal_open_sales_order_line_facts")
-            .select("guid_order, order_number, customer_id, dealer_name, rep_id, rep_name, sku, description, product_class, qty_open, unit_price, line_discount_pct, open_so_gross_amount, open_so_amount, order_date, requested_ship_date, branch_id, fulfillment_type")
-            .range(from, from + pageSize - 1);
+          // Bug sweep fix: used to query v_portal_open_sales_order_line_facts
+          // directly with NO scoping at all - this page (Inventory > Backlog)
+          // is reachable by the dealer role, which would have received every
+          // dealer's/rep's full open-order detail company-wide.
+          // get_open_so_lines_scoped enforces the same rep-only scoping
+          // server-side every other reporting RPC in this app already has
+          // (admin/manager unaffected; dealer now correctly gets 0 rows,
+          // matching the fact dealers were never meant to see this - see
+          // the sibling inventory table's own RLS, which already excludes
+          // them).
+          const { data, error } = await (supabase as any).rpc("get_open_so_lines_scoped", {
+            p_limit: pageSize,
+            p_offset: from,
+          });
           if (error) throw error;
           if (!data || data.length === 0) break;
           for (const r of data as any[]) {
@@ -69,6 +85,7 @@ export function useOpenSalesOrders() {
               requested_ship_date: r.requested_ship_date ?? null,
               branch_id: r.branch_id ?? null,
               fulfillment_type: r.fulfillment_type ?? null,
+              customer_po_number: r.customer_po_number ?? null,
             });
           }
           if (data.length < pageSize) break;

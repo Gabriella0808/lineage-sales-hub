@@ -1578,18 +1578,20 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       {/* ── B1. Summary Cards (Ahead / Behind / Open Territories) ─── */}
       {showSummaryCards && useRpcMode && compareMode !== "none" && (
         <div className={cn("grid gap-3", groupBy === "rep" ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
-          <Card className="border-l-4 border-l-success">
+          <Card>
             <CardContent className="p-5">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-success shrink-0" />
                 {groupBy === "rep" ? "Reps Ahead" : "Dealers Ahead"}
               </p>
               <p className="font-serif text-4xl font-medium tracking-tight tabular-nums">{aheadCount}</p>
               <p className="text-[11px] text-muted-foreground mt-1">Bookings vs last year</p>
             </CardContent>
           </Card>
-          <Card className="border-l-4 border-l-destructive">
+          <Card>
             <CardContent className="p-5">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
                 {groupBy === "rep" ? "Reps Behind" : "Dealers Behind"}
               </p>
               <p className="font-serif text-4xl font-medium tracking-tight tabular-nums">{behindCount}</p>
@@ -1597,9 +1599,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             </CardContent>
           </Card>
           {groupBy === "rep" && (
-            <Card className="border-l-4 border-l-warning">
+            <Card>
               <CardContent className="p-5">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-warning shrink-0" />
                   Open Territories
                 </p>
                 <p className="font-serif text-4xl font-medium tracking-tight tabular-nums">{openTerritories}</p>

@@ -48,8 +48,8 @@
     --muted: 36 22% 91%;
     --muted-foreground: 200 4% 38%;     /* Slate Mist */
 
-    /* Accent — Harbor Blue, gently deepened */
-    --accent: 199 26% 72%;
+    /* Accent — Soft Brass (matches --sidebar-primary's existing brass) */
+    --accent: 34 33% 58%;
     --accent-foreground: 0 0% 8%;
 
     --destructive: 0 48% 38%;
@@ -97,9 +97,6 @@
       0 2px 4px hsl(0 0% 4% / 0.04),
       0 12px 28px -16px hsl(0 0% 4% / 0.10);
 
-    --gradient-brass: linear-gradient(135deg, hsl(0 0% 6%), hsl(34 33% 38%));
-    --gradient-graphite: linear-gradient(180deg, hsl(0 0% 7%), hsl(0 0% 4%));
-    --gradient-bronze: linear-gradient(135deg, hsl(0 0% 6%), hsl(34 33% 50%));
   }
 }
 
@@ -123,8 +120,8 @@
     --muted: 30 6% 14%;
     --muted-foreground: 35 8% 64%;
 
-    --accent: 199 30% 46%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 34 33% 58%;
+    --accent-foreground: 0 0% 8%;
 
     --destructive: 0 55% 52%;
     --destructive-foreground: 38 25% 96%;
@@ -177,6 +174,22 @@
     -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4 { @apply font-display tracking-tight; font-weight: 500; }
+}
+
+/* Reduced-motion safeguard - a blanket override rather than hunting down
+   every individual transition/animation (Radix's own open/close
+   animations on Sheet/Dialog/CommandDialog, the sync-status pulse, KPI
+   count-up, hover transitions, etc.). Anyone with prefers-reduced-motion
+   set gets near-instant state changes everywhere, guaranteed, including
+   in future components that add their own animation without remembering
+   this rule individually. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer utilities {

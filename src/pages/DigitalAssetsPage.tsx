@@ -21,7 +21,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
@@ -509,22 +511,47 @@ export default function DigitalAssetsPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          variant={quickFilter === "recents" ? "secondary" : "outline"} size="sm" className="rounded-full h-8"
-          onClick={() => setQuickFilter((f) => (f === "recents" ? "all" : "recents"))}
-        >
-          <Clock className="h-3.5 w-3.5 mr-1.5" /> Recents
-        </Button>
-        <Button
-          variant={quickFilter === "starred" ? "secondary" : "outline"} size="sm" className="rounded-full h-8"
-          onClick={() => setQuickFilter((f) => (f === "starred" ? "all" : "starred"))}
-        >
-          <Star className="h-3.5 w-3.5 mr-1.5" /> Starred
-        </Button>
+      {/* Toolbar - quick filters, search, and view toggle grouped into one
+          bordered strip (previously two loose, unbordered rows) so the
+          page reads as "controls" vs. "content" at a glance. Same state/
+          handlers as before, layout/wrapper only. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button
+            variant={quickFilter === "recents" ? "secondary" : "ghost"} size="sm" className="rounded-full h-8"
+            onClick={() => setQuickFilter((f) => (f === "recents" ? "all" : "recents"))}
+          >
+            <Clock className="h-3.5 w-3.5 mr-1.5" /> Recents
+          </Button>
+          <Button
+            variant={quickFilter === "starred" ? "secondary" : "ghost"} size="sm" className="rounded-full h-8"
+            onClick={() => setQuickFilter((f) => (f === "starred" ? "all" : "starred"))}
+          >
+            <Star className="h-3.5 w-3.5 mr-1.5" /> Starred
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search all files and folders..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 w-[220px] pl-8 text-xs bg-background"
+            />
+          </div>
+          <div className="flex items-center rounded-md border p-0.5">
+            <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewMode("grid")}>
+              <Grid3x3 className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewMode("list")}>
+              <List className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-3 px-0.5">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -568,26 +595,6 @@ export default function DigitalAssetsPage() {
             ))}
           </BreadcrumbList>
         </Breadcrumb>
-
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search all files and folders..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-8 w-[220px] pl-8 text-xs"
-            />
-          </div>
-          <div className="flex items-center rounded-md border p-0.5">
-            <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewMode("grid")}>
-              <Grid3x3 className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewMode("list")}>
-              <List className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
       </div>
 
       {uploads.length > 0 && (
@@ -788,22 +795,32 @@ export default function DigitalAssetsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Preview */}
-      <Dialog open={!!previewAsset} onOpenChange={(o) => { if (!o) setPreviewAsset(null); }}>
-        <DialogContent className="sm:max-w-3xl">
+      {/* Preview - side drawer, not a centered modal, so browsing the rest of
+          the library doesn't feel fully interrupted. Same content (
+          AssetPreviewBody) and same single Download action as before. */}
+      <Sheet open={!!previewAsset} onOpenChange={(o) => { if (!o) setPreviewAsset(null); }}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl p-0 overflow-y-auto">
           {previewAsset && (
             <>
-              <DialogHeader><DialogTitle className="truncate pr-8">{previewAsset.name}</DialogTitle></DialogHeader>
-              <AssetPreviewBody asset={previewAsset} />
-              <DialogFooter>
+              <SheetHeader className="p-5 pb-3 border-b space-y-2">
+                <SheetTitle className="truncate pr-8 text-left">{previewAsset.name}</SheetTitle>
+                <div className="flex items-center gap-2">
+                  <FileTypeBadge contentType={previewAsset.content_type} />
+                  <span className="text-xs text-muted-foreground">{formatBytes(previewAsset.size_bytes)}</span>
+                </div>
+              </SheetHeader>
+              <div className="p-5">
+                <AssetPreviewBody asset={previewAsset} />
+              </div>
+              <div className="p-5 pt-0">
                 <Button variant="outline" onClick={() => handleDownload(previewAsset)}>
                   <Download className="h-3.5 w-3.5 mr-1.5" /> Download
                 </Button>
-              </DialogFooter>
+              </div>
             </>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -823,6 +840,11 @@ function SuggestedThumb({ item }: { item: GridItem }) {
       {thumbUrl ? <img src={thumbUrl} alt={item.data.name} className="h-full w-full object-cover" /> : <Icon className="h-5 w-5" />}
     </div>
   );
+}
+
+function FileTypeBadge({ contentType }: { contentType: string | null }) {
+  const { label, className } = fileCategory(contentType);
+  return <Badge variant="outline" className={cn("border-transparent px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wide", className)}>{label}</Badge>;
 }
 
 function MoveDestinationRow({ label, depth, onClick }: { label: string; depth: number; onClick: () => void }) {
@@ -889,7 +911,7 @@ function FolderTile({ folder, canManage, itemCount, starred, onToggleStar, onOpe
       draggable={canManage} onDragStart={onDragStart}
       onDragOver={onDragOverTarget} onDragLeave={onDragLeaveTarget} onDrop={onDropTarget}
       className={cn(
-        "overflow-hidden cursor-pointer hover:shadow-md transition-shadow relative group",
+        "overflow-hidden cursor-pointer transition-shadow duration-150 hover:shadow-md hover:border-foreground/20 relative group",
         isDragOver && "ring-2 ring-primary bg-primary/5",
       )}
     >
@@ -911,12 +933,12 @@ function FolderTile({ folder, canManage, itemCount, starred, onToggleStar, onOpe
 function AssetTile({ asset, canManage, starred, onToggleStar, onOpen, onDownload, onRename, onMove, onDelete, onDragStart }: {
   asset: DigitalAsset; onOpen: () => void; onDownload: () => void; onRename: () => void; onMove: () => void; onDelete: () => void;
 } & DragDropProps & StarProps) {
-  const { icon: Icon, className, label } = fileCategory(asset.content_type);
+  const { icon: Icon, className } = fileCategory(asset.content_type);
   const thumbUrl = useSignedUrl(isImage(asset.content_type) ? asset.file_path : null).data;
   return (
     <Card
       onClick={onOpen} draggable={canManage} onDragStart={onDragStart}
-      className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow relative group"
+      className="overflow-hidden cursor-pointer transition-shadow duration-150 hover:shadow-md hover:border-foreground/20 relative group"
     >
       {starred && <Star className="absolute top-1.5 left-1.5 z-10 h-4 w-4 fill-amber-400 text-amber-400 drop-shadow" />}
       <div className="absolute top-1.5 right-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -925,9 +947,12 @@ function AssetTile({ asset, canManage, starred, onToggleStar, onOpen, onDownload
       <div className={cn("h-28 flex items-center justify-center overflow-hidden", !thumbUrl && className)}>
         {thumbUrl ? <img src={thumbUrl} alt={asset.name} className="h-full w-full object-cover" /> : <Icon className="h-10 w-10" />}
       </div>
-      <div className="p-2.5 space-y-0.5">
+      <div className="p-2.5 space-y-1">
         <p className="text-sm font-medium truncate">{asset.name}</p>
-        <p className="text-xs text-muted-foreground">{label} • {formatBytes(asset.size_bytes)}</p>
+        <div className="flex items-center gap-1.5">
+          <FileTypeBadge contentType={asset.content_type} />
+          <span className="text-xs text-muted-foreground">{formatBytes(asset.size_bytes)}</span>
+        </div>
       </div>
     </Card>
   );
@@ -941,7 +966,7 @@ function FolderRow({ folder, canManage, itemCount, starred, onToggleStar, onOpen
       onClick={onOpen}
       draggable={canManage} onDragStart={onDragStart}
       onDragOver={onDragOverTarget} onDragLeave={onDragLeaveTarget} onDrop={onDropTarget}
-      className={cn("flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/50", isDragOver && "ring-2 ring-primary bg-primary/5")}
+      className={cn("flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-150 hover:bg-muted/50", isDragOver && "ring-2 ring-primary bg-primary/5")}
     >
       <Folder className="h-4 w-4 text-blue-500 dark:text-blue-400 fill-blue-500/20 dark:fill-blue-400/20 shrink-0" />
       <span className="text-sm flex-1 truncate">{folder.name}</span>
@@ -957,11 +982,12 @@ function AssetRow({ asset, canManage, starred, onToggleStar, onOpen, onDownload,
 } & DragDropProps & StarProps) {
   const { icon: Icon, className } = fileCategory(asset.content_type);
   return (
-    <div onClick={onOpen} draggable={canManage} onDragStart={onDragStart} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/50">
+    <div onClick={onOpen} draggable={canManage} onDragStart={onDragStart} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-150 hover:bg-muted/50">
       <div className={cn("h-6 w-6 rounded flex items-center justify-center shrink-0", className)}><Icon className="h-3.5 w-3.5" /></div>
       <span className="text-sm flex-1 truncate">{asset.name}</span>
       {starred && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />}
-      <span className="text-xs text-muted-foreground w-32">{formatBytes(asset.size_bytes)}</span>
+      <FileTypeBadge contentType={asset.content_type} />
+      <span className="text-xs text-muted-foreground w-24 text-right">{formatBytes(asset.size_bytes)}</span>
       <ItemMenu onDownload={onDownload} onRename={onRename} onMove={onMove} onDelete={onDelete} canManage={canManage} starred={starred} onToggleStar={onToggleStar} />
     </div>
   );

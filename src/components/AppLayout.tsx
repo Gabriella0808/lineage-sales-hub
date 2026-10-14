@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle, Boxes, ChevronDown, ChevronLeft, Sparkles, LayoutGrid, Moon, Sun, ChevronRight, LayoutDashboard, LogOut, Menu, Package,
-  RefreshCw, Search, Settings, Star, Store, Target,
+  RefreshCw, Search, Settings, Star, Store, Target, Clock, History, CircleDot,
 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";
@@ -34,6 +35,9 @@ import { useConnectivity } from "@/lib/desktop/useConnectivity";
 import { OfflineScreen } from "@/components/desktop/OfflineScreen";
 import { UpdatePrompt } from "@/components/desktop/UpdatePrompt";
 import { IdleLogoutManager } from "@/components/IdleLogoutManager";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { useNavPins } from "@/hooks/useNavPins";
+import { useSyncStatus } from "@/hooks/useSyncStatus";
 
 const SECTION_ICONS: Record<string, typeof LayoutDashboard> = {
   command: LayoutDashboard,
@@ -149,7 +153,7 @@ async function hardRefresh() {
 }
 
 function SidebarNavItemRow({
-  item, role, collapsed, isOpen, onToggleGroup, closeOnMobile,
+  item, role, collapsed, isOpen, onToggleGroup, closeOnMobile, pinned, onTogglePin,
 }: {
   item: NavItem;
   role: AppRole;
@@ -157,52 +161,68 @@ function SidebarNavItemRow({
   isOpen: boolean;
   onToggleGroup: () => void;
   closeOnMobile: () => void;
+  pinned: boolean;
+  onTogglePin: () => void;
 }) {
   const hasChildren = !!item.children?.length;
   return (
     <li>
-      <div className="group/item relative flex items-center">
+      <div className="group/item relative flex items-center" title={collapsed ? item.title : undefined}>
         <NavLink
           to={item.url}
           end={item.url === "/"}
           onClick={closeOnMobile}
           className={cn(
-            "relative flex-1 flex items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] text-sidebar-foreground/90",
-            "hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground transition-colors",
+            "relative flex-1 flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] text-sidebar-foreground/85",
+            "hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors duration-150",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
-            "before:pointer-events-none before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2px] before:rounded-full before:bg-sidebar-primary before:opacity-0 before:transition-opacity",
+            "before:pointer-events-none before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:rounded-full before:bg-sidebar-primary before:opacity-0 before:transition-opacity before:duration-150",
           )}
           activeClassName={cn(
-            "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+            "bg-sidebar-accent/90 text-sidebar-accent-foreground font-medium",
             "before:opacity-100",
           )}
         >
-          {collapsed && (
-            <item.icon className="h-[15px] w-[15px] shrink-0 text-sidebar-foreground/70 group-hover/item:text-sidebar-accent-foreground" />
-          )}
+          <item.icon className="h-[15px] w-[15px] shrink-0 text-sidebar-foreground/55 group-hover/item:text-sidebar-accent-foreground transition-colors" />
           {!collapsed && <span className="truncate">{item.title}</span>}
         </NavLink>
-        {!collapsed && hasChildren && (
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleGroup(); }}
-            aria-label={`Toggle ${item.title}`}
-            aria-expanded={isOpen}
-            className="p-1 mr-1 rounded text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"
-          >
-            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
-          </button>
+        {!collapsed && (
+          <div className="flex items-center opacity-0 group-hover/item:opacity-100 focus-within:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePin(); }}
+              aria-label={pinned ? `Unpin ${item.title}` : `Pin ${item.title}`}
+              aria-pressed={pinned}
+              className={cn(
+                "p-1 rounded text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
+                pinned && "opacity-100 text-sidebar-primary",
+              )}
+            >
+              <Star className={cn("h-3 w-3", pinned && "fill-current")} />
+            </button>
+            {hasChildren && (
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleGroup(); }}
+                aria-label={`Toggle ${item.title}`}
+                aria-expanded={isOpen}
+                className="p-1 mr-1 rounded text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"
+              >
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
+              </button>
+            )}
+          </div>
         )}
       </div>
       {!collapsed && hasChildren && isOpen && (
-        <ul className="mt-0.5 ml-7 border-l border-sidebar-border/70 pl-3 space-y-0.5">
+        <ul className="mt-0.5 ml-[18px] border-l border-sidebar-border/60 pl-3 space-y-0.5">
           {item.children!.filter((c) => c.roles.includes(role)).map((child) => (
             <li key={child.url}>
               <NavLink
                 to={child.url}
                 onClick={closeOnMobile}
-                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-sidebar-muted hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"
-                activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                className="flex items-center gap-2 rounded-md px-2 py-[5px] text-[12.5px] text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"
+                activeClassName="bg-sidebar-accent/90 text-sidebar-accent-foreground font-medium"
               >
                 <span className="truncate">{child.title}</span>
               </NavLink>
@@ -219,6 +239,17 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
   const collapsed = !isMobile && state === "collapsed";
   const closeOnMobile = () => { if (isMobile) setOpenMobile(false); };
   const location = useLocation();
+  const { pinned, isPinned, togglePin } = useNavPins();
+
+  // Resolve each pinned URL back to its NavItem (title/icon) from the
+  // visible sections - a pin to a page the current role can no longer see
+  // (or that was removed) just silently drops out, never errors.
+  const pinnedItems = useMemo(() => {
+    const all: NavItem[] = sections.flatMap((s) => s.items);
+    return pinned
+      .map((url) => all.find((i) => i.url === url))
+      .filter((i): i is NavItem => !!i);
+  }, [pinned, sections]);
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -247,7 +278,36 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
       </SidebarHeader>
 
       <SidebarContent className="py-4 px-2 overflow-y-auto no-scrollbar">
-        <nav className="space-y-5">
+        <nav className="space-y-6">
+          {pinnedItems.length > 0 && (
+            <div>
+              {!collapsed && (
+                <div className="px-2.5 mb-1.5 flex items-center gap-2">
+                  <Star className="h-2.5 w-2.5 fill-sidebar-primary text-sidebar-primary shrink-0" />
+                  <span className="text-[9.5px] font-semibold uppercase tracking-[0.22em] text-sidebar-section">
+                    Pinned
+                  </span>
+                  <span className="flex-1 h-px bg-sidebar-border/60" />
+                </div>
+              )}
+              <ul className="space-y-0.5">
+                {pinnedItems.map((item) => (
+                  <SidebarNavItemRow
+                    key={`pinned-${item.title}`}
+                    item={item}
+                    role={role}
+                    collapsed={collapsed}
+                    isOpen={false}
+                    onToggleGroup={() => { /* pinned shortcuts never expand children */ }}
+                    closeOnMobile={closeOnMobile}
+                    pinned
+                    onTogglePin={() => togglePin(item.url)}
+                  />
+                ))}
+              </ul>
+              {!collapsed && <div className="mt-4 h-px bg-sidebar-border/40" />}
+            </div>
+          )}
           {sections.map((section, idx) => (
             <div key={section.id}>
               {!collapsed && (
@@ -258,7 +318,7 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
                   <span className="flex-1 h-px bg-sidebar-border/60" />
                 </div>
               )}
-              {collapsed && idx > 0 && (
+              {collapsed && (idx > 0 || pinnedItems.length > 0) && (
                 <div className="mx-2 mb-2 h-px bg-sidebar-border/60" />
               )}
               <ul className="space-y-0.5">
@@ -271,6 +331,8 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
                     isOpen={openGroups[item.title] ?? false}
                     onToggleGroup={() => toggleGroup(item.title)}
                     closeOnMobile={closeOnMobile}
+                    pinned={isPinned(item.url)}
+                    onTogglePin={() => togglePin(item.url)}
                   />
                 ))}
               </ul>
@@ -356,6 +418,19 @@ function Shell({ children }: { children: React.ReactNode }) {
   const sectionOf = sections.find((s) => s.id === here.sectionId);
   const roleLabel = isCustomerService(user?.email) ? "Customer service" : role;
 
+  const { entries: recentlyViewed, record: recordRecentlyViewed } = useRecentlyViewed();
+  const { data: lastSynced } = useSyncStatus();
+  const { pinned: pinnedUrls } = useNavPins();
+  const pinnedCommandItems = useMemo(() => {
+    const all: NavItem[] = sections.flatMap((s) => s.items);
+    return pinnedUrls.map((url) => all.find((i) => i.url === url)).filter((i): i is NavItem => !!i);
+  }, [pinnedUrls, sections]);
+  useEffect(() => {
+    const title = here.child?.title ?? here.item?.title ?? sectionOf?.label;
+    if (title) recordRecentlyViewed(location.pathname, title);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   const [navStyle, setNavStyleState] = useState<NavStyle>(() => {
     try { const v = localStorage.getItem(STYLE_KEY); return ALL_STYLES.includes(v as NavStyle) ? (v as NavStyle) : "classic"; } catch { return "classic"; }
   });
@@ -394,6 +469,19 @@ function Shell({ children }: { children: React.ReactNode }) {
           <p className="text-sm font-medium truncate">{user?.email}</p>
           <p className="text-xs text-muted-foreground capitalize">{roleLabel}</p>
         </DropdownMenuLabel>
+        {recentlyViewed.filter((e) => e.path !== location.pathname).length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <History className="h-3 w-3" />Recently viewed
+            </DropdownMenuLabel>
+            {recentlyViewed.filter((e) => e.path !== location.pathname).slice(0, 5).map((e) => (
+              <DropdownMenuItem key={e.path} onClick={() => goTo(e.path)}>
+                <span className="truncate">{e.title}</span>
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">Appearance</DropdownMenuLabel>
         {(["light", "dark", "system"] as const).map((m) => (
@@ -438,13 +526,13 @@ function Shell({ children }: { children: React.ReactNode }) {
       data-tour="search"
       onClick={() => setSearchOpen(true)}
       className={cn(
-        "flex items-center gap-2 h-9 w-full max-w-[280px] rounded-lg border px-3 text-[13px] transition-colors",
-        dark ? "border-sidebar-border bg-sidebar-accent/50 text-sidebar-foreground/80 hover:bg-sidebar-accent" : "bg-background text-muted-foreground hover:border-foreground/30",
+        "flex items-center gap-2 h-9 w-full max-w-[340px] rounded-lg border px-3 text-[13px] transition-colors duration-150",
+        dark ? "border-sidebar-border bg-sidebar-accent/50 text-sidebar-foreground/80 hover:bg-sidebar-accent" : "bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground/80",
       )}
     >
-      <Search className="h-3.5 w-3.5" />
-      <span className="flex-1 text-left">Search pages</span>
-      <kbd className={cn("hidden sm:inline text-[10px] rounded border px-1.5 py-0.5 font-sans", dark ? "border-sidebar-border" : "bg-muted")}>Ctrl K</kbd>
+      <Search className="h-3.5 w-3.5 shrink-0" />
+      <span className="flex-1 text-left truncate">Search dealers, orders, pages…</span>
+      <kbd className={cn("hidden sm:inline text-[10px] rounded border px-1.5 py-0.5 font-sans shrink-0", dark ? "border-sidebar-border" : "bg-muted")}>Ctrl K</kbd>
     </button>
   );
 
@@ -455,6 +543,26 @@ function Shell({ children }: { children: React.ReactNode }) {
       {here.child && (<><ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" /><span className="font-medium truncate">{here.child.title}</span></>)}
     </nav>
   );
+
+  // Sync status pill - read-only, see useSyncStatus for the single
+  // products.last_synced_at read backing this. Deliberately labeled
+  // "Catalog synced" rather than a generic "Synced" - this only reflects
+  // the products sync, not a composite status across every Acctivate-
+  // backed area, and the label should say exactly what it's reporting.
+  // No tooltip library in use elsewhere in this file, so title= gives the
+  // exact timestamp on hover.
+  const syncPill = lastSynced ? (
+    <div
+      className={cn(
+        "hidden md:flex items-center gap-1.5 h-9 rounded-lg border px-2.5 text-[11.5px] shrink-0",
+        dark ? "border-sidebar-border text-sidebar-foreground/70" : "border-border text-muted-foreground",
+      )}
+      title={`Product catalog last synced ${lastSynced.toLocaleString()}`}
+    >
+      <CircleDot className="h-2.5 w-2.5 text-success motion-safe:animate-sync-pulse" />
+      <span className="whitespace-nowrap">Catalog synced {formatDistanceToNow(lastSynced, { addSuffix: true })}</span>
+    </div>
+  ) : null;
 
   // ── Style A: top navigation bar ──
   const topHeader = (
@@ -488,6 +596,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         ))}
       </nav>
       <div className="flex-1" />
+      {syncPill}
       {searchButton}
       {themeButton}
       <NotificationsBell />
@@ -501,9 +610,13 @@ function Shell({ children }: { children: React.ReactNode }) {
       <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-muted" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
       {breadcrumb}
       <div className="flex-1" />
+      {syncPill}
       {searchButton}
-      {themeButton}
-      <NotificationsBell />
+      <div className="h-6 w-px bg-border mx-0.5 hidden sm:block" />
+      <div className="flex items-center gap-0.5">
+        {themeButton}
+        <NotificationsBell />
+      </div>
       {accountMenu}
     </header>
   );
@@ -550,6 +663,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0" title="Home"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></button>
         <div className="hidden md:block text-sidebar-foreground/80">{breadcrumb}</div>
         <div className="flex-1" />
+        {syncPill}
         {searchButton}
         {themeButton}
         <NotificationsBell />
@@ -603,9 +717,18 @@ function Shell({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <CommandInput placeholder="Jump to a page..." />
+        <CommandInput placeholder="Search pages…" />
         <CommandList>
           <CommandEmpty>No pages match.</CommandEmpty>
+          {pinnedCommandItems.length > 0 && (
+            <CommandGroup heading="Pinned">
+              {pinnedCommandItems.map((item) => (
+                <CommandItem key={`pinned-${item.url}`} value={`Pinned ${item.title}`} onSelect={() => goTo(item.url)}>
+                  <Star className="h-4 w-4 mr-2 fill-sidebar-primary text-sidebar-primary" />{item.title}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
           {sections.map((sx) => (
             <CommandGroup key={sx.id} heading={sx.label}>
               {sx.items.flatMap((item) => [item, ...((item.children ?? []).filter((c) => c.roles.includes(role)) as NavItem[])]).map((item) => (

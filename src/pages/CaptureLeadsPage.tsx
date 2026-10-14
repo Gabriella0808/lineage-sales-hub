@@ -96,14 +96,18 @@ export default function CaptureLeadsPage() {
   // swaps the display name, not the stored id space. Acctivate reps with no
   // matching portal sales_reps row (stale "Old ..." codes) are left out,
   // since there'd be nothing to submit if one were picked.
-  const { activeReps, getSalesRepIdByAcId } = useAcctivateRepCatalog();
+  // Email comes from public.sales_reps, not the Acctivate catalog entry -
+  // acctivate_sales_reps.email is never populated (Acctivate doesn't sync
+  // rep email), so reading r.email here silently captured every lead with
+  // no rep_email - see getSalesRepEmailByAcId's own comment.
+  const { activeReps, getSalesRepIdByAcId, getSalesRepEmailByAcId } = useAcctivateRepCatalog();
   const salesReps: SalesRep[] = useMemo(
     () =>
       activeReps
-        .map((r) => ({ id: getSalesRepIdByAcId(r.acctivate_id), name: r.name, email: r.email }))
+        .map((r) => ({ id: getSalesRepIdByAcId(r.acctivate_id), name: r.name, email: getSalesRepEmailByAcId(r.acctivate_id) }))
         .filter((r): r is SalesRep => !!r.id)
         .sort((a, b) => a.name.localeCompare(b.name)),
-    [activeReps, getSalesRepIdByAcId],
+    [activeReps, getSalesRepIdByAcId, getSalesRepEmailByAcId],
   );
   const [loading, setLoading] = useState(true);
 

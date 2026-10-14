@@ -99,7 +99,7 @@ function usePortalIdLookup() {
     staleTime: 15 * 60 * 1000,
     queryFn: async () => {
       const [repsRes, managersRes] = await Promise.all([
-        supabase.from("sales_reps").select("id, acctivate_id"),
+        supabase.from("sales_reps").select("id, acctivate_id, email"),
         supabase.from("managers").select("id, name"),
       ]);
       if (repsRes.error) throw repsRes.error;
@@ -108,7 +108,7 @@ function usePortalIdLookup() {
         repsByAcId: new Map(
           (repsRes.data ?? [])
             .filter((r) => r.acctivate_id)
-            .map((r) => [String(r.acctivate_id).toLowerCase(), r.id as string]),
+            .map((r) => [String(r.acctivate_id).toLowerCase(), { id: r.id as string, email: r.email as string | null }]),
         ),
         managersByName: new Map(
           (managersRes.data ?? []).map((m) => [String(m.name).toLowerCase(), m.id as string]),
@@ -222,7 +222,15 @@ export function useAcctivateRepCatalog() {
   // must submit a real FK.
   function getSalesRepIdByAcId(acId: string | null | undefined): string | undefined {
     if (!acId || !portalIds) return undefined;
-    return portalIds.repsByAcId.get(acId.toLowerCase());
+    return portalIds.repsByAcId.get(acId.toLowerCase())?.id;
+  }
+
+  // acctivate_sales_reps.email is never populated (Acctivate doesn't sync
+  // rep email) - this resolves the real public.sales_reps.email instead, for
+  // pickers (Capture Leads) that need to auto-fill a rep's email on selection.
+  function getSalesRepEmailByAcId(acId: string | null | undefined): string | null {
+    if (!acId || !portalIds) return null;
+    return portalIds.repsByAcId.get(acId.toLowerCase())?.email ?? null;
   }
 
   // Acctivate-only manager names (4: Hospitality, House, Mateo, Will).
@@ -254,6 +262,7 @@ export function useAcctivateRepCatalog() {
     getRepsByManager,
     resolveReportingRepId,
     getSalesRepIdByAcId,
+    getSalesRepEmailByAcId,
     getManagerIdByName,
   };
 }

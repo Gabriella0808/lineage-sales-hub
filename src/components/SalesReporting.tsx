@@ -702,7 +702,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const compBkFrom    = comparative.from < BOOKING_CUTOFF_DATE ? BOOKING_CUTOFF_DATE : comparative.from;
   const compBkEnabled = comparative.to   >= BOOKING_CUTOFF_DATE;
 
-  const { isActiveCode: isActiveCollectionCode, displayName: collectionLabel } = useActiveCollectionCodes();
+  const { isActiveCode: isActiveCollectionCode, displayName: collectionLabel, collections: activeCollections } = useActiveCollectionCodes();
 
   const { data: primaryInvoiced = [], isFetching: invFetching } = usePortalInvoicedLines(primary.from, primary.to, !useRpcMode);
   const { data: primaryBookings = [], isFetching: bkgFetching } = usePortalBookingLines(primBkFrom, primary.to, !useRpcMode && primBkEnabled);
@@ -1059,11 +1059,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // appear on a line (freight, tax, QC, returns, etc. were never real
   // "collections") or a since-discontinued collection with zero active
   // products today.
+  //
+  // Unioned with the full active-collections list (not just codes present
+  // on a line within the currently selected date range) so a real,
+  // currently-active collection never silently disappears from the
+  // dropdown just because it had no invoiced/booked lines in that window -
+  // selecting it still correctly yields zero rows if that's genuinely true.
   const allCollections = useMemo(() =>
-    Array.from(new Set(
-      optionLines.map((l) => l.product_class?.trim().toUpperCase()).filter((c): c is string => !!c && isActiveCollectionCode(c)),
-    )).sort(),
-  [optionLines, isActiveCollectionCode]);
+    Array.from(new Set([
+      ...optionLines.map((l) => l.product_class?.trim().toUpperCase()).filter((c): c is string => !!c && isActiveCollectionCode(c)),
+      ...activeCollections.map((c) => c.code),
+    ])).sort(),
+  [optionLines, isActiveCollectionCode, activeCollections]);
 
   // Freight Out and Quality Control line items are accounting/logistics
   // entries, not real products — never offered as SKU filter options,

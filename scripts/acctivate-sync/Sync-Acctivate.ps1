@@ -564,9 +564,47 @@ WHERE rk = 1
 "@
 }
 
-$queryBuilders['acctivate_sales_reps']     = { New-AcctivateSalesRepsQuery }
-$queryBuilders['acctivate_sales_managers'] = { New-AcctivateSalesManagersQuery }
-$queryBuilders['acctivate_territories']    = { New-AcctivateTerritoriesQuery }
+function New-AcctivateProductClassesQuery {
+  # The real, authoritative Acctivate Product Class master list (the
+  # exact same "Configuration Manager > Inventory > Product Class"
+  # screen) - code + Acctivate's OWN description, synced directly, so
+  # every Collection filter in the portal can stop relying on a
+  # hand-typed code->name mapping. Deliberately pulls every class as-is,
+  # including administrative/charge classes (Freight, Misc, QC*,
+  # Returns, Tax, etc.) and Acctivate's own Active flag - the portal
+  # side decides which of these are real, currently-sellable furniture
+  # collections (see v_active_acctivate_collection_codes); this query's
+  # only job is mirroring Acctivate's own table honestly, nothing
+  # filtered or renamed here.
+  if (-not (Test-SqlObjectExists -Name 'ProductClass')) {
+    throw "dbo.ProductClass not found in Acctivate  -  cannot sync acctivate_product_classes."
+  }
+  $cols = Get-SqlColumns -Table 'ProductClass'
+  $idCol     = Get-FirstColumn -Columns $cols -Candidates @('ProductClassID','ProductClassId','ID','Code')
+  $descCol   = Get-FirstColumn -Columns $cols -Candidates @('Description','Name')
+  $activeCol = Get-FirstColumn -Columns $cols -Candidates @('Active','IsActive')
+
+  if (-not $idCol) { throw "Could not find a ProductClassID column on dbo.ProductClass. Found: $($cols -join ', ')" }
+
+  $descExpr   = if ($descCol) { "CAST(pc.$(Quote-SqlIdentifier $descCol) AS NVARCHAR(255))" } else { "CAST(pc.$(Quote-SqlIdentifier $idCol) AS NVARCHAR(255))" }
+  $activeExpr = if ($activeCol) {
+    "CASE WHEN ISNULL(pc.$(Quote-SqlIdentifier $activeCol),1) = 1 THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END"
+  } else { "CAST(1 AS bit)" }
+
+  return @"
+SELECT
+  CAST(pc.$(Quote-SqlIdentifier $idCol) AS NVARCHAR(64)) AS acctivate_id,
+  $descExpr   AS description,
+  $activeExpr AS active
+FROM dbo.ProductClass pc
+WHERE pc.$(Quote-SqlIdentifier $idCol) IS NOT NULL
+"@
+}
+
+$queryBuilders['acctivate_sales_reps']      = { New-AcctivateSalesRepsQuery }
+$queryBuilders['acctivate_sales_managers']  = { New-AcctivateSalesManagersQuery }
+$queryBuilders['acctivate_territories']     = { New-AcctivateTerritoriesQuery }
+$queryBuilders['acctivate_product_classes'] = { New-AcctivateProductClassesQuery }
 
 
 $tableAliases = @{
@@ -588,6 +626,8 @@ $tableAliases = @{
   sales_managers       = 'acctivate_sales_managers'
   acctivate_managers   = 'acctivate_sales_managers'
   territories          = 'acctivate_territories'
+  product_classes      = 'acctivate_product_classes'
+  classes              = 'acctivate_product_classes'
 }
 
 function Normalize-TableKey {

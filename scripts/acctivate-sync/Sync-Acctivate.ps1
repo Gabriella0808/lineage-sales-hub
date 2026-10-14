@@ -625,6 +625,26 @@ foreach ($table in $enabled) {
   Write-Host "  pulled $($rows.Count) rows from SQL"
   Send-Batch -Table $table -Rows $rows -OnConflict 'acctivate_id'
 
+  # Re-sync Trade Show Leads' "Collections" picker from whatever's now in
+  # products.collection, so it stops drifting (stale entries with zero
+  # active products, e.g. Capri/Island Breeze; missing new ones, e.g.
+  # Sydney) the way the old one-time static seed list did. See
+  # public.sync_active_product_collections() for the actual logic -
+  # this is the only new call this script needed.
+  if ($table -eq 'products') {
+    $collectionsPayload = @{ action = 'sync_collections' } | ConvertTo-Json -Compress
+    try {
+      $collectionsResp = Invoke-RestMethod `
+        -Method Post `
+        -Uri $FunctionUrl `
+        -Headers @{ Authorization = "Bearer $SyncToken"; 'Content-Type' = 'application/json' } `
+        -Body $collectionsPayload
+      Write-Host "  [collections] inserted $($collectionsResp.inserted), activated $($collectionsResp.activated), deactivated $($collectionsResp.deactivated)" -ForegroundColor DarkMagenta
+    } catch {
+      Write-Warning "  [collections] sync_collections call failed - Trade Show Leads' collection list was not refreshed this run: $($_.Exception.Message)"
+    }
+  }
+
   # Optional prune for dealers (remove anything no longer in Acctivate).
   # The backend preserves dealers that have field check-in history.
   if ($Prune -and $table -eq 'dealers') {

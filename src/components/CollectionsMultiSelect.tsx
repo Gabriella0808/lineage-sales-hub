@@ -26,9 +26,16 @@ export function CollectionsMultiSelect({ value, onChange }: Props) {
   const [adding, setAdding] = useState(false);
 
   const load = async () => {
+    // Only the actively-synced-from-Acctivate set shows here by default -
+    // see supabase/functions/sync-acctivate's sync_collections action and
+    // public.sync_active_product_collections(). A collection a rep
+    // manually types into the "add new" box below still gets added
+    // active=true, but will be marked inactive (hidden here) on the next
+    // sync unless it happens to match a real Acctivate collection name.
     const { data, error } = await supabase
       .from("product_collections")
       .select("id,name")
+      .eq("is_active", true)
       .order("name");
     if (error) return toast.error(error.message);
     setCollections((data ?? []) as Collection[]);

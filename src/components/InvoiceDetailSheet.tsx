@@ -122,6 +122,7 @@ const COLLECTION_DISPLAY: Record<string, string> = {
   MAUI:     "Maui",
   MONTEREY: "Monterey",
   CABBED:   "Cabinet Beds",
+  SYDNEY:   "Sydney",         // new, added to Acctivate ~Oct 2026
   // Finn & Lou
   CHATMAPL: "Chatham Maple",
   CHATMIDN: "Chatham Midnight",
@@ -159,7 +160,7 @@ const COLLECTION_ROSTER: Record<string, string[]> = {
   "Sea Winds": [
     "Islamorada", "Credenza", "Sun Haven", "Monaco", "Ocean Isle",
     "Picket Fence", "Surfside", "Cape May", "Miramar", "Maui",
-    "Monterey", "Cabinet Beds",
+    "Monterey", "Cabinet Beds", "Sydney",
   ],
   "Finn & Lou": [
     "Chatham Maple", "Chatham Midnight", "Geneva", "Hyde Park",

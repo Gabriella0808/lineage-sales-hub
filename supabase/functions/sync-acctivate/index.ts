@@ -29,6 +29,14 @@ const LookupPayloadSchema = z.object({
   table: z.enum(["dealers", "products"]),
 });
 
+// Re-derives Trade Show Leads' "Collections" picker from whatever's
+// currently in `products.collection` (after a `products` sync lands) -
+// see public.sync_active_product_collections()'s own header comment for
+// the full rationale. No payload beyond the action itself.
+const SyncCollectionsPayloadSchema = z.object({
+  action: z.literal("sync_collections"),
+});
+
 const ListNamesPayloadSchema = z.object({
   action: z.literal("list_names"),
   table: z.enum(["dealers"]),
@@ -119,6 +127,27 @@ Deno.serve(async (req: Request) => {
       }
       return new Response(
         JSON.stringify({ success: true, rows: out, count: out.length }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    // Re-sync the Trade Show Leads "Collections" picker from the products
+    // table's current state (called after a `products` sync batch below -
+    // see Sync-Acctivate.ps1's one new call at the end of its products
+    // step). Not gated behind `requestedTables`/allowedSyncTables since
+    // it writes to a single fixed table (product_collections) via a
+    // SECURITY DEFINER function, not an arbitrary client-supplied one.
+    if (body.action === "sync_collections") {
+      SyncCollectionsPayloadSchema.parse(body);
+      const { data, error } = await supabase.rpc("sync_active_product_collections");
+      if (error) {
+        return new Response(
+          JSON.stringify({ success: false, error: error.message }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      return new Response(
+        JSON.stringify({ success: true, ...(data as Record<string, unknown>) }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }

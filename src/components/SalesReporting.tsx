@@ -259,7 +259,7 @@ function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
 // ── UI helpers ────────────────────────────────────────────────────────────────
 
 function MultiSelect({
-  label, options, selected, onChange, disabled, disabledReason, searchable, searchPlaceholder,
+  label, options, selected, onChange, disabled, disabledReason, searchable, searchPlaceholder, loading,
 }: {
   label: string;
   options: { value: string; label: string }[];
@@ -269,6 +269,13 @@ function MultiSelect({
   disabledReason?: string;
   searchable?: boolean;
   searchPlaceholder?: string;
+  // Bug fix: options for this filter (Collection/Brand/SKU in particular)
+  // come from a slow line-level query, separate from the fast aggregated
+  // table data - opening the dropdown before that query resolves showed
+  // "No options," indistinguishable from "this period genuinely has
+  // none." Pass the source query's own isLoading/isFetching here so the
+  // dropdown can say so honestly instead.
+  loading?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const summary = selected.length === 0 ? "All" : selected.length === 1
@@ -347,7 +354,9 @@ function MultiSelect({
               );
             })}
             {filteredOptions.length === 0 && (
-              <p className="text-xs text-muted-foreground p-2">{query ? "No matches" : "No options"}</p>
+              <p className="text-xs text-muted-foreground p-2">
+                {loading ? "Loading…" : query ? "No matches" : "No options"}
+              </p>
             )}
           </div>
         </PopoverContent>
@@ -715,10 +724,15 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // mode) this adds zero extra network calls; it only fetches when RPC mode
   // had them switched off. Deliberately NOT used for aggregation/KPIs/table
   // rows — those still branch on useRpcMode exactly as before.
-  const { data: optionsPrimaryInvoiced = [] } = usePortalInvoicedLines(primary.from, primary.to, true);
-  const { data: optionsPrimaryBookings = [] } = usePortalBookingLines(primBkFrom, primary.to, primBkEnabled);
+  const { data: optionsPrimaryInvoiced = [], isLoading: optionsPrimaryInvoicedLoading } = usePortalInvoicedLines(primary.from, primary.to, true);
+  const { data: optionsPrimaryBookings = [], isLoading: optionsPrimaryBookingsLoading } = usePortalBookingLines(primBkFrom, primary.to, primBkEnabled);
   const { data: optionsCompInvoiced    = [] } = usePortalInvoicedLines(comparative.from, comparative.to, compareMode !== "none");
   const { data: optionsCompBookings    = [] } = usePortalBookingLines(compBkFrom, comparative.to, compareMode !== "none" && compBkEnabled);
+
+  // Bug fix: whichever of the two line-level fetches is actually backing
+  // the current metric - used so the Collection/Brand/SKU dropdowns can
+  // show "Loading…" instead of a false "No options" while it's in flight.
+  const optionsLoading = metric === "invoices" ? optionsPrimaryInvoicedLoading : optionsPrimaryBookingsLoading;
 
   const optionsPrimaryLines = metric === "invoices" ? optionsPrimaryInvoiced : optionsPrimaryBookings;
   const optionsCompLines    = metric === "invoices" ? optionsCompInvoiced    : optionsCompBookings;
@@ -1781,16 +1795,19 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               label="Brand / Category" selected={brandCategories} onChange={setBrandCategories}
               options={allBrandCategories.map((bc) => ({ value: bc, label: bc }))}
               searchable searchPlaceholder="Search brand / category…"
+              loading={optionsLoading}
             />
             <MultiSelect
               label="Collection" selected={collections} onChange={setCollections}
               options={allCollections.map((c) => ({ value: c, label: c }))}
               searchable searchPlaceholder="Search collection…"
+              loading={optionsLoading}
             />
             <MultiSelect
               label="SKU" selected={skus} onChange={setSkus}
               options={Array.from(skuLabelMap.entries()).map(([sku, label]) => ({ value: sku, label }))}
               searchable searchPlaceholder="Search SKU…"
+              loading={optionsLoading}
             />
           </div>
 

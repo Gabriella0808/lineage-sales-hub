@@ -194,6 +194,30 @@ interface GroupedRowsParams {
   managerId:   string | null;    // managers.id UUID; null = company-wide
 }
 
+// Collection filter/chip display names - product_class on every sales line
+// is the raw Acctivate code (e.g. "ISLAMORA"), never a friendly name.
+// acctivate_collection_codes is the same canonical code -> display-name
+// mapping added for Trade Show Leads' Collections picker (see that
+// migration) - reused here rather than inventing a second one. Codes not
+// in this table (e.g. a non-collection product_class, or one new to
+// Acctivate since this list was last updated) fall back to showing the
+// raw code as-is, so nothing is ever hidden just because it's unmapped.
+function useCollectionDisplayNames() {
+  return useQuery({
+    queryKey: ["acctivate_collection_codes"],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("acctivate_collection_codes").select("code, display_name");
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const row of (data ?? []) as { code: string; display_name: string }[]) {
+        map.set(row.code.toUpperCase(), row.display_name);
+      }
+      return map;
+    },
+  });
+}
+
 function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
   return useQuery({
     queryKey: [
@@ -700,6 +724,9 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const primBkEnabled = primary.to      >= BOOKING_CUTOFF_DATE;
   const compBkFrom    = comparative.from < BOOKING_CUTOFF_DATE ? BOOKING_CUTOFF_DATE : comparative.from;
   const compBkEnabled = comparative.to   >= BOOKING_CUTOFF_DATE;
+
+  const { data: collectionDisplayNames = new Map<string, string>() } = useCollectionDisplayNames();
+  const collectionLabel = (code: string) => collectionDisplayNames.get(code.toUpperCase()) ?? code;
 
   const { data: primaryInvoiced = [], isFetching: invFetching } = usePortalInvoicedLines(primary.from, primary.to, !useRpcMode);
   const { data: primaryBookings = [], isFetching: bkgFetching } = usePortalBookingLines(primBkFrom, primary.to, !useRpcMode && primBkEnabled);
@@ -1382,7 +1409,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     }
     if (collections.length > 0) {
       chips.push({
-        label: collections.length === 1 ? `Collection: ${collections[0]}` : `${collections.length} collections`,
+        label: collections.length === 1 ? `Collection: ${collectionLabel(collections[0])}` : `${collections.length} collections`,
         clear: () => setCollections([]),
       });
     }
@@ -1393,7 +1420,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       });
     }
     return chips;
-  }, [territoryIds, repIds, dealerIds, brandCategories, collections, skus, territories, visibleReps, visibleDealers]);
+  }, [territoryIds, repIds, dealerIds, brandCategories, collections, skus, territories, visibleReps, visibleDealers, collectionDisplayNames]);
 
   // Factory that creates a detail-line fetcher for any date range.
   // The sidebar passes its local period dates; this factory bakes in filters
@@ -1799,7 +1826,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
             />
             <MultiSelect
               label="Collection" selected={collections} onChange={setCollections}
-              options={allCollections.map((c) => ({ value: c, label: c }))}
+              options={allCollections.map((c) => ({ value: c, label: collectionLabel(c) }))}
               searchable searchPlaceholder="Search collection…"
               loading={optionsLoading}
             />

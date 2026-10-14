@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import {
   usePreSaleBookings, usePreSalePoHeaders, usePreSalePoLines, usePreSaleProducts, usePreSaleRepTargets,
 } from "@/hooks/usePreSale";
+import { useActiveCollectionCodes } from "@/hooks/useActiveCollectionCodes";
 import { useUserRole, hasRepViewOverride } from "@/hooks/useUserRole";
 import { getReportingYear, getReportingToday } from "@/utils/reportingDate";
 import { useAuth } from "@/contexts/AuthContext";
@@ -121,6 +122,7 @@ function buildCollectionRows(
 }
 
 export default function PreSalePage() {
+  const { isActiveCode: isActiveCollectionCode } = useActiveCollectionCodes();
   const { data: products = [], isLoading: loadingProducts } = usePreSaleProducts();
   const skus = useMemo(() => products.map((p) => p.sku), [products]);
   const { data: bookings = [], isLoading: loadingBookings } = usePreSaleBookings(skus);
@@ -240,7 +242,12 @@ export default function PreSalePage() {
 
     const repOptions = repList.map(([key, r]) => ({ key, name: r.name })).sort((a, b) => a.name.localeCompare(b.name));
     const dealerOptions = dealerList.map(([id, d]) => ({ id, name: d.name })).sort((a, b) => a.name.localeCompare(b.name));
-    const collectionOptions = [...new Set(collectionList.map((c) => c.collection))].sort();
+    // Restricted to real, currently-active Acctivate collections (see
+    // useActiveCollectionCodes) - excludes admin/charge codes and any
+    // since-discontinued collection with zero active products today.
+    const collectionOptions = [...new Set(
+      collectionList.map((c) => c.collection).filter((c) => isActiveCollectionCode(c)),
+    )].sort();
 
     return {
       totalBooked, totalPoAmount, remaining: Math.max(0, totalPoAmount - totalBooked),
@@ -249,7 +256,7 @@ export default function PreSalePage() {
       dealerCount: byDealer.size, repCount: repList.length, skuCount: products.length,
       repOptions, dealerOptions, collectionOptions,
     };
-  }, [products, visibleBookings, activePoLines, poHeaders, repTargets]);
+  }, [products, visibleBookings, activePoLines, poHeaders, repTargets, isActiveCollectionCode]);
 
   if (isLoading) {
     return (
@@ -554,6 +561,9 @@ function BreakdownTab({ model, bookings, products, search, setSearch }: {
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
+  // Same query as the hook call in PreSalePage itself - react-query
+  // dedupes by key, so this is not a second network request.
+  const { displayName: collectionLabel } = useActiveCollectionCodes();
 
   const [repFilter, setRepFilter] = useState("all");
   const [dealerFilter, setDealerFilter] = useState("all");
@@ -666,7 +676,7 @@ function BreakdownTab({ model, bookings, products, search, setSearch }: {
           </select>
           <select value={collectionFilter} onChange={(e) => setCollectionFilter(e.target.value)} className="h-9 rounded-md border bg-card px-3 text-sm" aria-label="Filter by collection">
             <option value="all">All collections</option>
-            {model.collectionOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+            {model.collectionOptions.map((c) => <option key={c} value={c}>{collectionLabel(c)}</option>)}
           </select>
           {anyFilterActive && <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>}
         </div>

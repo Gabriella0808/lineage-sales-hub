@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { cn, formatDateOnly } from "@/lib/utils";
 import { useOpenSalesOrders } from "@/hooks/useOpenSalesOrders";
+import { useActiveCollectionCodes } from "@/hooks/useActiveCollectionCodes";
 
 type DetailRow = {
   customer: string;
@@ -89,6 +90,7 @@ export function BacklogSummary() {
   const [repFilter, setRepFilter] = useState<string>("all");
 
   const { rows: liveOrders, loading: liveLoading } = useOpenSalesOrders();
+  const { isActiveCode: isActiveStockClass, displayName: stockClassLabel } = useActiveCollectionCodes();
 
   // Prefer live Acctivate open sales orders when available; otherwise fall back
   // Sole source: public.v_portal_open_sales_order_line_facts, the same
@@ -164,13 +166,22 @@ export function BacklogSummary() {
     });
   }, [detailWithTerritory, territoryFilter, stockClassFilter, statusFilter, customerFilter, repFilter, skuQuery]);
 
+  // Restricted to real, currently-active Acctivate collections (see
+  // useActiveCollectionCodes), plus "Unclassified" when a real open-SO
+  // line genuinely has no product class - that's a legitimate data gap,
+  // not an admin/charge code, so it stays. Excludes freight/tax/QC/
+  // returns/etc. codes and any since-discontinued collection with zero
+  // active products today.
   const allStockClasses = useMemo(() => {
     const set = new Set<string>();
     for (const r of detailWithTerritory) {
-      set.add(r.stockClass && r.stockClass !== "N/A" ? r.stockClass : "Unclassified");
+      if (!r.stockClass || r.stockClass === "N/A") { set.add("Unclassified"); continue; }
+      // Keep the value exactly as the row has it (not re-cased) - the
+      // filter comparison below matches it verbatim against r.stockClass.
+      if (isActiveStockClass(r.stockClass)) set.add(r.stockClass);
     }
     return Array.from(set).sort();
-  }, [detailWithTerritory]);
+  }, [detailWithTerritory, isActiveStockClass]);
 
   // Recompute summary tables from filtered detail
   const filteredStockClasses = useMemo(() => {
@@ -336,7 +347,7 @@ export function BacklogSummary() {
             <SelectContent>
               <SelectItem value="all">All classes</SelectItem>
               {allStockClasses.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
+                <SelectItem key={c} value={c}>{c === "Unclassified" ? c : stockClassLabel(c)}</SelectItem>
               ))}
             </SelectContent>
           </Select>

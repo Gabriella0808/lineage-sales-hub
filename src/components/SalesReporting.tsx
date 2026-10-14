@@ -23,6 +23,7 @@ import {
   formatCurrency,
 } from "@/hooks/usePortalData";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
+import { useActiveCollectionCodes } from "@/hooks/useActiveCollectionCodes";
 import { useRepTargets, TARGET_MONTHS, type RepTarget } from "@/hooks/useRepTargets";
 import { RepTargetPanel } from "@/components/TargetProgressChart";
 import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCutoff";
@@ -192,30 +193,6 @@ interface GroupedRowsParams {
   skus:        string[] | null;
   repIds:      string[] | null;  // lowercase Acctivate rep_ids for canonical rep filter
   managerId:   string | null;    // managers.id UUID; null = company-wide
-}
-
-// Collection filter/chip display names - product_class on every sales line
-// is the raw Acctivate code (e.g. "ISLAMORA"), never a friendly name.
-// acctivate_collection_codes is the same canonical code -> display-name
-// mapping added for Trade Show Leads' Collections picker (see that
-// migration) - reused here rather than inventing a second one. Codes not
-// in this table (e.g. a non-collection product_class, or one new to
-// Acctivate since this list was last updated) fall back to showing the
-// raw code as-is, so nothing is ever hidden just because it's unmapped.
-function useCollectionDisplayNames() {
-  return useQuery({
-    queryKey: ["acctivate_collection_codes"],
-    staleTime: 10 * 60 * 1000,
-    queryFn: async () => {
-      const { data, error } = await supabase.from("acctivate_collection_codes").select("code, display_name");
-      if (error) throw error;
-      const map = new Map<string, string>();
-      for (const row of (data ?? []) as { code: string; display_name: string }[]) {
-        map.set(row.code.toUpperCase(), row.display_name);
-      }
-      return map;
-    },
-  });
 }
 
 function useGroupedRows(params: GroupedRowsParams, enabled: boolean) {
@@ -725,8 +702,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   const compBkFrom    = comparative.from < BOOKING_CUTOFF_DATE ? BOOKING_CUTOFF_DATE : comparative.from;
   const compBkEnabled = comparative.to   >= BOOKING_CUTOFF_DATE;
 
-  const { data: collectionDisplayNames = new Map<string, string>() } = useCollectionDisplayNames();
-  const collectionLabel = (code: string) => collectionDisplayNames.get(code.toUpperCase()) ?? code;
+  const { isActiveCode: isActiveCollectionCode, displayName: collectionLabel } = useActiveCollectionCodes();
 
   const { data: primaryInvoiced = [], isFetching: invFetching } = usePortalInvoicedLines(primary.from, primary.to, !useRpcMode);
   const { data: primaryBookings = [], isFetching: bkgFetching } = usePortalBookingLines(primBkFrom, primary.to, !useRpcMode && primBkEnabled);
@@ -1076,9 +1052,18 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     Array.from(new Set(optionLines.map((l) => l.brand_category?.trim()).filter(Boolean) as string[])).sort(),
   [optionLines]);
 
+  // Restricted to currently-active, real Acctivate collections (see
+  // useActiveCollectionCodes) - a line's own product_class is still used
+  // for the actual match/filter value, but the OPTIONS offered here no
+  // longer include every administrative/charge code that happens to
+  // appear on a line (freight, tax, QC, returns, etc. were never real
+  // "collections") or a since-discontinued collection with zero active
+  // products today.
   const allCollections = useMemo(() =>
-    Array.from(new Set(optionLines.map((l) => l.product_class?.trim()).filter(Boolean) as string[])).sort(),
-  [optionLines]);
+    Array.from(new Set(
+      optionLines.map((l) => l.product_class?.trim().toUpperCase()).filter((c): c is string => !!c && isActiveCollectionCode(c)),
+    )).sort(),
+  [optionLines, isActiveCollectionCode]);
 
   // Freight Out and Quality Control line items are accounting/logistics
   // entries, not real products — never offered as SKU filter options,
@@ -1420,7 +1405,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       });
     }
     return chips;
-  }, [territoryIds, repIds, dealerIds, brandCategories, collections, skus, territories, visibleReps, visibleDealers, collectionDisplayNames]);
+  }, [territoryIds, repIds, dealerIds, brandCategories, collections, skus, territories, visibleReps, visibleDealers, collectionLabel]);
 
   // Factory that creates a detail-line fetcher for any date range.
   // The sidebar passes its local period dates; this factory bakes in filters

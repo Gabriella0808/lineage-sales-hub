@@ -48,23 +48,33 @@ UPDATE public.acctivate_collection_codes SET display_name = 'Ocean Isles' WHERE 
 UPDATE public.acctivate_collection_codes SET display_name = 'Picket Fence Occassional' WHERE code = 'PICKET';
 UPDATE public.acctivate_collection_codes SET display_name = 'Point Breeze White' WHERE code = 'PTBREEZE';
 
--- The descriptive-format aliases from the previous migration now all
--- exactly duplicate their short-code sibling's corrected name above -
--- removed entirely (the short-code row already covers them via the
--- view's display_name grouping; a second row under the literal
--- description string just produces a duplicate option in any UI that
--- lists codes rather than deduplicated names). Also covers several
--- more short-code/descriptive-string pairs that were duplicated in
--- acctivate_collection_codes from before this migration (unrelated to
--- the display-name corrections above - these already had the right
--- display_name, just two rows for it) - confirmed via a full scan of
--- acctivate_collection_codes grouped by display_name.
-DELETE FROM public.acctivate_collection_codes
-WHERE code IN (
-  'CAPE MAY DRIFTWOOD', 'CREDENZAS', 'MANHATTAN VALLEY DARK', 'MANHATTAN VALLEY LIGHT', 'OCEAN ISLES',
-  'MONACO BLANC', 'MONACO BLEU', 'PICKET FENCE OCCASSIONAL', 'POINT BREEZE WHITE',
-  'CABINET BEDS', 'CHATHAM MAPLE', 'CHATHAM MIDNIGHT', 'ISLAMORADA', 'RIO VISTA', 'SUN HAVEN'
-);
+-- The descriptive-format aliases from 20261014220000_collection_code_
+-- aliases_fix.sql need the same correction - NOT deleted, despite
+-- looking like a redundant duplicate of their short-code sibling: that
+-- migration added them because Dealer/Rep Reporting's own invoiced/
+-- booking line facts carry product_class as this full descriptive
+-- string, not the short Acctivate code products.collection uses, so
+-- both spellings have to resolve to the same corrected display_name for
+-- the Collection filter to actually match real line data either way.
+-- (An earlier version of this migration deleted these rows as
+-- "duplicates" - that broke real Collection-filter matching for
+-- Dealer/Rep Reporting and was reverted; see SalesReporting.tsx's
+-- collectionGroups for how the UI now dedupes by display_name instead
+-- of by raw code, without dropping either code variant.)
+UPDATE public.acctivate_collection_codes SET display_name = 'Cape May Driftwood' WHERE code = 'CAPE MAY DRIFTWOOD';
+UPDATE public.acctivate_collection_codes SET display_name = 'Credenzas' WHERE code = 'CREDENZAS';
+UPDATE public.acctivate_collection_codes SET display_name = 'Manhattan Valley Dark' WHERE code = 'MANHATTAN VALLEY DARK';
+UPDATE public.acctivate_collection_codes SET display_name = 'Manhattan Valley Light' WHERE code = 'MANHATTAN VALLEY LIGHT';
+UPDATE public.acctivate_collection_codes SET display_name = 'Monaco Blanc' WHERE code = 'MONACO BLANC';
+UPDATE public.acctivate_collection_codes SET display_name = 'Monaco Bleu' WHERE code = 'MONACO BLEU';
+UPDATE public.acctivate_collection_codes SET display_name = 'Ocean Isles' WHERE code = 'OCEAN ISLES';
+UPDATE public.acctivate_collection_codes SET display_name = 'Picket Fence Occassional' WHERE code = 'PICKET FENCE OCCASSIONAL';
+UPDATE public.acctivate_collection_codes SET display_name = 'Point Breeze White' WHERE code = 'POINT BREEZE WHITE';
+-- These six already had the correct display_name on both code variants
+-- (Cabinet Beds, Chatham Maple, Chatham Midnight, Islamorada, Rio Vista,
+-- Sun Haven) - nothing to correct, listed here only so this migration's
+-- history is a complete record of every pair the dupe-cleanup pass
+-- checked.
 
 -- Non-collection Acctivate classes (administrative/charge codes, and
 -- the Lamps product line - a real merchandise category but not a

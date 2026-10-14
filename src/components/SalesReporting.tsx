@@ -1060,17 +1060,47 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // "collections") or a since-discontinued collection with zero active
   // products today.
   //
-  // Unioned with the full active-collections list (not just codes present
-  // on a line within the currently selected date range) so a real,
-  // currently-active collection never silently disappears from the
+  // Grouped by display_name rather than listed one-per-code: the same
+  // collection legitimately has two code spellings in play - the short
+  // Acctivate code products.collection uses (e.g. "ISLAMORA") and the
+  // full descriptive string Dealer/Rep Reporting's own invoiced/booking
+  // line facts use instead (e.g. "ISLAMORADA") - see
+  // 20261014220000_collection_code_aliases_fix.sql for why both must
+  // stay valid matchers. Showing one option per code would both show
+  // every real collection twice AND (if only one code made it into the
+  // filter) silently miss half of a selected collection's real rows, so
+  // selecting a group's display name selects every code in it together.
+  //
+  // Also unioned with the full active-collections list (not just codes
+  // present on a line within the currently selected date range) so a
+  // real, currently-active collection never silently disappears from the
   // dropdown just because it had no invoiced/booked lines in that window -
   // selecting it still correctly yields zero rows if that's genuinely true.
-  const allCollections = useMemo(() =>
-    Array.from(new Set([
-      ...optionLines.map((l) => l.product_class?.trim().toUpperCase()).filter((c): c is string => !!c && isActiveCollectionCode(c)),
-      ...activeCollections.map((c) => c.code),
-    ])).sort(),
-  [optionLines, isActiveCollectionCode, activeCollections]);
+  const collectionGroups = useMemo(() => {
+    const byName = new Map<string, string[]>();
+    const addCode = (code: string) => {
+      const name = collectionLabel(code);
+      const codes = byName.get(name);
+      if (codes) { if (!codes.includes(code)) codes.push(code); }
+      else byName.set(name, [code]);
+    };
+    for (const l of optionLines) {
+      const c = l.product_class?.trim().toUpperCase();
+      if (c && isActiveCollectionCode(c)) addCode(c);
+    }
+    for (const c of activeCollections) addCode(c.code);
+    return byName;
+  }, [optionLines, isActiveCollectionCode, activeCollections, collectionLabel]);
+
+  const selectedCollectionNames = useMemo(() =>
+    Array.from(new Set(collections.map((c) => collectionLabel(c)))),
+  [collections, collectionLabel]);
+
+  const handleCollectionsChange = (names: string[]) => {
+    const codes: string[] = [];
+    for (const name of names) codes.push(...(collectionGroups.get(name) ?? []));
+    setCollections(codes);
+  };
 
   // Freight Out and Quality Control line items are accounting/logistics
   // entries, not real products — never offered as SKU filter options,
@@ -1401,7 +1431,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
     }
     if (collections.length > 0) {
       chips.push({
-        label: collections.length === 1 ? `Collection: ${collectionLabel(collections[0])}` : `${collections.length} collections`,
+        label: selectedCollectionNames.length === 1 ? `Collection: ${selectedCollectionNames[0]}` : `${selectedCollectionNames.length} collections`,
         clear: () => setCollections([]),
       });
     }
@@ -1412,7 +1442,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       });
     }
     return chips;
-  }, [territoryIds, repIds, dealerIds, brandCategories, collections, skus, territories, visibleReps, visibleDealers, collectionLabel]);
+  }, [territoryIds, repIds, dealerIds, brandCategories, collections, skus, territories, visibleReps, visibleDealers, selectedCollectionNames]);
 
   // Factory that creates a detail-line fetcher for any date range.
   // The sidebar passes its local period dates; this factory bakes in filters
@@ -1817,8 +1847,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
               loading={optionsLoading}
             />
             <MultiSelect
-              label="Collection" selected={collections} onChange={setCollections}
-              options={allCollections.map((c) => ({ value: c, label: collectionLabel(c) }))}
+              label="Collection" selected={selectedCollectionNames} onChange={handleCollectionsChange}
+              options={Array.from(collectionGroups.keys()).sort().map((name) => ({ value: name, label: name }))}
               searchable searchPlaceholder="Search collection…"
               loading={optionsLoading}
             />

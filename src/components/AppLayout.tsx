@@ -93,10 +93,9 @@ function PanelItems({ section, role, onNavigate }: { section: NavSection; role: 
                 to={item.url}
                 end={item.url === "/"}
                 onClick={onNavigate}
-                className="flex-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                className="flex-1 flex items-center rounded-lg px-2.5 py-2 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 activeClassName="bg-secondary text-foreground font-medium"
               >
-                <item.icon className="h-4 w-4 shrink-0" />
                 <span className="truncate">{item.title}</span>
               </NavLink>
               {kids.length > 0 && (
@@ -183,8 +182,13 @@ function SidebarNavItemRow({
             "before:opacity-100",
           )}
         >
-          <item.icon className="h-[15px] w-[15px] shrink-0 text-sidebar-foreground/55 group-hover/item:text-sidebar-accent-foreground transition-colors" />
-          {!collapsed && <span className="truncate">{item.title}</span>}
+          {collapsed ? (
+            <span className="w-full text-center text-[11px] font-semibold uppercase tracking-tight text-sidebar-foreground/60 group-hover:text-sidebar-accent-foreground group-aria-[current=page]:text-sidebar-primary transition-colors">
+              {item.title.slice(0, 2)}
+            </span>
+          ) : (
+            <span className="truncate">{item.title}</span>
+          )}
         </NavLink>
         {!collapsed && (
           <div className="flex items-center opacity-0 group-hover/item:opacity-100 focus-within:opacity-100 transition-opacity">

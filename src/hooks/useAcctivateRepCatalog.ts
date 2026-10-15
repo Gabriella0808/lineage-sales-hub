@@ -98,17 +98,30 @@ function usePortalIdLookup() {
     queryKey: ["portal_rep_manager_id_lookup"],
     staleTime: 15 * 60 * 1000,
     queryFn: async () => {
-      const [repsRes, managersRes] = await Promise.all([
+      const [repsRes, managersRes, emailsRes] = await Promise.all([
         supabase.from("sales_reps").select("id, acctivate_id, email"),
         supabase.from("managers").select("id, name"),
+        // Resolves each rep's real email via Team Access (auth.users, linked
+        // through user_reps) instead of the hand-maintained sales_reps.email
+        // column, which drifts out of sync - falls back to that column
+        // itself when a rep has no Team Access account linked yet. Admin/
+        // manager only (matches sales_reps' own RLS), so a non-admin caller
+        // just gets no rows here and falls back to the column below.
+        (supabase as any).rpc("get_sales_rep_emails"),
       ]);
       if (repsRes.error) throw repsRes.error;
       if (managersRes.error) throw managersRes.error;
+      const emailByRepId = new Map<string, string | null>(
+        ((emailsRes.data ?? []) as { rep_id: string; email: string | null }[]).map((r) => [r.rep_id, r.email]),
+      );
       return {
         repsByAcId: new Map(
           (repsRes.data ?? [])
             .filter((r) => r.acctivate_id)
-            .map((r) => [String(r.acctivate_id).toLowerCase(), { id: r.id as string, email: r.email as string | null }]),
+            .map((r) => [
+              String(r.acctivate_id).toLowerCase(),
+              { id: r.id as string, email: emailByRepId.get(r.id as string) ?? (r.email as string | null) },
+            ]),
         ),
         managersByName: new Map(
           (managersRes.data ?? []).map((m) => [String(m.name).toLowerCase(), m.id as string]),

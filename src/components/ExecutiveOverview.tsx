@@ -62,25 +62,50 @@ const money = (n: number) => {
 };
 const moneyFull = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
-type PageResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null; count?: number | null }>;
+type PageResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 
-// Fetches every row using parallel pages: one request learns the total count,
-// then the remaining pages load at the same time instead of one after another.
-async function fetchAll<T>(build: (from: number, to: number, withCount: boolean) => PageResult<T>): Promise<T[]> {
-  const first = await build(0, PAGE - 1, true);
-  if (first.error) throw new Error(first.error.message);
-  const firstRows = first.data ?? [];
-  const total = first.count ?? firstRows.length;
-  if (firstRows.length < PAGE || total <= PAGE) return firstRows;
+// How many pages to request in parallel per round. More than 1 keeps this
+// faster than strictly sequential paging; deliberately NOT "all pages at
+// once" - that's what caused real statement timeouts before the RPCs these
+// call were optimized (see get_companywide_actuals_scoped's own history).
+const PARALLEL_BATCH = 3;
 
-  const starts: number[] = [];
-  for (let start = PAGE; start < total; start += PAGE) starts.push(start);
-  const pages = await Promise.all(starts.map(async (start) => {
-    const res = await build(start, start + PAGE - 1, false);
-    if (res.error) throw new Error(res.error.message);
-    return res.data ?? [];
-  }));
-  return firstRows.concat(...pages);
+// Fetches every row by paging until a page comes back short (fewer than
+// PAGE rows - the only unambiguous "that was the last page" signal).
+//
+// Previously used `count: "exact"` on the first request to learn the true
+// total up front and fire every remaining page in parallel immediately.
+// That was silently wrong: every RPC this calls takes p_limit/p_offset as
+// its OWN function parameters and applies LIMIT/OFFSET internally, so
+// PostgREST's exact count - however it computes it - can never see past
+// what the function itself already limited its output to. Confirmed
+// directly: `count(*) OVER()` on a call with p_limit=1000 reports exactly
+// 1000, regardless of how many rows actually match (15,874 in one real
+// case) - so `total <= PAGE` was true every single time the real dataset
+// exceeded one page, and fetchAll silently returned only the first,
+// chronologically-earliest page instead of everything. This is why Month-
+// to-Date and "since Jul 1" totals were both showing tiny fractions of the
+// real numbers: the most recent (and most) data never arrived.
+async function fetchAll<T>(build: (from: number, to: number) => PageResult<T>): Promise<T[]> {
+  const allRows: T[] = [];
+  let start = 0;
+  while (true) {
+    const batchStarts = Array.from({ length: PARALLEL_BATCH }, (_, i) => start + i * PAGE);
+    const results = await Promise.all(batchStarts.map((s) => build(s, s + PAGE - 1)));
+    let reachedEnd = false;
+    for (const res of results) {
+      if (res.error) throw new Error(res.error.message);
+      const rows = res.data ?? [];
+      allRows.push(...rows);
+      // First short page = done. Ignore anything after it in this batch
+      // (array order matches batchStarts order, so this stays in sequence)
+      // rather than trust a later offset that shouldn't exist.
+      if (rows.length < PAGE) { reachedEnd = true; break; }
+    }
+    if (reachedEnd) break;
+    start += PARALLEL_BATCH * PAGE;
+  }
+  return allRows;
 }
 
 // Bug sweep fix: both queries below used to hit
@@ -98,7 +123,7 @@ function execRowsQuery(year: number, managerIds: string[] | null, refreshKey: nu
     queryKey: ["exec_overview_rows_v2", year, managerIds, refreshKey],
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
-    queryFn: () => fetchAll<Row>((from, to, withCount) =>
+    queryFn: () => fetchAll<Row>((from, to) =>
       (supabase as any).rpc(
         "get_companywide_actuals_scoped",
         {
@@ -108,7 +133,6 @@ function execRowsQuery(year: number, managerIds: string[] | null, refreshKey: nu
           p_limit: to - from + 1,
           p_offset: from,
         },
-        withCount ? { count: "exact" } : undefined,
       ),
     ),
   };
@@ -120,11 +144,10 @@ function execBacklogQuery(managerIds: string[] | null, refreshKey: number) {
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     queryFn: async () => {
-      const rows = await fetchAll<{ open_so_amount: number | string | null; order_number: string | null }>((from, to, withCount) =>
+      const rows = await fetchAll<{ open_so_amount: number | string | null; order_number: string | null }>((from, to) =>
         (supabase as any).rpc(
           "get_open_so_lines_scoped",
           { p_manager_ids: managerIds ?? null, p_limit: to - from + 1, p_offset: from },
-          withCount ? { count: "exact" } : undefined,
         ),
       );
       const orders = new Set<string>();
@@ -476,29 +499,56 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
         </ToggleGroup>
       </div>
 
-      {/* Insight strip */}
-      <div data-tour="hlr-insights" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {insights.slice(0, 4).map((x, i) => (
-          <div key={i} className={cn("rounded-xl border p-3.5 flex gap-3 bg-card", x.tone === "bad" && "border-destructive/40", x.tone === "warn" && "border-warning/50")}>
-            {x.tone === "good" ? <CheckCircle2 className="h-5 w-5 text-success shrink-0 mt-0.5" /> : <AlertTriangle className={cn("h-5 w-5 shrink-0 mt-0.5", x.tone === "bad" ? "text-destructive" : "text-warning")} />}
-            <div className="min-w-0"><p className="text-sm font-semibold leading-tight">{x.title}</p><p className="text-xs text-muted-foreground mt-1 leading-snug">{x.text}</p></div>
-          </div>
-        ))}
-      </div>
-
-      {/* KPI cards */}
+      {/* KPI cards - the headline numbers lead the page; the Needs Attention
+          strip below is supporting context, not equal-weight competition
+          for the eye (previously rendered above the KPIs). Reorder only -
+          no calculation/data changes. */}
       <div data-tour="hlr-kpis" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Kpi label={`Bookings · ${W.label}`} value={money(m.curB)} delta={hasPrev ? change(m.curB, m.prevB) : null} deltaLabel={W.prevLabel} spark={m.sparkB} sparkFmt={money} color="--chart-1" onOpen={() => onOpenReport("live-kpi")} hint="Open Live KPI" foot={`${money(m.ytdB)} ${SINCE}`} />
         <Kpi label={`Invoiced · ${W.label}`} value={money(m.curI)} delta={hasPrev ? change(m.curI, m.prevI) : null} deltaLabel={W.prevLabel} spark={m.sparkI} sparkFmt={money} color="--chart-2" onOpen={() => onOpenReport("live-kpi")} hint="Open Live KPI" foot={`${money(m.ytdI)} ${SINCE}`} />
         <Kpi label={`Active dealers · ${W.label}`} value={m.activeDealers.toLocaleString()} delta={hasPrev ? change(m.activeDealers, m.prevActiveDealers) : null} deltaLabel={W.prevLabel} spark={m.sparkD} sparkFmt={(n) => `${Math.round(n).toLocaleString()} dealer${n === 1 ? "" : "s"}`} color="--chart-3" onOpen={() => onOpenReport("dealer-reporting")} hint="Open Dealer Reporting" foot={`of ${m.totalDealers.toLocaleString()} that ordered ${SINCE}`} info={`The number above is distinct dealers with at least one booking in ${W.label.toLowerCase()} - invoices don't count, and it's a headcount, not weighted by order size. The trend line below is on its own fixed rolling-12-week window (not the period selected above) - hover a point to see which week and how many dealers.`} />
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Open order backlog</p><Boxes className="h-4 w-4 text-muted-foreground" /></div>
+        {/* Matches the Kpi card shell (same label/value/footer type scale,
+            same hover/click affordance) even though it has no trend series
+            of its own to spark - an empty footer-height spacer keeps all
+            four cards the same height instead of fabricating a chart. */}
+        <Card
+          className="overflow-hidden cursor-pointer transition-shadow hover:shadow-md hover:border-foreground/25 group"
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate("/inventory")}
+          onKeyDown={(e) => e.key === "Enter" && navigate("/inventory")}
+          title="Open Inventory"
+        >
+          <CardContent className="p-5 pb-0">
+            <div className="flex items-center justify-between gap-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">Open order backlog</p>
+              <Boxes className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+            </div>
             <p className="font-serif text-4xl font-medium tracking-tight mt-3">{backlog ? money(backlog.total) : "..."}</p>
-            <p className="text-xs text-muted-foreground mt-2">{backlog ? `${backlog.orders.toLocaleString()} open orders waiting to ship` : "Loading"}</p>
-            {backlog && m.ytdI > 0 && <p className="text-xs text-muted-foreground mt-1">= {(backlog.total / (m.ytdI / Math.max(1, differenceInCalendarDays(today, new Date(year, START_MONTH, 1)) + 1) * 30)).toFixed(1)} months of current invoicing</p>}
+            <p className="text-xs text-muted-foreground mt-2">
+              {backlog ? `${backlog.orders.toLocaleString()} open orders waiting to ship` : "Loading"}
+              {backlog && m.ytdI > 0 && ` · ${(backlog.total / (m.ytdI / Math.max(1, differenceInCalendarDays(today, new Date(year, START_MONTH, 1)) + 1) * 30)).toFixed(1)} mo. of invoicing`}
+            </p>
+            <p className="text-xs font-medium text-primary mt-1 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center">Open Inventory<ChevronRight className="h-3 w-3" /></p>
           </CardContent>
+          <div className="h-14 mt-2" />
         </Card>
+      </div>
+
+      {/* Needs attention - secondary to the KPI row above, given its own
+          eyebrow label (previously unlabeled) and slightly lower visual
+          weight so it reads as supporting context, not a second headline
+          row. Same insights array/data, JSX position + labeling only. */}
+      <div>
+        <p className="section-label mb-2">Needs attention</p>
+        <div data-tour="hlr-insights" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {insights.slice(0, 4).map((x, i) => (
+            <div key={i} className={cn("rounded-lg border p-3 flex gap-2.5 bg-card/60", x.tone === "bad" && "border-destructive/40", x.tone === "warn" && "border-warning/50")}>
+              {x.tone === "good" ? <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" /> : <AlertTriangle className={cn("h-4 w-4 shrink-0 mt-0.5", x.tone === "bad" ? "text-destructive" : "text-warning")} />}
+              <div className="min-w-0"><p className="text-[13px] font-semibold leading-tight">{x.title}</p><p className="text-xs text-muted-foreground mt-1 leading-snug">{x.text}</p></div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Trend + target */}
@@ -769,7 +819,7 @@ function Kpi({ label, value, delta, deltaLabel, spark, sparkFmt, color, foot, on
 }) {
   const id = `g${color.replace(/\W/g, "")}`;
   return (
-    <Card className="overflow-hidden cursor-pointer transition-shadow hover:shadow-md hover:border-foreground/25 group" role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} title={hint}>
+    <Card className="overflow-hidden cursor-pointer transition-shadow duration-150 hover:shadow-md hover:border-foreground/25 group" role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} title={hint}>
       <CardContent className="p-5 pb-0">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate flex items-center gap-1">
           {label}
@@ -786,7 +836,17 @@ function Kpi({ label, value, delta, deltaLabel, spark, sparkFmt, color, foot, on
           )}
         </p>
         <div className="flex items-end justify-between gap-2 mt-3">
-          <p className="font-serif text-4xl font-medium tracking-tight">{value}</p>
+          {/* Value fades in on change (e.g. switching period presets) -
+              key={value} remounts the element so the existing CSS fade-in
+              keyframe (tailwind.config.ts) replays; purely a presentation
+              transition on the already-computed `value` string, never
+              alters what's displayed or when the underlying query
+              resolves. Plain CSS animation, so the prefers-reduced-motion
+              override in index.css already covers it - no JS animation
+              library needed for this. */}
+          <p key={value} className="font-serif text-4xl font-medium tracking-tight animate-fade-in">
+            {value}
+          </p>
           {delta !== null && <Chip value={delta} />}
         </div>
         <p className="text-xs text-muted-foreground mt-2">{delta !== null ? `vs ${deltaLabel} · ` : ""}{foot}</p>

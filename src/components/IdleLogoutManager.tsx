@@ -8,19 +8,10 @@ import { Button } from "@/components/ui/button";
 const ACTIVITY_KEY = "lc.lastActivityAt";
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // sign out after 30 min with no portal activity
 const WARNING_MS = 60 * 1000;           // warn 60s before that actually happens
-const CHECK_INTERVAL_MS = 1_000;        // smooth 1s countdown once the warning is up
 const WRITE_THROTTLE_MS = 5_000;        // don't hammer localStorage on every mousemove
 
 const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "wheel"] as const;
 
-function readLastActivity(): number {
-  try {
-    const raw = localStorage.getItem(ACTIVITY_KEY);
-    return raw ? Number(raw) : Date.now();
-  } catch {
-    return Date.now();
-  }
-}
 function writeLastActivity(ts: number) {
   try { localStorage.setItem(ACTIVITY_KEY, String(ts)); } catch { /* private mode etc - just won't sync across tabs */ }
 }
@@ -29,14 +20,19 @@ function writeLastActivity(ts: number) {
  * Signs the user out after IDLE_TIMEOUT_MS of no portal activity, with a
  * WARNING_MS countdown dialog first so nobody loses unsaved work by
  * surprise. "Activity" (mouse, keyboard, scroll, touch) is recorded to
- * localStorage rather than only component state, so every open tab shares
- * one clock for deciding WHEN to warn - but once the warning dialog is up
- * in a given tab, it's sticky: only an explicit "Stay signed in" click
- * dismisses it there. Incidental mouse movement on the way to the button
- * (or activity elsewhere) no longer makes it vanish before it can be used.
- * The sign-out itself is just a normal signOut() - ProtectedRoute already
- * redirects to /auth on its own once session is null, so there's no
- * separate navigation to do here.
+ * localStorage so every open tab shares one clock - but once the warning
+ * dialog is up in a given tab, it's sticky: only an explicit "Stay signed
+ * in" click dismisses it there.
+ *
+ * The actual countdown/timeout logic runs inside idleTimer.worker.ts, not
+ * on the main thread. Browsers throttle (or near-fully suspend) a page's
+ * own setInterval once its tab is backgrounded, which is exactly why a
+ * main-thread-only timer can show the warning dialog but then never
+ * actually reach 0 and sign out while the tab is hidden or another tab is
+ * active - it just sits there until something re-checks it, which may not
+ * happen for a long time. A dedicated worker thread's timers aren't subject
+ * to that same background-tab throttling, so the warning appears and the
+ * sign-out fires on schedule regardless of which tab is focused.
  *
  * Mounted once in AppLayout's Shell, so it's only ever active while there's
  * a real session (every route it covers is already behind ProtectedRoute).
@@ -47,9 +43,9 @@ export function IdleLogoutManager() {
   const lastWriteRef = useRef(0);
   const loggingOutRef = useRef(false);
   // Mirrors secondsLeft !== null, readable inside event handlers without
-  // needing secondsLeft in the effect's dependency array (which would tear
-  // down and re-add every listener on every tick of the countdown).
+  // needing secondsLeft in the effect's dependency array.
   const warningShownRef = useRef(false);
+  const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
     if (!session) {
@@ -57,9 +53,36 @@ export function IdleLogoutManager() {
       setSecondsLeft(null);
       return;
     }
-    writeLastActivity(Date.now());
+
+    const startedAt = Date.now();
+    writeLastActivity(startedAt);
     loggingOutRef.current = false;
     warningShownRef.current = false;
+
+    const worker = new Worker(new URL("../workers/idleTimer.worker.ts", import.meta.url), { type: "module" });
+    workerRef.current = worker;
+    worker.postMessage({ type: "init", idleTimeoutMs: IDLE_TIMEOUT_MS, warningMs: WARNING_MS, lastActivityAt: startedAt });
+
+    worker.onmessage = (e: MessageEvent) => {
+      if (loggingOutRef.current) return;
+      const msg = e.data;
+      if (msg.type === "timeout") {
+        loggingOutRef.current = true;
+        warningShownRef.current = false;
+        setSecondsLeft(null);
+        // Local-only: this tab's own idle timeout must not end a session in
+        // a different, actively-used tab that never showed its own warning.
+        void signOut({ scope: "local" });
+      } else if (msg.type === "warn") {
+        warningShownRef.current = true;
+        setSecondsLeft(msg.secondsLeft);
+      } else if (msg.type === "clear-warning") {
+        warningShownRef.current = false;
+        setSecondsLeft(null);
+      }
+    };
+
+    const sendActivity = (ts: number) => worker.postMessage({ type: "activity", ts });
 
     const recordActivity = () => {
       // Once the warning is up, nothing but the button dismisses it - not
@@ -69,55 +92,36 @@ export function IdleLogoutManager() {
       if (now - lastWriteRef.current < WRITE_THROTTLE_MS) return;
       lastWriteRef.current = now;
       writeLastActivity(now);
+      sendActivity(now);
     };
     ACTIVITY_EVENTS.forEach((e) => window.addEventListener(e, recordActivity, { passive: true }));
 
-    const interval = window.setInterval(() => {
-      if (loggingOutRef.current || warningShownRef.current) return;
-      const elapsed = Date.now() - readLastActivity();
-      if (elapsed >= IDLE_TIMEOUT_MS) {
-        loggingOutRef.current = true;
-        setSecondsLeft(null);
-        // Bug sweep fix (Finding 1b): local-only - this tab's own idle
-        // timeout must not end a session in a different, actively-used
-        // tab that never showed its own warning (see this component's own
-        // "sticky once shown" comment above for why that scenario is
-        // real).
-        void signOut({ scope: "local" });
-      } else if (elapsed >= IDLE_TIMEOUT_MS - WARNING_MS) {
-        warningShownRef.current = true;
-        setSecondsLeft(Math.max(0, Math.ceil((IDLE_TIMEOUT_MS - elapsed) / 1000)));
-      }
-    }, CHECK_INTERVAL_MS);
-
-    // While the warning is showing, keep counting down toward the actual
-    // sign-out on its own clock - independent of readLastActivity(), since
-    // that's now frozen (recordActivity is a no-op while warningShownRef
-    // is true).
-    const countdown = window.setInterval(() => {
-      if (!warningShownRef.current || loggingOutRef.current) return;
-      setSecondsLeft((s) => {
-        if (s === null) return s;
-        if (s <= 1) {
-          loggingOutRef.current = true;
-          void signOut({ scope: "local" });
-          return null;
-        }
-        return s - 1;
-      });
-    }, CHECK_INTERVAL_MS);
+    // Cross-tab: when another tab records activity, localStorage's
+    // "storage" event fires in this tab immediately and synchronously - it
+    // isn't a polled timer, so it isn't subject to background-tab timer
+    // throttling either. Forward it straight into this tab's worker.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== ACTIVITY_KEY || warningShownRef.current) return;
+      const ts = Number(e.newValue);
+      if (Number.isFinite(ts)) sendActivity(ts);
+    };
+    window.addEventListener("storage", onStorage);
 
     return () => {
       ACTIVITY_EVENTS.forEach((e) => window.removeEventListener(e, recordActivity));
-      window.clearInterval(interval);
-      window.clearInterval(countdown);
+      window.removeEventListener("storage", onStorage);
+      worker.postMessage({ type: "stop" });
+      worker.terminate();
+      workerRef.current = null;
     };
   }, [session, signOut]);
 
   const stayActive = () => {
     warningShownRef.current = false;
-    lastWriteRef.current = Date.now();
-    writeLastActivity(Date.now());
+    const now = Date.now();
+    lastWriteRef.current = now;
+    writeLastActivity(now);
+    workerRef.current?.postMessage({ type: "activity", ts: now });
     setSecondsLeft(null);
   };
 

@@ -62,25 +62,50 @@ const money = (n: number) => {
 };
 const moneyFull = (n: number) => `$${Math.round(n).toLocaleString()}`;
 
-type PageResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null; count?: number | null }>;
+type PageResult<T> = PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
 
-// Fetches every row using parallel pages: one request learns the total count,
-// then the remaining pages load at the same time instead of one after another.
-async function fetchAll<T>(build: (from: number, to: number, withCount: boolean) => PageResult<T>): Promise<T[]> {
-  const first = await build(0, PAGE - 1, true);
-  if (first.error) throw new Error(first.error.message);
-  const firstRows = first.data ?? [];
-  const total = first.count ?? firstRows.length;
-  if (firstRows.length < PAGE || total <= PAGE) return firstRows;
+// How many pages to request in parallel per round. More than 1 keeps this
+// faster than strictly sequential paging; deliberately NOT "all pages at
+// once" - that's what caused real statement timeouts before the RPCs these
+// call were optimized (see get_companywide_actuals_scoped's own history).
+const PARALLEL_BATCH = 3;
 
-  const starts: number[] = [];
-  for (let start = PAGE; start < total; start += PAGE) starts.push(start);
-  const pages = await Promise.all(starts.map(async (start) => {
-    const res = await build(start, start + PAGE - 1, false);
-    if (res.error) throw new Error(res.error.message);
-    return res.data ?? [];
-  }));
-  return firstRows.concat(...pages);
+// Fetches every row by paging until a page comes back short (fewer than
+// PAGE rows - the only unambiguous "that was the last page" signal).
+//
+// Previously used `count: "exact"` on the first request to learn the true
+// total up front and fire every remaining page in parallel immediately.
+// That was silently wrong: every RPC this calls takes p_limit/p_offset as
+// its OWN function parameters and applies LIMIT/OFFSET internally, so
+// PostgREST's exact count - however it computes it - can never see past
+// what the function itself already limited its output to. Confirmed
+// directly: `count(*) OVER()` on a call with p_limit=1000 reports exactly
+// 1000, regardless of how many rows actually match (15,874 in one real
+// case) - so `total <= PAGE` was true every single time the real dataset
+// exceeded one page, and fetchAll silently returned only the first,
+// chronologically-earliest page instead of everything. This is why Month-
+// to-Date and "since Jul 1" totals were both showing tiny fractions of the
+// real numbers: the most recent (and most) data never arrived.
+async function fetchAll<T>(build: (from: number, to: number) => PageResult<T>): Promise<T[]> {
+  const allRows: T[] = [];
+  let start = 0;
+  while (true) {
+    const batchStarts = Array.from({ length: PARALLEL_BATCH }, (_, i) => start + i * PAGE);
+    const results = await Promise.all(batchStarts.map((s) => build(s, s + PAGE - 1)));
+    let reachedEnd = false;
+    for (const res of results) {
+      if (res.error) throw new Error(res.error.message);
+      const rows = res.data ?? [];
+      allRows.push(...rows);
+      // First short page = done. Ignore anything after it in this batch
+      // (array order matches batchStarts order, so this stays in sequence)
+      // rather than trust a later offset that shouldn't exist.
+      if (rows.length < PAGE) { reachedEnd = true; break; }
+    }
+    if (reachedEnd) break;
+    start += PARALLEL_BATCH * PAGE;
+  }
+  return allRows;
 }
 
 // Bug sweep fix: both queries below used to hit
@@ -98,7 +123,7 @@ function execRowsQuery(year: number, managerIds: string[] | null, refreshKey: nu
     queryKey: ["exec_overview_rows_v2", year, managerIds, refreshKey],
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
-    queryFn: () => fetchAll<Row>((from, to, withCount) =>
+    queryFn: () => fetchAll<Row>((from, to) =>
       (supabase as any).rpc(
         "get_companywide_actuals_scoped",
         {
@@ -108,7 +133,6 @@ function execRowsQuery(year: number, managerIds: string[] | null, refreshKey: nu
           p_limit: to - from + 1,
           p_offset: from,
         },
-        withCount ? { count: "exact" } : undefined,
       ),
     ),
   };
@@ -120,11 +144,10 @@ function execBacklogQuery(managerIds: string[] | null, refreshKey: number) {
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     queryFn: async () => {
-      const rows = await fetchAll<{ open_so_amount: number | string | null; order_number: string | null }>((from, to, withCount) =>
+      const rows = await fetchAll<{ open_so_amount: number | string | null; order_number: string | null }>((from, to) =>
         (supabase as any).rpc(
           "get_open_so_lines_scoped",
           { p_manager_ids: managerIds ?? null, p_limit: to - from + 1, p_offset: from },
-          withCount ? { count: "exact" } : undefined,
         ),
       );
       const orders = new Set<string>();

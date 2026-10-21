@@ -25,6 +25,7 @@ import { CollectionsMultiSelect } from "@/components/CollectionsMultiSelect";
 import { ProspectTypeSelect } from "@/components/ProspectTypeSelect";
 import { AssigneePicker, type AssignableUser } from "@/components/AssigneePicker";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
+import { useSalesReps } from "@/hooks/usePortalData";
 import { getReportingTodayStr, getReportingMonth, getReportingYear, formatReportingDate } from "@/utils/reportingDate";
 
 type Market = {
@@ -109,7 +110,19 @@ export default function CaptureLeadsPage() {
         .sort((a, b) => a.name.localeCompare(b.name)),
     [activeReps, getSalesRepIdByAcId, getSalesRepEmailByAcId],
   );
+  // Canonical rep list for the filter dropdown: the real public.sales_reps
+  // table (the same data SalesRepsPage.tsx manages), one row per real rep -
+  // unlike the Acctivate catalog above, which can have several territory-coded
+  // entries (different display names) resolving to the same sales_reps.id and
+  // would show as confusing "duplicates" in a filter. This list updates live
+  // as reps are added/removed/deactivated in Sales Reps, per request.
+  const { data: dbSalesReps = [] } = useSalesReps();
+  const activeDbReps = useMemo(
+    () => dbSalesReps.filter((r) => r.status === "active").sort((a, b) => a.name.localeCompare(b.name)),
+    [dbSalesReps],
+  );
   const [loading, setLoading] = useState(true);
+  const [repFilter, setRepFilter] = useState<string>("all");
 
   const [marketDialog, setMarketDialog] = useState(false);
   const [marketForm, setMarketForm] = useState(emptyMarket);
@@ -191,10 +204,32 @@ export default function CaptureLeadsPage() {
     return () => { cancelled = true; };
   }, [leadForm.followup_enabled, leadForm.sales_rep_id, followupAssigneeTouched, user]);
 
+  // Every lead only stores free-text `sales_rep` (whatever label the Sales Rep
+  // picker above showed at capture time - possibly an Acctivate territory-coded
+  // variant like "Kate Jones (IN & KY)"), not a sales_rep_id FK. To filter by a
+  // single canonical rep (the dropdown below) we match a lead's stored text
+  // against every name variant - Acctivate catalog label(s) and the canonical
+  // sales_reps.name - known to resolve to that rep's real sales_reps.id.
+  const repNameAliasesById = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    const add = (id: string | undefined, name: string) => {
+      if (!id || !name) return;
+      if (!map.has(id)) map.set(id, new Set());
+      map.get(id)!.add(name);
+    };
+    salesReps.forEach((r) => add(r.id, r.name));
+    activeDbReps.forEach((r) => add(r.id, r.name));
+    return map;
+  }, [salesReps, activeDbReps]);
+
   const leadsByMarket = useMemo(() => {
     const map = new Map<string, Lead[]>();
     markets.forEach((m) => map.set(m.id, []));
     leads.forEach((l) => {
+      if (repFilter !== "all") {
+        const aliases = repNameAliasesById.get(repFilter);
+        if (!l.sales_rep || !aliases?.has(l.sales_rep)) return;
+      }
       let key = l.market_id;
       if (!key) {
         const matched = markets.find((m) => m.name === l.trade_show);
@@ -203,7 +238,7 @@ export default function CaptureLeadsPage() {
       if (key && map.has(key)) map.get(key)!.push(l);
     });
     return map;
-  }, [leads, markets]);
+  }, [leads, markets, repFilter, repNameAliasesById]);
 
   const submitMarket = async () => {
     const baseName = marketForm.name.trim();
@@ -594,7 +629,17 @@ export default function CaptureLeadsPage() {
           <h1 className="page-title">Capture Leads</h1>
           <p className="page-subtitle">Add leads grouped by market</p>
         </div>
-        <Dialog open={marketDialog} onOpenChange={setMarketDialog}>
+        <div className="flex items-end gap-2">
+          {activeDbReps.length > 0 && (
+            <Select value={repFilter} onValueChange={setRepFilter}>
+              <SelectTrigger className="h-9 text-sm w-[170px]"><SelectValue placeholder="All Reps" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Reps</SelectItem>
+                {activeDbReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Dialog open={marketDialog} onOpenChange={setMarketDialog}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" /> Add Market</Button>
           </DialogTrigger>
@@ -629,7 +674,8 @@ export default function CaptureLeadsPage() {
               <Button onClick={submitMarket}>Create Market</Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {loading ? (

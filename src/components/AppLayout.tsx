@@ -504,7 +504,6 @@ function Shell({ children }: { children: React.ReactNode }) {
         {canUseHighLevelReportingTour(role) && <DropdownMenuItem onClick={() => window.dispatchEvent(new Event(START_TOUR_EVENT))}><Sparkles className="h-4 w-4 mr-2" />What's new tour</DropdownMenuItem>}
         <DropdownMenuItem onClick={() => goTo("/settings")}><Settings className="h-4 w-4 mr-2" />Settings</DropdownMenuItem>
         <DropdownMenuItem onClick={() => setIssueOpen(true)}><AlertCircle className="h-4 w-4 mr-2" />Report an issue</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => hardRefresh()}><RefreshCw className="h-4 w-4 mr-2" />Refresh app</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => signOut()}><LogOut className="h-4 w-4 mr-2" />Sign out</DropdownMenuItem>
       </DropdownMenuContent>
@@ -521,6 +520,18 @@ function Shell({ children }: { children: React.ReactNode }) {
       title={themeResolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
     >
       {themeResolved === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+    </button>
+  );
+
+  const refreshButton = (
+    <button
+      type="button"
+      onClick={() => hardRefresh()}
+      className={cn("h-9 w-9 shrink-0 rounded-lg flex items-center justify-center transition-colors", dark ? "hover:bg-sidebar-accent" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+      aria-label="Refresh app"
+      title="Refresh app"
+    >
+      <RefreshCw className="h-[18px] w-[18px]" />
     </button>
   );
 
@@ -603,6 +614,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       {syncPill}
       {searchButton}
       {themeButton}
+      {refreshButton}
       <NotificationsBell />
       {accountMenu}
     </header>
@@ -619,6 +631,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="h-6 w-px bg-border mx-0.5 hidden sm:block" />
       <div className="flex items-center gap-0.5">
         {themeButton}
+        {refreshButton}
         <NotificationsBell />
       </div>
       {accountMenu}
@@ -670,6 +683,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         {syncPill}
         {searchButton}
         {themeButton}
+        {refreshButton}
         <NotificationsBell />
         <button type="button" onClick={() => setDrawerOpen(true)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] bg-sidebar-accent hover:bg-sidebar-accent/80" aria-label="Open menu"><Menu className="h-4 w-4" /><span className="hidden sm:inline">Menu</span></button>
         {accountMenu}

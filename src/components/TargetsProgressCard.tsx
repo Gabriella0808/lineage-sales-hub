@@ -1,4 +1,4 @@
-import { useMemo, useId, useState } from "react";
+import { useMemo, useState } from "react";
 import { Target, ChevronLeft, ChevronRight } from "lucide-react";
 import { useSalesReps, useDealers, formatCurrency, getInitials } from "@/hooks/usePortalData";
 import { useRepTargets, MONTH_LABEL_TO_KEY, type RepTarget } from "@/hooks/useRepTargets";
@@ -12,7 +12,6 @@ const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'
 
 
 function ProgressRing({ pct, size = 64, label }: { pct: number; size?: number; label: string }) {
-  const uid = useId();
   const r = (size - 12) / 2;
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(pct, 100));
@@ -27,52 +26,49 @@ function ProgressRing({ pct, size = 64, label }: { pct: number; size?: number; l
       ? { label: "At risk", tone: "warning" as const }
       : { label: "Off track", tone: "danger" as const };
 
-  const gradients: Record<string, { from: string; to: string }> = {
-    success: { from: "#34d399", to: "#059669" },
-    gold:    { from: "#d4af37", to: "#b8860b" },
-    warning: { from: "#fb923c", to: "#ea580c" },
-    danger:  { from: "#f87171", to: "#dc2626" },
+  // Four genuinely distinct tiers via the approved semantic tokens (no
+  // invented "gold" color, no gradient - the website has neither): 100%+
+  // is success, 75-99% uses the brand's own olive accent (still clearly
+  // "good", one notch below full success-green), 50-74% is warning,
+  // below that is destructive.
+  const ringColor: Record<string, string> = {
+    success: "hsl(var(--success))",
+    gold: "hsl(var(--primary))",
+    warning: "hsl(var(--warning))",
+    danger: "hsl(var(--destructive))",
   };
-
-  const grad = gradients[status.tone];
-  const gradId = `ring-grad-${uid}`;
+  const stroke = ringColor[status.tone];
   const textColor =
     status.tone === "success"
-      ? "text-emerald-600"
+      ? "text-success"
       : status.tone === "gold"
-      ? "text-amber-600"
+      ? "text-primary"
       : status.tone === "warning"
-      ? "text-orange-600"
-      : "text-red-600";
+      ? "text-warning"
+      : "text-destructive";
 
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
         <svg className="w-full h-full -rotate-90" viewBox={`0 0 ${size} ${size}`}>
-          <defs>
-            <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={grad.from} />
-              <stop offset="100%" stopColor={grad.to} />
-            </linearGradient>
-          </defs>
           <circle
             cx={size / 2} cy={size / 2} r={r}
-            stroke="hsl(220 13% 90%)" strokeWidth={5} fill="transparent"
+            stroke="hsl(var(--border))" strokeWidth={5} fill="transparent"
           />
           <circle
             cx={size / 2} cy={size / 2} r={r}
-            stroke={`url(#${gradId})`} strokeWidth={6}
+            stroke={stroke} strokeWidth={6}
             fill="transparent" strokeLinecap="round"
             strokeDasharray={c} strokeDashoffset={offset}
             style={{ transition: "stroke-dashoffset 800ms ease-out" }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`font-['DM_Serif_Display'] text-sm font-bold leading-none tracking-tight ${textColor}`}>
+          <span className={`font-serif text-sm font-bold leading-none tracking-tight ${textColor}`}>
             {clamped}<span className="text-[10px] align-top ml-0.5 opacity-60 font-sans">%</span>
           </span>
         </div>
-        <div className="absolute inset-[6px] border border-white/40 rounded-full pointer-events-none" />
+        <div className="absolute inset-[6px] border border-background/40 rounded-full pointer-events-none" />
       </div>
       <span className="text-[10px] font-bold tracking-[0.12em] text-muted-foreground uppercase">{label}</span>
       <span className={`text-[9px] font-semibold uppercase tracking-wider ${textColor}`}>{status.label}</span>

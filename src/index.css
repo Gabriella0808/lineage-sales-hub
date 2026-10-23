@@ -6,158 +6,189 @@
 
 /*
   Lineage Collections — Internal Operating System
-  Quiet luxury. Refined coastal. Editorial restraint.
 
-  Palette:
-    Lineage Black   #0B0B0B
-    Porcelain       #F4F1EB   (canvas)
-    Sandstone       #D9D2C7   (borders, muted surfaces)
-    Driftwood       #A79C8E   (secondary text)
-    Harbor Blue     #C8D7DE   (cool accent)
-    Sea Glass       #E2EBEC   (soft accent surfaces)
-    Weathered Taupe #8E7E69   (warm secondary text)
-    Dune            #C7B299
-    Slate Mist      #6E7375
-    Soft Brass      #B59A72   (premium highlight)
+  Retuned to the new Lineage Collections website's real, verified design
+  system (lineagecollectionswebsite.gabriella-524.workers.dev/css/styles.css
+  - see LINEAGE_BRAND_DESIGN_SYSTEM.md for the full audit). Same variable
+  names/roles as before this pass - this is a value swap to the site's
+  actual palette, not a restructure. The one deliberate exception: the
+  sidebar's existing dark-shell treatment is kept (not flattened to match
+  the canvas) and just recolored to the website's own real dark tone,
+  since converting it to a light shell would be a bigger visual-personality
+  change than "apply the website's colors."
 
-  Typography: Cormorant Garamond (display) + Inter (body/UI).
+  Palette (website hex → this file's HSL):
+    Ink              #1D1A17 → 30 12% 10%   (text)
+    Background       #F7F5F0 → 43 30% 95%   (canvas)
+    Surface          #FDFCF9 → 45 50% 98%   (card/panel surfaces)
+    Line             #E2DDD5 → 37 18% 86%   (borders)
+    Sand             #E7E2DB → 35 20% 88%   (secondary wash)
+    Product bg       #ECE7E0 → 35 24% 90%   (muted wash)
+    Muted text       #7A736B → 32 7% 45%
+    Olive            #5D5A3E → 54 20% 30%   (the site's one real accent)
+    Dark             #26221F → 26 10% 14%   (sidebar shell)
+    Stock-in green   #5F7D55 → 105 19% 41%  (success)
+    Stock-out amber  #B98A3E → 37 50% 48%   (warning)
+    Error terracotta #A2412F → 9 55% 41%    (destructive)
+    Info (no site equivalent - a restrained, desaturated slate-blue kept
+    to the same low-saturation family as the real status colors, never a
+    bright/neon blue) → light 212 13% 42%, dark 212 19% 63%
+
+  Typography: Cormorant Garamond (display) + Inter (body/UI) - the
+  website's exact pairing, unchanged from before this pass.
 */
 
 @layer base {
   :root {
-    /* Canvas — Porcelain */
-    --background: 38 25% 94%;
-    --foreground: 0 0% 4%;              /* Lineage Black */
+    /* Canvas */
+    --background: 43 30% 95%;
+    --foreground: 30 12% 10%;
 
-    /* Cards lift above canvas with a warm off-white */
-    --card: 36 32% 97%;
-    --card-foreground: 0 0% 4%;
+    /* Cards/panels lift slightly above canvas via the website's real surface tone */
+    --card: 45 50% 98%;
+    --card-foreground: 30 12% 10%;
 
-    --popover: 36 32% 98%;
-    --popover-foreground: 0 0% 4%;
+    --popover: 45 50% 98%;
+    --popover-foreground: 30 12% 10%;
 
-    /* Primary — Lineage Black for confident CTAs */
-    --primary: 0 0% 6%;
-    --primary-foreground: 38 25% 96%;
+    /* Primary — Olive, the website's one real accent color */
+    --primary: 54 20% 30%;
+    --primary-foreground: 45 50% 98%;
 
-    /* Secondary — Sea Glass */
-    --secondary: 186 17% 91%;
-    --secondary-foreground: 0 0% 8%;
+    /* Secondary — warm sand wash */
+    --secondary: 35 20% 88%;
+    --secondary-foreground: 30 12% 10%;
 
-    /* Muted — warm porcelain */
-    --muted: 36 22% 91%;
-    --muted-foreground: 200 4% 38%;     /* Slate Mist */
+    /* Muted — the website's product-frame tone, used for subtle/inactive surfaces */
+    --muted: 35 24% 90%;
+    --muted-foreground: 32 7% 45%;
 
-    /* Accent — Soft Brass (matches --sidebar-primary's existing brass) */
-    --accent: 34 33% 58%;
-    --accent-foreground: 0 0% 8%;
+    /* Accent — same Olive family as primary */
+    --accent: 54 20% 30%;
+    --accent-foreground: 45 50% 98%;
 
-    --destructive: 0 48% 38%;
-    --destructive-foreground: 38 25% 96%;
+    /* Status colors — the website's actual stock-status/error colors, not invented */
+    --destructive: 9 55% 41%;           /* website form-error terracotta */
+    --destructive-foreground: 45 50% 98%;
 
-    --success: 158 32% 28%;
-    --success-foreground: 38 25% 96%;
+    --success: 105 19% 41%;             /* website "in stock" green */
+    --success-foreground: 45 50% 98%;
 
-    --warning: 34 38% 48%;              /* Soft Brass deepened */
-    --warning-foreground: 38 25% 96%;
+    --warning: 37 50% 48%;              /* website "backorder" amber */
+    --warning-foreground: 45 50% 98%;
 
-    /* Borders — Sandstone */
-    --border: 34 18% 82%;
-    --input: 34 18% 82%;
-    --ring: 0 0% 12%;
+    /* Informational — no website equivalent; restrained desaturated
+       slate-blue, same low-saturation family as the real status colors
+       above, never a bright/neon blue. For "confirmed / in progress /
+       interested"-type states that are neutral-positive, not success or
+       a warning. */
+    --info: 212 13% 42%;
+    --info-foreground: 45 50% 98%;
 
-    /* Architectural radius — restrained, not bubbly */
+    /* Borders — the website's real hairline color */
+    --border: 37 18% 86%;
+    --input: 37 18% 86%;
+    --ring: 30 12% 10%;
+
+    /* Already near-architectural (4px) - matches the website's near-zero
+       radius language well; left as-is. */
     --radius: 0.25rem;
 
-    /* Sidebar — Lineage Black architectural shell */
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 38 14% 76%;
-    --sidebar-primary: 34 33% 58%;      /* Soft Brass */
-    --sidebar-primary-foreground: 0 0% 6%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 38 25% 94%;
-    --sidebar-border: 0 0% 14%;
-    --sidebar-ring: 34 33% 58%;
-    --sidebar-muted: 38 8% 52%;
-    --sidebar-section: 38 10% 58%;
+    /* Sidebar — kept as its existing dark architectural shell (not
+       flattened to the canvas), recolored to the website's own real dark
+       tone instead of an arbitrary near-black. */
+    --sidebar-background: 26 10% 14%;
+    --sidebar-foreground: 35 20% 88%;
+    --sidebar-primary: 54 28% 58%;      /* lighter olive - reads on a dark shell */
+    --sidebar-primary-foreground: 26 10% 14%;
+    --sidebar-accent: 26 8% 20%;
+    --sidebar-accent-foreground: 35 20% 88%;
+    --sidebar-border: 26 8% 22%;
+    --sidebar-ring: 54 28% 58%;
+    --sidebar-muted: 35 10% 55%;
+    --sidebar-section: 35 10% 58%;
 
-    /* Charts — cohesive coastal */
-    --chart-1: 0 0% 12%;                /* Lineage Black */
-    --chart-2: 199 30% 56%;             /* Harbor Blue, deepened */
-    --chart-3: 34 33% 50%;              /* Soft Brass */
-    --chart-4: 33 16% 48%;              /* Weathered Taupe */
-    --chart-5: 200 12% 62%;             /* Driftwood-cool */
+    /* Charts — editorial, cohesive with the website-derived palette */
+    --chart-1: 30 12% 20%;              /* Ink */
+    --chart-2: 199 30% 56%;             /* Harbor Blue (functional differentiator, not brand-derived) */
+    --chart-3: 54 20% 30%;              /* Olive */
+    --chart-4: 37 50% 48%;              /* website amber */
+    --chart-5: 200 12% 62%;             /* cool gray */
 
-    /* Premium effects — tight, restrained, editorial */
+    /* Shadow — the website has almost none; the heaviest shadow anywhere on
+       it (.btn-raised) is 0 2px 10px rgba(0,0,0,.07). */
     --shadow-soft:
-      0 1px 0 hsl(34 18% 82% / 0.7),
-      0 1px 2px hsl(0 0% 4% / 0.03);
+      0 1px 0 hsl(37 18% 86% / 0.7),
+      0 1px 2px hsl(30 12% 10% / 0.03);
     --shadow-elev:
-      0 1px 0 hsl(34 18% 82% / 0.7),
-      0 2px 4px hsl(0 0% 4% / 0.04),
-      0 12px 28px -16px hsl(0 0% 4% / 0.10);
+      0 1px 0 hsl(37 18% 86% / 0.7),
+      0 2px 4px hsl(30 12% 10% / 0.04),
+      0 12px 28px -16px hsl(30 12% 10% / 0.10);
 
   }
 }
 
 @layer base {
   .dark {
-    --background: 30 8% 7%;
-    --foreground: 38 20% 92%;
+    --background: 26 10% 7%;
+    --foreground: 45 20% 92%;
 
-    --card: 30 7% 10%;
-    --card-foreground: 38 20% 92%;
+    --card: 26 9% 10%;
+    --card-foreground: 45 20% 92%;
 
-    --popover: 30 7% 11%;
-    --popover-foreground: 38 20% 92%;
+    --popover: 26 9% 11%;
+    --popover-foreground: 45 20% 92%;
 
-    --primary: 38 22% 90%;
-    --primary-foreground: 0 0% 7%;
+    --primary: 54 28% 58%;
+    --primary-foreground: 26 10% 9%;
 
-    --secondary: 30 6% 17%;
-    --secondary-foreground: 38 20% 90%;
+    --secondary: 26 6% 17%;
+    --secondary-foreground: 45 20% 90%;
 
-    --muted: 30 6% 14%;
+    --muted: 26 6% 14%;
     --muted-foreground: 35 8% 64%;
 
-    --accent: 34 33% 58%;
-    --accent-foreground: 0 0% 8%;
+    --accent: 54 28% 58%;
+    --accent-foreground: 26 10% 8%;
 
-    --destructive: 0 55% 52%;
-    --destructive-foreground: 38 25% 96%;
+    --destructive: 9 55% 52%;
+    --destructive-foreground: 45 25% 96%;
 
-    --success: 152 40% 42%;
+    --success: 105 25% 48%;
     --success-foreground: 0 0% 98%;
 
-    --warning: 34 55% 55%;
-    --warning-foreground: 0 0% 8%;
+    --warning: 37 55% 55%;
+    --warning-foreground: 26 10% 8%;
 
-    --border: 30 6% 21%;
-    --input: 30 6% 21%;
-    --ring: 38 20% 80%;
+    --info: 212 19% 63%;
+    --info-foreground: 26 10% 9%;
 
-    --sidebar-background: 30 8% 4%;
-    --sidebar-foreground: 38 14% 76%;
-    --sidebar-primary: 34 33% 58%;
-    --sidebar-primary-foreground: 0 0% 6%;
-    --sidebar-accent: 30 6% 13%;
-    --sidebar-accent-foreground: 38 25% 94%;
-    --sidebar-border: 30 6% 15%;
-    --sidebar-ring: 34 33% 58%;
-    --sidebar-muted: 38 8% 56%;
-    --sidebar-section: 38 10% 58%;
+    --border: 26 6% 21%;
+    --input: 26 6% 21%;
+    --ring: 45 20% 80%;
 
-    --chart-1: 38 20% 88%;
+    --sidebar-background: 26 10% 4%;
+    --sidebar-foreground: 35 20% 76%;
+    --sidebar-primary: 54 28% 58%;
+    --sidebar-primary-foreground: 26 10% 6%;
+    --sidebar-accent: 26 6% 13%;
+    --sidebar-accent-foreground: 45 25% 94%;
+    --sidebar-border: 26 6% 15%;
+    --sidebar-ring: 54 28% 58%;
+    --sidebar-muted: 35 8% 56%;
+    --sidebar-section: 35 10% 58%;
+
+    --chart-1: 45 20% 88%;
     --chart-2: 199 40% 62%;
-    --chart-3: 34 45% 60%;
-    --chart-4: 33 20% 58%;
+    --chart-3: 54 35% 60%;
+    --chart-4: 37 45% 58%;
     --chart-5: 200 15% 65%;
 
     --shadow-soft:
-      0 1px 0 hsl(30 6% 20% / 0.7),
+      0 1px 0 hsl(26 6% 20% / 0.7),
       0 1px 2px hsl(0 0% 0% / 0.3);
     --shadow-elev:
-      0 1px 0 hsl(30 6% 20% / 0.7),
+      0 1px 0 hsl(26 6% 20% / 0.7),
       0 2px 4px hsl(0 0% 0% / 0.35),
       0 12px 28px -16px hsl(0 0% 0% / 0.6);
 

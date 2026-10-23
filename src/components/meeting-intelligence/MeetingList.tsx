@@ -14,9 +14,9 @@ const TYPE_LABELS: Record<MeetingType, string> = {
 };
 
 const STATUS_CONFIG: Record<MeetingStatus, { label: string; icon: typeof CheckCircle2; className: string }> = {
-  "completed": { label: "Completed", icon: CheckCircle2, className: "text-emerald-600 dark:text-emerald-400" },
-  "action-required": { label: "Action Required", icon: AlertCircle, className: "text-amber-600 dark:text-amber-400" },
-  "follow-up-pending": { label: "Follow-Up Pending", icon: Clock3, className: "text-blue-600 dark:text-blue-400" },
+  "completed": { label: "Completed", icon: CheckCircle2, className: "text-success" },
+  "action-required": { label: "Action Required", icon: AlertCircle, className: "text-warning" },
+  "follow-up-pending": { label: "Follow-Up Pending", icon: Clock3, className: "text-info" },
   "archived": { label: "Archived", icon: Archive, className: "text-muted-foreground" },
 };
 
@@ -48,7 +48,7 @@ function MeetingCard({ meeting, onClick }: { meeting: Meeting; onClick: () => vo
             <StatusIcon className="h-3.5 w-3.5" />{status.label}
           </span>
           {openItems > 0 && (
-            <span className="text-xs text-amber-600 dark:text-amber-400">{openItems} open item{openItems > 1 ? "s" : ""}</span>
+            <span className="text-xs text-warning">{openItems} open item{openItems > 1 ? "s" : ""}</span>
           )}
         </div>
       </div>
@@ -86,7 +86,7 @@ function MeetingCard({ meeting, onClick }: { meeting: Meeting; onClick: () => vo
         </div>
         <div className="flex items-center gap-4 shrink-0">
           {openItems > 0 && (
-            <span className="text-xs text-amber-600 dark:text-amber-400 whitespace-nowrap">{openItems} open action{openItems > 1 ? "s" : ""}</span>
+            <span className="text-xs text-warning whitespace-nowrap">{openItems} open action{openItems > 1 ? "s" : ""}</span>
           )}
           <span className={cn("flex items-center gap-1 text-xs whitespace-nowrap", status.className)}>
             <StatusIcon className="h-3.5 w-3.5" />{status.label}

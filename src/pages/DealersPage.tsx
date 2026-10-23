@@ -203,7 +203,7 @@ export default function DealersPage() {
           ["Ordering this year", stats.active.toLocaleString(), `${stats.avg > 0 ? formatCurrency(stats.avg) : "$0"} average each`],
           ["No revenue this year", stats.inactive.toLocaleString(), "Worth a call"],
         ] as const).map(([label, value, sub]) => (
-          <div key={label} className="rounded-xl border bg-card p-4 shadow-sm">
+          <div key={label} className="rounded-lg border bg-card p-4 shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
             <p className="font-serif text-3xl font-medium tracking-tight tabular-nums mt-1.5">{value}</p>
             <p className="text-xs text-muted-foreground mt-1">{sub}</p>

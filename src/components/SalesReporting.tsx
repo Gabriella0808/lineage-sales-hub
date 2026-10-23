@@ -2172,7 +2172,7 @@ function TotalTable({
                 <td className="px-4 py-3 text-sm truncate max-w-[140px]">{r.managerName ?? "—"}</td>
               )}
               {goalData && (
-                <td className={cn("px-4 py-3 text-right tabular-nums text-sm", goal?.mtdPct != null && goal.mtdPct >= 100 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+                <td className={cn("px-4 py-3 text-right tabular-nums text-sm", goal?.mtdPct != null && goal.mtdPct >= 100 ? "text-success" : "text-muted-foreground")}>
                   {goal ? (fmtGoalPct(goal.mtdPct) ?? "—") : "—"}
                 </td>
               )}
@@ -2204,12 +2204,12 @@ function TotalTable({
                 <td className="px-5 py-3 text-right tabular-nums text-muted-foreground">{formatCurrency(r.comparative)}</td>
               )}
               {showComparison && (
-                <td className={cn("px-5 py-3 text-right tabular-nums font-medium", delta >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+                <td className={cn("px-5 py-3 text-right tabular-nums font-medium", delta >= 0 ? "text-success" : "text-destructive")}>
                   {delta >= 0 ? "+" : ""}{formatCurrency(delta)}
                 </td>
               )}
               {showComparison && (
-                <td className={cn("px-5 py-3 text-right tabular-nums", pct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+                <td className={cn("px-5 py-3 text-right tabular-nums", pct >= 0 ? "text-success" : "text-destructive")}>
                   {r.comparative === 0 ? "—" : `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`}
                 </td>
               )}
@@ -2252,12 +2252,12 @@ function TotalTable({
               <td className="px-5 py-3 text-right tabular-nums font-semibold text-muted-foreground">{formatCurrency(totalC)}</td>
             )}
             {showComparison && (
-              <td className={cn("px-5 py-3 text-right tabular-nums font-semibold", totalP - totalC >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+              <td className={cn("px-5 py-3 text-right tabular-nums font-semibold", totalP - totalC >= 0 ? "text-success" : "text-destructive")}>
                 {totalP - totalC >= 0 ? "+" : ""}{formatCurrency(totalP - totalC)}
               </td>
             )}
             {showComparison && (
-              <td className={cn("px-5 py-3 text-right tabular-nums font-semibold", totalP - totalC >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+              <td className={cn("px-5 py-3 text-right tabular-nums font-semibold", totalP - totalC >= 0 ? "text-success" : "text-destructive")}>
                 {totalC === 0 ? "—" : `${((totalP - totalC) / totalC * 100) >= 0 ? "+" : ""}${((totalP - totalC) / totalC * 100).toFixed(1)}%`}
               </td>
             )}

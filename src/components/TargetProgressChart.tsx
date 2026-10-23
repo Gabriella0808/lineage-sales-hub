@@ -54,8 +54,8 @@ export function TargetProgressChart({ target, monthlyBookings, monthlyInvoiced, 
   const bar = (v: number) => (v >= 95 ? "bg-success" : v >= 75 ? "bg-warning" : "bg-destructive");
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="rounded-xl border">
-      <CollapsibleTrigger className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-muted/40 rounded-xl">
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-lg border">
+      <CollapsibleTrigger className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-muted/40 rounded-lg">
         <span className="text-sm font-semibold">Sales target progress</span>
         <span className="flex items-center gap-3 text-xs">
           <span>Invoiced <span className={cn("font-semibold tabular-nums", tone(inv))}>{Math.round(inv)}%</span></span>

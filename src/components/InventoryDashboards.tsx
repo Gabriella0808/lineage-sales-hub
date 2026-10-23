@@ -77,7 +77,7 @@ function KPI({ label, value, hint, icon: Icon, accent, onClick, active }: {
         <div className="font-serif text-4xl font-medium tracking-tight mt-2 tabular-nums">{value}</div>
         {hint && <div className={cn("text-xs mt-1.5", accent ?? "text-muted-foreground")}>{hint}</div>}
       </div>
-      <div className="h-10 w-10 shrink-0 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+      <div className="h-10 w-10 shrink-0 rounded-md bg-muted flex items-center justify-center text-muted-foreground">
         <Icon className="h-[18px] w-[18px]" />
       </div>
     </>
@@ -88,7 +88,7 @@ function KPI({ label, value, hint, icon: Icon, accent, onClick, active }: {
         type="button"
         onClick={onClick}
         className={cn(
-          "text-left rounded-xl border bg-card p-5 shadow-sm flex items-start justify-between gap-3 transition-all hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring",
+          "text-left rounded-lg border bg-card p-5 shadow-sm flex items-start justify-between gap-3 transition-all hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring",
           active ? "border-primary ring-2 ring-primary/30" : "border-border",
         )}
       >
@@ -96,7 +96,7 @@ function KPI({ label, value, hint, icon: Icon, accent, onClick, active }: {
       </button>
     );
   }
-  return <Card className="p-5 flex items-start justify-between gap-3 rounded-xl shadow-sm">{inner}</Card>;
+  return <Card className="p-5 flex items-start justify-between gap-3 rounded-lg shadow-sm">{inner}</Card>;
 }
 
 function EmptyState({ message }: { message: string }) {
@@ -1918,7 +1918,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
       )}
 
       <div className="grid gap-6 lg:grid-cols-[230px_1fr] items-start">
-      <nav aria-label="Inventory reports" className="lg:sticky lg:top-4 rounded-xl border bg-card p-2 space-y-4">
+      <nav aria-label="Inventory reports" className="lg:sticky lg:top-4 rounded-lg border bg-card p-2 space-y-4">
         {([
           ["Sales analysis", [["analysis:compare", "Sales Report"], ["analysis:sku", "SKU Table"], ["analysis:vendor", "Performance by Vendor"], ["analysis:slow", "Slow Movers"], ["analysis:ranking", "Ranking"]]],
           ["Monitor", [["stockouts", "Stockouts / Lost Sales"], ["summary", "Summary"], ["reorder", "Reorder"]]],

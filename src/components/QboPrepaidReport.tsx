@@ -75,19 +75,19 @@ export function QboPrepaidReport({ canSeeLedger }: { canSeeLedger: boolean }) {
       {syncMsg && <p className="text-xs text-muted-foreground">{syncMsg}</p>}
 
       {!canSeeLedger && (
-        <p className="text-sm text-muted-foreground rounded-xl border border-dashed p-6 text-center">The prepaid ledger is available to admins and managers. The balance above comes from QuickBooks.</p>
+        <p className="text-sm text-muted-foreground rounded-lg border border-dashed p-6 text-center">The prepaid ledger is available to admins and managers. The balance above comes from QuickBooks.</p>
       )}
 
       {canSeeLedger && (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border p-4"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Balance in QuickBooks</p><p className="font-serif text-3xl font-medium tabular-nums mt-1">{summary ? money(summary.current_balance) : "..."}</p><p className="text-xs text-muted-foreground mt-1">{summary?.qbo_account_name ?? "Vendor Prepayments"}</p></div>
-            <div className="rounded-xl border p-4"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Transactions</p><p className="font-serif text-3xl font-medium tabular-nums mt-1">{lines.length.toLocaleString()}</p><p className="text-xs text-muted-foreground mt-1">{lines.length ? `${format(parseISO(lines[lines.length - 1].transaction_date), "MMM d, yyyy")} to ${format(parseISO(lines[0].transaction_date), "MMM d, yyyy")}` : " "}</p></div>
-            <div className="rounded-xl border p-4"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Shown below</p><p className="font-serif text-3xl font-medium tabular-nums mt-1">{money(filteredTotal)}</p><p className="text-xs text-muted-foreground mt-1">{filtered.length.toLocaleString()} transactions match</p></div>
+            <div className="rounded-lg border p-4"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Balance in QuickBooks</p><p className="font-serif text-3xl font-medium tabular-nums mt-1">{summary ? money(summary.current_balance) : "..."}</p><p className="text-xs text-muted-foreground mt-1">{summary?.qbo_account_name ?? "Vendor Prepayments"}</p></div>
+            <div className="rounded-lg border p-4"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Transactions</p><p className="font-serif text-3xl font-medium tabular-nums mt-1">{lines.length.toLocaleString()}</p><p className="text-xs text-muted-foreground mt-1">{lines.length ? `${format(parseISO(lines[lines.length - 1].transaction_date), "MMM d, yyyy")} to ${format(parseISO(lines[0].transaction_date), "MMM d, yyyy")}` : " "}</p></div>
+            <div className="rounded-lg border p-4"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Shown below</p><p className="font-serif text-3xl font-medium tabular-nums mt-1">{money(filteredTotal)}</p><p className="text-xs text-muted-foreground mt-1">{filtered.length.toLocaleString()} transactions match</p></div>
           </div>
 
           {monthly.length > 1 && (
-            <div className="rounded-xl border p-4">
+            <div className="rounded-lg border p-4">
               <p className="text-sm font-semibold mb-2">Balance at each month end</p>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -112,7 +112,7 @@ export function QboPrepaidReport({ canSeeLedger }: { canSeeLedger: boolean }) {
           </div>
 
           {isLoading ? <p className="text-sm text-muted-foreground">Loading ledger...</p> : (
-            <div className="overflow-x-auto rounded-xl border">
+            <div className="overflow-x-auto rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>

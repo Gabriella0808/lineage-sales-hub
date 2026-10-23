@@ -24,9 +24,9 @@ export function IntegrationStatusCard({ status }: Props) {
   return (
     <Card className="p-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3">
-        <div className={`h-8 w-8 rounded-md flex items-center justify-center ${status.connected ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-muted"}`}>
+        <div className={`h-8 w-8 rounded-md flex items-center justify-center ${status.connected ? "bg-success/10" : "bg-muted"}`}>
           {status.connected
-            ? <Wifi className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            ? <Wifi className="h-4 w-4 text-success" />
             : <WifiOff className="h-4 w-4 text-muted-foreground" />}
         </div>
         <div>

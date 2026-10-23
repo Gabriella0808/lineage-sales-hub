@@ -139,9 +139,9 @@ const STATUS_LABELS: Record<Status, string> = {
 
 const STATUS_COLORS: Record<Status, string> = {
   todo: "bg-muted text-muted-foreground",
-  in_progress: "bg-amber-500/15 text-amber-700 dark:text-amber-400",
+  in_progress: "bg-info/15 text-info",
   blocked: "bg-destructive/15 text-destructive",
-  done: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+  done: "bg-success/15 text-success",
 };
 
 function formatDueDate(due_date: string): string {
@@ -212,7 +212,7 @@ function TaskRow({ task, assigneeNames, commentCount, groupName, onToggle, onSta
             className={cn(
               "text-xs whitespace-nowrap flex items-center gap-0.5 tabular-nums",
               bucket === "overdue" && "text-destructive font-semibold",
-              bucket === "today" && "text-amber-600 dark:text-amber-400 font-semibold",
+              bucket === "today" && "text-warning font-semibold",
               (bucket === "upcoming" || bucket === "none") && "text-muted-foreground",
               task.status === "done" && "text-muted-foreground/50",
             )}
@@ -247,9 +247,9 @@ function TaskRow({ task, assigneeNames, commentCount, groupName, onToggle, onSta
             >
               <span className={cn("h-2 w-2 rounded-full", {
                 "bg-muted-foreground": value === "todo",
-                "bg-amber-500": value === "in_progress",
+                "bg-info": value === "in_progress",
                 "bg-destructive": value === "blocked",
-                "bg-emerald-500": value === "done",
+                "bg-success": value === "done",
               })} />
               {label}
               {task.status === value && <Check className="h-3 w-3 ml-auto" />}
@@ -676,7 +676,7 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
               )}
               {overdueCount > 0 && todayCount > 0 && <span className="mx-1">·</span>}
               {todayCount > 0 && (
-                <span className="text-amber-600 dark:text-amber-400 font-medium">{todayCount} due today</span>
+                <span className="text-warning font-medium">{todayCount} due today</span>
               )}
             </p>
           )}
@@ -944,7 +944,7 @@ export default function TodosView({ onSwitchToBoards }: TodosViewProps) {
                         className={cn(
                           "flex items-center gap-1 text-xs",
                           bucket === "overdue" && "text-destructive font-semibold",
-                          bucket === "today" && "text-amber-600 dark:text-amber-400 font-semibold",
+                          bucket === "today" && "text-warning font-semibold",
                           (bucket === "upcoming" || bucket === "none") && "text-muted-foreground",
                         )}
                       >

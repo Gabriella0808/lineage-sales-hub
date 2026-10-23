@@ -184,11 +184,11 @@ export default function CrmAccountsAnalyticsPage() {
                       <td className="px-4 py-3 font-medium text-foreground">{r.name}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{r.total}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
-                        <span className="text-emerald-600 font-medium">{r.closedWon}</span>
+                        <span className="text-success font-medium">{r.closedWon}</span>
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{r.prospects}</td>
                       <td className="px-4 py-3 text-right tabular-nums">
-                        <Badge variant="outline" className={`text-[10px] ${winRate >= 30 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-muted text-muted-foreground"}`}>
+                        <Badge variant="outline" className={`text-[10px] ${winRate >= 30 ? "bg-success/10 text-success border-success/20" : "bg-muted text-muted-foreground"}`}>
                           {winRate}%
                         </Badge>
                       </td>

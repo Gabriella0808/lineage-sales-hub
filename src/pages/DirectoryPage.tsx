@@ -76,7 +76,7 @@ export default function DirectoryPage() {
       <div className="animate-fade-in space-y-4">
         <Skeleton className="h-10 w-48" />
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-lg" />)}
         </div>
       </div>
     );

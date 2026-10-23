@@ -16,9 +16,9 @@ import { updateActionItemStatus } from "@/services/granolaService";
 import { AddToTasksDialog, TaskAddedBanner } from "./AddToTasksDialog";
 
 const OUTCOME_CONFIG: Record<ProductOutcome, { label: string; className: string }> = {
-  ordered: { label: "Ordered", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  interested: { label: "Interested", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  "follow-up": { label: "Follow-Up", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+  ordered: { label: "Ordered", className: "bg-success/10 text-success" },
+  interested: { label: "Interested", className: "bg-info/10 text-info" },
+  "follow-up": { label: "Follow-Up", className: "bg-warning/10 text-warning" },
   declined: { label: "Declined", className: "bg-muted text-muted-foreground" },
 };
 
@@ -52,9 +52,9 @@ function ActionItemRow({ item, onStatusChange, linkedTaskId, onAddToTasks }: Act
         {toggling
           ? <Loader2 className="h-4 w-4 animate-spin" />
           : item.status === "done"
-            ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            ? <CheckCircle2 className="h-4 w-4 text-success" />
             : item.status === "in-progress"
-              ? <Clock3 className="h-4 w-4 text-blue-500" />
+              ? <Clock3 className="h-4 w-4 text-info" />
               : <Circle className="h-4 w-4" />}
       </button>
       <div className="flex-1 min-w-0">
@@ -181,7 +181,7 @@ export function MeetingDetailSheet({ meeting, open, onClose }: Props) {
                         <AlertCircle className="h-3 w-3" /> Action Items
                       </h3>
                       {openItemCount > 0 && (
-                        <span className="text-xs text-amber-600 dark:text-amber-400">{openItemCount} open</span>
+                        <span className="text-xs text-warning">{openItemCount} open</span>
                       )}
                     </div>
                     <div className="divide-y divide-border/40">

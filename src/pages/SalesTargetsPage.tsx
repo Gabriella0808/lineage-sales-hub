@@ -259,7 +259,7 @@ export default function SalesTargetsPage() {
                     <tr key={rep.id} className="border-t border-border/40 hover:bg-muted/20">
                       <td className="px-3 py-2 sticky left-0 bg-background z-10 font-medium shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
                         {rep.name}
-                        {dirty && <span className="ml-2 text-[10px] text-amber-600">unsaved</span>}
+                        {dirty && <span className="ml-2 text-[10px] text-warning">unsaved</span>}
                       </td>
                       {TARGET_MONTHS.map(m => {
                         const val = getValue(rep.id, m as keyof RepTarget);
@@ -283,7 +283,7 @@ export default function SalesTargetsPage() {
                       })}
                       <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatCurrency(annual)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatCurrency(actual)}</td>
-                      <td className={`px-3 py-2 text-right font-semibold tabular-nums ${pct >= 100 ? "text-success" : pct >= 75 ? "text-accent" : pct >= 50 ? "text-amber-600" : "text-destructive"}`}>
+                      <td className={`px-3 py-2 text-right font-semibold tabular-nums ${pct >= 100 ? "text-success" : pct >= 75 ? "text-accent" : pct >= 50 ? "text-warning" : "text-destructive"}`}>
                         {annual > 0 ? `${pct}%` : "-"}
                       </td>
                       {canEdit && (

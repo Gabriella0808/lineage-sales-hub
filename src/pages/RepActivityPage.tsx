@@ -135,7 +135,7 @@ export default function RepActivityPage() {
             key={k}
             type="button"
             onClick={() => setBucketFilter(bucketFilter === k ? "all" : k)}
-            className={cn("rounded-xl border bg-card p-4 text-left shadow-sm transition-all hover:shadow-md", bucketFilter === k && "ring-2 ring-primary")}
+            className={cn("rounded-lg border bg-card p-4 text-left shadow-sm transition-all hover:shadow-md", bucketFilter === k && "ring-2 ring-primary")}
           >
             <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               <span className={cn("h-2 w-2 rounded-full", BUCKETS[k].dot)} />{BUCKETS[k].label}
@@ -176,7 +176,7 @@ export default function RepActivityPage() {
         </span>
       </div>
 
-      <div className="rounded-xl border bg-card overflow-x-auto">
+      <div className="rounded-lg border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>

@@ -2,8 +2,9 @@ import { useMemo, useRef, useState } from "react";
 import {
   Folder, FolderPlus, Upload, Search, Grid3x3, List, MoreVertical,
   Download, Pencil, FolderInput, Trash2, ChevronRight, Home, Loader2, X,
-  Star, Clock, ChevronLeft, ChevronDown, FileUp, FolderUp,
+  Star, Clock, ChevronLeft, ChevronDown, FileUp, FolderUp, ArrowUpDown,
 } from "lucide-react";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { isDigitalAssetsManager } from "@/hooks/useUserRole";
@@ -24,6 +25,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
@@ -78,6 +82,7 @@ function useSignedUrl(path: string | null) {
 }
 
 type ViewMode = "grid" | "list";
+type SortBy = "modified" | "name-asc" | "name-desc" | "size-desc" | "size-asc";
 type UploadState = { file: File; loaded: number; total: number; error?: string };
 type DragItem = { kind: "folder" | "asset"; id: string; name: string };
 type GridItem = { kind: "folder"; data: DigitalFolder } | { kind: "asset"; data: DigitalAsset };
@@ -87,6 +92,10 @@ type GridItem = { kind: "folder"; data: DigitalFolder } | { kind: "asset"; data:
 // has no custom data types, only Files) - the outer drop zone uses this to
 // tell "move something that's already here" apart from "upload a new file".
 const DRAG_MIME = "application/x-digital-asset";
+
+function itemSize(item: GridItem): number {
+  return item.kind === "asset" ? (item.data.size_bytes ?? 0) : 0;
+}
 
 export default function DigitalAssetsPage() {
   const { user } = useAuth();
@@ -117,7 +126,11 @@ export default function DigitalAssetsPage() {
   }
 
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  // Detailed list is the default view - a user can tell files with similar
+  // names apart by their columns without opening each one; grid stays
+  // available for a more visual browse.
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [sortBy, setSortBy] = useState<SortBy>("modified");
   const [search, setSearch] = useState("");
   const [quickFilter, setQuickFilter] = useState<"all" | "recents" | "starred">("all");
   const [dragActive, setDragActive] = useState(false);
@@ -176,14 +189,29 @@ export default function DigitalAssetsPage() {
     return m;
   }, [folders, assets]);
 
-  // Folders and files merged into one list, newest-modified first, grouped
-  // under date headers - matches Dropbox's "Modified ↓ / Today / Older" grid.
-  const groupedItems = useMemo(() => {
+  // Folders and files merged into one list, ordered per sortBy. "Modified"
+  // (the default) additionally groups under date headers, matching
+  // Dropbox's "Modified ↓ / Today / Older" pattern; any other sort shows a
+  // single flat, explicitly-ordered list instead (grouping by date wouldn't
+  // make sense once the order isn't by date).
+  const sortedItems = useMemo(() => {
     const merged: GridItem[] = [
       ...visibleFolders.map((data): GridItem => ({ kind: "folder", data })),
       ...visibleAssets.map((data): GridItem => ({ kind: "asset", data })),
-    ].sort((a, b) => new Date(b.data.updated_at).getTime() - new Date(a.data.updated_at).getTime());
+    ];
+    switch (sortBy) {
+      case "name-asc": return merged.sort((a, b) => a.data.name.localeCompare(b.data.name));
+      case "name-desc": return merged.sort((a, b) => b.data.name.localeCompare(a.data.name));
+      case "size-desc": return merged.sort((a, b) => itemSize(b) - itemSize(a));
+      case "size-asc": return merged.sort((a, b) => itemSize(a) - itemSize(b));
+      case "modified":
+      default:
+        return merged.sort((a, b) => new Date(b.data.updated_at).getTime() - new Date(a.data.updated_at).getTime());
+    }
+  }, [visibleFolders, visibleAssets, sortBy]);
 
+  const groupedItems = useMemo(() => {
+    if (sortBy !== "modified") return [{ label: null as string | null, items: sortedItems }];
     const now = Date.now();
     const DAY = 86_400_000;
     const bucketOf = (iso: string): string => {
@@ -195,15 +223,15 @@ export default function DigitalAssetsPage() {
       return "Older";
     };
     const groups = new Map<string, GridItem[]>();
-    for (const item of merged) {
+    for (const item of sortedItems) {
       const key = bucketOf(item.data.updated_at);
       const arr = groups.get(key) ?? [];
       arr.push(item);
       groups.set(key, arr);
     }
     const order = ["Today", "Yesterday", "This week", "This month", "Older"];
-    return order.filter((k) => groups.has(k)).map((k) => ({ label: k, items: groups.get(k)! }));
-  }, [visibleFolders, visibleAssets]);
+    return order.filter((k) => groups.has(k)).map((k) => ({ label: k as string | null, items: groups.get(k)! }));
+  }, [sortedItems, sortBy]);
 
   // "Suggested for you" - the most recently touched items across the whole
   // library (not just the current folder), same idea as Dropbox's own
@@ -478,7 +506,7 @@ export default function DigitalAssetsPage() {
       {suggestedItems.length > 0 && (
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold">Suggested for you</span>
+            <span className="text-sm font-medium text-foreground">Suggested for you</span>
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => suggestedScrollRef.current?.scrollBy({ left: -280, behavior: "smooth" })}>
                 <ChevronLeft className="h-4 w-4" />
@@ -488,17 +516,17 @@ export default function DigitalAssetsPage() {
               </Button>
             </div>
           </div>
-          <div ref={suggestedScrollRef} className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth">
+          <div ref={suggestedScrollRef} className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth">
             {suggestedItems.map((item) => (
               <button
                 key={`${item.kind}-${item.data.id}`}
                 type="button"
                 onClick={() => item.kind === "folder" ? (setCurrentFolderId(item.data.id), setQuickFilter("all")) : setPreviewAsset(item.data)}
-                className="flex items-center gap-2.5 w-64 shrink-0 rounded-lg border bg-card hover:bg-muted/50 transition-colors p-2.5 text-left"
+                className="flex items-start gap-2.5 w-64 shrink-0 border border-border bg-card hover:border-foreground/30 transition-colors p-2.5 text-left"
               >
                 <SuggestedThumb item={item} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{item.data.name}</p>
+                  <p className="text-sm leading-snug line-clamp-2" title={item.data.name}>{item.data.name}</p>
                   <p className="text-xs text-muted-foreground truncate">
                     {item.kind === "folder" ? "Folder" : fileCategory(item.data.content_type).label}
                     {item.kind === "folder" && item.data.parent_folder_id && foldersById.get(item.data.parent_folder_id)
@@ -511,20 +539,19 @@ export default function DigitalAssetsPage() {
         </div>
       )}
 
-      {/* Toolbar - quick filters, search, and view toggle grouped into one
-          bordered strip (previously two loose, unbordered rows) so the
-          page reads as "controls" vs. "content" at a glance. Same state/
-          handlers as before, layout/wrapper only. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+      {/* Toolbar - quick filters, search, sort, and view toggle grouped into
+          one bordered strip so the page reads as "controls" vs. "content"
+          at a glance. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-card px-3 py-2">
+        <div className="flex flex-wrap items-center gap-1">
           <Button
-            variant={quickFilter === "recents" ? "secondary" : "ghost"} size="sm" className="rounded-full h-8"
+            variant={quickFilter === "recents" ? "secondary" : "ghost"} size="sm" className="h-8"
             onClick={() => setQuickFilter((f) => (f === "recents" ? "all" : "recents"))}
           >
             <Clock className="h-3.5 w-3.5 mr-1.5" /> Recents
           </Button>
           <Button
-            variant={quickFilter === "starred" ? "secondary" : "ghost"} size="sm" className="rounded-full h-8"
+            variant={quickFilter === "starred" ? "secondary" : "ghost"} size="sm" className="h-8"
             onClick={() => setQuickFilter((f) => (f === "starred" ? "all" : "starred"))}
           >
             <Star className="h-3.5 w-3.5 mr-1.5" /> Starred
@@ -540,12 +567,25 @@ export default function DigitalAssetsPage() {
               className="h-8 w-[220px] pl-8 text-xs bg-background"
             />
           </div>
-          <div className="flex items-center rounded-md border p-0.5">
-            <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewMode("grid")}>
-              <Grid3x3 className="h-3.5 w-3.5" />
-            </Button>
-            <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewMode("list")}>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+            <SelectTrigger className="h-8 w-auto gap-1.5 text-xs px-2.5">
+              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="modified">Modified</SelectItem>
+              <SelectItem value="name-asc">Name A–Z</SelectItem>
+              <SelectItem value="name-desc">Name Z–A</SelectItem>
+              <SelectItem value="size-desc">Size: largest</SelectItem>
+              <SelectItem value="size-asc">Size: smallest</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-center border border-border">
+            <Button variant={viewMode === "list" ? "secondary" : "ghost"} size="icon" className="h-8 w-8 rounded-none" onClick={() => setViewMode("list")} aria-label="List view">
               <List className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant={viewMode === "grid" ? "secondary" : "ghost"} size="icon" className="h-8 w-8 rounded-none" onClick={() => setViewMode("grid")} aria-label="Grid view">
+              <Grid3x3 className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
@@ -564,7 +604,7 @@ export default function DigitalAssetsPage() {
                     onDragOver={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId("root"); } }}
                     onDragLeave={() => setDragOverFolderId(null)}
                     onDrop={(e) => handleDropOnFolder(e, null)}
-                    className={cn("flex items-center gap-1 rounded px-1 -mx-1", dragOverFolderId === "root" && "bg-primary/10 ring-1 ring-primary")}
+                    className={cn("flex items-center gap-1 px-1 -mx-1", dragOverFolderId === "root" && "bg-primary/10 ring-1 ring-primary")}
                   >
                     <Home className="h-3.5 w-3.5" /> All files
                   </button>
@@ -584,7 +624,7 @@ export default function DigitalAssetsPage() {
                         onDragOver={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId(f.id); } }}
                         onDragLeave={() => setDragOverFolderId(null)}
                         onDrop={(e) => handleDropOnFolder(e, f.id)}
-                        className={cn("rounded px-1 -mx-1", dragOverFolderId === f.id && "bg-primary/10 ring-1 ring-primary")}
+                        className={cn("px-1 -mx-1", dragOverFolderId === f.id && "bg-primary/10 ring-1 ring-primary")}
                       >
                         {f.name}
                       </button>
@@ -606,7 +646,7 @@ export default function DigitalAssetsPage() {
                 <span className="text-destructive">{u.error}</span>
               ) : (
                 <>
-                  <div className="h-1.5 w-32 rounded-full bg-muted overflow-hidden">
+                  <div className="h-1.5 w-32 bg-muted overflow-hidden">
                     <div className="h-full bg-primary transition-all" style={{ width: `${u.total ? (u.loaded / u.total) * 100 : 0}%` }} />
                   </div>
                   <span className="text-muted-foreground w-10 text-right">{u.total ? Math.round((u.loaded / u.total) * 100) : 0}%</span>
@@ -637,12 +677,18 @@ export default function DigitalAssetsPage() {
           if (e.dataTransfer.types.includes(DRAG_MIME)) return; // handled by whatever folder tile it landed on, if any
           if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
         }}
-        className={cn("rounded-xl transition-colors", dragActive && "ring-2 ring-primary ring-offset-2 bg-primary/5")}
+        className={cn("transition-colors", dragActive && "ring-2 ring-primary ring-offset-2 bg-primary/5")}
       >
         {isLoading ? (
-          <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
-          </div>
+          viewMode === "grid" ? (
+            <div className="grid sm:grid-cols-4 lg:grid-cols-6 gap-3">
+              {Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
+            </div>
+          )
         ) : visibleFolders.length === 0 && visibleAssets.length === 0 ? (
           <Card className="p-16 text-center text-muted-foreground">
             {q ? "No files or folders match your search." : canManage
@@ -650,70 +696,89 @@ export default function DigitalAssetsPage() {
               : "This folder is empty."}
           </Card>
         ) : (
-          <div className="space-y-6">
-            {groupedItems.map(({ label, items }) => (
-              <div key={label} className="space-y-2.5">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                  {label === groupedItems[0].label && <span>Modified</span>}
-                  <span>{label}</span>
-                </div>
-                {viewMode === "grid" ? (
-                  <div className="grid sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {items.map((item) => item.kind === "folder" ? (
-                      <FolderTile
-                        key={item.data.id} folder={item.data} canManage={canManage} itemCount={childCounts.get(item.data.id) ?? 0} starred={isStarred("folder", item.data.id)} onToggleStar={() => handleToggleStar("folder", item.data.id)}
-                        onOpen={() => { setCurrentFolderId(item.data.id); setSearch(""); setQuickFilter("all"); }}
-                        onRename={() => { setRenameFolderTarget(item.data); setRenameValue(item.data.name); }}
-                        onMove={() => setMoveFolderTarget(item.data)}
-                        onDelete={() => setDeleteFolderTarget(item.data)}
-                        onDragStart={(e) => handleDragStart(e, { kind: "folder", id: item.data.id, name: item.data.name })}
-                        onDragOverTarget={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId(item.data.id); } }}
-                        onDragLeaveTarget={() => setDragOverFolderId(null)}
-                        onDropTarget={(e) => handleDropOnFolder(e, item.data.id)}
-                        isDragOver={dragOverFolderId === item.data.id}
-                      />
-                    ) : (
-                      <AssetTile
-                        key={item.data.id} asset={item.data} canManage={canManage} starred={isStarred("asset", item.data.id)} onToggleStar={() => handleToggleStar("asset", item.data.id)}
-                        onOpen={() => setPreviewAsset(item.data)}
-                        onDownload={() => handleDownload(item.data)}
-                        onRename={() => { setRenameAssetTarget(item.data); setRenameValue(item.data.name); }}
-                        onMove={() => setMoveAssetTarget(item.data)}
-                        onDelete={() => setDeleteAssetTarget(item.data)}
-                        onDragStart={(e) => handleDragStart(e, { kind: "asset", id: item.data.id, name: item.data.name })}
-                      />
-                    ))}
+          <div data-testid="asset-list">
+            {viewMode === "grid" ? (
+              <div className="space-y-6">
+                {groupedItems.map(({ label, items }) => (
+                  <div key={label ?? "flat"} className="space-y-2">
+                    {label && (
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        <span>{label}</span>
+                      </div>
+                    )}
+                    <div className="grid sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {items.map((item) => item.kind === "folder" ? (
+                        <FolderTile
+                          key={item.data.id} folder={item.data} canManage={canManage} itemCount={childCounts.get(item.data.id) ?? 0} starred={isStarred("folder", item.data.id)} onToggleStar={() => handleToggleStar("folder", item.data.id)}
+                          onOpen={() => { setCurrentFolderId(item.data.id); setSearch(""); setQuickFilter("all"); }}
+                          onRename={() => { setRenameFolderTarget(item.data); setRenameValue(item.data.name); }}
+                          onMove={() => setMoveFolderTarget(item.data)}
+                          onDelete={() => setDeleteFolderTarget(item.data)}
+                          onDragStart={(e) => handleDragStart(e, { kind: "folder", id: item.data.id, name: item.data.name })}
+                          onDragOverTarget={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId(item.data.id); } }}
+                          onDragLeaveTarget={() => setDragOverFolderId(null)}
+                          onDropTarget={(e) => handleDropOnFolder(e, item.data.id)}
+                          isDragOver={dragOverFolderId === item.data.id}
+                        />
+                      ) : (
+                        <AssetTile
+                          key={item.data.id} asset={item.data} canManage={canManage} starred={isStarred("asset", item.data.id)} onToggleStar={() => handleToggleStar("asset", item.data.id)}
+                          onOpen={() => setPreviewAsset(item.data)}
+                          onDownload={() => handleDownload(item.data)}
+                          onRename={() => { setRenameAssetTarget(item.data); setRenameValue(item.data.name); }}
+                          onMove={() => setMoveAssetTarget(item.data)}
+                          onDelete={() => setDeleteAssetTarget(item.data)}
+                          onDragStart={(e) => handleDragStart(e, { kind: "asset", id: item.data.id, name: item.data.name })}
+                        />
+                      ))}
+                    </div>
                   </div>
-                ) : (
-                  <Card className="divide-y">
-                    {items.map((item) => item.kind === "folder" ? (
-                      <FolderRow
-                        key={item.data.id} folder={item.data} canManage={canManage} itemCount={childCounts.get(item.data.id) ?? 0} starred={isStarred("folder", item.data.id)} onToggleStar={() => handleToggleStar("folder", item.data.id)}
-                        onOpen={() => { setCurrentFolderId(item.data.id); setSearch(""); setQuickFilter("all"); }}
-                        onRename={() => { setRenameFolderTarget(item.data); setRenameValue(item.data.name); }}
-                        onMove={() => setMoveFolderTarget(item.data)}
-                        onDelete={() => setDeleteFolderTarget(item.data)}
-                        onDragStart={(e) => handleDragStart(e, { kind: "folder", id: item.data.id, name: item.data.name })}
-                        onDragOverTarget={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId(item.data.id); } }}
-                        onDragLeaveTarget={() => setDragOverFolderId(null)}
-                        onDropTarget={(e) => handleDropOnFolder(e, item.data.id)}
-                        isDragOver={dragOverFolderId === item.data.id}
-                      />
-                    ) : (
-                      <AssetRow
-                        key={item.data.id} asset={item.data} canManage={canManage} starred={isStarred("asset", item.data.id)} onToggleStar={() => handleToggleStar("asset", item.data.id)}
-                        onOpen={() => setPreviewAsset(item.data)}
-                        onDownload={() => handleDownload(item.data)}
-                        onRename={() => { setRenameAssetTarget(item.data); setRenameValue(item.data.name); }}
-                        onMove={() => setMoveAssetTarget(item.data)}
-                        onDelete={() => setDeleteAssetTarget(item.data)}
-                        onDragStart={(e) => handleDragStart(e, { kind: "asset", id: item.data.id, name: item.data.name })}
-                      />
-                    ))}
-                  </Card>
-                )}
+                ))}
               </div>
-            ))}
+            ) : (
+              // One shared header + one bordered Card for the whole list -
+              // the "Today"/"Yesterday" date labels are lightweight dividers
+              // inside it, not a reason to repeat the Name/Type/Size/
+              // Modified header for every bucket.
+              <Card className="overflow-hidden">
+                <ListHeaderRow />
+                {groupedItems.map(({ label, items }) => (
+                  <div key={label ?? "flat"}>
+                    {label && (
+                      <div className="flex items-center gap-1.5 px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">
+                        <span>{label}</span>
+                      </div>
+                    )}
+                    <div className="divide-y divide-border">
+                      {items.map((item) => item.kind === "folder" ? (
+                        <FolderRow
+                          key={item.data.id} folder={item.data} canManage={canManage} itemCount={childCounts.get(item.data.id) ?? 0} starred={isStarred("folder", item.data.id)} onToggleStar={() => handleToggleStar("folder", item.data.id)}
+                          onOpen={() => { setCurrentFolderId(item.data.id); setSearch(""); setQuickFilter("all"); }}
+                          onRename={() => { setRenameFolderTarget(item.data); setRenameValue(item.data.name); }}
+                          onMove={() => setMoveFolderTarget(item.data)}
+                          onDelete={() => setDeleteFolderTarget(item.data)}
+                          onDragStart={(e) => handleDragStart(e, { kind: "folder", id: item.data.id, name: item.data.name })}
+                          onDragOverTarget={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId(item.data.id); } }}
+                          onDragLeaveTarget={() => setDragOverFolderId(null)}
+                          onDropTarget={(e) => handleDropOnFolder(e, item.data.id)}
+                          isDragOver={dragOverFolderId === item.data.id}
+                        />
+                      ) : (
+                        <AssetRow
+                          key={item.data.id} asset={item.data} canManage={canManage} starred={isStarred("asset", item.data.id)} onToggleStar={() => handleToggleStar("asset", item.data.id)}
+                          onOpen={() => setPreviewAsset(item.data)}
+                          onDownload={() => handleDownload(item.data)}
+                          onRename={() => { setRenameAssetTarget(item.data); setRenameValue(item.data.name); }}
+                          onMove={() => setMoveAssetTarget(item.data)}
+                          onDelete={() => setDeleteAssetTarget(item.data)}
+                          onDragStart={(e) => handleDragStart(e, { kind: "asset", id: item.data.id, name: item.data.name })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </Card>
+            )}
           </div>
         )}
       </div>
@@ -758,7 +823,7 @@ export default function DigitalAssetsPage() {
             <DialogTitle>Move "{moveFolderTarget?.name ?? moveAssetTarget?.name}"</DialogTitle>
             <DialogDescription>Choose a destination folder.</DialogDescription>
           </DialogHeader>
-          <div className="max-h-72 overflow-y-auto border rounded-md divide-y">
+          <div className="max-h-72 overflow-y-auto border border-border divide-y divide-border">
             <MoveDestinationRow label="All files (root)" depth={0} onClick={() => handleMoveTo(null)} />
             {folders
               .filter((f) => !moveFolderTarget || (f.id !== moveFolderTarget.id && !descendantIds(moveFolderTarget.id).has(f.id)))
@@ -825,26 +890,52 @@ export default function DigitalAssetsPage() {
   );
 }
 
+// Grid-template shared by the list header and every list row, so columns
+// always line up: generous Name column first (the brief's core requirement
+// - distinguishing similar filenames without opening each one), then Type/
+// Size/Modified, then a fixed-width Actions column. A real Tailwind class
+// (not an inline style) so it can vary by breakpoint - below sm, Type/Size/
+// Modified are display:none (via the "hidden sm:block" on each cell), and
+// without a matching 2-column template here too, CSS Grid's auto-placement
+// drops the still-visible Name/Actions cells into the *first two* explicit
+// tracks (a 96px one meant for Type) instead of their intended tracks -
+// verified on a real phone-width screenshot, where Name silently vanished.
+const LIST_ROW_GRID = "grid-cols-[minmax(0,1fr)_28px] sm:grid-cols-[minmax(0,1fr)_96px_88px_112px_32px]";
+
+function ListHeaderRow() {
+  return (
+    <div
+      className={cn("hidden sm:grid items-center gap-3 px-4 py-2 border-b border-border text-[11px] font-medium uppercase tracking-wide text-muted-foreground", LIST_ROW_GRID)}
+    >
+      <span>Name</span>
+      <span>Type</span>
+      <span className="text-right">Size</span>
+      <span>Modified</span>
+      <span />
+    </div>
+  );
+}
+
 function SuggestedThumb({ item }: { item: GridItem }) {
   if (item.kind === "folder") {
     return (
-      <div className="h-10 w-10 shrink-0 rounded-md flex items-center justify-center bg-blue-500/10 dark:bg-blue-500/15">
-        <Folder className="h-5 w-5 text-blue-500 dark:text-blue-400 fill-blue-500/20 dark:fill-blue-400/20" />
+      <div className="h-9 w-9 shrink-0 border border-border flex items-center justify-center bg-muted/40">
+        <Folder className="h-4 w-4 text-muted-foreground" />
       </div>
     );
   }
-  const { icon: Icon, className } = fileCategory(item.data.content_type);
+  const { icon: Icon } = fileCategory(item.data.content_type);
   const thumbUrl = useSignedUrl(isImage(item.data.content_type) ? item.data.file_path : null).data;
   return (
-    <div className={cn("h-10 w-10 shrink-0 rounded-md flex items-center justify-center overflow-hidden", !thumbUrl && className)}>
-      {thumbUrl ? <img src={thumbUrl} alt={item.data.name} className="h-full w-full object-cover" /> : <Icon className="h-5 w-5" />}
+    <div className="h-9 w-9 shrink-0 border border-border flex items-center justify-center overflow-hidden bg-muted/40">
+      {thumbUrl ? <img src={thumbUrl} alt={item.data.name} className="h-full w-full object-cover" /> : <Icon className="h-4 w-4 text-muted-foreground" />}
     </div>
   );
 }
 
 function FileTypeBadge({ contentType }: { contentType: string | null }) {
-  const { label, className } = fileCategory(contentType);
-  return <Badge variant="outline" className={cn("border-transparent px-1.5 py-0 text-[10px] font-semibold uppercase tracking-wide", className)}>{label}</Badge>;
+  const { label } = fileCategory(contentType);
+  return <Badge variant="outline" className="px-1.5 py-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</Badge>;
 }
 
 function MoveDestinationRow({ label, depth, onClick }: { label: string; depth: number; onClick: () => void }) {
@@ -872,7 +963,7 @@ function ItemMenu({ onDownload, onRename, onMove, onDelete, onToggleStar, starre
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuItem onClick={onToggleStar}>
-          <Star className={cn("h-3.5 w-3.5 mr-2", starred && "fill-amber-400 text-amber-400")} /> {starred ? "Unstar" : "Star"}
+          <Star className={cn("h-3.5 w-3.5 mr-2", starred && "fill-warning text-warning")} /> {starred ? "Unstar" : "Star"}
         </DropdownMenuItem>
         {onDownload && <DropdownMenuItem onClick={onDownload}><Download className="h-3.5 w-3.5 mr-2" /> Download</DropdownMenuItem>}
         {canManage && (
@@ -902,6 +993,11 @@ interface DragDropProps {
 
 interface StarProps { starred: boolean; onToggleStar: () => void; }
 
+// Compact, refined folder tile - a small neutral icon, not a large colored
+// illustration, per the redesign brief ("oversized blue folder cards" was
+// the named problem). Name gets two-line clamp + a title attribute so a
+// long/similar folder name is still fully readable on hover even when
+// wrapped text is cut off.
 function FolderTile({ folder, canManage, itemCount, starred, onToggleStar, onOpen, onRename, onMove, onDelete, onDragStart, onDragOverTarget, onDragLeaveTarget, onDropTarget, isDragOver }: {
   folder: DigitalFolder; itemCount: number; onOpen: () => void; onRename: () => void; onMove: () => void; onDelete: () => void;
 } & DragDropProps & StarProps) {
@@ -911,20 +1007,20 @@ function FolderTile({ folder, canManage, itemCount, starred, onToggleStar, onOpe
       draggable={canManage} onDragStart={onDragStart}
       onDragOver={onDragOverTarget} onDragLeave={onDragLeaveTarget} onDrop={onDropTarget}
       className={cn(
-        "overflow-hidden cursor-pointer transition-shadow duration-150 hover:shadow-md hover:border-foreground/20 relative group",
+        "cursor-pointer transition-colors duration-150 hover:border-foreground/30 relative group p-3 flex items-start gap-2.5",
         isDragOver && "ring-2 ring-primary bg-primary/5",
       )}
     >
-      {starred && <Star className="absolute top-1.5 left-1.5 z-10 h-4 w-4 fill-amber-400 text-amber-400 drop-shadow" />}
-      <div className="absolute top-1.5 right-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="h-9 w-9 shrink-0 border border-border flex items-center justify-center bg-muted/40">
+        <Folder className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="min-w-0 flex-1 pr-5">
+        <p className="text-sm leading-snug line-clamp-2" title={folder.name}>{folder.name}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{itemCount > 0 ? `${itemCount} item${itemCount === 1 ? "" : "s"}` : "Empty"}</p>
+      </div>
+      {starred && <Star className="absolute top-2 right-2 h-3.5 w-3.5 fill-warning text-warning" />}
+      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-card">
         <ItemMenu onRename={onRename} onMove={onMove} onDelete={onDelete} canManage={canManage} starred={starred} onToggleStar={onToggleStar} />
-      </div>
-      <div className="h-28 flex items-center justify-center bg-blue-500/10 dark:bg-blue-500/15">
-        <Folder className="h-11 w-11 text-blue-500 dark:text-blue-400 fill-blue-500/20 dark:fill-blue-400/20" />
-      </div>
-      <div className="p-2.5 space-y-0.5">
-        <p className="text-sm font-medium truncate">{folder.name}</p>
-        <p className="text-xs text-muted-foreground">Folder{itemCount > 0 ? ` • ${itemCount} item${itemCount === 1 ? "" : "s"}` : ""}</p>
       </div>
     </Card>
   );
@@ -933,22 +1029,22 @@ function FolderTile({ folder, canManage, itemCount, starred, onToggleStar, onOpe
 function AssetTile({ asset, canManage, starred, onToggleStar, onOpen, onDownload, onRename, onMove, onDelete, onDragStart }: {
   asset: DigitalAsset; onOpen: () => void; onDownload: () => void; onRename: () => void; onMove: () => void; onDelete: () => void;
 } & DragDropProps & StarProps) {
-  const { icon: Icon, className } = fileCategory(asset.content_type);
+  const { icon: Icon } = fileCategory(asset.content_type);
   const thumbUrl = useSignedUrl(isImage(asset.content_type) ? asset.file_path : null).data;
   return (
     <Card
       onClick={onOpen} draggable={canManage} onDragStart={onDragStart}
-      className="overflow-hidden cursor-pointer transition-shadow duration-150 hover:shadow-md hover:border-foreground/20 relative group"
+      className="overflow-hidden cursor-pointer transition-colors duration-150 hover:border-foreground/30 relative group"
     >
-      {starred && <Star className="absolute top-1.5 left-1.5 z-10 h-4 w-4 fill-amber-400 text-amber-400 drop-shadow" />}
-      <div className="absolute top-1.5 right-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+      {starred && <Star className="absolute top-1.5 left-1.5 z-10 h-3.5 w-3.5 fill-warning text-warning drop-shadow" />}
+      <div className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-card">
         <ItemMenu onDownload={onDownload} onRename={onRename} onMove={onMove} onDelete={onDelete} canManage={canManage} starred={starred} onToggleStar={onToggleStar} />
       </div>
-      <div className={cn("h-28 flex items-center justify-center overflow-hidden", !thumbUrl && className)}>
-        {thumbUrl ? <img src={thumbUrl} alt={asset.name} className="h-full w-full object-cover" /> : <Icon className="h-10 w-10" />}
+      <div className="h-20 flex items-center justify-center overflow-hidden bg-muted/40">
+        {thumbUrl ? <img src={thumbUrl} alt={asset.name} className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-muted-foreground" />}
       </div>
-      <div className="p-2.5 space-y-1">
-        <p className="text-sm font-medium truncate">{asset.name}</p>
+      <div className="p-2.5 space-y-1 border-t border-border">
+        <p className="text-sm leading-snug line-clamp-2" title={asset.name}>{asset.name}</p>
         <div className="flex items-center gap-1.5">
           <FileTypeBadge contentType={asset.content_type} />
           <span className="text-xs text-muted-foreground">{formatBytes(asset.size_bytes)}</span>
@@ -958,6 +1054,11 @@ function AssetTile({ asset, canManage, starred, onToggleStar, onOpen, onDownload
   );
 }
 
+// List row grid matches LIST_COLUMNS/ListHeaderRow exactly, so Name/Type/
+// Size/Modified/Actions always align with their header labels. Name is the
+// widest column by design (the brief's "generous width" requirement) and
+// wraps to two lines rather than single-line-truncating, with a title
+// attribute carrying the full name for anything still cut off.
 function FolderRow({ folder, canManage, itemCount, starred, onToggleStar, onOpen, onRename, onMove, onDelete, onDragStart, onDragOverTarget, onDragLeaveTarget, onDropTarget, isDragOver }: {
   folder: DigitalFolder; itemCount: number; onOpen: () => void; onRename: () => void; onMove: () => void; onDelete: () => void;
 } & DragDropProps & StarProps) {
@@ -966,12 +1067,16 @@ function FolderRow({ folder, canManage, itemCount, starred, onToggleStar, onOpen
       onClick={onOpen}
       draggable={canManage} onDragStart={onDragStart}
       onDragOver={onDragOverTarget} onDragLeave={onDragLeaveTarget} onDrop={onDropTarget}
-      className={cn("flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-150 hover:bg-muted/50", isDragOver && "ring-2 ring-primary bg-primary/5")}
+      className={cn("grid items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-150 hover:bg-muted/40", LIST_ROW_GRID, isDragOver && "ring-2 ring-primary bg-primary/5")}
     >
-      <Folder className="h-4 w-4 text-blue-500 dark:text-blue-400 fill-blue-500/20 dark:fill-blue-400/20 shrink-0" />
-      <span className="text-sm flex-1 truncate">{folder.name}</span>
-      {starred && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />}
-      <span className="text-xs text-muted-foreground w-32">Folder{itemCount > 0 ? ` • ${itemCount} items` : ""}</span>
+      <span className="flex items-center gap-2.5 min-w-0">
+        <Folder className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="text-sm leading-snug line-clamp-2 min-w-0" title={folder.name}>{folder.name}</span>
+        {starred && <Star className="h-3.5 w-3.5 fill-warning text-warning shrink-0" />}
+      </span>
+      <span className="hidden sm:block text-xs text-muted-foreground">Folder</span>
+      <span className="hidden sm:block text-xs text-muted-foreground text-right">{itemCount > 0 ? `${itemCount} items` : "—"}</span>
+      <span className="hidden sm:block text-xs text-muted-foreground">{format(new Date(folder.updated_at), "MMM d, yyyy")}</span>
       <ItemMenu onRename={onRename} onMove={onMove} onDelete={onDelete} canManage={canManage} starred={starred} onToggleStar={onToggleStar} />
     </div>
   );
@@ -980,14 +1085,20 @@ function FolderRow({ folder, canManage, itemCount, starred, onToggleStar, onOpen
 function AssetRow({ asset, canManage, starred, onToggleStar, onOpen, onDownload, onRename, onMove, onDelete, onDragStart }: {
   asset: DigitalAsset; onOpen: () => void; onDownload: () => void; onRename: () => void; onMove: () => void; onDelete: () => void;
 } & DragDropProps & StarProps) {
-  const { icon: Icon, className } = fileCategory(asset.content_type);
+  const { icon: Icon } = fileCategory(asset.content_type);
   return (
-    <div onClick={onOpen} draggable={canManage} onDragStart={onDragStart} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-150 hover:bg-muted/50">
-      <div className={cn("h-6 w-6 rounded flex items-center justify-center shrink-0", className)}><Icon className="h-3.5 w-3.5" /></div>
-      <span className="text-sm flex-1 truncate">{asset.name}</span>
-      {starred && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />}
-      <FileTypeBadge contentType={asset.content_type} />
-      <span className="text-xs text-muted-foreground w-24 text-right">{formatBytes(asset.size_bytes)}</span>
+    <div
+      onClick={onOpen} draggable={canManage} onDragStart={onDragStart}
+      className={cn("grid items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-150 hover:bg-muted/40", LIST_ROW_GRID)}
+    >
+      <span className="flex items-center gap-2.5 min-w-0">
+        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+        <span className="text-sm leading-snug line-clamp-2 min-w-0" title={asset.name}>{asset.name}</span>
+        {starred && <Star className="h-3.5 w-3.5 fill-warning text-warning shrink-0" />}
+      </span>
+      <span className="hidden sm:block"><FileTypeBadge contentType={asset.content_type} /></span>
+      <span className="hidden sm:block text-xs text-muted-foreground text-right">{formatBytes(asset.size_bytes)}</span>
+      <span className="hidden sm:block text-xs text-muted-foreground">{format(new Date(asset.updated_at), "MMM d, yyyy")}</span>
       <ItemMenu onDownload={onDownload} onRename={onRename} onMove={onMove} onDelete={onDelete} canManage={canManage} starred={starred} onToggleStar={onToggleStar} />
     </div>
   );
@@ -1004,9 +1115,9 @@ function AssetPreviewBody({ asset }: { asset: DigitalAsset }) {
   const [loadFailed, setLoadFailed] = useState(false);
   if (isLoading) return <div className="h-80 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (!url || loadFailed) return <div className="h-80 flex items-center justify-center text-muted-foreground text-sm">Couldn't load preview</div>;
-  if (isImage(asset.content_type)) return <img src={url} alt={asset.name} onError={() => setLoadFailed(true)} className="max-h-[70vh] w-full object-contain rounded-md bg-muted" />;
-  if (isVideo(asset.content_type)) return <video src={url} controls onError={() => setLoadFailed(true)} className="max-h-[70vh] w-full rounded-md bg-black" />;
-  if (isPdf(asset.content_type)) return <iframe src={url} onError={() => setLoadFailed(true)} className="w-full h-[70vh] rounded-md border" title={asset.name} />;
+  if (isImage(asset.content_type)) return <img src={url} alt={asset.name} onError={() => setLoadFailed(true)} className="max-h-[70vh] w-full object-contain bg-muted" />;
+  if (isVideo(asset.content_type)) return <video src={url} controls onError={() => setLoadFailed(true)} className="max-h-[70vh] w-full bg-black" />;
+  if (isPdf(asset.content_type)) return <iframe src={url} onError={() => setLoadFailed(true)} className="w-full h-[70vh] border border-border" title={asset.name} />;
   return (
     <div className="h-60 flex flex-col items-center justify-center gap-2 text-muted-foreground">
       <Icon className="h-10 w-10" />

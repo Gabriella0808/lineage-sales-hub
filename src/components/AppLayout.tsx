@@ -35,6 +35,7 @@ import { useConnectivity } from "@/lib/desktop/useConnectivity";
 import { OfflineScreen } from "@/components/desktop/OfflineScreen";
 import { UpdatePrompt } from "@/components/desktop/UpdatePrompt";
 import { IdleLogoutManager } from "@/components/IdleLogoutManager";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import { useNavPins } from "@/hooks/useNavPins";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
@@ -463,7 +464,13 @@ function Shell({ children }: { children: React.ReactNode }) {
   const accountMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" data-tour="account" className={cn("flex items-center gap-2 rounded-full pl-1 pr-2 py-1", dark ? "hover:bg-sidebar-accent" : "hover:bg-muted")} aria-label="Account menu">
+        <button
+          type="button" data-tour="account" aria-label="Account menu"
+          className={cn(
+            "flex items-center gap-2 rounded-full pl-1 pr-2 py-1 focus-visible:outline-none focus-visible:ring-2",
+            dark ? "hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "hover:bg-muted focus-visible:ring-ring focus-visible:ring-offset-2",
+          )}
+        >
           <span className={cn("h-8 w-8 rounded-full text-[11px] font-semibold flex items-center justify-center", dark ? "bg-sidebar-primary text-sidebar-primary-foreground" : "bg-primary text-primary-foreground")}>{initials(user?.email)}</span>
           <ChevronDown className={cn("h-3.5 w-3.5 hidden sm:block", dark ? "text-sidebar-muted" : "text-muted-foreground")} />
         </button>
@@ -515,7 +522,10 @@ function Shell({ children }: { children: React.ReactNode }) {
       type="button"
       data-tour="theme"
       onClick={() => setThemeMode(themeResolved === "dark" ? "light" : "dark")}
-      className={cn("h-9 w-9 shrink-0 rounded-lg flex items-center justify-center transition-colors", dark ? "hover:bg-sidebar-accent" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+      className={cn(
+        "h-9 w-9 shrink-0 rounded-lg flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2",
+        dark ? "hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-2",
+      )}
       aria-label={themeResolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       title={themeResolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
     >
@@ -527,7 +537,10 @@ function Shell({ children }: { children: React.ReactNode }) {
     <button
       type="button"
       onClick={() => hardRefresh()}
-      className={cn("h-9 w-9 shrink-0 rounded-lg flex items-center justify-center transition-colors", dark ? "hover:bg-sidebar-accent" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
+      className={cn(
+        "h-9 w-9 shrink-0 rounded-lg flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2",
+        dark ? "hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-2",
+      )}
       aria-label="Refresh app"
       title="Refresh app"
     >
@@ -541,8 +554,8 @@ function Shell({ children }: { children: React.ReactNode }) {
       data-tour="search"
       onClick={() => setSearchOpen(true)}
       className={cn(
-        "flex items-center gap-2 h-9 w-full max-w-[340px] rounded-lg border px-3 text-[13px] transition-colors duration-150",
-        dark ? "border-sidebar-border bg-sidebar-accent/50 text-sidebar-foreground/80 hover:bg-sidebar-accent" : "bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground/80",
+        "flex items-center gap-2 h-9 w-full max-w-[340px] rounded-lg border px-3 text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2",
+        dark ? "border-sidebar-border bg-sidebar-accent/50 text-sidebar-foreground/80 hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground/80 focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
     >
       <Search className="h-3.5 w-3.5 shrink-0" />
@@ -582,7 +595,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   // ── Style A: top navigation bar ──
   const topHeader = (
     <header className="h-14 shrink-0 flex items-center gap-2 bg-sidebar text-sidebar-foreground px-3 sm:px-5">
-      <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-sidebar-accent" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
+      <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
       <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0" title="Home"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></button>
       <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
         {sections.map((sec) => (
@@ -623,7 +636,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   // ── Styles B and C share a light header ──
   const lightHeader = (
     <header className="h-14 shrink-0 flex items-center gap-3 border-b bg-card px-3 sm:px-5">
-      <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-muted" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
+      <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
       {breadcrumb}
       <div className="flex-1" />
       {syncPill}
@@ -642,7 +655,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const bottomDock = (
     <>
       {flyout && <div className="hidden lg:block fixed inset-0 z-30" onClick={() => setFlyout(null)} />}
-      <div className="hidden lg:flex fixed bottom-4 left-1/2 -translate-x-1/2 z-40 items-end gap-1 rounded-2xl bg-sidebar p-2 shadow-xl">
+      <div className="hidden lg:flex fixed bottom-4 left-1/2 -translate-x-1/2 z-40 items-end gap-1 rounded-md border border-sidebar-border bg-sidebar p-2 shadow-elev">
         {sections.map((sec) => {
           const Icon = SECTION_ICONS[sec.id] ?? LayoutDashboard;
           const active = sec.id === here.sectionId || flyout === sec.id;
@@ -652,19 +665,19 @@ function Shell({ children }: { children: React.ReactNode }) {
               type="button"
               title={sec.label}
               onClick={() => setFlyout(flyout === sec.id ? null : sec.id)}
-              className={cn("group/d flex flex-col items-center gap-1 rounded-xl px-3.5 pt-2 pb-1.5 text-sidebar-foreground/75 transition-all hover:-translate-y-1.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", active && "bg-sidebar-accent text-sidebar-accent-foreground")}
+              className={cn("group/d flex flex-col items-center gap-1 rounded-md px-3.5 pt-2 pb-1.5 text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background", active && "bg-sidebar-accent text-sidebar-accent-foreground")}
             >
-              <Icon className="h-6 w-6 transition-transform group-hover/d:scale-125" />
+              <Icon className="h-6 w-6" />
               <span className="text-[10px] leading-none">{sec.label.split(" ")[0]}</span>
             </button>
           );
         })}
-        <button type="button" title="Report an issue" onClick={() => setIssueOpen(true)} className="ml-1 self-center h-10 w-10 rounded-xl flex items-center justify-center bg-sidebar-primary text-sidebar-primary-foreground hover:opacity-90"><AlertCircle className="h-5 w-5" /></button>
+        <button type="button" title="Report an issue" onClick={() => setIssueOpen(true)} className="ml-1 self-center h-10 w-10 rounded-md flex items-center justify-center bg-sidebar-primary text-sidebar-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"><AlertCircle className="h-5 w-5" /></button>
       </div>
       {flyout && (() => {
         const sec = sections.find((x) => x.id === flyout);
         return sec ? (
-          <div className="hidden lg:block fixed bottom-[100px] left-1/2 -translate-x-1/2 z-40 w-[300px] max-h-[60vh] overflow-y-auto rounded-2xl border bg-card p-3 shadow-xl">
+          <div className="hidden lg:block fixed bottom-[100px] left-1/2 -translate-x-1/2 z-40 w-[300px] max-h-[60vh] overflow-y-auto rounded-md border bg-card p-3 shadow-elev">
             <p className="px-2.5 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{sec.label}</p>
             <PanelItems section={sec} role={role} onNavigate={() => setFlyout(null)} />
           </div>
@@ -685,7 +698,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         {themeButton}
         {refreshButton}
         <NotificationsBell />
-        <button type="button" onClick={() => setDrawerOpen(true)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] bg-sidebar-accent hover:bg-sidebar-accent/80" aria-label="Open menu"><Menu className="h-4 w-4" /><span className="hidden sm:inline">Menu</span></button>
+        <button type="button" onClick={() => setDrawerOpen(true)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] bg-sidebar-accent hover:bg-sidebar-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" aria-label="Open menu"><Menu className="h-4 w-4" /><span className="hidden sm:inline">Menu</span></button>
         {accountMenu}
       </header>
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
@@ -712,7 +725,13 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         {header}
         <main className="flex-1 overflow-auto">
-          <div className={cn("mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8", navStyle === "bottom" && "lg:pb-28")}>{children}</div>
+          <div className={cn("mx-auto w-full max-w-[1600px] p-4 sm:p-6 lg:p-8", navStyle === "bottom" && "lg:pb-28")}>
+            {/* Keyed by pathname: a crash on this page leaves the sidebar/
+                header (siblings, outside this boundary) fully usable, and
+                navigating anywhere else mounts a fresh boundary with no
+                stale error state - see ErrorBoundary.tsx. */}
+            <ErrorBoundary level="page" key={location.pathname}>{children}</ErrorBoundary>
+          </div>
         </main>
       </div>
       {navStyle === "bottom" && bottomDock}
@@ -727,7 +746,7 @@ function Shell({ children }: { children: React.ReactNode }) {
                 <PanelItems section={sx} role={role} onNavigate={() => setMobileOpen(false)} />
               </div>
             ))}
-            <button type="button" onClick={() => { setMobileOpen(false); setIssueOpen(true); }} className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] bg-primary text-primary-foreground">
+            <button type="button" onClick={() => { setMobileOpen(false); setIssueOpen(true); }} className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] bg-primary text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <AlertCircle className="h-4 w-4" />Report an issue
             </button>
           </div>

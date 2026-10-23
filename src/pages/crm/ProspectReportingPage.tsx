@@ -33,11 +33,16 @@ const EVENT_LOG_LIVE_SINCE = new Date("2026-09-11T00:00:00");
 
 type TabKey = "overview" | "manager" | "activity" | "health";
 
+// Four genuinely distinct tiers (per the approved mapping): healthy/watch/
+// at_risk map onto the existing success/warning/destructive tokens exactly
+// (destructive is already a muted terracotta, not a bright red - see
+// LINEAGE_BRAND_DESIGN_SYSTEM.md), and neglected gets its own neutral
+// charcoal treatment, distinct from no_contact's lighter muted-gray.
 const CONTACT_HEALTH_CONFIG: Record<ContactHealth, { label: string; badge: string }> = {
-  healthy:    { label: "Healthy",         badge: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  watch:      { label: "Watch",           badge: "bg-amber-50 text-amber-700 border-amber-200" },
-  at_risk:    { label: "At Risk",         badge: "bg-orange-50 text-orange-700 border-orange-200" },
-  neglected:  { label: "Neglected",       badge: "bg-rose-50 text-rose-700 border-rose-200" },
+  healthy:    { label: "Healthy",         badge: "bg-success/10 text-success border-success/20" },
+  watch:      { label: "Watch",           badge: "bg-warning/10 text-warning border-warning/20" },
+  at_risk:    { label: "At Risk",         badge: "bg-destructive/10 text-destructive border-destructive/20" },
+  neglected:  { label: "Neglected",       badge: "bg-foreground/10 text-foreground border-foreground/20" },
   no_contact: { label: "No Contact Found", badge: "bg-muted text-muted-foreground border-border" },
 };
 
@@ -353,7 +358,7 @@ export default function ProspectReportingPage() {
       </section>
 
       {weekStart < EVENT_LOG_LIVE_SINCE && (
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+        <p className="text-xs text-warning bg-warning/10 border border-warning/20 rounded-md px-3 py-2">
           Assigned / Converted / Deleted / Marked Unworkable counts only became trackable starting{" "}
           {format(EVENT_LOG_LIVE_SINCE, "MMM d, yyyy")} — the selected week is partly or fully before that date, so
           those figures may read 0 even if activity occurred. "Added This Week" is unaffected (it always reads
@@ -428,15 +433,15 @@ export default function ProspectReportingPage() {
                       <td className="px-3 py-3 text-right tabular-nums">{m.assignedProspects}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{m.assignedThisWeek}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{m.addedThisWeek}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-emerald-600 font-medium">{m.convertedThisWeek}</td>
+                      <td className="px-3 py-3 text-right tabular-nums text-success font-medium">{m.convertedThisWeek}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{m.deletedThisWeek}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{m.unworkableThisWeek}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{m.activeOpen}</td>
                       <td className="px-3 py-3 text-right tabular-nums">
-                        {m.needsFollowUp > 0 ? <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">{m.needsFollowUp}</Badge> : 0}
+                        {m.needsFollowUp > 0 ? <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20 text-[10px]">{m.needsFollowUp}</Badge> : 0}
                       </td>
                       <td className="px-3 py-3 text-right tabular-nums">
-                        {m.noRecentContact > 0 ? <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px]">{m.noRecentContact}</Badge> : 0}
+                        {m.noRecentContact > 0 ? <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 text-[10px]">{m.noRecentContact}</Badge> : 0}
                       </td>
                       <td className="px-3 py-3 text-muted-foreground">{fmtDate(m.lastActivity)}</td>
                     </tr>
@@ -505,9 +510,9 @@ export default function ProspectReportingPage() {
                           {r.days_since_contact == null ? (
                             <Badge variant="outline" className="text-[10px] bg-muted">No activity</Badge>
                           ) : stale60 ? (
-                            <Badge variant="outline" className="text-[10px] bg-rose-50 text-rose-700 border-rose-200">{r.days_since_contact}d</Badge>
+                            <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/20">{r.days_since_contact}d</Badge>
                           ) : stale30 ? (
-                            <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-200">{r.days_since_contact}d</Badge>
+                            <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/20">{r.days_since_contact}d</Badge>
                           ) : r.days_since_contact}
                         </td>
                         <td className="px-3 py-2.5 max-w-[220px] truncate text-muted-foreground text-xs">{r.last_note_preview ?? "-"}</td>

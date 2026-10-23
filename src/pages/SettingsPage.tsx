@@ -225,7 +225,11 @@ function RoleAdminPanel() {
     );
     return managers.map((m) => ({
       ...m,
-      name: acctivateByFirstName.get(m.name.trim().split(/\s+/)[0].toLowerCase()) ?? m.name,
+      // public.managers.name is cast to `string` (ManagerOpt) but isn't
+      // actually guaranteed non-null at runtime - a null name threw here
+      // on every Settings > Team access load (`.trim()` on null). Found
+      // live via the browser console during the Stage 3D QA pass.
+      name: m.name ? (acctivateByFirstName.get(m.name.trim().split(/\s+/)[0].toLowerCase()) ?? m.name) : "(unnamed manager)",
     }));
   }, [managers, acctivateManagerNames]);
   const [loading, setLoading] = useState(true);

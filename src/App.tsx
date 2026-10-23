@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CartProvider } from "@/contexts/CartContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PageGate from "@/components/PageGate";
@@ -67,6 +68,7 @@ const App = () => (
       <Toaster />
       <SonnerToaster richColors position="bottom-right" />
       <BrowserRouter>
+        <ErrorBoundary level="app">
         <AuthProvider>
           <CartProvider>
           <Routes>
@@ -140,6 +142,7 @@ const App = () => (
           </Routes>
           </CartProvider>
         </AuthProvider>
+        </ErrorBoundary>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

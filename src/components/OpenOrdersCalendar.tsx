@@ -288,7 +288,7 @@ function MonthCard({
           {/* Open SOs */}
           {(summary?.so_count ?? 0) > 0 && (
             <div className="flex items-start gap-1.5">
-              <div className="mt-0.5 h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+              <div className="mt-0.5 h-2 w-2 rounded-full bg-info shrink-0" />
               <div className="min-w-0">
                 <div className="text-[10px] text-muted-foreground font-medium">Ship</div>
                 <div className="text-xs font-semibold tabular-nums">{fmtMoney(summary!.so_amount)}</div>
@@ -299,7 +299,7 @@ function MonthCard({
           {/* PO arrivals */}
           {(summary?.po_arrival_count ?? 0) > 0 && (
             <div className="flex items-start gap-1.5">
-              <div className="mt-0.5 h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+              <div className="mt-0.5 h-2 w-2 rounded-full bg-success shrink-0" />
               <div className="min-w-0">
                 <div className="text-[10px] text-muted-foreground font-medium">PO In</div>
                 <div className="text-xs font-semibold tabular-nums">{fmtMoney(summary!.po_arrival_amount)}</div>
@@ -310,7 +310,7 @@ function MonthCard({
           {/* PO invoices */}
           {(summary?.po_invoice_count ?? 0) > 0 && (
             <div className="flex items-start gap-1.5">
-              <div className="mt-0.5 h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+              <div className="mt-0.5 h-2 w-2 rounded-full bg-warning shrink-0" />
               <div className="min-w-0">
                 <div className="text-[10px] text-muted-foreground font-medium">~Invoice</div>
                 <div className="text-xs font-semibold tabular-nums">{fmtMoney(summary!.po_invoice_amount)}</div>
@@ -486,19 +486,19 @@ export function OpenOrdersCalendar() {
       {!loading && !isEmpty && (
         <div className="flex flex-wrap gap-4 py-2 border-b border-border/50 text-xs">
           <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-blue-500" />
+            <div className="h-2 w-2 rounded-full bg-info" />
             <span className="text-muted-foreground">Open SOs to ship:</span>
             <span className="font-semibold tabular-nums">{fmtMoney(yearTotals.so_amount)}</span>
             <span className="text-muted-foreground">· {fmtQty(yearTotals.so_qty)}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-emerald-500" />
+            <div className="h-2 w-2 rounded-full bg-success" />
             <span className="text-muted-foreground">PO arrivals:</span>
             <span className="font-semibold tabular-nums">{fmtMoney(yearTotals.po_arrival_amount)}</span>
             <span className="text-muted-foreground">· {fmtQty(yearTotals.po_arrival_qty)}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-amber-500" />
+            <div className="h-2 w-2 rounded-full bg-warning" />
             <span className="text-muted-foreground">~PO invoices:</span>
             <span className="font-semibold tabular-nums">{fmtMoney(yearTotals.po_invoice_amount)}</span>
             <span className="text-muted-foreground">· {fmtQty(yearTotals.po_invoice_qty)}</span>
@@ -580,7 +580,7 @@ export function OpenOrdersCalendar() {
           <Tabs defaultValue="so" className="px-4 pt-3 pb-4">
             <TabsList className="mb-3">
               <TabsTrigger value="so" className="gap-1.5 text-xs">
-                <Package className="h-3 w-3 text-blue-500" />
+                <Package className="h-3 w-3 text-info" />
                 Open SOs
                 {(filteredMonthSummaries.get(selectedMonth)?.so_count ?? 0) > 0 && (
                   <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
@@ -589,7 +589,7 @@ export function OpenOrdersCalendar() {
                 )}
               </TabsTrigger>
               <TabsTrigger value="po_arrival" className="gap-1.5 text-xs">
-                <Truck className="h-3 w-3 text-emerald-500" />
+                <Truck className="h-3 w-3 text-success" />
                 PO Arrivals
                 {(filteredMonthSummaries.get(selectedMonth)?.po_arrival_count ?? 0) > 0 && (
                   <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
@@ -598,7 +598,7 @@ export function OpenOrdersCalendar() {
                 )}
               </TabsTrigger>
               <TabsTrigger value="po_invoice" className="gap-1.5 text-xs">
-                <FileText className="h-3 w-3 text-amber-500" />
+                <FileText className="h-3 w-3 text-warning" />
                 ~PO Invoices
                 {(filteredMonthSummaries.get(selectedMonth)?.po_invoice_count ?? 0) > 0 && (
                   <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">

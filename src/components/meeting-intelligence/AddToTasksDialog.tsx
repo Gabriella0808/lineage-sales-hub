@@ -108,7 +108,7 @@ interface TaskAddedBannerProps {
 
 export function TaskAddedBanner({ taskId: _taskId }: TaskAddedBannerProps) {
   return (
-    <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-md px-3 py-2">
+    <div className="flex items-center gap-2 text-xs text-success bg-success/10 rounded-md px-3 py-2">
       <CheckSquare className="h-3.5 w-3.5 shrink-0" />
       <span>Added to My Tasks.</span>
       <a href="/tasks" className="flex items-center gap-0.5 underline underline-offset-2 hover:no-underline">

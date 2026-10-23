@@ -36,7 +36,7 @@ export function UpdatePrompt() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] w-[340px] rounded-xl border bg-card p-4 shadow-xl" role="status">
+    <div className="fixed bottom-4 right-4 z-[60] w-[340px] rounded-lg border bg-card p-4 shadow-xl" role="status">
       <div className="flex items-start gap-3">
         <span className="h-9 w-9 shrink-0 rounded-lg bg-muted flex items-center justify-center"><Download className="h-4 w-4" /></span>
         <div className="min-w-0">

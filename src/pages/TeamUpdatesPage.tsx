@@ -238,11 +238,16 @@ const ARCHIVE_TYPES = new Set(["application/zip", "application/x-zip-compressed"
 /** Drives the icon, color and label on a FileChip - one look per file
  *  family instead of a single generic "File" icon for everything. */
 function fileCategory(contentType: string | null): { icon: typeof FileText; className: string; label: string } {
-  if (isPdf(contentType)) return { icon: FileText, className: "bg-destructive/10 text-destructive", label: "PDF" };
-  if (isVideo(contentType)) return { icon: FileVideo, className: "bg-violet-500/10 text-violet-600 dark:text-violet-400", label: "Video" };
-  if (contentType && DOC_TYPES.has(contentType)) return { icon: FileText, className: "bg-blue-500/10 text-blue-600 dark:text-blue-400", label: "Word" };
-  if (contentType && SHEET_TYPES.has(contentType)) return { icon: FileSpreadsheet, className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", label: "Excel" };
-  if (contentType && SLIDE_TYPES.has(contentType)) return { icon: FileText, className: "bg-orange-500/10 text-orange-600 dark:text-orange-400", label: "PowerPoint" };
+  // File type isn't a business status - no per-type color-coding here (PDF
+  // was previously tinted with the destructive/error token purely for
+  // visual variety, not an actual error). Same flat neutral treatment used
+  // in the Digital Assets redesign: the icon shape + label differentiate
+  // type, not an invented color per extension.
+  if (isPdf(contentType)) return { icon: FileText, className: "bg-muted text-muted-foreground", label: "PDF" };
+  if (isVideo(contentType)) return { icon: FileVideo, className: "bg-muted text-muted-foreground", label: "Video" };
+  if (contentType && DOC_TYPES.has(contentType)) return { icon: FileText, className: "bg-muted text-muted-foreground", label: "Word" };
+  if (contentType && SHEET_TYPES.has(contentType)) return { icon: FileSpreadsheet, className: "bg-muted text-muted-foreground", label: "Excel" };
+  if (contentType && SLIDE_TYPES.has(contentType)) return { icon: FileText, className: "bg-muted text-muted-foreground", label: "PowerPoint" };
   if (contentType && ARCHIVE_TYPES.has(contentType)) return { icon: FileArchive, className: "bg-muted text-muted-foreground", label: "Archive" };
   return { icon: FileIcon, className: "bg-muted text-muted-foreground", label: "File" };
 }

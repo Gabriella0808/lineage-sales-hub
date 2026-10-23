@@ -949,7 +949,7 @@ export function InvoiceDetailSheet({
           <p className="text-[11px] text-muted-foreground">
             {format(effectiveFrom, "MMM d, yyyy")} – {format(localTo, "MMM d, yyyy")}
             {metric === "bookings" && localFrom < BOOKING_CUTOFF && effectiveFrom !== localFrom && (
-              <span className="ml-1 text-amber-600">(clamped to booking cutoff)</span>
+              <span className="ml-1 text-warning">(clamped to booking cutoff)</span>
             )}
           </p>
         </div>
@@ -1435,7 +1435,7 @@ function StatCard({ label, value, compValue, compLabel, delta }: {
         <p className="text-[10px] text-muted-foreground tabular-nums mt-0.5">
           {compLabel ?? "vs"} {compValue}
           {delta !== null && delta !== undefined && (
-            <span className={`ml-1 ${delta >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+            <span className={`ml-1 ${delta >= 0 ? "text-success" : "text-destructive"}`}>
               {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
             </span>
           )}

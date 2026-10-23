@@ -1620,13 +1620,13 @@ export default function CheckInsPage() {
               </SheetHeader>
 
               {siblingDealers.length > 0 && (
-                <div className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs">
-                  <p className="font-medium text-amber-900 dark:text-amber-200">
+                <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs">
+                  <p className="font-medium text-warning">
                     {siblingDealers.length === 1
                       ? "There's another location on the map for this retailer:"
                       : `There are ${siblingDealers.length} other locations on the map for this retailer:`}
                   </p>
-                  <p className="text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                  <p className="text-warning/80 mt-0.5">
                     Check-ins are logged per address - this location only shows its own history.
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">

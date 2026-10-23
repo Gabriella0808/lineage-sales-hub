@@ -166,7 +166,7 @@ export default function ManagersPage() {
       <div className="animate-fade-in space-y-4">
         <Skeleton className="h-10 w-64" />
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-lg" />)}
         </div>
       </div>
     );

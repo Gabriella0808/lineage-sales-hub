@@ -7,27 +7,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { IDLE_ACTIVITY_KEY, readLastActivity, resolveLastActivityAt, writeLastActivity } from "@/lib/idleClock";
 
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // sign out after 30 min with no REAL portal activity
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // sign out after 30 min with no portal activity
 const WARNING_MS = 60 * 1000;           // warn 60s before that actually happens
-const WRITE_THROTTLE_MS = 5_000;        // don't hammer localStorage on every keystroke
+const WRITE_THROTTLE_MS = 5_000;        // don't hammer localStorage on every mousemove
 
-// Deliberately excludes mousemove/scroll/wheel: those fire from a hand
-// resting near a trackpad or momentum scroll settling, with no real intent
-// behind them - a tab sitting open but untouched would otherwise never
-// time out. mousedown/keydown/touchstart require an actual click, tap, or
-// keypress, which is what opening a section, uploading, or downloading all
-// start with. Page navigation is tracked separately below (pathname) since
-// it isn't reliably covered by a click - browser back/forward wouldn't be.
-const ACTIVITY_EVENTS = ["mousedown", "keydown", "touchstart"] as const;
+// Reverted from a click/tap/keypress-only list back to this broader set
+// pending investigation of a reported instant-logout-on-login issue. Not
+// confirmed as the actual cause (a fresh login always starts the clock at
+// "now" regardless of which events count as activity, so this list can't
+// explain an immediate kick-out right after signing in) - reverted anyway
+// as a quick, low-risk way to rule it out while the real cause is still
+// being tracked down live.
+const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "wheel"] as const;
 
 /**
- * Signs the user out after IDLE_TIMEOUT_MS of no REAL portal activity, with
- * a WARNING_MS countdown dialog first so nobody loses unsaved work by
- * surprise. "Activity" means a deliberate click/tap/keypress or navigating
- * to a different page - not merely having the tab open - recorded to
- * localStorage so every open tab shares one clock. Once the warning dialog
- * is up in a given tab, it's sticky: only an explicit "Stay signed in"
- * click dismisses it there.
+ * Signs the user out after IDLE_TIMEOUT_MS of no portal activity, with a
+ * WARNING_MS countdown dialog first so nobody loses unsaved work by
+ * surprise. "Activity" (mouse, keyboard, scroll, touch, or navigating to a
+ * different page) is recorded to localStorage so every open tab shares one
+ * clock - but once the warning dialog is up in a given tab, it's sticky:
+ * only an explicit "Stay signed in" click dismisses it there.
  *
  * The actual countdown/timeout logic runs inside idleTimer.worker.ts, not
  * on the main thread. Browsers throttle (or near-fully suspend) a page's

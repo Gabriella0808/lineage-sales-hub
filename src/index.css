@@ -22,17 +22,31 @@
     Background       #F7F5F0 → 43 30% 95%   (canvas)
     Surface          #FDFCF9 → 45 50% 98%   (card/panel surfaces)
     Line             #E2DDD5 → 37 18% 86%   (borders)
-    Sand             #E7E2DB → 35 20% 88%   (secondary wash)
+    Sand             #E7E2DB → 35 20% 88%   (secondary wash; also the
+                                              light-on-dark accent tone, below)
     Product bg       #ECE7E0 → 35 24% 90%   (muted wash)
     Muted text       #7A736B → 32 7% 45%
-    Olive            #5D5A3E → 54 20% 30%   (the site's one real accent)
-    Dark             #26221F → 26 10% 14%   (sidebar shell)
+    Dark             #26221F → 26 10% 14%   (announcement bar on the real
+                                              site; sidebar shell AND the
+                                              portal's primary/action accent)
     Stock-in green   #5F7D55 → 105 19% 41%  (success)
     Stock-out amber  #B98A3E → 37 50% 48%   (warning)
     Error terracotta #A2412F → 9 55% 41%    (destructive)
     Info (no site equivalent - a restrained, desaturated slate-blue kept
     to the same low-saturation family as the real status colors, never a
     bright/neon blue) → light 212 13% 42%, dark 212 19% 63%
+
+  Primary/action accent: #26221F ("Dark" above), verified from the real
+  site's own stylesheet (.announcement { background: var(--color-dark) }).
+  Supersedes an earlier olive (#5D5A3E) primary - olive was the site's
+  other real accent color but is no longer the portal's brand-color
+  direction; it remains only on chart-3 (a decorative data-viz
+  differentiator, not a brand/action accent) and is not used anywhere
+  semantic. On a DARK surface (sidebar, dark-mode canvas) the charcoal
+  itself would be unreadable against another dark tone, so those contexts
+  use the website's own verified warm "Sand" tone (#E7E2DB) instead, the
+  same light-on-dark logic the site itself uses (.btn-light inverts to a
+  light fill, never a mid-tone, against a dark surface).
 
   Typography: Cormorant Garamond (display) + Inter (body/UI) - the
   website's exact pairing, unchanged from before this pass.
@@ -51,8 +65,8 @@
     --popover: 45 50% 98%;
     --popover-foreground: 30 12% 10%;
 
-    /* Primary — Olive, the website's one real accent color */
-    --primary: 54 20% 30%;
+    /* Primary — the website's verified announcement-bar dark charcoal-brown */
+    --primary: 26 10% 14%;
     --primary-foreground: 45 50% 98%;
 
     /* Secondary — warm sand wash */
@@ -63,8 +77,8 @@
     --muted: 35 24% 90%;
     --muted-foreground: 32 7% 45%;
 
-    /* Accent — same Olive family as primary */
-    --accent: 54 20% 30%;
+    /* Accent — same charcoal family as primary */
+    --accent: 26 10% 14%;
     --accent-foreground: 45 50% 98%;
 
     /* Status colors — the website's actual stock-status/error colors, not invented */
@@ -99,16 +113,20 @@
        tone instead of an arbitrary near-black. */
     --sidebar-background: 26 10% 14%;
     --sidebar-foreground: 35 20% 88%;
-    --sidebar-primary: 54 28% 58%;      /* lighter olive - reads on a dark shell */
+    --sidebar-primary: 35 20% 88%;      /* light "Sand" accent - reads on the dark shell, which is already this page's --primary charcoal */
     --sidebar-primary-foreground: 26 10% 14%;
     --sidebar-accent: 26 8% 20%;
     --sidebar-accent-foreground: 35 20% 88%;
     --sidebar-border: 26 8% 22%;
-    --sidebar-ring: 54 28% 58%;
+    --sidebar-ring: 35 20% 88%;
     --sidebar-muted: 35 10% 55%;
     --sidebar-section: 35 10% 58%;
 
-    /* Charts — editorial, cohesive with the website-derived palette */
+    /* Charts — editorial, cohesive with the website-derived palette. Olive
+       (#5D5A3E) stays here only as a decorative data-viz differentiator -
+       it's not the brand/action accent anymore (see --primary above), but
+       there's no reason to discard a real, verified site color from a
+       chart legend where it was never a "primary action" signal. */
     --chart-1: 30 12% 20%;              /* Ink */
     --chart-2: 199 30% 56%;             /* Harbor Blue (functional differentiator, not brand-derived) */
     --chart-3: 54 20% 30%;              /* Olive */
@@ -139,8 +157,12 @@
     --popover: 26 9% 11%;
     --popover-foreground: 45 20% 92%;
 
-    --primary: 54 28% 58%;
-    --primary-foreground: 26 10% 9%;
+    /* The light-mode primary (charcoal #26221F) would be unreadable against
+       this same dark canvas, so dark mode uses the site's own verified
+       light "Sand" tone instead - the same light-on-dark substitution the
+       sidebar and the real site's own .btn-light:hover pattern use. */
+    --primary: 35 20% 88%;
+    --primary-foreground: 26 10% 14%;
 
     --secondary: 26 6% 17%;
     --secondary-foreground: 45 20% 90%;
@@ -148,8 +170,8 @@
     --muted: 26 6% 14%;
     --muted-foreground: 35 8% 64%;
 
-    --accent: 54 28% 58%;
-    --accent-foreground: 26 10% 8%;
+    --accent: 35 20% 88%;
+    --accent-foreground: 26 10% 14%;
 
     --destructive: 9 55% 52%;
     --destructive-foreground: 45 25% 96%;
@@ -169,12 +191,12 @@
 
     --sidebar-background: 26 10% 4%;
     --sidebar-foreground: 35 20% 76%;
-    --sidebar-primary: 54 28% 58%;
+    --sidebar-primary: 35 20% 88%;
     --sidebar-primary-foreground: 26 10% 6%;
     --sidebar-accent: 26 6% 13%;
     --sidebar-accent-foreground: 45 25% 94%;
     --sidebar-border: 26 6% 15%;
-    --sidebar-ring: 54 28% 58%;
+    --sidebar-ring: 35 20% 88%;
     --sidebar-muted: 35 8% 56%;
     --sidebar-section: 35 10% 58%;
 

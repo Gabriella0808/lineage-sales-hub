@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -7,11 +8,18 @@ import { Button } from "@/components/ui/button";
 import { resolveLastActivityAt } from "@/lib/idleClock";
 
 const ACTIVITY_KEY = "lc.lastActivityAt";
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // sign out after 30 min with no portal activity
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // sign out after 30 min with no REAL portal activity
 const WARNING_MS = 60 * 1000;           // warn 60s before that actually happens
-const WRITE_THROTTLE_MS = 5_000;        // don't hammer localStorage on every mousemove
+const WRITE_THROTTLE_MS = 5_000;        // don't hammer localStorage on every keystroke
 
-const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart", "wheel"] as const;
+// Deliberately excludes mousemove/scroll/wheel: those fire from a hand
+// resting near a trackpad or momentum scroll settling, with no real intent
+// behind them - a tab sitting open but untouched would otherwise never
+// time out. mousedown/keydown/touchstart require an actual click, tap, or
+// keypress, which is what opening a section, uploading, or downloading all
+// start with. Page navigation is tracked separately below (pathname) since
+// it isn't reliably covered by a click - browser back/forward wouldn't be.
+const ACTIVITY_EVENTS = ["mousedown", "keydown", "touchstart"] as const;
 
 function writeLastActivity(ts: number) {
   try { localStorage.setItem(ACTIVITY_KEY, String(ts)); } catch { /* private mode etc - just won't sync across tabs */ }
@@ -25,12 +33,13 @@ function readLastActivity(): number | null {
 }
 
 /**
- * Signs the user out after IDLE_TIMEOUT_MS of no portal activity, with a
- * WARNING_MS countdown dialog first so nobody loses unsaved work by
- * surprise. "Activity" (mouse, keyboard, scroll, touch) is recorded to
- * localStorage so every open tab shares one clock - but once the warning
- * dialog is up in a given tab, it's sticky: only an explicit "Stay signed
- * in" click dismisses it there.
+ * Signs the user out after IDLE_TIMEOUT_MS of no REAL portal activity, with
+ * a WARNING_MS countdown dialog first so nobody loses unsaved work by
+ * surprise. "Activity" means a deliberate click/tap/keypress or navigating
+ * to a different page - not merely having the tab open - recorded to
+ * localStorage so every open tab shares one clock. Once the warning dialog
+ * is up in a given tab, it's sticky: only an explicit "Stay signed in"
+ * click dismisses it there.
  *
  * The actual countdown/timeout logic runs inside idleTimer.worker.ts, not
  * on the main thread. Browsers throttle (or near-fully suspend) a page's
@@ -47,6 +56,7 @@ function readLastActivity(): number | null {
  */
 export function IdleLogoutManager() {
   const { session, signOut } = useAuth();
+  const location = useLocation();
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const lastWriteRef = useRef(0);
   const loggingOutRef = useRef(false);
@@ -54,6 +64,21 @@ export function IdleLogoutManager() {
   // needing secondsLeft in the effect's dependency array.
   const warningShownRef = useRef(false);
   const workerRef = useRef<Worker | null>(null);
+  const prevPathnameRef = useRef(location.pathname);
+
+  // Stable across renders (refs only) so it can be a dependency of both the
+  // DOM-event listeners below and the route-change effect without either
+  // one re-running on every render.
+  const recordActivity = useCallback(() => {
+    // Once the warning is up, nothing but the button dismisses it - not a
+    // click, a keypress, a route change, or another tab's activity.
+    if (warningShownRef.current) return;
+    const now = Date.now();
+    if (now - lastWriteRef.current < WRITE_THROTTLE_MS) return;
+    lastWriteRef.current = now;
+    writeLastActivity(now);
+    workerRef.current?.postMessage({ type: "activity", ts: now });
+  }, []);
 
   useEffect(() => {
     if (!session) {
@@ -92,18 +117,6 @@ export function IdleLogoutManager() {
       }
     };
 
-    const sendActivity = (ts: number) => worker.postMessage({ type: "activity", ts });
-
-    const recordActivity = () => {
-      // Once the warning is up, nothing but the button dismisses it - not
-      // mouse movement, not typing, not another tab's activity.
-      if (warningShownRef.current) return;
-      const now = Date.now();
-      if (now - lastWriteRef.current < WRITE_THROTTLE_MS) return;
-      lastWriteRef.current = now;
-      writeLastActivity(now);
-      sendActivity(now);
-    };
     ACTIVITY_EVENTS.forEach((e) => window.addEventListener(e, recordActivity, { passive: true }));
 
     // Cross-tab: when another tab records activity, localStorage's
@@ -113,7 +126,7 @@ export function IdleLogoutManager() {
     const onStorage = (e: StorageEvent) => {
       if (e.key !== ACTIVITY_KEY || warningShownRef.current) return;
       const ts = Number(e.newValue);
-      if (Number.isFinite(ts)) sendActivity(ts);
+      if (Number.isFinite(ts)) worker.postMessage({ type: "activity", ts });
     };
     window.addEventListener("storage", onStorage);
 
@@ -124,7 +137,21 @@ export function IdleLogoutManager() {
       worker.terminate();
       workerRef.current = null;
     };
-  }, [session, signOut]);
+  }, [session, signOut, recordActivity]);
+
+  // Moving to a different page counts as real activity too - a click
+  // already covers most navigation, but this also catches browser
+  // back/forward and programmatic redirects that don't start with a click
+  // inside this page. Skipped on the pathname's first render (prevPathnameRef
+  // is seeded with it) so a fresh mount - e.g. reloading a phone tab that's
+  // been idle for days - can't silently overwrite the deliberately-resumed
+  // stale timestamp above before the worker's first tick gets a chance to
+  // detect it and sign out.
+  useEffect(() => {
+    if (prevPathnameRef.current === location.pathname) return;
+    prevPathnameRef.current = location.pathname;
+    recordActivity();
+  }, [location.pathname, recordActivity]);
 
   const stayActive = () => {
     warningShownRef.current = false;

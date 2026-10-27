@@ -933,25 +933,46 @@ function ListHeaderRow() {
 // neutral tile every other folder-without-a-preview already uses. Bare
 // image treatment (no border/shadow on the photo itself), matching the
 // website's own near-shadowless product-grid convention.
+// A folder with a real cover photo gets the image-led treatment; one with
+// no suitable image gets a deliberately different, equally considered
+// typographic card - never a beige box standing in for a missing photo.
+// Branches on `cover` (the real asset, found or not), not on whether its
+// signed URL has resolved yet - a still-loading cover stays image-shaped
+// (an empty tile, then the photo), rather than flashing the typographic
+// layout and switching a moment later.
 function CollectionCard({ folder, itemCount, cover, onOpen }: {
   folder: DigitalFolder; itemCount: number; cover: DigitalAsset | null; onOpen: () => void;
 }) {
   const coverUrl = useSignedUrl(cover?.file_path ?? null).data;
+  const countLabel = itemCount > 0 ? `${itemCount} item${itemCount === 1 ? "" : "s"}` : "Empty";
+
+  if (cover) {
+    return (
+      <button type="button" onClick={onOpen} className="group w-56 shrink-0 text-left">
+        <div className="aspect-[4/3] w-full bg-muted overflow-hidden flex items-center justify-center">
+          {coverUrl && <img src={coverUrl} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />}
+        </div>
+        <p className="font-display text-[17px] leading-snug mt-2.5 text-foreground truncate" title={folder.name}>{folder.name}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{countLabel}</p>
+      </button>
+    );
+  }
+
+  // No image anywhere in this folder's subtree - a bordered, text-led
+  // "label card" instead: a small icon, a hairline rule, then the name
+  // and count given room to be the actual content, not a weak copy of
+  // the photo card's layout with the photo missing.
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="group w-56 shrink-0 text-left"
+      className="w-56 shrink-0 h-[190px] text-left border border-border bg-card hover:border-foreground/30 transition-colors px-5 pt-5 pb-4 flex flex-col"
     >
-      <div className="aspect-[4/3] w-full bg-muted overflow-hidden flex items-center justify-center">
-        {coverUrl ? (
-          <img src={coverUrl} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-        ) : (
-          <Folder className="h-7 w-7 text-muted-foreground/50" />
-        )}
+      <Folder className="h-4 w-4 text-muted-foreground/60 shrink-0" />
+      <div className="mt-auto pt-3.5 border-t border-border/70">
+        <p className="font-display text-xl leading-snug text-foreground truncate" title={folder.name}>{folder.name}</p>
+        <p className="text-xs text-muted-foreground mt-1">{countLabel}</p>
       </div>
-      <p className="font-display text-[17px] leading-snug mt-2.5 text-foreground truncate" title={folder.name}>{folder.name}</p>
-      <p className="text-xs text-muted-foreground mt-0.5">{itemCount > 0 ? `${itemCount} item${itemCount === 1 ? "" : "s"}` : "Empty"}</p>
     </button>
   );
 }

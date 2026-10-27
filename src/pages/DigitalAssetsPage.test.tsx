@@ -42,12 +42,17 @@ vi.mock("@/hooks/useUserRole", () => ({ isDigitalAssetsManager: () => mockCanMan
 const NOW = Date.now();
 const FOLDERS = [
   { id: "f1", name: "Brochures", parent_folder_id: null, created_by: "u1", created_at: new Date(NOW).toISOString(), updated_at: new Date(NOW - 10 * 86_400_000).toISOString() },
+  // A second root folder that DOES contain a real image asset - lets the
+  // Collections tests below cover both the photo-led card and the
+  // typographic (no-image) card in the same render.
+  { id: "f2", name: "Product Photography", parent_folder_id: null, created_by: "u1", created_at: new Date(NOW).toISOString(), updated_at: new Date(NOW).toISOString() },
 ];
 const ASSETS = [
   // Deliberately out of alphabetical/size/date order so each sort mode produces a different, checkable order.
   { id: "a1", name: "Zebra Price List.pdf", folder_id: null, file_path: "root/a1", content_type: "application/pdf", size_bytes: 500, uploaded_by: "u1", created_at: new Date(NOW).toISOString(), updated_at: new Date(NOW - 25 * 3_600_000).toISOString() }, // Yesterday, mid size
   { id: "a2", name: "Apple Catalog.pdf", folder_id: null, file_path: "root/a2", content_type: "application/pdf", size_bytes: 5_000_000, uploaded_by: "u1", created_at: new Date(NOW).toISOString(), updated_at: new Date(NOW - 3_600_000).toISOString() }, // Today, largest, newest
   { id: "a3", name: "Mango Brochure.pdf", folder_id: null, file_path: "root/a3", content_type: "application/pdf", size_bytes: 100, uploaded_by: "u1", created_at: new Date(NOW).toISOString(), updated_at: new Date(NOW - 5 * 86_400_000).toISOString() }, // This week, smallest, oldest
+  { id: "a4", name: "Geneva Bedroom.jpg", folder_id: "f2", file_path: "f2/a4", content_type: "image/jpeg", size_bytes: 9_000_000, uploaded_by: "u1", created_at: new Date(NOW).toISOString(), updated_at: new Date(NOW).toISOString() },
 ];
 const STARS: unknown[] = [];
 
@@ -200,6 +205,31 @@ describe("DigitalAssetsPage", () => {
     fireEvent.click(within(list).getByText("Apple Catalog.pdf"));
     const title = await screen.findByRole("heading", { name: "Apple Catalog.pdf" });
     expect(title.className).not.toMatch(/truncate|line-clamp/);
+  });
+
+  // Adaptive collection cards: a folder with a real image asset in its
+  // subtree gets the photo-led card; a folder with none gets the
+  // typographic "label card" instead of a beige placeholder.
+  it("shows a photo-led collection card for a folder with a real image asset", async () => {
+    renderPage();
+    await screen.findByTestId("asset-list");
+    const card = screen.getByRole("button", { name: /Product Photography/ });
+    // The cover photo is deliberately alt="" (decorative - its caption
+    // right below already names the folder), so it has no accessible
+    // "img" role by design; query the element directly instead.
+    await screen.findByText("1 item");
+    expect(card.querySelector("img")).toBeInTheDocument();
+    expect(within(card).getByText("1 item")).toBeInTheDocument();
+  });
+
+  it("shows the typographic card (no image) for a folder with no image assets", async () => {
+    renderPage();
+    await screen.findByTestId("asset-list");
+    const collectionsHeading = screen.getByText("Collections");
+    const strip = collectionsHeading.closest("div")!.nextElementSibling as HTMLElement;
+    const card = within(strip).getByRole("button", { name: /Brochures/ });
+    expect(card.querySelector("img")).not.toBeInTheDocument();
+    expect(within(card).getByText("Empty")).toBeInTheDocument();
   });
 
   it("shows an empty state with no items", async () => {

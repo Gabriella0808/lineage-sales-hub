@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import lineageLogo from "@/assets/lineage-logo.png";
+import loginShowroom from "@/assets/login-showroom.jpg";
 
 const signInSchema = z.object({
   email: z.string().trim().email("Invalid email").max(255),
@@ -84,69 +85,86 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-8">
-      <img src={lineageLogo} alt="Lineage Collections" className="h-14 w-auto" />
-      <Card className="w-full max-w-md shadow-none">
-        <CardHeader className="items-center text-center pt-9 px-8">
-          <h1 className="font-display text-[1.625rem] sm:text-[1.75rem] font-normal tracking-tight text-foreground leading-[1.1]">
-            {mode === "signin" ? "Sign in to your account" : "Create your account"}
-          </h1>
-        </CardHeader>
-        <CardContent className="px-8 pb-8">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
+    <div className="min-h-screen flex bg-background">
+      {/* Form side - the whole page on mobile/tablet (the image side is
+          hidden below lg), ~45% on desktop. Content/order is exactly
+          Stage 1's centered composition, just now confined to a column. */}
+      <div className="w-full lg:w-[45%] flex flex-col items-center justify-center p-6 sm:p-10 lg:p-14 gap-8">
+        <img src={lineageLogo} alt="Lineage Collections" className="h-14 w-auto" />
+        <Card className="w-full max-w-md shadow-none">
+          <CardHeader className="items-center text-center pt-9 px-8">
+            <h1 className="font-display text-[1.625rem] sm:text-[1.75rem] font-normal tracking-tight text-foreground leading-[1.1]">
+              {mode === "signin" ? "Sign in to your account" : "Create your account"}
+            </h1>
+          </CardHeader>
+          <CardContent className="px-8 pb-8">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {mode === "signup" && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full name</Label>
+                  <Input id="fullName" value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} required maxLength={100} />
+                </div>
+              )}
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full name</Label>
-                <Input id="fullName" value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} required maxLength={100} />
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required maxLength={255} autoComplete="email" />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={form.password}
+                    onChange={e => setForm({ ...form, password: e.target.value })}
+                    required
+                    minLength={6}
+                    maxLength={72}
+                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(v => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
+              </Button>
+              <p className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground pt-2">
+                Lineage Collections Portal
+              </p>
+            </form>
+            {mode === "signup" && (
+              <button
+                type="button"
+                onClick={() => setMode("signin")}
+                className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Already have an account? Sign in
+              </button>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required maxLength={255} autoComplete="email" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })}
-                  required
-                  minLength={6}
-                  maxLength={72}
-                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                  className="pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
-            </Button>
-            <p className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground pt-2">
-              Lineage Collections Portal
-            </p>
-          </form>
-          {mode === "signup" && (
-            <button
-              type="button"
-              onClick={() => setMode("signin")}
-              className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Already have an account? Sign in
-            </button>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Photograph side - desktop only (lg+). A genuine showroom photo
+          from the Lineage Collections website, not a stock/AI image - see
+          commit message for provenance. No overlay text/gradient per the
+          brief's restraint standard. */}
+      <div className="hidden lg:block lg:w-[55%] relative overflow-hidden">
+        <img
+          src={loginShowroom}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      </div>
     </div>
   );
 }

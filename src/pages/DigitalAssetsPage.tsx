@@ -538,6 +538,11 @@ export default function DigitalAssetsPage() {
                 folder={folder}
                 itemCount={itemCount}
                 cover={cover}
+                // "Inside this collection" means the current folder either
+                // IS it or is somewhere in its subtree - browsing two
+                // levels into Cabinet Beds still reads as "in" Cabinet
+                // Beds, not as having left the collection entirely.
+                active={!!currentFolderId && (currentFolderId === folder.id || descendantIds(folder.id).has(currentFolderId))}
                 onOpen={() => { setCurrentFolderId(folder.id); setSearch(""); setQuickFilter("all"); }}
               />
             ))}
@@ -940,37 +945,64 @@ function ListHeaderRow() {
 // signed URL has resolved yet - a still-loading cover stays image-shaped
 // (an empty tile, then the photo), rather than flashing the typographic
 // layout and switching a moment later.
-function CollectionCard({ folder, itemCount, cover, onOpen }: {
-  folder: DigitalFolder; itemCount: number; cover: DigitalAsset | null; onOpen: () => void;
+// Both card variants share one fixed outer height (CARD_HEIGHT) so the
+// strip has one consistent rhythm regardless of which type a given
+// collection gets, and both indicate "this is the collection you're
+// currently inside" the same way - a thin rule under the name, the same
+// active-nav convention already used for tabs/top-nav elsewhere in this
+// app (and the website's own real nav pattern), never a filled background.
+const COLLECTION_CARD_HEIGHT = "h-[220px]";
+
+function CollectionCard({ folder, itemCount, cover, active, onOpen }: {
+  folder: DigitalFolder; itemCount: number; cover: DigitalAsset | null; active: boolean; onOpen: () => void;
 }) {
   const coverUrl = useSignedUrl(cover?.file_path ?? null).data;
   const countLabel = itemCount > 0 ? `${itemCount} item${itemCount === 1 ? "" : "s"}` : "Empty";
+  const name = (
+    <p
+      className={cn(
+        "font-display text-[17px] leading-snug text-foreground truncate w-fit border-b-2 pb-0.5",
+        active ? "border-foreground" : "border-transparent",
+      )}
+      title={folder.name}
+    >
+      {folder.name}
+    </p>
+  );
 
   if (cover) {
     return (
-      <button type="button" onClick={onOpen} className="group w-56 shrink-0 text-left">
-        <div className="aspect-[4/3] w-full bg-muted overflow-hidden flex items-center justify-center">
+      <button type="button" onClick={onOpen} className={cn("group w-56 shrink-0 text-left flex flex-col", COLLECTION_CARD_HEIGHT)}>
+        <div className="aspect-[4/3] w-full bg-muted overflow-hidden flex items-center justify-center shrink-0">
           {coverUrl && <img src={coverUrl} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />}
         </div>
-        <p className="font-display text-[17px] leading-snug mt-2.5 text-foreground truncate" title={folder.name}>{folder.name}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">{countLabel}</p>
+        <div className="mt-2.5">
+          {name}
+          <p className="text-xs text-muted-foreground mt-1">{countLabel}</p>
+        </div>
       </button>
     );
   }
 
   // No image anywhere in this folder's subtree - a bordered, text-led
-  // "label card" instead: a small icon, a hairline rule, then the name
-  // and count given room to be the actual content, not a weak copy of
-  // the photo card's layout with the photo missing.
+  // "label card" instead of a weak copy of the photo card with the photo
+  // missing. The icon, name and count are one tight, deliberate group
+  // (gap-2.5 within it) rather than pinned to opposite corners of the
+  // card - justify-center turns any extra height into even breathing
+  // room above and below that group, not an awkward gap inside it.
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="w-56 shrink-0 h-[190px] text-left border border-border bg-card hover:border-foreground/30 transition-colors px-5 pt-5 pb-4 flex flex-col"
+      className={cn(
+        "w-56 shrink-0 text-left border bg-card transition-colors px-6 flex flex-col justify-center gap-2.5",
+        COLLECTION_CARD_HEIGHT,
+        active ? "border-foreground/50" : "border-border hover:border-foreground/30",
+      )}
     >
       <Folder className="h-4 w-4 text-muted-foreground/60 shrink-0" />
-      <div className="mt-auto pt-3.5 border-t border-border/70">
-        <p className="font-display text-xl leading-snug text-foreground truncate" title={folder.name}>{folder.name}</p>
+      <div>
+        {name}
         <p className="text-xs text-muted-foreground mt-1">{countLabel}</p>
       </div>
     </button>

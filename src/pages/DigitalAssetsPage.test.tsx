@@ -195,6 +195,18 @@ describe("DigitalAssetsPage", () => {
     expect(await screen.findByText(/this folder is empty/i)).toBeInTheDocument();
   });
 
+  it("marks only the currently-browsed collection as active in the strip", async () => {
+    renderPage();
+    await screen.findByTestId("asset-list");
+    const strip = screen.getByText("Collections").closest("div")!.nextElementSibling as HTMLElement;
+    fireEvent.click(within(strip).getByText("Brochures"));
+    await screen.findByText(/this folder is empty/i);
+    const brochuresCard = within(strip).getByRole("button", { name: /Brochures/ });
+    const photographyCard = within(strip).getByRole("button", { name: /Product Photography/ });
+    expect(brochuresCard.className).toMatch(/border-foreground\/50/);
+    expect(photographyCard.className).not.toMatch(/border-foreground\/50/);
+  });
+
   // The preview panel is the robust, not-clamped way to see a complete
   // filename (see DigitalAssetsPage.tsx's SheetTitle) - assert the DOM
   // itself carries no truncate/line-clamp class, not just that the text

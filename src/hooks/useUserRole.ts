@@ -42,6 +42,7 @@ const DIGITAL_ASSETS_MANAGER_EMAILS = new Set([
   "andrew@lineage-collections.com",
   "gabriella@lineage-collections.com",
   "sergio@lineage-collections.com",
+  "chris@lineage-collections.com",
 ]);
 
 export function isDigitalAssetsManager(email?: string | null) {

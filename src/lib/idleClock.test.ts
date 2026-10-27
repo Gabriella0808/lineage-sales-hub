@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { resolveLastActivityAt } from "./idleClock";
+import { describe, it, expect, beforeEach } from "vitest";
+import { IDLE_ACTIVITY_KEY, clearLastActivity, readLastActivity, resolveLastActivityAt, writeLastActivity } from "./idleClock";
 
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 
@@ -30,5 +30,33 @@ describe("resolveLastActivityAt", () => {
   it("ignores a stored timestamp from the future (clock skew)", () => {
     const now = 1_000_000;
     expect(resolveLastActivityAt(now + 60_000, now)).toBe(now);
+  });
+});
+
+// The bug this covers: an idle-triggered sign-out left the expired
+// timestamp sitting in storage. The next real login would read that same
+// stale value back via resolveLastActivityAt(), see it as already past the
+// idle threshold, and sign the person right back out - a loop, with no way
+// to stay logged in. clearLastActivity() on every sign-out is what breaks it.
+describe("clearLastActivity", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("removes the stored timestamp so a fresh login starts clean", () => {
+    writeLastActivity(Date.now() - 60 * 60 * 1000); // an hour ago - already expired
+    clearLastActivity();
+    expect(readLastActivity()).toBeNull();
+  });
+
+  it("leaves resolveLastActivityAt with nothing to resume from after a clear", () => {
+    writeLastActivity(Date.now() - 60 * 60 * 1000);
+    clearLastActivity();
+    const now = Date.now();
+    expect(resolveLastActivityAt(readLastActivity(), now)).toBe(now);
+  });
+
+  it("is a no-op, not an error, when nothing was ever stored", () => {
+    expect(localStorage.getItem(IDLE_ACTIVITY_KEY)).toBeNull();
+    expect(() => clearLastActivity()).not.toThrow();
+    expect(readLastActivity()).toBeNull();
   });
 });

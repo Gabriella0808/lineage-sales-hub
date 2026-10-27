@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, ReactNode } fro
 import { Session, User } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { clearLastActivity } from "@/lib/idleClock";
 
 interface AuthContextType {
   session: Session | null;
@@ -88,6 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const signOut = async (opts?: { scope?: "global" | "local" }) => {
+    // Must happen for every sign-out, not just the idle timeout: a stale
+    // activity timestamp left behind here would otherwise get read straight
+    // back by the idle manager on the very next login and immediately sign
+    // the person out again, before they can do anything - see
+    // clearLastActivity()'s own comment in idleClock.ts for the full story.
+    clearLastActivity();
     await supabase.auth.signOut({ scope: opts?.scope ?? "global" });
   };
 

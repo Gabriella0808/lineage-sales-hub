@@ -5,9 +5,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { resolveLastActivityAt } from "@/lib/idleClock";
+import { IDLE_ACTIVITY_KEY, readLastActivity, resolveLastActivityAt, writeLastActivity } from "@/lib/idleClock";
 
-const ACTIVITY_KEY = "lc.lastActivityAt";
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // sign out after 30 min with no REAL portal activity
 const WARNING_MS = 60 * 1000;           // warn 60s before that actually happens
 const WRITE_THROTTLE_MS = 5_000;        // don't hammer localStorage on every keystroke
@@ -20,17 +19,6 @@ const WRITE_THROTTLE_MS = 5_000;        // don't hammer localStorage on every ke
 // start with. Page navigation is tracked separately below (pathname) since
 // it isn't reliably covered by a click - browser back/forward wouldn't be.
 const ACTIVITY_EVENTS = ["mousedown", "keydown", "touchstart"] as const;
-
-function writeLastActivity(ts: number) {
-  try { localStorage.setItem(ACTIVITY_KEY, String(ts)); } catch { /* private mode etc - just won't sync across tabs */ }
-}
-
-function readLastActivity(): number | null {
-  try {
-    const n = Number(localStorage.getItem(ACTIVITY_KEY));
-    return Number.isFinite(n) && n > 0 ? n : null;
-  } catch { return null; }
-}
 
 /**
  * Signs the user out after IDLE_TIMEOUT_MS of no REAL portal activity, with
@@ -123,8 +111,15 @@ export function IdleLogoutManager() {
     // "storage" event fires in this tab immediately and synchronously - it
     // isn't a polled timer, so it isn't subject to background-tab timer
     // throttling either. Forward it straight into this tab's worker.
+    //
+    // e.newValue is null when the other tab *removed* the key rather than
+    // set it - clearLastActivity() does this on every sign-out. Number(null)
+    // is 0, a "valid" finite timestamp, which would otherwise read as "this
+    // other tab's session is instantly 30 minutes idle" and immediately
+    // sign THIS tab out too - exactly the "local-only" isolation this
+    // listener exists to preserve must not do.
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== ACTIVITY_KEY || warningShownRef.current) return;
+      if (e.key !== IDLE_ACTIVITY_KEY || warningShownRef.current || e.newValue == null) return;
       const ts = Number(e.newValue);
       if (Number.isFinite(ts)) worker.postMessage({ type: "activity", ts });
     };

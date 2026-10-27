@@ -163,6 +163,45 @@ describe("DigitalAssetsPage", () => {
     expect(screen.queryByRole("button", { name: /new folder/i })).not.toBeInTheDocument();
   });
 
+  // Editorial Library redesign: Collections are the real top-level folders
+  // (digital_asset_folders.parent_folder_id IS NULL), not invented
+  // categories - "Brochures" in the fixture above is exactly that.
+  it("shows real top-level folders as Collections with real item counts", async () => {
+    renderPage();
+    await screen.findByTestId("asset-list");
+    expect(screen.getByText("Collections")).toBeInTheDocument();
+    // "Brochures" appears both as a Collection card and as a row in the
+    // list below - at least one instance must be present either way.
+    expect(screen.getAllByText("Brochures").length).toBeGreaterThan(0);
+    // No asset in the fixture has folder_id "f1", so its real, computed
+    // count is zero - the collection card must say so honestly, not omit
+    // the count or show a placeholder number.
+    expect(screen.getByText("Empty")).toBeInTheDocument();
+  });
+
+  it("navigates into a folder when its Collection card is clicked", async () => {
+    renderPage();
+    await screen.findByTestId("asset-list");
+    const collectionsHeading = screen.getByText("Collections");
+    const strip = collectionsHeading.closest("div")!.nextElementSibling as HTMLElement;
+    fireEvent.click(within(strip).getByText("Brochures"));
+    // Brochures has no children in the fixture, so a real navigation lands
+    // on its real empty state, not just a changed breadcrumb label.
+    expect(await screen.findByText(/this folder is empty/i)).toBeInTheDocument();
+  });
+
+  // The preview panel is the robust, not-clamped way to see a complete
+  // filename (see DigitalAssetsPage.tsx's SheetTitle) - assert the DOM
+  // itself carries no truncate/line-clamp class, not just that the text
+  // node exists (which would pass even with the old clamped version).
+  it("shows the complete filename with no truncation class in the file preview", async () => {
+    renderPage();
+    const list = await screen.findByTestId("asset-list");
+    fireEvent.click(within(list).getByText("Apple Catalog.pdf"));
+    const title = await screen.findByRole("heading", { name: "Apple Catalog.pdf" });
+    expect(title.className).not.toMatch(/truncate|line-clamp/);
+  });
+
   it("shows an empty state with no items", async () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === "digital_asset_folders") return makeQueryBuilder({ data: [], error: null });

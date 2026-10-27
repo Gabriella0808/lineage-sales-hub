@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   Folder, FolderPlus, Upload, Search, Grid3x3, List, MoreVertical,
   Download, Pencil, FolderInput, Trash2, ChevronRight, Home, Loader2, X,
-  Star, Clock, ChevronLeft, ChevronDown, FileUp, FolderUp, ArrowUpDown, Copy,
+  Star, Clock, ChevronLeft, ChevronDown, FileUp, FolderUp, ArrowUpDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -125,20 +125,6 @@ export default function DigitalAssetsPage() {
     toggleStar.mutate({ itemType: kind, itemId: id, userId: user.id, starred: isStarred(kind, id) });
   }
 
-  // Suggested-for-you cards clamp long filenames to 2 lines - this is the
-  // reliable way to see/get the full name back regardless of pointer type
-  // (a title-attribute tooltip alone doesn't reach touch or keyboard users).
-  // The toast surfaces the full name as text, not just a clipboard side
-  // effect, so it doubles as the "reveal" affordance.
-  async function copyFullName(name: string) {
-    try {
-      await navigator.clipboard.writeText(name);
-    } catch {
-      // clipboard permission denied/unavailable - still show the full name below
-    }
-    toast.success(name, { description: "Copied full filename" });
-  }
-
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   // Detailed list is the default view - a user can tell files with similar
   // names apart by their columns without opening each one; grid stays
@@ -152,7 +138,7 @@ export default function DigitalAssetsPage() {
   const [uploads, setUploads] = useState<UploadState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const suggestedScrollRef = useRef<HTMLDivElement>(null);
+  const collectionsScrollRef = useRef<HTMLDivElement>(null);
 
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -247,22 +233,6 @@ export default function DigitalAssetsPage() {
     return order.filter((k) => groups.has(k)).map((k) => ({ label: k as string | null, items: groups.get(k)! }));
   }, [sortedItems, sortBy]);
 
-  // "Suggested for you" - the most recently touched items across the whole
-  // library (not just the current folder), same idea as Dropbox's own
-  // suggestion row - real, honest "what's relevant right now" rather than
-  // anything fabricated. Only shown while plainly browsing (not mid-search
-  // or inside a Recents/Starred filter, where it'd be redundant).
-  const suggestedItems: GridItem[] = useMemo(() => {
-    if (q || quickFilter !== "all") return [];
-    const merged: GridItem[] = [
-      ...folders.map((data): GridItem => ({ kind: "folder", data })),
-      ...assets.map((data): GridItem => ({ kind: "asset", data })),
-    ];
-    return merged
-      .sort((a, b) => new Date(b.data.updated_at).getTime() - new Date(a.data.updated_at).getTime())
-      .slice(0, 8);
-  }, [folders, assets, q, quickFilter]);
-
   // A folder can't be moved into itself or into its own descendant.
   const descendantIds = (folderId: string): Set<string> => {
     const out = new Set<string>();
@@ -277,6 +247,32 @@ export default function DigitalAssetsPage() {
     walk(folderId);
     return out;
   };
+
+  // "Collections" - the top-level folders themselves, presented as visual
+  // entry points instead of a flat list. This is a direct, non-invented
+  // mapping (root folder = collection, exactly what's already there - see
+  // digital_asset_folders.parent_folder_id IS NULL), not a fabricated
+  // category scheme, and it needs no schema change. A cover photo is the
+  // most recently updated real image asset found anywhere in that folder's
+  // own subtree (never a stock/marketing photo standing in for a specific
+  // folder's actual contents) - a folder with no image assets gets the
+  // same understated neutral placeholder every empty/non-image tile in
+  // this app already uses, not a fabricated thumbnail. Counts are the same
+  // direct-child counts every other folder tile/row already shows.
+  const collections = useMemo(() => {
+    if (q || quickFilter !== "all") return [];
+    return folders
+      .filter((f) => f.parent_folder_id === null)
+      .map((folder) => {
+        const subtreeIds = new Set([folder.id, ...descendantIds(folder.id)]);
+        const cover = assets
+          .filter((a) => a.folder_id && subtreeIds.has(a.folder_id) && isImage(a.content_type))
+          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
+        return { folder, itemCount: childCounts.get(folder.id) ?? 0, cover };
+      })
+      .sort((a, b) => a.folder.name.localeCompare(b.folder.name));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folders, assets, childCounts, q, quickFilter]);
 
   async function handleCreateFolder() {
     if (!newFolderName.trim() || !user) return;
@@ -476,14 +472,15 @@ export default function DigitalAssetsPage() {
   const isLoading = foldersLoading || assetsLoading;
 
   return (
-    <div className="animate-fade-in space-y-4">
-      <div className="page-header flex flex-wrap items-center justify-between gap-3">
+    <div className="animate-fade-in space-y-6">
+      <div className="page-header flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="page-title">Digital Assets</h1>
-          <p className="page-subtitle">Photos, videos, and marketing materials</p>
+          <p className="section-label">Digital Assets</p>
+          <h1 className="font-display text-[1.75rem] sm:text-[2.125rem] font-normal tracking-tight text-foreground leading-[1.1] mt-1">The Lineage Library</h1>
+          <p className="page-subtitle mt-2 max-w-xl">Photography, catalogs, forms and brand resources for the Lineage Collections team.</p>
         </div>
         {canManage && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm">
@@ -517,58 +514,41 @@ export default function DigitalAssetsPage() {
         )}
       </div>
 
-      {suggestedItems.length > 0 && (
+      {/* Collections - the top-level folders as a compact, visual discovery
+          row (not an oversized hero: a single horizontally-scrollable
+          strip, same scroll mechanic the old "Suggested for you" row used,
+          so the file browser below is never more than a glance away). */}
+      {collections.length > 0 && (
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-foreground">Suggested for you</span>
+            <span className="font-display text-lg text-foreground">Collections</span>
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => suggestedScrollRef.current?.scrollBy({ left: -280, behavior: "smooth" })}>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => collectionsScrollRef.current?.scrollBy({ left: -300, behavior: "smooth" })} aria-label="Scroll collections left">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => suggestedScrollRef.current?.scrollBy({ left: 280, behavior: "smooth" })}>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => collectionsScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })} aria-label="Scroll collections right">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
-          <div ref={suggestedScrollRef} className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth">
-            {suggestedItems.map((item) => (
-              <div key={`${item.kind}-${item.data.id}`} className="group relative w-64 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => item.kind === "folder" ? (setCurrentFolderId(item.data.id), setQuickFilter("all")) : setPreviewAsset(item.data)}
-                  className="flex items-start gap-2.5 w-full border border-border bg-card hover:border-foreground/30 transition-colors p-2.5 pr-8 text-left"
-                >
-                  <SuggestedThumb item={item} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-snug line-clamp-3" title={item.data.name}>{item.data.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {item.kind === "folder" ? "Folder" : fileCategory(item.data.content_type).label}
-                      {item.kind === "folder" && item.data.parent_folder_id && foldersById.get(item.data.parent_folder_id)
-                        ? ` • ${foldersById.get(item.data.parent_folder_id)!.name}` : ""}
-                    </p>
-                  </div>
-                </button>
-                {/* Sibling, not nested in the button above - a button inside a
-                    button is invalid and breaks keyboard/screen-reader focus. */}
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); void copyFullName(item.data.name); }}
-                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-sm border border-border/60 bg-card text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/30 focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  aria-label={`Show and copy full filename: ${item.data.name}`}
-                  title={item.data.name}
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                </button>
-              </div>
+          <div ref={collectionsScrollRef} className="flex gap-4 overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth">
+            {collections.map(({ folder, itemCount, cover }) => (
+              <CollectionCard
+                key={folder.id}
+                folder={folder}
+                itemCount={itemCount}
+                cover={cover}
+                onOpen={() => { setCurrentFolderId(folder.id); setSearch(""); setQuickFilter("all"); }}
+              />
             ))}
           </div>
         </div>
       )}
 
-      {/* Toolbar - quick filters, search, sort, and view toggle grouped into
-          one bordered strip so the page reads as "controls" vs. "content"
-          at a glance. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border border-border bg-card px-3 py-2">
+      {/* Toolbar - quick filters, search, sort, and view toggle sit directly
+          on the page, no bordered box around them - matches the website's
+          own restrained, mostly-borderless control language. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-1">
           <Button
             variant={quickFilter === "recents" ? "secondary" : "ghost"} size="sm" className="h-8"
@@ -894,7 +874,12 @@ export default function DigitalAssetsPage() {
           {previewAsset && (
             <>
               <SheetHeader className="p-5 pb-3 border-b space-y-2">
-                <SheetTitle className="truncate pr-8 text-left">{previewAsset.name}</SheetTitle>
+                {/* No truncation here - this panel is the one place a name
+                    is guaranteed fully visible, however long, regardless
+                    of pointer type. Grid/list views still clamp for
+                    density, but this is where "what is this file actually
+                    called" gets answered robustly, not with a tooltip. */}
+                <SheetTitle className="pr-8 text-left break-words">{previewAsset.name}</SheetTitle>
                 <div className="flex items-center gap-2">
                   <FileTypeBadge contentType={previewAsset.content_type} />
                   <span className="text-xs text-muted-foreground">{formatBytes(previewAsset.size_bytes)}</span>
@@ -942,20 +927,32 @@ function ListHeaderRow() {
   );
 }
 
-function SuggestedThumb({ item }: { item: GridItem }) {
-  if (item.kind === "folder") {
-    return (
-      <div className="h-9 w-9 shrink-0 border border-border flex items-center justify-center bg-muted/40">
-        <Folder className="h-4 w-4 text-muted-foreground" />
-      </div>
-    );
-  }
-  const { icon: Icon } = fileCategory(item.data.content_type);
-  const thumbUrl = useSignedUrl(isImage(item.data.content_type) ? item.data.file_path : null).data;
+// A collection's cover is a real, already-stored image asset found
+// somewhere in that folder's own subtree (never a stock/marketing photo) -
+// or, when the folder has no image assets at all, the same understated
+// neutral tile every other folder-without-a-preview already uses. Bare
+// image treatment (no border/shadow on the photo itself), matching the
+// website's own near-shadowless product-grid convention.
+function CollectionCard({ folder, itemCount, cover, onOpen }: {
+  folder: DigitalFolder; itemCount: number; cover: DigitalAsset | null; onOpen: () => void;
+}) {
+  const coverUrl = useSignedUrl(cover?.file_path ?? null).data;
   return (
-    <div className="h-9 w-9 shrink-0 border border-border flex items-center justify-center overflow-hidden bg-muted/40">
-      {thumbUrl ? <img src={thumbUrl} alt={item.data.name} className="h-full w-full object-cover" /> : <Icon className="h-4 w-4 text-muted-foreground" />}
-    </div>
+    <button
+      type="button"
+      onClick={onOpen}
+      className="group w-56 shrink-0 text-left"
+    >
+      <div className="aspect-[4/3] w-full bg-muted overflow-hidden flex items-center justify-center">
+        {coverUrl ? (
+          <img src={coverUrl} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+        ) : (
+          <Folder className="h-7 w-7 text-muted-foreground/50" />
+        )}
+      </div>
+      <p className="font-display text-[17px] leading-snug mt-2.5 text-foreground truncate" title={folder.name}>{folder.name}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">{itemCount > 0 ? `${itemCount} item${itemCount === 1 ? "" : "s"}` : "Empty"}</p>
+    </button>
   );
 }
 
@@ -1066,8 +1063,11 @@ function AssetTile({ asset, canManage, starred, onToggleStar, onOpen, onDownload
       <div className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-card">
         <ItemMenu onDownload={onDownload} onRename={onRename} onMove={onMove} onDelete={onDelete} canManage={canManage} starred={starred} onToggleStar={onToggleStar} />
       </div>
-      <div className="h-20 flex items-center justify-center overflow-hidden bg-muted/40">
-        {thumbUrl ? <img src={thumbUrl} alt={asset.name} className="h-full w-full object-cover" /> : <Icon className="h-6 w-6 text-muted-foreground" />}
+      {/* Scales with the grid column width (not a fixed small row) so
+          photography actually reads as "large, elegant thumbnails" rather
+          than a cramped icon strip. */}
+      <div className="aspect-square flex items-center justify-center overflow-hidden bg-muted/40">
+        {thumbUrl ? <img src={thumbUrl} alt={asset.name} className="h-full w-full object-cover" /> : <Icon className="h-7 w-7 text-muted-foreground" />}
       </div>
       <div className="p-2.5 space-y-1 border-t border-border">
         <p className="text-sm leading-snug line-clamp-2" title={asset.name}>{asset.name}</p>

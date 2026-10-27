@@ -95,7 +95,7 @@ function PanelItems({ section, role, onNavigate }: { section: NavSection; role: 
                 end={item.url === "/"}
                 onClick={onNavigate}
                 className={cn(
-                  "relative flex-1 flex items-center rounded-lg px-2.5 py-2 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors",
+                  "relative flex-1 flex items-center rounded-md px-2.5 py-2 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors",
                   "before:pointer-events-none before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:rounded-full before:bg-primary before:opacity-0 before:transition-opacity before:duration-150",
                 )}
                 activeClassName={cn("bg-secondary text-foreground font-medium", "before:opacity-100")}
@@ -295,7 +295,7 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
               {!collapsed && (
                 <div className="px-2.5 mb-1.5 flex items-center gap-2">
                   <Star className="h-2.5 w-2.5 fill-sidebar-primary text-sidebar-primary shrink-0" />
-                  <span className="text-[9.5px] font-semibold uppercase tracking-[0.22em] text-sidebar-section">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-section">
                     Pinned
                   </span>
                   <span className="flex-1 h-px bg-sidebar-border/60" />
@@ -316,14 +316,14 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
                   />
                 ))}
               </ul>
-              {!collapsed && <div className="mt-4 h-px bg-sidebar-border/40" />}
+              {!collapsed && <div className="mt-4 h-px bg-sidebar-border/60" />}
             </div>
           )}
           {sections.map((section, idx) => (
             <div key={section.id}>
               {!collapsed && (
                 <div className="px-2.5 mb-1.5 flex items-center gap-2">
-                  <span className="text-[9.5px] font-semibold uppercase tracking-[0.22em] text-sidebar-section">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-section">
                     {section.label}
                   </span>
                   <span className="flex-1 h-px bg-sidebar-border/60" />
@@ -392,7 +392,7 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
         style={{ left: `calc(var(--sidebar-${collapsed ? "width-icon" : "width"}) - 12px)` }}
         className={cn(
           "hidden lg:flex fixed top-[72px] z-50 h-6 w-6 items-center justify-center rounded-full",
-          "bg-sidebar-primary text-sidebar-primary-foreground shadow-md",
+          "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft",
           "hover:bg-sidebar-primary/90 transition-[left,background-color] duration-200",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
@@ -489,7 +489,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         {recentlyViewed.filter((e) => e.path !== location.pathname).length > 0 && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <DropdownMenuLabel className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               <History className="h-3 w-3" />Recently viewed
             </DropdownMenuLabel>
             {recentlyViewed.filter((e) => e.path !== location.pathname).slice(0, 5).map((e) => (
@@ -500,14 +500,14 @@ function Shell({ children }: { children: React.ReactNode }) {
           </>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">Appearance</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Appearance</DropdownMenuLabel>
         {(["light", "dark", "system"] as const).map((m) => (
           <DropdownMenuItem key={m} onClick={() => setThemeMode(m)} className="capitalize">
             <span className="w-4 mr-2">{themeMode === m ? "\u2713" : ""}</span>{m === "system" ? "Match my device" : `${m} mode`}
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">Navigation style</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Navigation style</DropdownMenuLabel>
         {ALL_STYLES.map((k) => (
           <DropdownMenuItem key={k} onClick={() => setNavStyle(k)}>
             <span className="w-4 mr-2">{navStyle === k ? "\u2713" : ""}</span>{STYLE_LABELS[k]}
@@ -529,13 +529,13 @@ function Shell({ children }: { children: React.ReactNode }) {
       data-tour="theme"
       onClick={() => setThemeMode(themeResolved === "dark" ? "light" : "dark")}
       className={cn(
-        "h-9 w-9 shrink-0 rounded-lg flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2",
+        "relative h-8 w-8 shrink-0 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 max-sm:before:absolute max-sm:before:inset-[-6px] max-sm:before:content-['']",
         dark ? "hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
       aria-label={themeResolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       title={themeResolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
     >
-      {themeResolved === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+      {themeResolved === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>
   );
 
@@ -544,13 +544,13 @@ function Shell({ children }: { children: React.ReactNode }) {
       type="button"
       onClick={() => hardRefresh()}
       className={cn(
-        "h-9 w-9 shrink-0 rounded-lg flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2",
+        "relative h-8 w-8 shrink-0 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 max-sm:before:absolute max-sm:before:inset-[-6px] max-sm:before:content-['']",
         dark ? "hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
       aria-label="Refresh app"
       title="Refresh app"
     >
-      <RefreshCw className="h-[18px] w-[18px]" />
+      <RefreshCw className="h-4 w-4" />
     </button>
   );
 
@@ -560,7 +560,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       data-tour="search"
       onClick={() => setSearchOpen(true)}
       className={cn(
-        "flex items-center gap-2 h-9 w-full max-w-[340px] rounded-lg border px-3 text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2",
+        "flex items-center gap-2 h-8 w-full max-w-[340px] rounded-md border px-3 text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2",
         dark ? "border-sidebar-border bg-sidebar-accent/50 text-sidebar-foreground/80 hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground/80 focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
     >
@@ -588,7 +588,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const syncPill = lastSynced ? (
     <div
       className={cn(
-        "hidden md:flex items-center gap-1.5 h-9 rounded-lg border px-2.5 text-[11.5px] shrink-0",
+        "hidden md:flex items-center gap-1.5 h-8 rounded-md border px-2.5 text-[11.5px] shrink-0",
         dark ? "border-sidebar-border text-sidebar-foreground/70" : "border-border text-muted-foreground",
       )}
       title={`Product catalog last synced ${lastSynced.toLocaleString()}`}
@@ -610,7 +610,7 @@ function Shell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 className={cn(
-                  "relative flex items-center gap-1 rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent",
+                  "relative flex items-center gap-1 rounded-md px-3 py-2 text-[13px] transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent",
                   // Current section: an understated underline (the website's
                   // real nav convention - no background pill on active/hover,
                   // see LINEAGE_BRAND_DESIGN_SYSTEM.md Sec 7) rather than a
@@ -620,7 +620,7 @@ function Shell({ children }: { children: React.ReactNode }) {
                   sec.id === here.sectionId && "text-sidebar-accent-foreground font-medium after:absolute after:left-3 after:right-3 after:bottom-0.5 after:h-[2px] after:rounded-full after:bg-sidebar-primary",
                 )}
               >
-                {sec.label.split(" & ")[0]}<ChevronDown className="h-3 w-3 opacity-70" />
+                {sec.label.split(" & ")[0]}<ChevronDown className="h-3.5 w-3.5 opacity-70" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64">
@@ -696,7 +696,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         const sec = sections.find((x) => x.id === flyout);
         return sec ? (
           <div className="hidden lg:block fixed bottom-[100px] left-1/2 -translate-x-1/2 z-40 w-[300px] max-h-[60vh] overflow-y-auto rounded-md border bg-card p-3 shadow-elev">
-            <p className="px-2.5 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{sec.label}</p>
+            <p className="px-2.5 pt-1 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{sec.label}</p>
             <PanelItems section={sec} role={role} onNavigate={() => setFlyout(null)} />
           </div>
         ) : null;
@@ -716,7 +716,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         {themeButton}
         {refreshButton}
         <NotificationsBell />
-        <button type="button" onClick={() => setDrawerOpen(true)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] bg-sidebar-accent hover:bg-sidebar-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" aria-label="Open menu"><Menu className="h-4 w-4" /><span className="hidden sm:inline">Menu</span></button>
+        <button type="button" onClick={() => setDrawerOpen(true)} className="flex items-center gap-2 rounded-md px-3 py-2 text-[13px] bg-sidebar-accent hover:bg-sidebar-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" aria-label="Open menu"><Menu className="h-4 w-4" /><span className="hidden sm:inline">Menu</span></button>
         {accountMenu}
       </header>
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
@@ -725,7 +725,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <div className="p-4 space-y-6">
             {sections.map((sx) => (
               <div key={sx.id}>
-                <p className="px-2.5 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{sx.label}</p>
+                <p className="px-2.5 mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{sx.label}</p>
                 <PanelItems section={sx} role={role} onNavigate={() => setDrawerOpen(false)} />
               </div>
             ))}
@@ -760,11 +760,11 @@ function Shell({ children }: { children: React.ReactNode }) {
           <div className="p-3 space-y-5">
             {sections.map((sx) => (
               <div key={sx.id}>
-                <p className="px-2.5 mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{sx.label}</p>
+                <p className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{sx.label}</p>
                 <PanelItems section={sx} role={role} onNavigate={() => setMobileOpen(false)} />
               </div>
             ))}
-            <button type="button" onClick={() => { setMobileOpen(false); setIssueOpen(true); }} className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] bg-primary text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            <button type="button" onClick={() => { setMobileOpen(false); setIssueOpen(true); }} className="w-full flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] bg-primary text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
               <AlertCircle className="h-4 w-4" />Report an issue
             </button>
           </div>

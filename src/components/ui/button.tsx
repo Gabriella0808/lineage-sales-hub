@@ -34,7 +34,13 @@ const buttonVariants = cva(
         default: "h-8 px-3.5 py-1.5",
         sm: "h-7 rounded-md px-2.5 text-[12px]",
         lg: "h-9 rounded-md px-5",
-        icon: "h-8 w-8",
+        // The visible 32px square stays exactly that size - the extra tap
+        // area is an invisible pseudo-element, not padding, so it never
+        // changes how the button looks. Scoped to phone widths only
+        // (max-sm:) so it can't create overlapping hit-zones between
+        // tightly-packed icon buttons in dense desktop toolbars, where a
+        // mouse pointer doesn't need the extra margin anyway.
+        icon: "h-8 w-8 relative max-sm:before:absolute max-sm:before:inset-[-6px] max-sm:before:content-['']",
       },
     },
     // Matches the website's real `.btn` treatment (uppercase, letter-spaced,

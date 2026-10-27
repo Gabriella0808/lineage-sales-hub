@@ -246,10 +246,12 @@
 }
 
 @layer utilities {
-  /* Surfaces — crisp, hairline, editorial */
+  /* Surfaces — crisp, hairline, editorial. No shadow by default, matching
+     the website's own flat bordered-panel convention; `.surface-elev`
+     below remains for the rare case a surface genuinely needs to read as
+     raised/floating rather than a static content block. */
   .surface {
     @apply bg-card border border-border rounded-md;
-    box-shadow: var(--shadow-soft);
   }
   .surface-elev {
     @apply bg-card border border-border rounded-md;

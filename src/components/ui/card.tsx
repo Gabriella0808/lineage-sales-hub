@@ -5,7 +5,11 @@ import { cn } from "@/lib/utils";
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("rounded-lg border border-border bg-card text-card-foreground shadow-soft", className)}
+    // No shadow - a flat, bordered surface matches the website's own one
+    // real "card" pattern (a bordered form panel, never shadowed). Pages
+    // that genuinely need a surface to feel "raised" (a floating panel,
+    // not a static content block) opt into `.surface-elev`/`shadow-elev`.
+    className={cn("rounded-lg border border-border bg-card text-card-foreground", className)}
     {...props}
   />
 ));

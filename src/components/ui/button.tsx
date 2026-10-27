@@ -5,29 +5,36 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-[13px] font-medium tracking-tight ring-offset-background transition-[background-color,border-color,color,box-shadow,opacity] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:size-[15px] [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-[13px] font-medium tracking-tight ring-offset-background transition-[background-color,border-color,color,opacity] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:size-[15px] [&_svg]:shrink-0",
   {
     variants: {
       variant: {
+        // No shadow-soft here - the website's own buttons carry no shadow by
+        // default (only its opt-in .btn-raised modifier does); a flat fill
+        // reads more architectural than even a faint one.
         default:
-          "bg-primary text-primary-foreground shadow-soft hover:bg-primary/90 active:bg-primary",
+          "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-soft hover:bg-destructive/90 active:bg-destructive",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 active:bg-destructive",
         outline:
-          "border border-input bg-background hover:bg-accent/30 hover:border-foreground/25 hover:text-accent-foreground active:bg-accent/40",
+          "border border-input bg-background hover:bg-accent/20 hover:border-foreground/30 hover:text-accent-foreground active:bg-accent/30",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/70 active:bg-secondary/80",
         ghost:
-          "hover:bg-accent/30 hover:text-accent-foreground active:bg-accent/40",
+          "hover:bg-accent/20 hover:text-accent-foreground active:bg-accent/30",
         tertiary:
-          "text-foreground/75 hover:text-foreground hover:bg-muted/60 active:bg-muted/80",
+          "text-foreground/75 hover:text-foreground hover:bg-muted/50 active:bg-muted/70",
         link: "text-primary underline-offset-4 hover:underline",
       },
+      // Thinner across the board (was h-9/h-8/h-10/h-9) - Input/Textarea/
+      // Select got the matching h-8 default so controls still line up
+      // in toolbars and forms. icon stays at a 32px floor, not smaller,
+      // to keep touch targets adequate.
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-[12.5px]",
-        lg: "h-10 rounded-md px-6",
-        icon: "h-9 w-9",
+        default: "h-8 px-3.5 py-1.5",
+        sm: "h-7 rounded-md px-2.5 text-[12px]",
+        lg: "h-9 rounded-md px-5",
+        icon: "h-8 w-8",
       },
     },
     // Matches the website's real `.btn` treatment (uppercase, letter-spaced,

@@ -5,6 +5,11 @@ import { cn } from "@/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
+// Understated underline treatment, matching the website's real nav
+// convention (no filled pill on active/hover - see
+// LINEAGE_BRAND_DESIGN_SYSTEM.md Sec 7) - this used to be an opt-in
+// `.tabs-underline` utility a page had to request; it's now simply how
+// Tabs looks everywhere, so every existing usage picks it up for free.
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
@@ -12,7 +17,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-9 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      "h-auto w-full justify-start gap-1 rounded-none border-b border-border bg-transparent p-0 inline-flex items-center",
       className,
     )}
     {...props}
@@ -27,7 +32,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-[13px] font-medium ring-offset-background transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      "inline-flex items-center justify-center whitespace-nowrap rounded-none border-b-2 border-transparent bg-transparent px-4 py-2.5 text-[13px] font-medium text-muted-foreground shadow-none ring-offset-background transition-colors data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
       className,
     )}
     {...props}

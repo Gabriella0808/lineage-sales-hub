@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  BarChart3, Store, UserSquare2, RefreshCw, LayoutDashboard,
+  BarChart3, Store, UserSquare2, LayoutDashboard,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { LiveKpiReport } from "@/components/LiveKpiReport";
@@ -18,7 +17,6 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { RepNotConfigured } from "@/components/RepNotConfigured";
 import { managerGroupIds } from "@/utils/managerGroups";
 import { useAcctivateRepCatalog } from "@/hooks/useAcctivateRepCatalog";
-import { formatReportingTime } from "@/utils/reportingDate";
 
 type ReportKey = "executive" | "live-kpi" | "dealer-reporting" | "rep-reporting";
 
@@ -33,19 +31,10 @@ export default function CompanyWidePage() {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-
-  const handleRefresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["daily_actuals_v2"] });
-    queryClient.invalidateQueries({ queryKey: ["sales_grouped_rows_v2"] });
-    queryClient.invalidateQueries({ queryKey: ["v_portal_invoiced_lines_v1"] });
-    queryClient.invalidateQueries({ queryKey: ["v_portal_booking_lines_v1"] });
-    queryClient.invalidateQueries({ queryKey: ["mtd_invoicing_cw"] });
-    queryClient.invalidateQueries({ queryKey: ["mtd_invoicing_mgr"] });
-    setRefreshKey((k) => k + 1);
-    setLastRefreshed(new Date());
-  }, [queryClient]);
+  // No manual refresh control on this page anymore - was only ever set by
+  // the removed refresh button, kept as a static value since LiveKpiReport
+  // and ExecutiveOverview still take it as a cache-busting prop.
+  const refreshKey = 0;
   const reportParam = params.get("report") as ReportKey | null;
   const managerParam = params.get("manager") ?? "all";
 
@@ -157,6 +146,14 @@ export default function CompanyWidePage() {
   const setManager = (id: string) => {
     const next = new URLSearchParams(params);
     if (id === "all") next.delete("manager"); else next.set("manager", id);
+    // A rep picked under the old manager may not belong to the new one -
+    // clear it rather than leave a stale, now-invalid selection in place.
+    next.delete("rep");
+    setParams(next, { replace: false });
+  };
+  const setRep = (id: string) => {
+    const next = new URLSearchParams(params);
+    if (id === "all") next.delete("rep"); else next.set("rep", id);
     setParams(next, { replace: false });
   };
 
@@ -188,6 +185,23 @@ export default function CompanyWidePage() {
     ? undefined
     : visibleManagersLabeled.find((m) => m.id === effectiveManagerId)?.name;
 
+  // High-Level Reporting-only: lets you narrow the already manager-scoped
+  // view down to one rep. Options are whichever reps are in the current
+  // manager scope (all reps, if "All managers" is selected).
+  const repParam = params.get("rep") ?? "all";
+  const executiveRepOptions = useMemo(
+    () => reps
+      .filter((r) => !managerScopeRepIds || managerScopeRepIds.includes(r.id))
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [reps, managerScopeRepIds],
+  );
+  const selectedRepId =
+    activeReport === "executive" && repParam !== "all" && executiveRepOptions.some((r) => r.id === repParam)
+      ? repParam
+      : null;
+  const selectedRepName = selectedRepId ? executiveRepOptions.find((r) => r.id === selectedRepId)?.name : undefined;
+
   if (isRep && !roleInfo?.repId) {
     return (
       <div className="animate-fade-in space-y-6">
@@ -204,16 +218,24 @@ export default function CompanyWidePage() {
       <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
           <h1 className="page-title">Company-Wide</h1>
-          {lastRefreshed && (
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              Refreshed {formatReportingTime(lastRefreshed)} ET
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={handleRefresh} className="h-9 px-2 text-muted-foreground hover:text-foreground">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          {activeReport === "executive" && (
+            <>
+              <span className="text-xs text-muted-foreground hidden sm:inline">Rep</span>
+              <Select value={repParam} onValueChange={setRep}>
+                <SelectTrigger data-tour="hlr-rep-filter" className="w-[180px] h-9">
+                  <SelectValue placeholder="All reps" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All reps</SelectItem>
+                  {executiveRepOptions.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
           <span className="text-xs text-muted-foreground hidden sm:inline">Manager</span>
           <Select value={effectiveManagerId} onValueChange={setManager} disabled={isRep}>
             <SelectTrigger data-tour="hlr-manager-filter" className="w-[220px] h-9">
@@ -263,6 +285,8 @@ export default function CompanyWidePage() {
           <ExecutiveOverview
             managerIds={groupIds}
             managerName={managerName}
+            repId={selectedRepId}
+            repName={selectedRepName}
             refreshKey={refreshKey}
             onOpenReport={setReport}
           />

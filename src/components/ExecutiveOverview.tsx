@@ -29,6 +29,9 @@ interface Props {
   /** The selected manager's records (real + any bare duplicates); null = company-wide. */
   managerIds: string[] | null;
   managerName?: string;
+  /** Portal rep UUID to narrow the (already manager-scoped) data down to one rep; null = every rep in scope. */
+  repId?: string | null;
+  repName?: string;
   refreshKey: number;
   onOpenReport: (key: "live-kpi" | "dealer-reporting" | "rep-reporting") => void;
 }
@@ -138,26 +141,19 @@ function execRowsQuery(year: number, managerIds: string[] | null, refreshKey: nu
   };
 }
 
+interface OpenSoLine { open_so_amount: number | string | null; order_number: string | null; rep_id: string | null }
+
 function execBacklogQuery(managerIds: string[] | null, refreshKey: number) {
   return {
     queryKey: ["exec_overview_backlog", managerIds, refreshKey],
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
-    queryFn: async () => {
-      const rows = await fetchAll<{ open_so_amount: number | string | null; order_number: string | null }>((from, to) =>
-        (supabase as any).rpc(
-          "get_open_so_lines_scoped",
-          { p_manager_ids: managerIds ?? null, p_limit: to - from + 1, p_offset: from },
-        ),
-      );
-      const orders = new Set<string>();
-      let total = 0;
-      for (const r of rows) {
-        total += Number(r.open_so_amount) || 0;
-        if (r.order_number) orders.add(r.order_number);
-      }
-      return { total, orders: orders.size };
-    },
+    queryFn: async () => fetchAll<OpenSoLine>((from, to) =>
+      (supabase as any).rpc(
+        "get_open_so_lines_scoped",
+        { p_manager_ids: managerIds ?? null, p_limit: to - from + 1, p_offset: from },
+      ),
+    ),
   };
 }
 
@@ -234,16 +230,42 @@ function buildWindows(today: Date): Record<PeriodKey, Win & { available: boolean
 interface DealerAgg { key: string; name: string; ytd: number; cur: number; prev: number; last: string; first: string }
 interface RepAgg { key: string; name: string; ytdB: number; ytdI: number; cur: number; prev: number; curI: number; dealers: Set<string> }
 
-export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenReport }: Props) {
+export function ExecutiveOverview({ managerIds, managerName, repId, repName, refreshKey, onOpenReport }: Props) {
   const today = useMemo(() => getReportingToday(), []);
   const year = today.getFullYear();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: rows = [], isLoading, error } = useExecutiveRows(year, managerIds, refreshKey);
-  const { data: backlog } = useOpenBacklog(managerIds, refreshKey);
+  const { data: backlogRows } = useOpenBacklog(managerIds, refreshKey);
   const { data: syncStatus, isLoading: syncStatusLoading, isError: syncStatusError } = useDataSyncStatus();
   const { data: targets = [] } = useRepTargets(year);
   const { data: reps = [] } = useSalesReps();
+
+  // The open-SO RPC keys rows by Acctivate rep code, not the portal rep UUID
+  // `repId` is - resolve it once here so both the backlog total below and
+  // nothing else needs to know about that mismatch.
+  const repAcId = useMemo(
+    () => (repId ? reps.find((r) => r.id === repId)?.acctivate_id?.trim().toLowerCase() ?? null : null),
+    [repId, reps],
+  );
+  // Narrows the already manager-scoped rows down to one rep, client-side -
+  // the rows query itself stays manager-scoped (same cache, no extra
+  // fetch), so switching the rep filter is instant.
+  const scopedRows = useMemo(
+    () => (repId ? rows.filter((r) => r.portal_rep_id === repId) : rows),
+    [rows, repId],
+  );
+  const backlog = useMemo(() => {
+    if (!backlogRows) return undefined;
+    const scoped = repAcId ? backlogRows.filter((r) => r.rep_id?.trim().toLowerCase() === repAcId) : backlogRows;
+    const orders = new Set<string>();
+    let total = 0;
+    for (const r of scoped) {
+      total += Number(r.open_so_amount) || 0;
+      if (r.order_number) orders.add(r.order_number);
+    }
+    return { total, orders: orders.size };
+  }, [backlogRows, repAcId]);
 
   const windows = useMemo(() => buildWindows(today), [today]);
   const [period, setPeriod] = useState<PeriodKey>("mtd");
@@ -272,7 +294,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
     const curDealers = new Set<string>();
     const prevDealers = new Set<string>();
 
-    for (const r of rows) {
+    for (const r of scopedRows) {
       const d = (r.transaction_date ?? "").slice(0, 10);
       if (!d) continue;
       const a = Number(r.amount) || 0;
@@ -316,7 +338,9 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
     }
 
     // Rep targets are set against invoicing (see Sales Targets page).
-    const inScope = new Set(reps.filter((r) => !managerIds || (!!r.manager_id && managerIds.includes(r.manager_id))).map((r) => r.id));
+    const inScope = repId
+      ? new Set([repId])
+      : new Set(reps.filter((r) => !managerIds || (!!r.manager_id && managerIds.includes(r.manager_id))).map((r) => r.id));
     const scoped = targets.filter((t) => inScope.has(t.rep_id));
     const daysInCur = new Date(year, curMonth, 0).getDate();
     const frac = (i: number) => (i < START_MONTH ? 0 : i + 1 < curMonth ? 1 : i + 1 === curMonth ? dayOfMonth / daysInCur : 0);
@@ -372,7 +396,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
       unassignedShare: bookingRows > 0 ? (unassigned / bookingRows) * 100 : 0,
       quietValue: tabs.quiet.reduce((s, d) => s + d.ytd, 0),
     };
-  }, [rows, targets, reps, managerIds, today, year, W]);
+  }, [scopedRows, targets, reps, managerIds, repId, today, year, W]);
 
   const drillModel = useMemo(() => {
     if (!drill) return null;
@@ -381,7 +405,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
     const dl = new Map<string, { name: string; v: number }>();
     const br = new Map<string, number>();
     let last = "";
-    for (const r of rows) {
+    for (const r of scopedRows) {
       const d = (r.transaction_date ?? "").slice(0, 10);
       if (!d) continue;
       const match = drill.type === "dealer" ? (r.customer_id ?? r.dealer_name ?? "unknown") === drill.key : (r.portal_rep_id ?? "unassigned") === drill.key;
@@ -407,7 +431,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
       brands: [...br.entries()].sort((a, b) => b[1] - a[1]),
       last,
     };
-  }, [drill, rows, today]);
+  }, [drill, scopedRows, today]);
 
   if (isLoading) {
     return (
@@ -471,7 +495,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
       {/* Header + period control */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{managerName ?? "All managers"} · {format(today, "EEEE, MMMM d")}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{managerName ?? "All managers"}{repName ? ` · ${repName}` : ""} · {format(today, "EEEE, MMMM d")}</p>
           <h2 className="text-2xl sm:font-serif text-4xl font-medium tracking-tight mt-1">{greeting}{first ? `, ${first[0].toUpperCase()}${first.slice(1)}` : ""}</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Here is how the business is performing.{" "}

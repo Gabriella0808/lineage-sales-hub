@@ -30,6 +30,23 @@ const buttonVariants = cva(
         icon: "h-9 w-9",
       },
     },
+    // Matches the website's real `.btn` treatment (uppercase, letter-spaced,
+    // regular weight) on actual CTA-shaped buttons only - default/lg sizes
+    // of the filled/bordered variants, the ones that stand in for the
+    // site's .btn-dark/.btn-light/.btn-outline. Left off `sm`/`icon` sizes
+    // and off ghost/tertiary/link (the site's plain-case text-link
+    // equivalent) so dense toolbars and inline row actions don't read as
+    // shouting - see LINEAGE_BRAND_DESIGN_SYSTEM.md §4, §9.
+    compoundVariants: [
+      { variant: "default", size: "default", class: "uppercase tracking-[0.02em] font-normal" },
+      { variant: "default", size: "lg", class: "uppercase tracking-[0.02em] font-normal" },
+      { variant: "destructive", size: "default", class: "uppercase tracking-[0.02em] font-normal" },
+      { variant: "destructive", size: "lg", class: "uppercase tracking-[0.02em] font-normal" },
+      { variant: "outline", size: "default", class: "uppercase tracking-[0.02em] font-normal" },
+      { variant: "outline", size: "lg", class: "uppercase tracking-[0.02em] font-normal" },
+      { variant: "secondary", size: "default", class: "uppercase tracking-[0.02em] font-normal" },
+      { variant: "secondary", size: "lg", class: "uppercase tracking-[0.02em] font-normal" },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",

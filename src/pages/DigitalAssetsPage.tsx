@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   Folder, FolderPlus, Upload, Search, Grid3x3, List, MoreVertical,
   Download, Pencil, FolderInput, Trash2, ChevronRight, Home, Loader2, X,
-  Star, Clock, ChevronLeft, ChevronDown, FileUp, FolderUp, ArrowUpDown,
+  Star, Clock, ChevronLeft, ChevronDown, FileUp, FolderUp, ArrowUpDown, Copy,
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -123,6 +123,20 @@ export default function DigitalAssetsPage() {
   function handleToggleStar(kind: "folder" | "asset", id: string) {
     if (!user) return;
     toggleStar.mutate({ itemType: kind, itemId: id, userId: user.id, starred: isStarred(kind, id) });
+  }
+
+  // Suggested-for-you cards clamp long filenames to 2 lines - this is the
+  // reliable way to see/get the full name back regardless of pointer type
+  // (a title-attribute tooltip alone doesn't reach touch or keyboard users).
+  // The toast surfaces the full name as text, not just a clipboard side
+  // effect, so it doubles as the "reveal" affordance.
+  async function copyFullName(name: string) {
+    try {
+      await navigator.clipboard.writeText(name);
+    } catch {
+      // clipboard permission denied/unavailable - still show the full name below
+    }
+    toast.success(name, { description: "Copied full filename" });
   }
 
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -518,22 +532,34 @@ export default function DigitalAssetsPage() {
           </div>
           <div ref={suggestedScrollRef} className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth">
             {suggestedItems.map((item) => (
-              <button
-                key={`${item.kind}-${item.data.id}`}
-                type="button"
-                onClick={() => item.kind === "folder" ? (setCurrentFolderId(item.data.id), setQuickFilter("all")) : setPreviewAsset(item.data)}
-                className="flex items-start gap-2.5 w-64 shrink-0 border border-border bg-card hover:border-foreground/30 transition-colors p-2.5 text-left"
-              >
-                <SuggestedThumb item={item} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm leading-snug line-clamp-2" title={item.data.name}>{item.data.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {item.kind === "folder" ? "Folder" : fileCategory(item.data.content_type).label}
-                    {item.kind === "folder" && item.data.parent_folder_id && foldersById.get(item.data.parent_folder_id)
-                      ? ` • ${foldersById.get(item.data.parent_folder_id)!.name}` : ""}
-                  </p>
-                </div>
-              </button>
+              <div key={`${item.kind}-${item.data.id}`} className="group relative w-64 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => item.kind === "folder" ? (setCurrentFolderId(item.data.id), setQuickFilter("all")) : setPreviewAsset(item.data)}
+                  className="flex items-start gap-2.5 w-full border border-border bg-card hover:border-foreground/30 transition-colors p-2.5 pr-8 text-left"
+                >
+                  <SuggestedThumb item={item} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm leading-snug line-clamp-2" title={item.data.name}>{item.data.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {item.kind === "folder" ? "Folder" : fileCategory(item.data.content_type).label}
+                      {item.kind === "folder" && item.data.parent_folder_id && foldersById.get(item.data.parent_folder_id)
+                        ? ` • ${foldersById.get(item.data.parent_folder_id)!.name}` : ""}
+                    </p>
+                  </div>
+                </button>
+                {/* Sibling, not nested in the button above - a button inside a
+                    button is invalid and breaks keyboard/screen-reader focus. */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); void copyFullName(item.data.name); }}
+                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-sm bg-card/80 text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:text-foreground"
+                  aria-label={`Show and copy full filename: ${item.data.name}`}
+                  title={item.data.name}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -564,7 +590,7 @@ export default function DigitalAssetsPage() {
               placeholder="Search all files and folders..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-8 w-[220px] pl-8 text-xs bg-background"
+              className="h-8 w-[220px] pl-8 text-xs"
             />
           </div>
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>

@@ -94,8 +94,11 @@ function PanelItems({ section, role, onNavigate }: { section: NavSection; role: 
                 to={item.url}
                 end={item.url === "/"}
                 onClick={onNavigate}
-                className="flex-1 flex items-center rounded-lg px-2.5 py-2 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                activeClassName="bg-secondary text-foreground font-medium"
+                className={cn(
+                  "relative flex-1 flex items-center rounded-lg px-2.5 py-2 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors",
+                  "before:pointer-events-none before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:rounded-full before:bg-primary before:opacity-0 before:transition-opacity before:duration-150",
+                )}
+                activeClassName={cn("bg-secondary text-foreground font-medium", "before:opacity-100")}
               >
                 <span className="truncate">{item.title}</span>
               </NavLink>
@@ -118,8 +121,11 @@ function PanelItems({ section, role, onNavigate }: { section: NavSection; role: 
                     <NavLink
                       to={c.url}
                       onClick={onNavigate}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                      activeClassName="bg-secondary text-foreground font-medium"
+                      className={cn(
+                        "relative flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors",
+                        "before:pointer-events-none before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[2.5px] before:rounded-full before:bg-primary before:opacity-0 before:transition-opacity before:duration-150",
+                      )}
+                      activeClassName={cn("bg-secondary text-foreground font-medium", "before:opacity-100")}
                     >
                       <span className="truncate">{c.title}</span>
                     </NavLink>
@@ -601,7 +607,19 @@ function Shell({ children }: { children: React.ReactNode }) {
         {sections.map((sec) => (
           <DropdownMenu key={sec.id}>
             <DropdownMenuTrigger asChild>
-              <button type="button" className={cn("flex items-center gap-1 rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent", sec.id === here.sectionId && "bg-sidebar-accent text-sidebar-accent-foreground font-medium")}>
+              <button
+                type="button"
+                className={cn(
+                  "relative flex items-center gap-1 rounded-lg px-3 py-2 text-[13px] transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent",
+                  // Current section: an understated underline (the website's
+                  // real nav convention - no background pill on active/hover,
+                  // see LINEAGE_BRAND_DESIGN_SYSTEM.md Sec 7) rather than a
+                  // filled pill. Hover/open keep their bg tint above since
+                  // that's a distinct "this opens a menu" affordance, not a
+                  // decorative active-state marker.
+                  sec.id === here.sectionId && "text-sidebar-accent-foreground font-medium after:absolute after:left-3 after:right-3 after:bottom-0.5 after:h-[2px] after:rounded-full after:bg-sidebar-primary",
+                )}
+              >
                 {sec.label.split(" & ")[0]}<ChevronDown className="h-3 w-3 opacity-70" />
               </button>
             </DropdownMenuTrigger>

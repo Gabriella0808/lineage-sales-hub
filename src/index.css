@@ -337,3 +337,28 @@
     outline: none;
   }
 }
+
+/*
+  Autofill override - not the app's own input CSS (Input/Textarea already
+  use the token bg-card), but Chrome/Safari/Edge force their own pale-blue
+  background on an autofilled field via the :-webkit-autofill pseudo-class,
+  with higher specificity than any normal background-color rule. The
+  box-shadow-inset trick is the standard workaround: it paints over that
+  forced background without touching autocomplete/autofill behavior,
+  password-manager detection, layout or dimensions. The long transition
+  delay defeats Chrome's own color flash when a field is first autofilled.
+*/
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px hsl(var(--card)) inset;
+  box-shadow: 0 0 0 1000px hsl(var(--card)) inset;
+  -webkit-text-fill-color: hsl(var(--foreground));
+  caret-color: hsl(var(--foreground));
+  transition: background-color 5000s ease-in-out 0s;
+}
+input:autofill {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+}

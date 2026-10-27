@@ -229,16 +229,20 @@ export default function CompanyWidePage() {
         </div>
       </div>
 
-      {/* Report switcher */}
-      <div data-tour="report-tabs" className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit max-w-full overflow-x-auto">
+      {/* Report switcher - this is a hand-built button row, not the shared
+          Tabs component (which already moved to this same understated
+          underline treatment), so it needed its own fix to match. */}
+      <div data-tour="report-tabs" className="flex items-center gap-1 border-b border-border w-fit max-w-full overflow-x-auto">
         {visibleReports.map(({ key, label }) => (
           <button
             key={key}
             data-tour={`tab-${key}`}
             onClick={() => setReport(key)}
             className={cn(
-              "h-8 px-3 rounded-md text-[13px] whitespace-nowrap transition-colors",
-              key === activeReport ? "bg-card font-medium shadow-sm" : "text-muted-foreground hover:text-foreground",
+              "h-9 px-4 border-b-2 text-[13px] whitespace-nowrap transition-colors",
+              key === activeReport
+                ? "border-primary text-foreground font-medium"
+                : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
             {label}

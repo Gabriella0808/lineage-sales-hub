@@ -540,7 +540,7 @@ export default function DigitalAssetsPage() {
                 >
                   <SuggestedThumb item={item} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm leading-snug line-clamp-2" title={item.data.name}>{item.data.name}</p>
+                    <p className="text-sm leading-snug line-clamp-3" title={item.data.name}>{item.data.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {item.kind === "folder" ? "Folder" : fileCategory(item.data.content_type).label}
                       {item.kind === "folder" && item.data.parent_folder_id && foldersById.get(item.data.parent_folder_id)
@@ -553,7 +553,7 @@ export default function DigitalAssetsPage() {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); void copyFullName(item.data.name); }}
-                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-sm bg-card/80 text-muted-foreground/70 transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover:text-foreground"
+                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-sm border border-border/60 bg-card text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/30 focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   aria-label={`Show and copy full filename: ${item.data.name}`}
                   title={item.data.name}
                 >

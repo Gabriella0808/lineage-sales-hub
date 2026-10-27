@@ -953,9 +953,12 @@ export function LiveKpiReport({
         <div className="rounded-lg border bg-card p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Open sales orders</p>
           <p className="font-serif text-4xl font-medium tracking-tight tabular-nums mt-3">{formatCurrency(openSoStats.totalValue)}</p>
-          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-lg bg-muted/60 p-3"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Open orders</p><p className="font-serif text-2xl font-medium tabular-nums">{openSoStats.orderCount.toLocaleString()}</p></div>
-            <div className="rounded-lg bg-muted/60 p-3"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Units</p><p className="font-serif text-2xl font-medium tabular-nums">{Math.round(openSoStats.totalUnits).toLocaleString()}</p></div>
+          {/* Plain label/value pairs on a hairline divider, not two filled
+              boxes-within-a-box - matches the flatter, less-boxy treatment
+              of the Bookings/Invoicing cards next to this one. */}
+          <div className="mt-4 grid grid-cols-2 divide-x divide-border text-sm">
+            <div className="pr-4"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Open orders</p><p className="font-serif text-2xl font-medium tabular-nums mt-1">{openSoStats.orderCount.toLocaleString()}</p></div>
+            <div className="pl-4"><p className="text-[11px] uppercase tracking-wider text-muted-foreground">Units</p><p className="font-serif text-2xl font-medium tabular-nums mt-1">{Math.round(openSoStats.totalUnits).toLocaleString()}</p></div>
           </div>
         </div>
       </div>

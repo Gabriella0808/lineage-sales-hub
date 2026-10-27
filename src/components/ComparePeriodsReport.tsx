@@ -387,7 +387,7 @@ export default function ComparePeriodsReport(_props: Props) {
           <div>
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Preset</Label>
             <Select value={preset} onValueChange={(v) => applyPreset(v as Preset)}>
-              <SelectTrigger className="h-9 mt-1 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="L3M_VS_PRIOR">Last 3 Months vs Prior 3 Months</SelectItem>
                 <SelectItem value="LM_VS_PRIOR">Last Month vs Prior Month</SelectItem>
@@ -401,11 +401,11 @@ export default function ComparePeriodsReport(_props: Props) {
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Period 1 (Baseline)</Label>
             <div className="flex gap-1 mt-1">
               <Select value={String(p1Idx[0])} onValueChange={(v) => { setP1Idx([Number(v), Math.max(p1Idx[1], Number(v))]); setPreset("CUSTOM"); }}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>{months.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={String(p1Idx[1])} onValueChange={(v) => { setP1Idx([Math.min(p1Idx[0], Number(v)), Number(v)]); setPreset("CUSTOM"); }}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>{months.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
               </Select>
             </div>
@@ -415,11 +415,11 @@ export default function ComparePeriodsReport(_props: Props) {
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Period 2 (Compare)</Label>
             <div className="flex gap-1 mt-1">
               <Select value={String(p2Idx[0])} onValueChange={(v) => { setP2Idx([Number(v), Math.max(p2Idx[1], Number(v))]); setPreset("CUSTOM"); }}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>{months.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={String(p2Idx[1])} onValueChange={(v) => { setP2Idx([Math.min(p2Idx[0], Number(v)), Number(v)]); setPreset("CUSTOM"); }}>
-                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>{months.map((m, i) => <SelectItem key={i} value={String(i)}>{m}</SelectItem>)}</SelectContent>
               </Select>
             </div>
@@ -429,14 +429,14 @@ export default function ComparePeriodsReport(_props: Props) {
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Search</Label>
             <div className="relative mt-1">
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Collection, account..." className="pl-8 h-9 text-sm" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Collection, account..." className="pl-8 text-sm" />
             </div>
           </div>
 
           <div>
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Warehouse / Sales Source</Label>
             <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="h-9 mt-1 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All sources</SelectItem>
                 {allSources.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -447,7 +447,7 @@ export default function ComparePeriodsReport(_props: Props) {
           <div>
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Brand</Label>
             <Select value={brandFilter} onValueChange={setBrandFilter}>
-              <SelectTrigger className="h-9 mt-1 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All brands</SelectItem>
                 {allBrands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
@@ -458,7 +458,7 @@ export default function ComparePeriodsReport(_props: Props) {
           <div>
             <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Performance</Label>
             <Select value={perfFilter} onValueChange={(v) => setPerfFilter(v as any)}>
-              <SelectTrigger className="h-9 mt-1 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="mt-1 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All items</SelectItem>
                 <SelectItem value="up">Positive growth only</SelectItem>

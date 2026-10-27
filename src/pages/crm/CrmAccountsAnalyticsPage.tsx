@@ -219,7 +219,7 @@ function KpiCard({
     muted: "bg-muted text-muted-foreground",
   };
   return (
-    <Card className="border-border/60 hover:shadow-md transition-shadow">
+    <Card className="border-border/60 hover:border-foreground/25 transition-colors">
       <CardContent className="p-5">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>

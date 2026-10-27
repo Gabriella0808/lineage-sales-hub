@@ -23,12 +23,12 @@ export function FilterBar({ searchPlaceholder = "Search...", searchValue, onSear
           placeholder={searchPlaceholder}
           value={searchValue}
           onChange={e => onSearchChange(e.target.value)}
-          className="pl-9 h-9 text-sm bg-card"
+          className="pl-9 text-sm bg-card"
         />
       </div>
       {filters.map((f, i) => (
         <Select key={i} value={f.value} onValueChange={f.onChange}>
-          <SelectTrigger className="flex-1 min-w-[140px] sm:flex-none sm:w-[180px] h-9 text-sm bg-card">
+          <SelectTrigger className="flex-1 min-w-[140px] sm:flex-none sm:w-[180px] text-sm bg-card">
             <SelectValue placeholder={f.label} />
           </SelectTrigger>
           <SelectContent>

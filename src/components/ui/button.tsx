@@ -34,13 +34,17 @@ const buttonVariants = cva(
         default: "h-8 px-3.5 py-1.5",
         sm: "h-7 rounded-md px-2.5 text-[12px]",
         lg: "h-9 rounded-md px-5",
-        // The visible 32px square stays exactly that size - the extra tap
-        // area is an invisible pseudo-element, not padding, so it never
-        // changes how the button looks. Scoped to phone widths only
-        // (max-sm:) so it can't create overlapping hit-zones between
-        // tightly-packed icon buttons in dense desktop toolbars, where a
-        // mouse pointer doesn't need the extra margin anyway.
-        icon: "h-8 w-8 relative max-sm:before:absolute max-sm:before:inset-[-6px] max-sm:before:content-['']",
+        // Stage C correction: a Stage B pass put the mobile hit-area
+        // expansion (below) directly on this size, on the assumption
+        // icon-sized buttons are usually isolated. An audit found 30+ call
+        // sites across the app that explicitly shrink this size (h-5
+        // through h-7) specifically because they sit in tight pairs or
+        // rows - edit/delete, save/cancel, mail/phone/website. A 12px
+        // invisible expansion on each of those would overlap its neighbor.
+        // So the expansion is no longer automatic here; see
+        // `iconTouchTarget` below for the opt-in version, applied only at
+        // call sites that are genuinely isolated from other controls.
+        icon: "h-8 w-8",
       },
     },
     // Matches the website's real `.btn` treatment (uppercase, letter-spaced,
@@ -66,6 +70,14 @@ const buttonVariants = cva(
     },
   },
 );
+
+// Opt-in mobile hit-area expansion for an icon-size Button that stands
+// genuinely alone (not part of a row/pair of other controls) - e.g. a
+// lone view-mode toggle, not a list of per-row edit/delete actions. The
+// extra ~12px is an invisible pseudo-element, not padding, so the visible
+// button never changes size; scoped to phone widths only (max-sm:) since
+// a mouse pointer doesn't need it and a desktop toolbar is denser anyway.
+export const iconTouchTarget = "relative max-sm:before:absolute max-sm:before:inset-[-6px] max-sm:before:content-['']";
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,

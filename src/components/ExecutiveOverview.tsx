@@ -512,7 +512,7 @@ export function ExecutiveOverview({ managerIds, managerName, refreshKey, onOpenR
             of its own to spark - an empty footer-height spacer keeps all
             four cards the same height instead of fabricating a chart. */}
         <Card
-          className="overflow-hidden cursor-pointer transition-shadow hover:shadow-md hover:border-foreground/25 group"
+          className="overflow-hidden cursor-pointer transition-colors hover:border-foreground/25 group"
           role="button"
           tabIndex={0}
           onClick={() => navigate("/inventory")}
@@ -819,7 +819,7 @@ function Kpi({ label, value, delta, deltaLabel, spark, sparkFmt, color, foot, on
 }) {
   const id = `g${color.replace(/\W/g, "")}`;
   return (
-    <Card className="overflow-hidden cursor-pointer transition-shadow duration-150 hover:shadow-md hover:border-foreground/25 group" role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} title={hint}>
+    <Card className="overflow-hidden cursor-pointer transition-colors duration-150 hover:border-foreground/25 group" role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => e.key === "Enter" && onOpen()} title={hint}>
       <CardContent className="p-5 pb-0">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate flex items-center gap-1">
           {label}

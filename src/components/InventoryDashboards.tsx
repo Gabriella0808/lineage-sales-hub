@@ -2134,7 +2134,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 </div>
                 <div className="relative w-64">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input value={skuSearch} onChange={(e) => setSkuSearch(e.target.value)} placeholder="Search SKU, product, brand..." className="pl-8 h-9 text-sm" />
+                  <Input value={skuSearch} onChange={(e) => setSkuSearch(e.target.value)} placeholder="Search SKU, product, brand..." className="pl-8 text-sm" />
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -2298,18 +2298,18 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                             value={itemQuery}
                             onChange={(e) => setItemQuery(e.target.value)}
                             placeholder="Search SKU or product..."
-                            className="pl-8 h-9 text-sm bg-background"
+                            className="pl-8 text-sm bg-background"
                           />
                         </div>
                         <Select value={itemBrand} onValueChange={setItemBrand}>
-                          <SelectTrigger className="w-[170px] h-9 text-sm bg-background"><SelectValue placeholder="Brand" /></SelectTrigger>
+                          <SelectTrigger className="w-[170px] text-sm bg-background"><SelectValue placeholder="Brand" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All brands</SelectItem>
                             {itemBrandOptions.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
                           </SelectContent>
                         </Select>
                         <Select value={itemCollection} onValueChange={setItemCollection}>
-                          <SelectTrigger className="w-[180px] h-9 text-sm bg-background"><SelectValue placeholder="Collection" /></SelectTrigger>
+                          <SelectTrigger className="w-[180px] text-sm bg-background"><SelectValue placeholder="Collection" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All collections</SelectItem>
                             {itemCollectionOptions.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}

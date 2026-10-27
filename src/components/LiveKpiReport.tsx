@@ -167,7 +167,7 @@ function GoalCard({ label, value, goal, actual, visible, goalLabel, fraction, fo
   const pace = Math.max(0, Math.min(1, fraction));
   const tone = !hasGoal ? "bg-muted-foreground/40" : ratio >= pace ? "bg-success" : ratio >= pace * 0.8 ? "bg-warning" : "bg-destructive";
   return (
-    <div data-tour="goal-card" className="rounded-xl border bg-card p-5 shadow-sm">
+    <div data-tour="goal-card" className="rounded-lg border bg-card p-5">
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
         {hasGoal && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums">{fmtPct(ratio)} of goal</span>}
@@ -950,7 +950,7 @@ export function LiveKpiReport({
           fmtPct={fmtPct}
           formatCurrency={formatCurrency}
         />
-        <div className="rounded-xl border bg-card p-5 shadow-sm">
+        <div className="rounded-lg border bg-card p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Open sales orders</p>
           <p className="font-serif text-4xl font-medium tracking-tight tabular-nums mt-3">{formatCurrency(openSoStats.totalValue)}</p>
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">

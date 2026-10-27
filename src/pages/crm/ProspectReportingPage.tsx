@@ -283,7 +283,7 @@ export default function ProspectReportingPage() {
           <div className="flex flex-col gap-1">
             <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Week</span>
             <Select value={String(weekOffset)} onValueChange={(v) => setWeekOffset(Number(v))}>
-              <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="0">This week</SelectItem>
                 <SelectItem value="1">Last week</SelectItem>
@@ -296,7 +296,7 @@ export default function ProspectReportingPage() {
           <div className="flex flex-col gap-1">
             <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Manager</span>
             <Select value={managerFilter} onValueChange={setManagerFilter}>
-              <SelectTrigger className="h-9 w-[170px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Managers</SelectItem>
                 {managers.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
@@ -306,7 +306,7 @@ export default function ProspectReportingPage() {
           <div className="flex flex-col gap-1">
             <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Rep / Owner</span>
             <Select value={repFilter} onValueChange={setRepFilter}>
-              <SelectTrigger className="h-9 w-[170px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Reps</SelectItem>
                 {reps.filter((r) => r.acctivateMatched).map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
@@ -316,7 +316,7 @@ export default function ProspectReportingPage() {
           <div className="flex flex-col gap-1">
             <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Status</span>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
@@ -328,10 +328,10 @@ export default function ProspectReportingPage() {
           </div>
           <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
             <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Search</span>
-            <Input placeholder="Prospect or company name…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9" />
+            <Input placeholder="Prospect or company name…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           {(managerFilter !== "all" || repFilter !== "all" || statusFilter !== "all" || search || drillFilter) && (
-            <Button variant="ghost" size="sm" className="h-9 text-muted-foreground"
+            <Button variant="ghost" size="sm" className="h-8 text-muted-foreground"
               onClick={() => { setManagerFilter("all"); setRepFilter("all"); setStatusFilter("all"); setSearch(""); setDrillFilter(null); }}>
               Clear filters
             </Button>

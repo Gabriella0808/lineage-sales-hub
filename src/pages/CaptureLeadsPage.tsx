@@ -632,7 +632,7 @@ export default function CaptureLeadsPage() {
         <div className="flex items-end gap-2">
           {activeDbReps.length > 0 && (
             <Select value={repFilter} onValueChange={setRepFilter}>
-              <SelectTrigger className="h-9 text-sm w-[170px]"><SelectValue placeholder="All Reps" /></SelectTrigger>
+              <SelectTrigger className="text-sm w-[170px]"><SelectValue placeholder="All Reps" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Reps</SelectItem>
                 {activeDbReps.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}

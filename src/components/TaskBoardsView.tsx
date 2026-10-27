@@ -848,7 +848,7 @@ export default function TaskBoardsView() {
             value={activeBoardId ?? ""}
             onValueChange={(v) => setActiveBoardId(v)}
           >
-            <SelectTrigger className="h-9 w-[280px] bg-card">
+            <SelectTrigger className="w-[280px] bg-card">
               <SelectValue placeholder={boards.length ? "Select a board" : "No boards yet"} />
             </SelectTrigger>
             <SelectContent>
@@ -868,7 +868,7 @@ export default function TaskBoardsView() {
           <Button
             size="sm"
             variant="ghost"
-            className="h-9 text-xs gap-1"
+            className="h-8 text-xs gap-1"
             onClick={openNewBoard}
           >
             <Plus className="h-3.5 w-3.5" /> New board

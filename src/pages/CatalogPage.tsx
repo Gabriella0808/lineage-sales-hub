@@ -44,7 +44,7 @@ function ProductImage({ src, alt }: { src: string | null; alt: string }) {
     );
   }
   return (
-    <div className="aspect-square w-full bg-white overflow-hidden flex items-center justify-center p-4">
+    <div className="aspect-square w-full bg-muted overflow-hidden flex items-center justify-center p-4">
       <img
         src={src}
         alt={alt}
@@ -146,18 +146,18 @@ export default function CatalogPage() {
               placeholder="Search products or SKU..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="pl-9 h-10"
+              className="pl-9"
             />
           </div>
           <Select value={brand} onValueChange={setBrand}>
-            <SelectTrigger className="w-full md:w-56 h-10"><SelectValue placeholder="Brand" /></SelectTrigger>
+            <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Brand" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All brands</SelectItem>
               {brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={collection} onValueChange={setCollection}>
-            <SelectTrigger className="w-full md:w-56 h-10"><SelectValue placeholder="Collection" /></SelectTrigger>
+            <SelectTrigger className="w-full md:w-56"><SelectValue placeholder="Collection" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All collections</SelectItem>
               {collections.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -178,7 +178,7 @@ export default function CatalogPage() {
               to={`/catalog/${encodeURIComponent(p.sku)}`}
               className="block group"
             >
-              <Card className="overflow-hidden flex flex-col cursor-pointer hover:shadow-md transition-shadow h-full">
+              <Card className="overflow-hidden flex flex-col cursor-pointer hover:border-foreground/25 transition-colors h-full">
                 <div className="relative">
                   <ProductImage src={p.image_url} alt={p.name} />
                   {oos && (

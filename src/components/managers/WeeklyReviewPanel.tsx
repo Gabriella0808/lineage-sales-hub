@@ -326,7 +326,7 @@ export function WeeklyReviewPanel({
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <Select value={weekStart} onValueChange={setWeekStart}>
-              <SelectTrigger className="w-[200px] h-9">
+              <SelectTrigger className="w-[200px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

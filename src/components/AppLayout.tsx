@@ -108,7 +108,7 @@ function PanelItems({ section, role, onNavigate }: { section: NavSection; role: 
                   aria-label={`Toggle ${item.title}`}
                   aria-expanded={expanded}
                   onClick={() => setOpen((p) => ({ ...p, [item.title]: !expanded }))}
-                  className="p-1.5 rounded-md text-muted-foreground hover:bg-muted"
+                  className="p-1.5 rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
                 </button>
@@ -529,7 +529,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       data-tour="theme"
       onClick={() => setThemeMode(themeResolved === "dark" ? "light" : "dark")}
       className={cn(
-        "relative h-8 w-8 shrink-0 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 max-sm:before:absolute max-sm:before:inset-[-6px] max-sm:before:content-['']",
+        "h-8 w-8 shrink-0 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2",
         dark ? "hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
       aria-label={themeResolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -544,7 +544,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       type="button"
       onClick={() => hardRefresh()}
       className={cn(
-        "relative h-8 w-8 shrink-0 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 max-sm:before:absolute max-sm:before:inset-[-6px] max-sm:before:content-['']",
+        "h-8 w-8 shrink-0 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2",
         dark ? "hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
       aria-label="Refresh app"
@@ -602,7 +602,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const topHeader = (
     <header className="h-14 shrink-0 flex items-center gap-2 bg-sidebar text-sidebar-foreground px-3 sm:px-5">
       <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
-      <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0" title="Home"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></button>
+      <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" title="Home"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></button>
       <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
         {sections.map((sec) => (
           <DropdownMenu key={sec.id}>
@@ -610,7 +610,7 @@ function Shell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 className={cn(
-                  "relative flex items-center gap-1 rounded-md px-3 py-2 text-[13px] transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent",
+                  "relative flex items-center gap-1 rounded-md px-3 py-2 text-[13px] transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
                   // Current section: an understated underline (the website's
                   // real nav convention - no background pill on active/hover,
                   // see LINEAGE_BRAND_DESIGN_SYSTEM.md Sec 7) rather than a
@@ -708,7 +708,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const drawerHeader = (
     <>
       <header className="h-14 shrink-0 flex items-center gap-2 bg-sidebar text-sidebar-foreground px-3 sm:px-5">
-        <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0" title="Home"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></button>
+        <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" title="Home"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></button>
         <div className="hidden md:block text-sidebar-foreground/80">{breadcrumb}</div>
         <div className="flex-1" />
         {syncPill}

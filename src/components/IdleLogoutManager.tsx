@@ -4,6 +4,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { resolveLastActivityAt } from "@/lib/idleClock";
 
 const ACTIVITY_KEY = "lc.lastActivityAt";
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // sign out after 30 min with no portal activity
@@ -14,6 +15,13 @@ const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchst
 
 function writeLastActivity(ts: number) {
   try { localStorage.setItem(ACTIVITY_KEY, String(ts)); } catch { /* private mode etc - just won't sync across tabs */ }
+}
+
+function readLastActivity(): number | null {
+  try {
+    const n = Number(localStorage.getItem(ACTIVITY_KEY));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  } catch { return null; }
 }
 
 /**
@@ -54,14 +62,16 @@ export function IdleLogoutManager() {
       return;
     }
 
-    const startedAt = Date.now();
-    writeLastActivity(startedAt);
+    // If already past the idle threshold, the worker's first tick (within
+    // ~1s) signs out immediately instead of starting a fresh countdown.
+    const lastActivityAt = resolveLastActivityAt(readLastActivity(), Date.now());
+    writeLastActivity(lastActivityAt);
     loggingOutRef.current = false;
     warningShownRef.current = false;
 
     const worker = new Worker(new URL("../workers/idleTimer.worker.ts", import.meta.url), { type: "module" });
     workerRef.current = worker;
-    worker.postMessage({ type: "init", idleTimeoutMs: IDLE_TIMEOUT_MS, warningMs: WARNING_MS, lastActivityAt: startedAt });
+    worker.postMessage({ type: "init", idleTimeoutMs: IDLE_TIMEOUT_MS, warningMs: WARNING_MS, lastActivityAt });
 
     worker.onmessage = (e: MessageEvent) => {
       if (loggingOutRef.current) return;

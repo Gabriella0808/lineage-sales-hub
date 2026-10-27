@@ -198,7 +198,7 @@ export function TargetsProgressCard() {
     <div className="glass-card p-4 sm:p-6 h-full">
       <div className="flex items-center justify-between mb-4 gap-2">
         <h3 className="text-base font-semibold flex items-center gap-2">
-          <Target className="h-5 w-5 text-accent" /> Sales Targets - {year}
+          <Target className="h-5 w-5 text-primary" /> Sales Targets - {year}
           <span className="text-xs font-normal text-muted-foreground">YTD & MTD attainment</span>
         </h3>
         {!isLoading && rows.length > PAGE_SIZE && (

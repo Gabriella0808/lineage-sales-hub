@@ -474,7 +474,7 @@ export default function CheckInAnalyticsPage() {
       </header>
 
       {debugEnabled && (
-        <Card className="border-dashed border-accent/60 bg-accent/5">
+        <Card className="border-dashed border-primary/60 bg-primary/5">
           <CardHeader className="pb-3">
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Badge variant="outline" className="uppercase text-[10px]">Debug</Badge>
@@ -565,7 +565,7 @@ export default function CheckInAnalyticsPage() {
       {/* Per-rep breakdown */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-1 rounded-full bg-accent" />
+          <div className="h-8 w-1 rounded-full bg-primary" />
           <div>
             <h2 className="font-display text-2xl text-foreground leading-tight">Manager Performance</h2>
             <p className="text-sm text-muted-foreground">
@@ -592,7 +592,7 @@ export default function CheckInAnalyticsPage() {
                   name={member.name}
                   periods={periods}
                   data={stats[member.id]}
-                  accentClass={["bg-primary", "bg-accent", "bg-success", "bg-primary"][idx % 4]}
+                  accentClass={["bg-primary", "bg-chart-2", "bg-success", "bg-primary"][idx % 4]}
                 />
               </div>
             ))}

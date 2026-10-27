@@ -526,7 +526,7 @@ export default function CrmAccountsPage() {
       </Card>
 
       {selected.size > 0 && (
-        <Card className="p-3 flex flex-wrap items-center gap-2 border-accent/40 bg-accent/5">
+        <Card className="p-3 flex flex-wrap items-center gap-2 border-primary/40 bg-primary/5">
           <span className="text-xs font-medium text-foreground">
             {selected.size} selected
           </span>
@@ -651,7 +651,7 @@ export default function CrmAccountsPage() {
                       />
                     </td>
                     <td className="px-3 py-2.5">
-                      <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-accent truncate block">{a.company_name}</Link>
+                      <Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium text-foreground hover:text-primary truncate block">{a.company_name}</Link>
                     </td>
                     <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                       {(() => {

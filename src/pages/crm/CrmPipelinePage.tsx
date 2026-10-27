@@ -49,7 +49,7 @@ export default function CrmPipelinePage() {
             onDrop={() => onDrop(stage.id)}
             className={cn(
               "rounded-lg border border-border/60 bg-card/60 flex flex-col min-h-[300px] transition-colors",
-              overStage === stage.id && "border-accent bg-accent/5"
+              overStage === stage.id && "border-primary bg-primary/5"
             )}
           >
             <div className="px-3 py-2.5 border-b border-border/60 flex items-center justify-between">

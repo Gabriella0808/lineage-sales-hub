@@ -30,7 +30,7 @@ type Market = { id: string; name: string };
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 
-const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#8b7355", "#c9a96e", "#5d7a8a", "#a86c5f", "#7a8a5d"];
+const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "#8b7355", "#c9a96e", "#5d7a8a", "#a86c5f", "#7a8a5d"];
 
 export default function TradeShowLeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -185,7 +185,7 @@ export default function TradeShowLeadsPage() {
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-30} textAnchor="end" height={70} />
                 <YAxis tick={{ fontSize: 10 }} width={32} />
                 <Tooltip />
-                <Bar dataKey="value" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -198,7 +198,7 @@ export default function TradeShowLeadsPage() {
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-30} textAnchor="end" height={70} />
                 <YAxis tick={{ fontSize: 10 }} width={42} tickFormatter={(v) => `$${Math.round(v / 1000)}k`} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
-                <Bar dataKey="value" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>

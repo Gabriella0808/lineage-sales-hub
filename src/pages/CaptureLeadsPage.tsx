@@ -828,7 +828,7 @@ export default function CaptureLeadsPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="bg-background border-l-4 border-accent rounded-r-lg p-4">
+            <div className="bg-background border-l-4 border-primary rounded-r-lg p-4">
               <div className="flex flex-col gap-3">
                 <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                   Add as Prospect

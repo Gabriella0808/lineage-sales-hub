@@ -11,11 +11,11 @@
   system (lineagecollectionswebsite.gabriella-524.workers.dev/css/styles.css
   - see LINEAGE_BRAND_DESIGN_SYSTEM.md for the full audit). Same variable
   names/roles as before this pass - this is a value swap to the site's
-  actual palette, not a restructure. The one deliberate exception: the
-  sidebar's existing dark-shell treatment is kept (not flattened to match
-  the canvas) and just recolored to the website's own real dark tone,
-  since converting it to a light shell would be a bigger visual-personality
-  change than "apply the website's colors."
+  actual palette, not a restructure. The sidebar shell is light "Sand",
+  with the brand "Dark" tone reserved for the active/selected nav item and
+  the primary chrome actions - the inverse of the once dark-shell/light-
+  accent treatment (see AppLayout.tsx's logo, which switches between the
+  ink and white variants to stay visible on whichever shell is active).
 
   Palette (website hex → this file's HSL):
     Ink              #1D1A17 → 30 12% 10%   (text)
@@ -42,11 +42,11 @@
   other real accent color but is no longer the portal's brand-color
   direction; it remains only on chart-3 (a decorative data-viz
   differentiator, not a brand/action accent) and is not used anywhere
-  semantic. On a DARK surface (sidebar, dark-mode canvas) the charcoal
-  itself would be unreadable against another dark tone, so those contexts
-  use the website's own verified warm "Sand" tone (#E7E2DB) instead, the
-  same light-on-dark logic the site itself uses (.btn-light inverts to a
-  light fill, never a mid-tone, against a dark surface).
+  semantic. On a DARK surface (the active sidebar item, dark-mode canvas)
+  the charcoal itself would be unreadable against another dark tone, so
+  those contexts use the website's own verified warm "Sand" tone (#E7E2DB)
+  instead, the same light-on-dark logic the site itself uses (.btn-light
+  inverts to a light fill, never a mid-tone, against a dark surface).
 
   Typography: Cormorant Garamond (display) + Inter (body/UI) - the
   website's exact pairing, unchanged from before this pass.
@@ -77,9 +77,17 @@
     --muted: 35 24% 90%;
     --muted-foreground: 32 7% 45%;
 
-    /* Accent — same charcoal family as primary */
-    --accent: 26 10% 14%;
-    --accent-foreground: 45 50% 98%;
+    /* Accent — the standard subtle hover/focus wash used by every dropdown,
+       menu, select, button and list-row hover across the app (shadcn's
+       usual role for this token). Was set to the same dark charcoal as
+       --primary, which made every one of those hover states render as a
+       heavy dark overlay instead of a light highlight - now the same
+       light Sand wash as --secondary. The few places that actually want
+       a solid dark chip (status pills, "today" on the calendar, chart
+       legend swatches) now read --primary directly instead of piggy-
+       backing on accent's old dark value. */
+    --accent: 35 20% 88%;
+    --accent-foreground: 30 12% 10%;
 
     /* Status colors — the website's actual stock-status/error colors, not invented */
     --destructive: 9 55% 41%;           /* website form-error terracotta */
@@ -108,19 +116,19 @@
        radius language well; left as-is. */
     --radius: 0.25rem;
 
-    /* Sidebar — kept as its existing dark architectural shell (not
-       flattened to the canvas), recolored to the website's own real dark
-       tone instead of an arbitrary near-black. */
-    --sidebar-background: 26 10% 14%;
-    --sidebar-foreground: 35 20% 88%;
-    --sidebar-primary: 35 20% 88%;      /* light "Sand" accent - reads on the dark shell, which is already this page's --primary charcoal */
-    --sidebar-primary-foreground: 26 10% 14%;
-    --sidebar-accent: 26 8% 20%;
+    /* Sidebar — flipped to a light "Sand" shell with the brand Dark tone
+       reserved for the active/selected nav item (and the primary chrome
+       actions that already used it), instead of a dark shell throughout. */
+    --sidebar-background: 35 20% 88%;   /* Sand */
+    --sidebar-foreground: 30 12% 10%;   /* Ink */
+    --sidebar-primary: 26 10% 14%;      /* Dark - brand action accent */
+    --sidebar-primary-foreground: 35 20% 88%;
+    --sidebar-accent: 26 10% 14%;       /* Dark - active/selected nav item */
     --sidebar-accent-foreground: 35 20% 88%;
-    --sidebar-border: 26 8% 22%;
-    --sidebar-ring: 35 20% 88%;
-    --sidebar-muted: 35 10% 55%;
-    --sidebar-section: 35 10% 58%;
+    --sidebar-border: 37 18% 86%;       /* Line */
+    --sidebar-ring: 26 10% 14%;
+    --sidebar-muted: 32 7% 45%;         /* Muted text */
+    --sidebar-section: 32 7% 45%;
 
     /* Charts — editorial, cohesive with the website-derived palette. Olive
        (#5D5A3E) stays here only as a decorative data-viz differentiator -
@@ -219,7 +227,14 @@
 }
 
 @layer base {
-  * { @apply border-border; }
+  * {
+    @apply border-border;
+    /* Smooths the light/dark toggle - every token-driven surface fades
+       instead of snapping. Component-level transition utilities (e.g.
+       hover states with their own duration) win on specificity, so this
+       only fills the gap left by elements that don't declare their own. */
+    transition: background-color 100ms ease-out, border-color 100ms ease-out, color 100ms ease-out, fill 100ms ease-out, stroke 100ms ease-out;
+  }
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "ss01", "cv11", "tnum";

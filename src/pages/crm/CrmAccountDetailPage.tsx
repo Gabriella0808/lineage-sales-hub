@@ -281,7 +281,7 @@ export default function CrmAccountDetailPage() {
             </div>
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {notes.map((n: any) => (
-                <div key={n.id} className="text-sm border-l-2 border-accent/40 pl-3 py-1 group">
+                <div key={n.id} className="text-sm border-l-2 border-primary/40 pl-3 py-1 group">
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-foreground">{n.body}</div>
                     {n.created_by === user?.id && (

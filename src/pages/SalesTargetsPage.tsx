@@ -283,7 +283,7 @@ export default function SalesTargetsPage() {
                       })}
                       <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatCurrency(annual)}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{formatCurrency(actual)}</td>
-                      <td className={`px-3 py-2 text-right font-semibold tabular-nums ${pct >= 100 ? "text-success" : pct >= 75 ? "text-accent" : pct >= 50 ? "text-warning" : "text-destructive"}`}>
+                      <td className={`px-3 py-2 text-right font-semibold tabular-nums ${pct >= 100 ? "text-success" : pct >= 75 ? "text-primary" : pct >= 50 ? "text-warning" : "text-destructive"}`}>
                         {annual > 0 ? `${pct}%` : "-"}
                       </td>
                       {canEdit && (

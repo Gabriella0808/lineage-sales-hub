@@ -7,7 +7,8 @@ import { formatDistanceToNow } from "date-fns";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";
-import lineageLogo from "@/assets/lineage-logo-white.png";
+import lineageLogo from "@/assets/lineage-logo.png";
+import lineageLogoWhite from "@/assets/lineage-logo-white.png";
 import { NavLink } from "@/components/NavLink";
 import { isCustomerService } from "@/components/EmailGuard";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -108,7 +109,7 @@ function PanelItems({ section, role, onNavigate }: { section: NavSection; role: 
                   aria-label={`Toggle ${item.title}`}
                   aria-expanded={expanded}
                   onClick={() => setOpen((p) => ({ ...p, [item.title]: !expanded }))}
-                  className="p-1.5 rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="p-1.5 rounded-md text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
                 </button>
@@ -181,7 +182,7 @@ function SidebarNavItemRow({
           className={cn(
             "relative flex-1 flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] text-sidebar-foreground/85",
             "hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors duration-150",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
             "before:pointer-events-none before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[2.5px] before:rounded-full before:bg-sidebar-primary before:opacity-0 before:transition-opacity before:duration-150",
           )}
           activeClassName={cn(
@@ -205,7 +206,7 @@ function SidebarNavItemRow({
               aria-label={pinned ? `Unpin ${item.title}` : `Pin ${item.title}`}
               aria-pressed={pinned}
               className={cn(
-                "p-1 rounded text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
+                "p-1 rounded text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
                 pinned && "opacity-100 text-sidebar-primary",
               )}
             >
@@ -217,7 +218,7 @@ function SidebarNavItemRow({
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleGroup(); }}
                 aria-label={`Toggle ${item.title}`}
                 aria-expanded={isOpen}
-                className="p-1 mr-1 rounded text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"
+                className="p-1 mr-1 rounded text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"
               >
                 <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
               </button>
@@ -232,7 +233,7 @@ function SidebarNavItemRow({
               <NavLink
                 to={child.url}
                 onClick={closeOnMobile}
-                className="flex items-center gap-2 rounded-md px-2 py-[5px] text-[12.5px] text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"
+                className="flex items-center gap-2 rounded-md px-2 py-[5px] text-[12.5px] text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"
                 activeClassName="bg-sidebar-accent/90 text-sidebar-accent-foreground font-medium"
               >
                 <span className="truncate">{child.title}</span>
@@ -251,6 +252,8 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
   const closeOnMobile = () => { if (isMobile) setOpenMobile(false); };
   const location = useLocation();
   const { pinned, isPinned, togglePin } = useNavPins();
+  const { resolved: themeResolved } = useTheme();
+  const logoSrc = themeResolved === "dark" ? lineageLogoWhite : lineageLogo;
 
   // Resolve each pinned URL back to its NavItem (title/icon) from the
   // visible sections - a pin to a page the current role can no longer see
@@ -284,7 +287,7 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
     <Sidebar collapsible="icon" className="border-r-0 bg-sidebar">
       <SidebarHeader className="px-4 py-5 border-b border-sidebar-border/70">
         <div className="flex items-center gap-3">
-          <img src={lineageLogo} alt="Lineage Collections" className="h-9 w-auto" />
+          <img src={logoSrc} alt="Lineage Collections" className="h-9 w-auto" />
         </div>
       </SidebarHeader>
 
@@ -359,7 +362,7 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
           className={cn(
             "w-full flex items-center gap-3 rounded-md px-2.5 py-2 text-[13.5px] bg-sidebar-primary text-sidebar-primary-foreground",
             "hover:bg-sidebar-primary/90 transition-colors",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
             collapsed && "justify-center",
           )}
         >
@@ -371,7 +374,7 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
       <SidebarFooter className="p-3 border-t border-sidebar-border/70">
         <div className="flex items-center gap-3 px-1.5">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center overflow-hidden">
-            <img src={lineageLogo} alt="Lineage Collections" className="w-8 h-8 object-contain" />
+            <img src={logoSrc} alt="Lineage Collections" className="w-8 h-8 object-contain" />
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
@@ -394,7 +397,7 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
           "hidden lg:flex fixed top-[72px] z-50 h-6 w-6 items-center justify-center rounded-full",
           "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft",
           "hover:bg-sidebar-primary/90 transition-[left,background-color] duration-200",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         )}
       >
         <ChevronLeft className={cn("h-3.5 w-3.5", collapsed && "rotate-180")} />
@@ -463,6 +466,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const goTo = (url: string) => { setSearchOpen(false); setMobileOpen(false); setFlyout(null); navigate(url); };
 
   const { mode: themeMode, setMode: setThemeMode, resolved: themeResolved } = useTheme();
+  const logoSrc = themeResolved === "dark" ? lineageLogoWhite : lineageLogo;
   const [drawerOpen, setDrawerOpen] = useState(false);
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
   const dark = navStyle === "drawer" || navStyle === "top";
@@ -473,7 +477,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         <button
           type="button" data-tour="account" aria-label="Account menu"
           className={cn(
-            "flex items-center gap-2 rounded-full pl-1 pr-2 py-1 focus-visible:outline-none focus-visible:ring-2",
+            "flex items-center gap-2 rounded-full pl-1 pr-2 py-1 focus-visible:outline-none focus-visible:ring-1",
             dark ? "hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "hover:bg-muted focus-visible:ring-ring focus-visible:ring-offset-2",
           )}
         >
@@ -529,7 +533,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       data-tour="theme"
       onClick={() => setThemeMode(themeResolved === "dark" ? "light" : "dark")}
       className={cn(
-        "h-8 w-8 shrink-0 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2",
+        "h-8 w-8 shrink-0 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-1",
         dark ? "hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
       aria-label={themeResolved === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -544,7 +548,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       type="button"
       onClick={() => hardRefresh()}
       className={cn(
-        "h-8 w-8 shrink-0 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2",
+        "h-8 w-8 shrink-0 rounded-md flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-1",
         dark ? "hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
       aria-label="Refresh app"
@@ -560,7 +564,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       data-tour="search"
       onClick={() => setSearchOpen(true)}
       className={cn(
-        "flex items-center gap-2 h-8 w-full max-w-[340px] rounded-md border px-3 text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2",
+        "flex items-center gap-2 h-8 w-full max-w-[340px] rounded-md border px-3 text-[13px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1",
         dark ? "border-sidebar-border bg-sidebar-accent/50 text-sidebar-foreground/80 hover:bg-sidebar-accent focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" : "bg-background text-muted-foreground hover:border-foreground/40 hover:text-foreground/80 focus-visible:ring-ring focus-visible:ring-offset-2",
       )}
     >
@@ -601,8 +605,8 @@ function Shell({ children }: { children: React.ReactNode }) {
   // ── Style A: top navigation bar ──
   const topHeader = (
     <header className="h-14 shrink-0 flex items-center gap-2 bg-sidebar text-sidebar-foreground px-3 sm:px-5">
-      <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
-      <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" title="Home"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></button>
+      <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
+      <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" title="Home"><img src={logoSrc} alt="Lineage Collections" className="h-8 w-auto" /></button>
       <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
         {sections.map((sec) => (
           <DropdownMenu key={sec.id}>
@@ -610,7 +614,7 @@ function Shell({ children }: { children: React.ReactNode }) {
               <button
                 type="button"
                 className={cn(
-                  "relative flex items-center gap-1 rounded-md px-3 py-2 text-[13px] transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
+                  "relative flex items-center gap-1 rounded-md px-3 py-2 text-[13px] transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[state=open]:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background",
                   // Current section: an understated underline (the website's
                   // real nav convention - no background pill on active/hover,
                   // see LINEAGE_BRAND_DESIGN_SYSTEM.md Sec 7) rather than a
@@ -654,7 +658,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   // ── Styles B and C share a light header ──
   const lightHeader = (
     <header className="h-14 shrink-0 flex items-center gap-3 border-b bg-card px-3 sm:px-5">
-      <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
+      <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
       {breadcrumb}
       <div className="flex-1" />
       {syncPill}
@@ -683,14 +687,14 @@ function Shell({ children }: { children: React.ReactNode }) {
               type="button"
               title={sec.label}
               onClick={() => setFlyout(flyout === sec.id ? null : sec.id)}
-              className={cn("group/d flex flex-col items-center gap-1 rounded-md px-3.5 pt-2 pb-1.5 text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background", active && "bg-sidebar-accent text-sidebar-accent-foreground")}
+              className={cn("group/d flex flex-col items-center gap-1 rounded-md px-3.5 pt-2 pb-1.5 text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background", active && "bg-sidebar-accent text-sidebar-accent-foreground")}
             >
               <Icon className="h-6 w-6" />
               <span className="text-[10px] leading-none">{sec.label.split(" ")[0]}</span>
             </button>
           );
         })}
-        <button type="button" title="Report an issue" onClick={() => setIssueOpen(true)} className="ml-1 self-center h-10 w-10 rounded-md flex items-center justify-center bg-sidebar-primary text-sidebar-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"><AlertCircle className="h-5 w-5" /></button>
+        <button type="button" title="Report an issue" onClick={() => setIssueOpen(true)} className="ml-1 self-center h-10 w-10 rounded-md flex items-center justify-center bg-sidebar-primary text-sidebar-primary-foreground hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background"><AlertCircle className="h-5 w-5" /></button>
       </div>
       {flyout && (() => {
         const sec = sections.find((x) => x.id === flyout);
@@ -708,7 +712,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const drawerHeader = (
     <>
       <header className="h-14 shrink-0 flex items-center gap-2 bg-sidebar text-sidebar-foreground px-3 sm:px-5">
-        <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" title="Home"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></button>
+        <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" title="Home"><img src={logoSrc} alt="Lineage Collections" className="h-8 w-auto" /></button>
         <div className="hidden md:block text-sidebar-foreground/80">{breadcrumb}</div>
         <div className="flex-1" />
         {syncPill}
@@ -716,12 +720,12 @@ function Shell({ children }: { children: React.ReactNode }) {
         {themeButton}
         {refreshButton}
         <NotificationsBell />
-        <button type="button" onClick={() => setDrawerOpen(true)} className="flex items-center gap-2 rounded-md px-3 py-2 text-[13px] bg-sidebar-accent hover:bg-sidebar-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" aria-label="Open menu"><Menu className="h-4 w-4" /><span className="hidden sm:inline">Menu</span></button>
+        <button type="button" onClick={() => setDrawerOpen(true)} className="flex items-center gap-2 rounded-md px-3 py-2 text-[13px] bg-sidebar-accent hover:bg-sidebar-accent/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" aria-label="Open menu"><Menu className="h-4 w-4" /><span className="hidden sm:inline">Menu</span></button>
         {accountMenu}
       </header>
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetContent side="right" className="w-[380px] sm:max-w-[380px] p-0 overflow-y-auto">
-          <div className="p-5 border-b bg-sidebar"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></div>
+          <div className="p-5 border-b bg-sidebar"><img src={logoSrc} alt="Lineage Collections" className="h-8 w-auto" /></div>
           <div className="p-4 space-y-6">
             {sections.map((sx) => (
               <div key={sx.id}>
@@ -756,7 +760,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-[290px] p-0 overflow-y-auto">
-          <div className="p-4 border-b bg-sidebar"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></div>
+          <div className="p-4 border-b bg-sidebar"><img src={logoSrc} alt="Lineage Collections" className="h-8 w-auto" /></div>
           <div className="p-3 space-y-5">
             {sections.map((sx) => (
               <div key={sx.id}>
@@ -764,7 +768,7 @@ function Shell({ children }: { children: React.ReactNode }) {
                 <PanelItems section={sx} role={role} onNavigate={() => setMobileOpen(false)} />
               </div>
             ))}
-            <button type="button" onClick={() => { setMobileOpen(false); setIssueOpen(true); }} className="w-full flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] bg-primary text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+            <button type="button" onClick={() => { setMobileOpen(false); setIssueOpen(true); }} className="w-full flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] bg-primary text-primary-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-2">
               <AlertCircle className="h-4 w-4" />Report an issue
             </button>
           </div>

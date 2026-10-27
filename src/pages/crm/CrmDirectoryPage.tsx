@@ -52,7 +52,7 @@ export default function CrmDirectoryPage() {
                 const stage = LIFECYCLE_STAGES.find((s) => s.id === a.lifecycle_stage)!;
                 return (
                   <tr key={a.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => nav(`/crm/accounts/${a.id}`)}>
-                    <td className="px-4 py-2"><Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium hover:text-accent">{a.company_name}</Link></td>
+                    <td className="px-4 py-2"><Link to={`/crm/accounts/${a.id}`} onClick={(e) => e.stopPropagation()} className="font-medium hover:text-primary">{a.company_name}</Link></td>
                     <td className="px-3 py-2 text-muted-foreground">{[a.contact_first_name, a.contact_last_name].filter(Boolean).join(" ") || "-"}</td>
                     <td className="px-3 py-2 text-muted-foreground tabular-nums">{a.main_phone || "-"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{a.email || "-"}</td>

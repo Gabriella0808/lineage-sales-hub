@@ -14,7 +14,7 @@ interface StatCardProps {
 
 const variantClasses = {
   default: '',
-  accent: 'border-l-4 border-l-accent',
+  accent: 'border-l-4 border-l-primary',
   success: 'border-l-4 border-l-success',
   warning: 'border-l-4 border-l-warning',
   destructive: 'border-l-4 border-l-destructive',

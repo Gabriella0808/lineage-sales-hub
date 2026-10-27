@@ -68,7 +68,7 @@ type Status = "todo" | "in_progress" | "blocked" | "done";
 
 const STATUS_META: Record<Status, { label: string; pillBg: string; pillText: string }> = {
   todo: { label: "Not Started", pillBg: "bg-foreground/85", pillText: "text-background" },
-  in_progress: { label: "In Progress", pillBg: "bg-accent", pillText: "text-accent-foreground" },
+  in_progress: { label: "In Progress", pillBg: "bg-primary", pillText: "text-primary-foreground" },
   blocked: { label: "Stuck", pillBg: "bg-destructive", pillText: "text-destructive-foreground" },
   done: { label: "Completed", pillBg: "bg-success", pillText: "text-success-foreground" },
 };
@@ -1774,7 +1774,7 @@ export default function TaskBoardsView() {
                     },
                     className:
                       dragOverGroupId === key
-                        ? "rounded-md ring-2 ring-accent ring-offset-2 ring-offset-background transition-all"
+                        ? "rounded-md ring-2 ring-primary ring-offset-2 ring-offset-background transition-all"
                         : draggingGroupId === key
                         ? "opacity-50 transition-opacity"
                         : "",

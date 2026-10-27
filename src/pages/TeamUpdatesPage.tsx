@@ -451,7 +451,7 @@ function ReactionPill({ group, mine, onToggle, disabled }: {
           disabled={disabled}
           className={cn(
             "inline-flex items-center gap-1 h-7 rounded-full border px-2 text-xs font-medium transition-colors",
-            mine ? "bg-accent/40 border-accent text-foreground" : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted",
+            mine ? "bg-primary/40 border-primary text-foreground" : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted",
           )}
         >
           <span>{group.emoji}</span>
@@ -544,8 +544,8 @@ function PostCard({ post, canManage, isAdmin, currentUserId, highlighted, onEdit
       id={`post-${post.id}`}
       data-tour="team-updates-post"
       className={cn(
-        post.pinned && "border-accent/60 bg-accent/[0.04]",
-        highlighted && "ring-2 ring-accent transition-shadow duration-1000",
+        post.pinned && "border-primary/60 bg-primary/[0.04]",
+        highlighted && "ring-2 ring-primary transition-shadow duration-1000",
       )}
     >
       <CardContent className="p-5 space-y-3">
@@ -765,7 +765,7 @@ function ComposeDialog({ open, onOpenChange, editing }: {
             return (
               <div className="space-y-1">
                 <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full bg-accent transition-[width] duration-200" style={{ width: `${pct}%` }} />
+                  <div className="h-full bg-primary transition-[width] duration-200" style={{ width: `${pct}%` }} />
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   Uploading {formatBytes(uploadProgress.sentBytes)} of {formatBytes(uploadProgress.totalBytes)} ({pct}%)

@@ -5,7 +5,7 @@ type Tone = "default" | "accent" | "success" | "warning" | "destructive" | "mute
 
 const toneRing: Record<Tone, string> = {
   default: "before:bg-foreground/30",
-  accent: "before:bg-accent",
+  accent: "before:bg-primary",
   success: "before:bg-success",
   warning: "before:bg-warning",
   destructive: "before:bg-destructive",
@@ -14,7 +14,7 @@ const toneRing: Record<Tone, string> = {
 
 const toneIcon: Record<Tone, string> = {
   default: "text-muted-foreground",
-  accent: "text-accent",
+  accent: "text-primary",
   success: "text-success",
   warning: "text-warning",
   destructive: "text-destructive",
@@ -55,7 +55,7 @@ export function MetricCard({
         "before:absolute before:left-0 before:top-3 before:bottom-3 before:w-[3px] before:rounded-r",
         toneRing[tone],
         onClick && "hover:shadow-elev hover:-translate-y-px cursor-pointer",
-        active && "ring-1 ring-accent/60 shadow-elev",
+        active && "ring-1 ring-primary/60 shadow-elev",
         className,
       )}
     >

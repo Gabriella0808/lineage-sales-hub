@@ -43,7 +43,7 @@ const PROFILES: AccessProfile[] = ["admin", "manager", "rep", "dealer", "custome
 const PROFILE_LABEL: Record<AccessProfile, string> = { admin: "Admin", manager: "Manager", rep: "Rep", dealer: "Dealer", customer_service: "Customer service" };
 const ROLE_TONE: Record<AccessProfile, string> = {
   admin: "bg-foreground text-background",
-  manager: "bg-accent/40 text-foreground",
+  manager: "bg-primary/40 text-foreground",
   rep: "bg-secondary text-secondary-foreground",
   dealer: "bg-muted text-muted-foreground",
   customer_service: "bg-warning/20 text-foreground",

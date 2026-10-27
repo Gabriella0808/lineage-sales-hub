@@ -48,7 +48,7 @@ interface Profile {
 
 const COLUMNS: { key: Status; label: string; pillBg: string; pillText: string }[] = [
   { key: "todo", label: "Not Started", pillBg: "bg-foreground/85", pillText: "text-background" },
-  { key: "in_progress", label: "In Progress", pillBg: "bg-accent", pillText: "text-accent-foreground" },
+  { key: "in_progress", label: "In Progress", pillBg: "bg-primary", pillText: "text-primary-foreground" },
   { key: "blocked", label: "Stuck", pillBg: "bg-destructive", pillText: "text-destructive-foreground" },
   { key: "done", label: "Completed", pillBg: "bg-success", pillText: "text-success-foreground" },
 ];
@@ -189,7 +189,7 @@ export default function UpNextTasksWidget() {
     <div className="glass-card p-4 sm:p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-semibold flex items-center gap-2">
-          <ListChecks className="h-5 w-5 text-accent" /> Up Next
+          <ListChecks className="h-5 w-5 text-primary" /> Up Next
         </h3>
         <Link to="/tasks" className="text-xs text-muted-foreground hover:text-foreground underline">
           View all

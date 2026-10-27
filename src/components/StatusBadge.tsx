@@ -12,7 +12,7 @@ const dotColor: Record<BadgeVariant, string> = {
   prospect:         'bg-chart-4',
   'at-risk':        'bg-destructive',
   'on-track':       'bg-success',
-  exceeding:        'bg-accent',
+  exceeding:        'bg-chart-2',
   underperforming:  'bg-destructive',
   high:             'bg-success',
   medium:           'bg-warning',

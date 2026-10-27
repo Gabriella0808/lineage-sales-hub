@@ -540,7 +540,7 @@ export default function SalesReport({ metric }: SalesReportProps) {
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={50} />
                   <YAxis tick={{ fontSize: 10 }} tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} />
                   <RechartsTooltip formatter={(v: number) => formatCurrency(v)} />
-                  <Bar dataKey="value" fill="hsl(var(--accent))" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[3, 3, 0, 0]} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                 </BarChart>
               </ResponsiveContainer>

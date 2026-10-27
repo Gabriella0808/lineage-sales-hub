@@ -300,7 +300,7 @@ function MultiSelect({
             disabled={disabled}
             className={cn(
               "h-8 w-full justify-between font-normal gap-2",
-              isActive && "border-foreground/30 bg-accent/40",
+              isActive && "border-foreground/30 bg-primary/40",
             )}
             title={disabled ? disabledReason : undefined}
           >
@@ -437,7 +437,7 @@ function monthsInRange(range: DateRange): { year: number; monthIdx: number; key:
 
 function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded border border-border bg-accent/30 px-2 py-1 text-[11px] font-medium text-foreground/80">
+    <span className="inline-flex items-center gap-1 rounded border border-border bg-primary/30 px-2 py-1 text-[11px] font-medium text-foreground/80">
       {label}
       <button
         type="button"

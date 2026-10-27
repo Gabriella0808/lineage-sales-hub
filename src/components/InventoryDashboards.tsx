@@ -57,7 +57,7 @@ const STAGES = [
 
 const STAGE_COLOR: Record<string, string> = {
   in_manufacturing: "bg-muted text-muted-foreground border-border",
-  loaded: "bg-accent/15 text-accent-foreground border-accent/30",
+  loaded: "bg-chart-2/15 text-foreground border-chart-2/30",
   in_transit: "bg-primary/10 text-primary border-primary/20",
   at_port: "bg-warning/15 text-warning-foreground border-warning/30",
   arrived: "bg-success/15 text-success border-success/25",
@@ -88,7 +88,7 @@ function KPI({ label, value, hint, icon: Icon, accent, onClick, active }: {
         type="button"
         onClick={onClick}
         className={cn(
-          "text-left rounded-lg border bg-card p-5 shadow-sm flex items-start justify-between gap-3 transition-all hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ring",
+          "text-left rounded-lg border bg-card p-5 shadow-sm flex items-start justify-between gap-3 transition-all hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-1 focus:ring-ring",
           active ? "border-primary ring-2 ring-primary/30" : "border-border",
         )}
       >
@@ -273,7 +273,7 @@ function ReportOpenPOs({ pos, lines }: { pos: OpenPO[]; lines: OpenPOLine[] }) {
       m.set(s, (m.get(s) ?? 0) + 1);
     }
     return Array.from(m.entries())
-      .map(([name, value]) => ({ name, value, fill: OPEN_PO_STATUS_COLORS[name] ?? "hsl(var(--accent))" }))
+      .map(([name, value]) => ({ name, value, fill: OPEN_PO_STATUS_COLORS[name] ?? "hsl(var(--chart-2))" }))
       .sort((a, b) => b.value - a.value);
   }, [filtered]);
 
@@ -1751,7 +1751,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                     <XAxis type="number" tickFormatter={fmtMoney} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                     <RTooltip formatter={(v: number) => fmtMoney(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                    <Bar dataKey="value" fill="hsl(var(--accent))" />
+                    <Bar dataKey="value" fill="hsl(var(--chart-2))" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1998,7 +1998,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                     const tone =
                       r.priority === "Critical" ? "bg-destructive/10 text-destructive border-destructive/20" :
                       r.priority === "High" ? "bg-warning/15 text-warning-foreground border-warning/30" :
-                      r.priority === "Medium" ? "bg-accent/15 text-accent-foreground border-accent/30" :
+                      r.priority === "Medium" ? "bg-chart-2/15 text-foreground border-chart-2/30" :
                       "bg-muted text-muted-foreground border-border";
                     return (
                       <tr key={r.sku} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => setDrawerSku(r.sku)}>
@@ -2042,7 +2042,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                 type="button"
                 onClick={() => onStatusFilterChange?.(t.key)}
                 className={cn(
-                  "text-left rounded-lg border bg-card p-5 flex items-start justify-between transition-colors hover:border-primary/40 hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-ring",
+                  "text-left rounded-lg border bg-card p-5 flex items-start justify-between transition-colors hover:border-primary/40 hover:bg-muted/40 focus:outline-none focus:ring-1 focus:ring-ring",
                   active ? "border-primary ring-1 ring-primary/40" : "border-border",
                 )}
               >
@@ -2774,7 +2774,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                     <th className="text-right px-2 py-2 border border-border">Net Avail</th>
                     <th className="text-right px-2 py-2 border border-border">Over/Under</th>
                     <th className="text-right px-2 py-2 border border-border">Weeks</th>
-                    <th className="text-right px-2 py-2 border border-border bg-accent/20">Order</th>
+                    <th className="text-right px-2 py-2 border border-border bg-primary/20">Order</th>
                     <th className="text-right px-2 py-2 border border-border">Cubes</th>
                     <th className="text-right px-2 py-2 border border-border">Total Cubes</th>
                   </tr>
@@ -2831,7 +2831,7 @@ export default function InventoryDashboards({ items, statusFilter, onStatusFilte
                             <td className={cn("px-2 py-1 text-right tabular-nums border border-border", weeksBelowLead && "bg-destructive/10 text-destructive font-semibold")}>
                               {weeks == null ? "-" : weeks.toFixed(1)}
                             </td>
-                            <td className="px-2 py-1 text-right tabular-nums border border-border bg-accent/10">
+                            <td className="px-2 py-1 text-right tabular-nums border border-border bg-primary/10">
                               <input
                                 type="number"
                                 min={0}

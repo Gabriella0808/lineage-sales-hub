@@ -5,6 +5,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { getReportingToday, getReportingTodayStr } from "@/utils/reportingDate";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,8 +44,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  RefreshCw,
-  Loader2,
   CalendarDays,
   MapPin,
   User,
@@ -86,13 +85,14 @@ function colorFor(name: string | null): string {
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const SALES_MANAGERS = ["Chris", "Will", "Mateo", "Justin", "Kate"];
+
 export default function TravelLogPage() {
   const { user } = useAuth();
   const { data: roleInfo } = useUserRole();
   const { toast } = useToast();
   const [travel, setTravel] = useState<TravelEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [cursor, setCursor] = useState<Date>(getReportingToday());
   const [selectedDate, setSelectedDate] = useState<Date>(getReportingToday());
   const [addOpen, setAddOpen] = useState(false);
@@ -125,22 +125,10 @@ export default function TravelLogPage() {
     load();
   }, []);
 
-  const syncFromMonday = async () => {
-    setSyncing(true);
-    const { error } = await supabase.functions.invoke("sync-travel-log");
-    setSyncing(false);
-    if (error) {
-      toast({ title: "Sync failed", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "Synced from monday.com" });
-    load();
-  };
-
   const addTrip = async () => {
     if (!user) return;
     if (!form.salesperson_name.trim()) {
-      toast({ title: "Salesperson required", variant: "destructive" });
+      toast({ title: "Sales manager required", variant: "destructive" });
       return;
     }
     if (!form.travel_date) {
@@ -281,7 +269,7 @@ export default function TravelLogPage() {
 
   const saveEdit = async (t: TravelEntry) => {
     if (!editForm.salesperson_name.trim()) {
-      toast({ title: "Salesperson required", variant: "destructive" });
+      toast({ title: "Sales manager required", variant: "destructive" });
       return;
     }
     if (!editForm.travel_date) {
@@ -360,14 +348,6 @@ export default function TravelLogPage() {
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={syncFromMonday} disabled={syncing} className="h-9">
-            {syncing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="h-3.5 w-3.5" />
-            )}
-            Sync
-          </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="h-9">
@@ -383,14 +363,20 @@ export default function TravelLogPage() {
               </DialogHeader>
               <div className="space-y-4 py-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="t-name">Salesperson *</Label>
-                  <Input
-                    id="t-name"
+                  <Label htmlFor="t-name">Sales Manager *</Label>
+                  <Select
                     value={form.salesperson_name}
-                    onChange={(e) => setForm({ ...form, salesperson_name: e.target.value })}
-                    placeholder="Enter salesperson name"
-                    maxLength={120}
-                  />
+                    onValueChange={(v) => setForm({ ...form, salesperson_name: v })}
+                  >
+                    <SelectTrigger id="t-name">
+                      <SelectValue placeholder="Select sales manager" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SALES_MANAGERS.map((name) => (
+                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="rounded-md border p-3 space-y-3">
@@ -517,7 +503,7 @@ export default function TravelLogPage() {
                 className={[
                   "relative min-h-[88px] w-full border-b border-r p-2 text-left transition-colors",
                   inMonth ? "bg-card" : "bg-muted/20",
-                  isSel ? "ring-2 ring-primary ring-inset z-10" : "",
+                  isSel ? "ring-1 ring-primary ring-inset z-10" : "",
                   "hover:bg-accent/40",
                 ].join(" ")}
               >
@@ -614,7 +600,7 @@ export default function TravelLogPage() {
         {/* Legend */}
         {peopleInMonth.length > 0 && (
           <div className="flex items-center gap-3 flex-wrap p-3 border-t bg-muted/20">
-            <span className="text-xs font-medium text-muted-foreground">Salespeople this month:</span>
+            <span className="text-xs font-medium text-muted-foreground">Sales managers this month:</span>
             {peopleInMonth.map(([name, color]) => (
               <span key={name} className="inline-flex items-center gap-1.5 text-xs">
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
@@ -779,13 +765,20 @@ export default function TravelLogPage() {
                   </DialogHeader>
                   <div className="space-y-4 py-2">
                     <div className="space-y-1.5">
-                      <Label htmlFor="e-name">Salesperson *</Label>
-                      <Input
-                        id="e-name"
+                      <Label htmlFor="e-name">Sales Manager *</Label>
+                      <Select
                         value={editForm.salesperson_name}
-                        onChange={(e) => setEditForm({ ...editForm, salesperson_name: e.target.value })}
-                        maxLength={120}
-                      />
+                        onValueChange={(v) => setEditForm({ ...editForm, salesperson_name: v })}
+                      >
+                        <SelectTrigger id="e-name">
+                          <SelectValue placeholder="Select sales manager" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SALES_MANAGERS.map((name) => (
+                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="e-purpose">Purpose</Label>

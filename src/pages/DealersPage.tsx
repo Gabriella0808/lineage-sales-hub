@@ -336,7 +336,7 @@ export default function DealersPage() {
                     <a
                       href={dealer.website.startsWith('http') ? dealer.website : `https://${dealer.website}`}
                       onClick={(e) => { e.preventDefault(); openExternal(dealer.website!.startsWith('http') ? dealer.website! : `https://${dealer.website}`); }}
-                      className="text-sm text-accent hover:underline flex items-center gap-1"
+                      className="text-sm text-primary hover:underline flex items-center gap-1"
                     >{dealer.website} <ExternalLink className="h-3 w-3" /></a>
                   </div>}
                 </div>

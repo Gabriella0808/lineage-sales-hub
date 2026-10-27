@@ -154,7 +154,7 @@ export default function CrmAccountsAnalyticsPage() {
       {/* Per-rep breakdown */}
       <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-1 rounded-full bg-accent" />
+          <div className="h-8 w-1 rounded-full bg-primary" />
           <div>
             <h2 className="font-display text-2xl text-foreground leading-tight">By Rep</h2>
             <p className="text-sm text-muted-foreground">Account totals, closed won, and open prospects per rep.</p>

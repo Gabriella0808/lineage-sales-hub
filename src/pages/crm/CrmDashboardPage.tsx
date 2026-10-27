@@ -78,7 +78,7 @@ export default function CrmDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-accent" />Accounts by Rep</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" />Accounts by Rep</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {Object.entries(stats.byRep).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([id, n]) => (
               <div key={id} className="flex items-center justify-between text-sm">
@@ -91,7 +91,7 @@ export default function CrmDashboardPage() {
         </Card>
 
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><MapPin className="h-4 w-4 text-accent" />Accounts by State</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-sm flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />Accounts by State</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {Object.entries(stats.byState).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([state, n]) => (
               <div key={state} className="flex items-center justify-between text-sm">
@@ -105,7 +105,7 @@ export default function CrmDashboardPage() {
 
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm flex items-center gap-2"><Building2 className="h-4 w-4 text-accent" />Recently Updated</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" />Recently Updated</CardTitle>
             <Button asChild variant="ghost" size="sm" className="h-7 text-xs">
               <Link to="/crm/accounts">View all <ArrowUpRight className="h-3 w-3 ml-1" /></Link>
             </Button>

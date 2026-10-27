@@ -22,7 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
   "Liquidate": "hsl(var(--foreground))",
   "Out of Stock": "hsl(var(--destructive))",
   "Critical": "hsl(var(--destructive))",
-  "Overstock": "hsl(var(--accent))",
+  "Overstock": "hsl(var(--chart-2))",
   "Reorder Soon": "hsl(var(--warning))",
   "Stockout Risk": "hsl(var(--warning))",
   "Healthy": "hsl(var(--success))",
@@ -45,7 +45,7 @@ const STATUS_BADGE: Record<InventoryStatus, { label: string; dot: string; icon?:
   "reorder-soon":   { label: "Reorder Soon",   dot: "bg-warning",     icon: RefreshCw },
   "stockout-risk":  { label: "Stockout Risk",  dot: "bg-warning",     icon: TrendingDown },
   "fast-moving":    { label: "Fast Moving",    dot: "bg-success",     icon: Zap },
-  "overstock":      { label: "Overstock",      dot: "bg-accent" },
+  "overstock":      { label: "Overstock",      dot: "bg-primary" },
   "liquidate":      { label: "Liquidate",      dot: "bg-muted-foreground" },
   "healthy":        { label: "Healthy",        dot: "bg-success" },
 };

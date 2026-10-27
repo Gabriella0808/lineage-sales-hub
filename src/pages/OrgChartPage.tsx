@@ -354,7 +354,7 @@ export default function OrgChartPage() {
                                 {Array.from({ length: 5 }).map((_, i) => (
                                   <Star key={i} className={cn(
                                     "h-3.5 w-3.5",
-                                    i < (r.rating ?? 0) ? "fill-accent text-accent" : "text-muted-foreground/40"
+                                    i < (r.rating ?? 0) ? "fill-primary text-primary" : "text-muted-foreground/40"
                                   )} />
                                 ))}
                               </div>
@@ -800,7 +800,7 @@ function OrgChartCanvas({
                 key={l.id}
                 d={path}
                 fill="none"
-                stroke="hsl(var(--accent))"
+                stroke="hsl(var(--chart-2))"
                 strokeWidth={2}
                 strokeDasharray="4 4"
                 strokeLinecap="round"
@@ -840,11 +840,11 @@ function OrgNode({
       >
         <p className="font-semibold text-sm truncate">{pos.title}</p>
         <p className="text-xs text-muted-foreground truncate">{pos.holder_name || "Vacant"}</p>
-        {pos.department && <p className="text-[10px] uppercase tracking-wider text-accent mt-0.5 truncate">{pos.department}</p>}
+        {pos.department && <p className="text-[10px] uppercase tracking-wider text-primary mt-0.5 truncate">{pos.department}</p>}
         {hasDotted && (
           <span
             title="Has dotted-line reporting"
-            className="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent text-accent-foreground"
+            className="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary text-primary-foreground"
           >
             <Link2 className="h-2.5 w-2.5" />
           </span>

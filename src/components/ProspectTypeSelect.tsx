@@ -125,7 +125,7 @@ export function ProspectTypeSelect(props: Props) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={(e) => { e.preventDefault(); setName(""); setOpen(true); }}
-              className="text-accent"
+              className="text-primary"
             >
               <Plus className="h-3.5 w-3.5 mr-1.5" />Add new type...
             </DropdownMenuItem>
@@ -190,7 +190,7 @@ export function ProspectTypeSelect(props: Props) {
           {types.map((t) => (
             <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>
           ))}
-          <SelectItem value={NEW_VALUE} className="text-accent">
+          <SelectItem value={NEW_VALUE} className="text-primary">
             <span className="inline-flex items-center gap-1.5"><Plus className="h-3.5 w-3.5" />Add new type...</span>
           </SelectItem>
         </SelectContent>

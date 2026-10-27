@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import lineageLogo from "@/assets/lineage-logo.png";
 
@@ -84,13 +84,15 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-6">
-      <img src={lineageLogo} alt="Lineage Collections" className="h-12 w-auto" />
-      <Card className="w-full max-w-md">
-        <CardHeader className="items-center text-center space-y-2">
-          <CardDescription>{mode === "signin" ? "Sign in to your account" : "Create your account"}</CardDescription>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-8">
+      <img src={lineageLogo} alt="Lineage Collections" className="h-14 w-auto" />
+      <Card className="w-full max-w-md shadow-none">
+        <CardHeader className="items-center text-center pt-9 px-8">
+          <h1 className="font-display text-[1.625rem] sm:text-[1.75rem] font-normal tracking-tight text-foreground leading-[1.1]">
+            {mode === "signin" ? "Sign in to your account" : "Create your account"}
+          </h1>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-8 pb-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signup" && (
               <div className="space-y-2">
@@ -127,7 +129,7 @@ export default function AuthPage() {
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled={submitting}>
+            <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
             </Button>
             <p className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground pt-2">

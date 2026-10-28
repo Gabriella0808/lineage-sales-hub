@@ -52,6 +52,7 @@ const DEALER_GOAL_YEAR = 2027;
 const DEALER_GOAL_VISIBLE_TO_EMAILS = new Set([
   "justin@lineage-collections.com",
   "scott@lineage-collections.com",
+  "gabriella@lineage-collections.com",
 ]);
 
 // Same cutoff, used to keep the primary (reported) date filter itself from

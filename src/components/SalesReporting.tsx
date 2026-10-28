@@ -7,7 +7,9 @@ import {
 } from "date-fns";
 import {
   RotateCcw, X, FileText, ShoppingCart, Hash, Users2, Calculator, ChevronDown, Filter, ArrowLeftRight,
+  Lock, LockOpen,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -30,6 +32,10 @@ import { BOOKINGS_VISIBLE_FROM, isBookingVisibleDate } from "@/utils/bookingCuto
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useRegisterReportContext } from "@/contexts/ReportContextProvider";
+import {
+  useDealerAnnualGoals, useSetDealerAnnualGoal, useUnlockDealerAnnualGoal, dealerGoalKey,
+  type DealerGoal, type DealerGoalAccess,
+} from "@/hooks/useDealerAnnualGoals";
 
 // Ahead/Behind/Open Territories summary cards are still being validated -
 // restricted to Gabriella's account only until ready for everyone.
@@ -38,6 +44,15 @@ const SUMMARY_CARDS_VISIBLE_TO_EMAIL = "gabriella@lineage-collections.com";
 // Booking data is only trusted from this date onwards.
 // Used to clamp query start dates before any fetch — not applied post-aggregation.
 const BOOKING_CUTOFF_DATE = new Date(BOOKINGS_VISIBLE_FROM + "T00:00:00");
+
+// Year for the Dealer Reporting per-dealer goal column.
+const DEALER_GOAL_YEAR = 2027;
+// 2027 Goal column is in preview - visible to these accounts only until
+// it's rolled out to reps.
+const DEALER_GOAL_VISIBLE_TO_EMAILS = new Set([
+  "justin@lineage-collections.com",
+  "scott@lineage-collections.com",
+]);
 
 // Same cutoff, used to keep the primary (reported) date filter itself from
 // ever starting before it — both metrics already exclude pre-cutoff data
@@ -693,6 +708,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // Territory groupBy always uses line mode (needs customer_id → territory mapping).
   // Rep filter is handled via p_rep_ids parameter, no longer falls back to line mode.
   const useRpcMode = display === "total" && groupBy !== "territory";
+  const showDealerGoals = DEALER_GOAL_VISIBLE_TO_EMAILS.has((user?.email ?? "").toLowerCase());
+  const dealerGoals = useDealerAnnualGoals(DEALER_GOAL_YEAR, showDealerGoals && useRpcMode && groupBy === "dealer");
 
   // Clamp booking fetch dates at the query level so Jan-Jul 2026 rows are never
   // fetched, aggregated, or counted.  effectiveFrom = max(selectedFrom, cutoff).
@@ -1979,6 +1996,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 onRowClick={(key, label) => setDrillRow({ key, label })}
                 goalData={groupBy === "rep" ? repGoalMap : undefined}
                 showDealerColumns={groupBy === "dealer"}
+                dealerGoals={showDealerGoals && groupBy === "dealer" ? dealerGoals : undefined}
                 metric={metric}
               />
             ) : display === "monthly" ? (
@@ -2040,8 +2058,88 @@ function fmtFulfillPct(amount: number, primary: number): string {
   return `${((amount / primary) * 100).toFixed(1)}%`;
 }
 
+function DealerGoalCell({ customerId, goal, access }: {
+  customerId?: string;
+  goal?: DealerGoal;
+  access?: DealerGoalAccess;
+}) {
+  const setGoal = useSetDealerAnnualGoal(DEALER_GOAL_YEAR);
+  const unlock  = useUnlockDealerAnnualGoal(DEALER_GOAL_YEAR);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState("");
+
+  const canEdit = !!customerId && (access === "manage" || (access === "rep" && !goal?.locked));
+
+  if (!editing) {
+    return (
+      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+        <span className={cn("tabular-nums text-sm", !goal && "text-muted-foreground")}>
+          {goal ? formatCurrency(goal.amount) : "—"}
+        </span>
+        {goal?.locked && <Lock className="h-3 w-3 text-muted-foreground" aria-label="Locked in" />}
+        {canEdit && (
+          <Button
+            type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs"
+            onClick={() => { setDraft(goal ? String(goal.amount) : ""); setEditing(true); }}
+          >
+            {goal ? "Edit" : "Set"}
+          </Button>
+        )}
+        {access === "manage" && goal?.locked && (
+          <Button
+            type="button" variant="ghost" size="sm" className="h-6 px-1.5" title="Unlock so the rep can change it"
+            disabled={unlock.isPending}
+            onClick={() => unlock.mutate(customerId!, {
+              onSuccess: () => toast.success("Goal unlocked"),
+              onError: (e: Error) => toast.error(e.message),
+            })}
+          >
+            <LockOpen className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  const amount = Number(draft.replace(/[$,\s]/g, ""));
+  const valid  = draft.trim() !== "" && Number.isFinite(amount) && amount >= 0;
+  const save = () => {
+    if (!valid) return;
+    setGoal.mutate({ customerId: customerId!, amount }, {
+      onSuccess: () => { toast.success(`${DEALER_GOAL_YEAR} goal locked in`); setEditing(false); },
+      onError: (e: Error) => toast.error(e.message),
+    });
+  };
+
+  return (
+    <div className="flex items-center justify-end gap-1">
+      <Input
+        autoFocus inputMode="decimal" placeholder="$0"
+        className="h-7 w-28 text-right text-sm tabular-nums"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") save();
+          if (e.key === "Escape") setEditing(false);
+        }}
+      />
+      <Button
+        type="button" size="sm" className="h-7 px-2 text-xs gap-1"
+        disabled={!valid || setGoal.isPending}
+        title={access === "rep" ? "Once locked in, only your manager can change it" : undefined}
+        onClick={save}
+      >
+        <Lock className="h-3 w-3" /> Lock in
+      </Button>
+      <Button type="button" variant="ghost" size="sm" className="h-7 px-1.5" onClick={() => setEditing(false)}>
+        <X className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
+
 function TotalTable({
-  rows, leftHeader, showComparison, onRowClick, goalData, showDealerColumns, metric,
+  rows, leftHeader, showComparison, onRowClick, goalData, showDealerColumns, dealerGoals, metric,
 }: {
   rows: {
     key: string; label: string; primary: number; comparative: number; container?: number; warehouse?: number;
@@ -2053,11 +2151,16 @@ function TotalTable({
   goalData?: Map<string, { mtdPct: number | null; ytdPct: number | null }>;
   /** Dealer mode — renders Customer ID / Rep / Territory / Manager / Open SO Value columns. */
   showDealerColumns?: boolean;
+  /** Dealer mode — per-dealer annual goal column, editable per dealerGoals.access. */
+  dealerGoals?: { goals: Map<string, DealerGoal>; access: Map<string, DealerGoalAccess> };
   metric: Metric;
 }) {
   const totalP           = rows.reduce((s, r) => s + r.primary, 0);
   const totalC           = rows.reduce((s, r) => s + r.comparative, 0);
   const totalOpenSo      = rows.reduce((s, r) => s + (r.openSoValue ?? 0), 0);
+  const totalDealerGoal  = dealerGoals
+    ? rows.reduce((s, r) => s + (r.customerId ? dealerGoals.goals.get(dealerGoalKey(r.customerId))?.amount ?? 0 : 0), 0)
+    : 0;
   const hasContainerData = rows.some((r) => r.container !== undefined);
   // $-weighted total (total container $ / total primary $), NOT a sum of each
   // row's own percentage — with hundreds of dealer rows, summing per-row
@@ -2092,6 +2195,11 @@ function TotalTable({
           {showDealerColumns && (
             <th className="text-left px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               Manager
+            </th>
+          )}
+          {dealerGoals && (
+            <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+              {DEALER_GOAL_YEAR} Goal
             </th>
           )}
           {goalData && (
@@ -2172,6 +2280,15 @@ function TotalTable({
               {showDealerColumns && (
                 <td className="px-4 py-3 text-sm truncate max-w-[140px]">{r.managerName ?? "—"}</td>
               )}
+              {dealerGoals && (
+                <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                  <DealerGoalCell
+                    customerId={r.customerId}
+                    goal={r.customerId ? dealerGoals.goals.get(dealerGoalKey(r.customerId)) : undefined}
+                    access={r.customerId ? dealerGoals.access.get(dealerGoalKey(r.customerId)) : undefined}
+                  />
+                </td>
+              )}
               {goalData && (
                 <td className={cn("px-4 py-3 text-right tabular-nums text-sm", goal?.mtdPct != null && goal.mtdPct >= 100 ? "text-success" : "text-muted-foreground")}>
                   {goal ? (fmtGoalPct(goal.mtdPct) ?? "—") : "—"}
@@ -2219,7 +2336,7 @@ function TotalTable({
         })}
         {rows.length === 0 && (
           <tr>
-            <td colSpan={(showComparison ? 5 : 2) + (goalData ? 2 : 0) + (hasContainerData ? 2 : 0) + (showDealerColumns ? 5 : 0)} className="px-5 py-10 text-center text-sm text-muted-foreground">
+            <td colSpan={(showComparison ? 5 : 2) + (goalData ? 2 : 0) + (hasContainerData ? 2 : 0) + (showDealerColumns ? 5 : 0) + (dealerGoals ? 1 : 0)} className="px-5 py-10 text-center text-sm text-muted-foreground">
               No results for the selected filters.
             </td>
           </tr>
@@ -2231,6 +2348,11 @@ function TotalTable({
             {showDealerColumns && <td className="px-4 py-3" />}
             {showDealerColumns && <td className="px-4 py-3" />}
             {showDealerColumns && <td className="px-4 py-3" />}
+            {dealerGoals && (
+              <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                {totalDealerGoal > 0 ? formatCurrency(totalDealerGoal) : "—"}
+              </td>
+            )}
             {goalData && <td className="px-4 py-3" />}
             {goalData && <td className="px-4 py-3" />}
             <td className="px-5 py-3 text-right tabular-nums font-semibold">{formatCurrency(totalP)}</td>

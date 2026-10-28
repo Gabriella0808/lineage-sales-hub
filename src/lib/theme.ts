@@ -19,8 +19,19 @@ export function resolveTheme(mode: ThemeMode): "light" | "dark" {
   return mode === "system" ? (systemPrefersDark() ? "dark" : "light") : mode;
 }
 
+// Switches instantly: .theme-switching (index.css) suspends every
+// transition for the one frame the class flips in. Otherwise the global
+// 100ms color fade runs on every element at once - thousands of rows on
+// the reporting tables - and the page repaints in a staggered, half-light/
+// half-dark mess.
 export function applyTheme(mode: ThemeMode) {
-  document.documentElement.classList.toggle("dark", resolveTheme(mode) === "dark");
+  const root = document.documentElement;
+  const dark = resolveTheme(mode) === "dark";
+  if (root.classList.contains("dark") === dark) return;
+  root.classList.add("theme-switching");
+  root.classList.toggle("dark", dark);
+  void root.offsetHeight; // commit the new colors before transitions come back
+  requestAnimationFrame(() => root.classList.remove("theme-switching"));
 }
 
 export function initTheme() {

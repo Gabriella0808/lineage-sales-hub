@@ -1220,7 +1220,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const effectiveBrand = line.brand_category ??
         (line.metric_type === "invoiced" ? "Historical Invoice" : "");
       if (brandCategorySet.size > 0 && !brandCategorySet.has(effectiveBrand)) continue;
-      if (collectionSet.size > 0 && !collectionSet.has(line.product_class ?? "")) continue;
+      // collectionSet holds UPPERCASE codes; product_class is Title Case.
+      if (collectionSet.size > 0 && !collectionSet.has((line.product_class ?? "").trim().toUpperCase())) continue;
       if (skuSet.size > 0 && !skuSet.has(line.sku ?? "")) continue;
 
       const d  = new Date(line.transaction_date + "T00:00:00");
@@ -1305,7 +1306,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
       const effectiveBrand = line.brand_category ??
         (line.metric_type === "invoiced" ? "Historical Invoice" : "");
       if (brandCategorySet.size > 0 && !brandCategorySet.has(effectiveBrand)) return false;
-      if (collectionSet.size > 0 && !collectionSet.has(line.product_class ?? "")) return false;
+      if (collectionSet.size > 0 && !collectionSet.has((line.product_class ?? "").trim().toUpperCase())) return false;
       if (skuSet.size > 0 && !skuSet.has(line.sku ?? "")) return false;
       if (line.metric_type === "bookings" && !isBookingVisibleDate(line.transaction_date)) return false;
       return true;

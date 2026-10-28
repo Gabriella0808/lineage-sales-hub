@@ -13,6 +13,20 @@ export interface DealerGoal {
   locked: boolean;
 }
 
+// 2027 Goal columns (and their What's New popup) are in preview - visible
+// to these accounts only until rolled out to reps. Local dev shows them to
+// every account so rep/manager views can be tested.
+const DEALER_GOAL_VISIBLE_TO_EMAILS = new Set([
+  "justin@lineage-collections.com",
+  "scott@lineage-collections.com",
+  "gabriella@lineage-collections.com",
+  "chris@lineage-collections.com",
+]);
+
+export function canSeeDealerGoals(email?: string | null) {
+  return import.meta.env.DEV || DEALER_GOAL_VISIBLE_TO_EMAILS.has((email ?? "").toLowerCase());
+}
+
 // PostgREST caps every response at 1000 rows; an admin's access list is
 // ~1,400 dealers, so both queries page through with .range().
 const PAGE_SIZE = 1000;

@@ -33,7 +33,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useRegisterReportContext } from "@/contexts/ReportContextProvider";
 import {
-  useDealerAnnualGoals, useDealerGoalTotalsByRep, useSetDealerAnnualGoal, useUnlockDealerAnnualGoal, dealerGoalKey,
+  canSeeDealerGoals, useDealerAnnualGoals, useDealerGoalTotalsByRep, useSetDealerAnnualGoal, useUnlockDealerAnnualGoal, dealerGoalKey,
   type DealerGoal, type DealerGoalAccess,
 } from "@/hooks/useDealerAnnualGoals";
 
@@ -47,13 +47,6 @@ const BOOKING_CUTOFF_DATE = new Date(BOOKINGS_VISIBLE_FROM + "T00:00:00");
 
 // Year for the Dealer Reporting per-dealer goal column.
 const DEALER_GOAL_YEAR = 2027;
-// 2027 Goal column is in preview - visible to these accounts only until
-// it's rolled out to reps.
-const DEALER_GOAL_VISIBLE_TO_EMAILS = new Set([
-  "justin@lineage-collections.com",
-  "scott@lineage-collections.com",
-  "gabriella@lineage-collections.com",
-]);
 
 // Same cutoff, used to keep the primary (reported) date filter itself from
 // ever starting before it — both metrics already exclude pre-cutoff data
@@ -709,8 +702,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // Territory groupBy always uses line mode (needs customer_id → territory mapping).
   // Rep filter is handled via p_rep_ids parameter, no longer falls back to line mode.
   const useRpcMode = display === "total" && groupBy !== "territory";
-  // Local dev shows it to every account so rep/manager views can be tested.
-  const showDealerGoals = import.meta.env.DEV || DEALER_GOAL_VISIBLE_TO_EMAILS.has((user?.email ?? "").toLowerCase());
+  const showDealerGoals = canSeeDealerGoals(user?.email);
   const dealerGoals = useDealerAnnualGoals(DEALER_GOAL_YEAR, showDealerGoals && useRpcMode && groupBy === "dealer");
   const repGoalTotals = useDealerGoalTotalsByRep(DEALER_GOAL_YEAR, showDealerGoals && useRpcMode && groupBy === "rep");
 

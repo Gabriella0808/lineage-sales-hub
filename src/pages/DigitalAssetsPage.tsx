@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   Folder, FolderPlus, Upload, Search, Grid3x3, List, MoreVertical,
   Download, Pencil, FolderInput, Trash2, ChevronRight, Home, Loader2, X,
-  Star, Clock, ChevronLeft, ChevronDown, FileUp, FolderUp, ArrowUpDown,
+  Star, Clock, ChevronDown, FileUp, FolderUp, ArrowUpDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -138,7 +138,6 @@ export default function DigitalAssetsPage() {
   const [uploads, setUploads] = useState<UploadState[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const collectionsScrollRef = useRef<HTMLDivElement>(null);
 
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -247,32 +246,6 @@ export default function DigitalAssetsPage() {
     walk(folderId);
     return out;
   };
-
-  // "Collections" - the top-level folders themselves, presented as visual
-  // entry points instead of a flat list. This is a direct, non-invented
-  // mapping (root folder = collection, exactly what's already there - see
-  // digital_asset_folders.parent_folder_id IS NULL), not a fabricated
-  // category scheme, and it needs no schema change. A cover photo is the
-  // most recently updated real image asset found anywhere in that folder's
-  // own subtree (never a stock/marketing photo standing in for a specific
-  // folder's actual contents) - a folder with no image assets gets the
-  // same understated neutral placeholder every empty/non-image tile in
-  // this app already uses, not a fabricated thumbnail. Counts are the same
-  // direct-child counts every other folder tile/row already shows.
-  const collections = useMemo(() => {
-    if (q || quickFilter !== "all") return [];
-    return folders
-      .filter((f) => f.parent_folder_id === null)
-      .map((folder) => {
-        const subtreeIds = new Set([folder.id, ...descendantIds(folder.id)]);
-        const cover = assets
-          .filter((a) => a.folder_id && subtreeIds.has(a.folder_id) && isImage(a.content_type))
-          .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
-        return { folder, itemCount: childCounts.get(folder.id) ?? 0, cover };
-      })
-      .sort((a, b) => a.folder.name.localeCompare(b.folder.name));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folders, assets, childCounts, q, quickFilter]);
 
   async function handleCreateFolder() {
     if (!newFolderName.trim() || !user) return;
@@ -513,42 +486,6 @@ export default function DigitalAssetsPage() {
           </div>
         )}
       </div>
-
-      {/* Collections - the top-level folders as a compact, visual discovery
-          row (not an oversized hero: a single horizontally-scrollable
-          strip, same scroll mechanic the old "Suggested for you" row used,
-          so the file browser below is never more than a glance away). */}
-      {collections.length > 0 && (
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <span className="font-display text-lg text-foreground">Collections</span>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => collectionsScrollRef.current?.scrollBy({ left: -300, behavior: "smooth" })} aria-label="Scroll collections left">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => collectionsScrollRef.current?.scrollBy({ left: 300, behavior: "smooth" })} aria-label="Scroll collections right">
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div ref={collectionsScrollRef} className="flex gap-4 overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth">
-            {collections.map(({ folder, itemCount, cover }) => (
-              <CollectionCard
-                key={folder.id}
-                folder={folder}
-                itemCount={itemCount}
-                cover={cover}
-                // "Inside this collection" means the current folder either
-                // IS it or is somewhere in its subtree - browsing two
-                // levels into Cabinet Beds still reads as "in" Cabinet
-                // Beds, not as having left the collection entirely.
-                active={!!currentFolderId && (currentFolderId === folder.id || descendantIds(folder.id).has(currentFolderId))}
-                onOpen={() => { setCurrentFolderId(folder.id); setSearch(""); setQuickFilter("all"); }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Toolbar - quick filters, search, sort, and view toggle sit directly
           on the page, no bordered box around them - matches the website's
@@ -929,83 +866,6 @@ function ListHeaderRow() {
       <span>Modified</span>
       <span />
     </div>
-  );
-}
-
-// A collection's cover is a real, already-stored image asset found
-// somewhere in that folder's own subtree (never a stock/marketing photo) -
-// or, when the folder has no image assets at all, the same understated
-// neutral tile every other folder-without-a-preview already uses. Bare
-// image treatment (no border/shadow on the photo itself), matching the
-// website's own near-shadowless product-grid convention.
-// A folder with a real cover photo gets the image-led treatment; one with
-// no suitable image gets a deliberately different, equally considered
-// typographic card - never a beige box standing in for a missing photo.
-// Branches on `cover` (the real asset, found or not), not on whether its
-// signed URL has resolved yet - a still-loading cover stays image-shaped
-// (an empty tile, then the photo), rather than flashing the typographic
-// layout and switching a moment later.
-// Both card variants share one fixed outer height (CARD_HEIGHT) so the
-// strip has one consistent rhythm regardless of which type a given
-// collection gets, and both indicate "this is the collection you're
-// currently inside" the same way - a thin rule under the name, the same
-// active-nav convention already used for tabs/top-nav elsewhere in this
-// app (and the website's own real nav pattern), never a filled background.
-const COLLECTION_CARD_HEIGHT = "h-[220px]";
-
-function CollectionCard({ folder, itemCount, cover, active, onOpen }: {
-  folder: DigitalFolder; itemCount: number; cover: DigitalAsset | null; active: boolean; onOpen: () => void;
-}) {
-  const coverUrl = useSignedUrl(cover?.file_path ?? null).data;
-  const countLabel = itemCount > 0 ? `${itemCount} item${itemCount === 1 ? "" : "s"}` : "Empty";
-  const name = (
-    <p
-      className={cn(
-        "font-display text-[17px] leading-snug text-foreground truncate w-fit border-b-2 pb-0.5",
-        active ? "border-foreground" : "border-transparent",
-      )}
-      title={folder.name}
-    >
-      {folder.name}
-    </p>
-  );
-
-  if (cover) {
-    return (
-      <button type="button" onClick={onOpen} className={cn("group w-56 shrink-0 text-left flex flex-col", COLLECTION_CARD_HEIGHT)}>
-        <div className="aspect-[4/3] w-full bg-muted overflow-hidden flex items-center justify-center shrink-0">
-          {coverUrl && <img src={coverUrl} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />}
-        </div>
-        <div className="mt-2.5">
-          {name}
-          <p className="text-xs text-muted-foreground mt-1">{countLabel}</p>
-        </div>
-      </button>
-    );
-  }
-
-  // No image anywhere in this folder's subtree - a bordered, text-led
-  // "label card" instead of a weak copy of the photo card with the photo
-  // missing. The icon, name and count are one tight, deliberate group
-  // (gap-2.5 within it) rather than pinned to opposite corners of the
-  // card - justify-center turns any extra height into even breathing
-  // room above and below that group, not an awkward gap inside it.
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={cn(
-        "w-56 shrink-0 text-left border bg-card transition-colors px-6 flex flex-col justify-center gap-2.5",
-        COLLECTION_CARD_HEIGHT,
-        active ? "border-foreground/50" : "border-border hover:border-foreground/30",
-      )}
-    >
-      <Folder className="h-4 w-4 text-muted-foreground/60 shrink-0" />
-      <div>
-        {name}
-        <p className="text-xs text-muted-foreground mt-1">{countLabel}</p>
-      </div>
-    </button>
   );
 }
 

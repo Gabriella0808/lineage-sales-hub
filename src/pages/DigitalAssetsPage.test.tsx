@@ -42,9 +42,6 @@ vi.mock("@/hooks/useUserRole", () => ({ isDigitalAssetsManager: () => mockCanMan
 const NOW = Date.now();
 const FOLDERS = [
   { id: "f1", name: "Brochures", parent_folder_id: null, created_by: "u1", created_at: new Date(NOW).toISOString(), updated_at: new Date(NOW - 10 * 86_400_000).toISOString() },
-  // A second root folder that DOES contain a real image asset - lets the
-  // Collections tests below cover both the photo-led card and the
-  // typographic (no-image) card in the same render.
   { id: "f2", name: "Product Photography", parent_folder_id: null, created_by: "u1", created_at: new Date(NOW).toISOString(), updated_at: new Date(NOW).toISOString() },
 ];
 const ASSETS = [
@@ -168,45 +165,6 @@ describe("DigitalAssetsPage", () => {
     expect(screen.queryByRole("button", { name: /new folder/i })).not.toBeInTheDocument();
   });
 
-  // Editorial Library redesign: Collections are the real top-level folders
-  // (digital_asset_folders.parent_folder_id IS NULL), not invented
-  // categories - "Brochures" in the fixture above is exactly that.
-  it("shows real top-level folders as Collections with real item counts", async () => {
-    renderPage();
-    await screen.findByTestId("asset-list");
-    expect(screen.getByText("Collections")).toBeInTheDocument();
-    // "Brochures" appears both as a Collection card and as a row in the
-    // list below - at least one instance must be present either way.
-    expect(screen.getAllByText("Brochures").length).toBeGreaterThan(0);
-    // No asset in the fixture has folder_id "f1", so its real, computed
-    // count is zero - the collection card must say so honestly, not omit
-    // the count or show a placeholder number.
-    expect(screen.getByText("Empty")).toBeInTheDocument();
-  });
-
-  it("navigates into a folder when its Collection card is clicked", async () => {
-    renderPage();
-    await screen.findByTestId("asset-list");
-    const collectionsHeading = screen.getByText("Collections");
-    const strip = collectionsHeading.closest("div")!.nextElementSibling as HTMLElement;
-    fireEvent.click(within(strip).getByText("Brochures"));
-    // Brochures has no children in the fixture, so a real navigation lands
-    // on its real empty state, not just a changed breadcrumb label.
-    expect(await screen.findByText(/this folder is empty/i)).toBeInTheDocument();
-  });
-
-  it("marks only the currently-browsed collection as active in the strip", async () => {
-    renderPage();
-    await screen.findByTestId("asset-list");
-    const strip = screen.getByText("Collections").closest("div")!.nextElementSibling as HTMLElement;
-    fireEvent.click(within(strip).getByText("Brochures"));
-    await screen.findByText(/this folder is empty/i);
-    const brochuresCard = within(strip).getByRole("button", { name: /Brochures/ });
-    const photographyCard = within(strip).getByRole("button", { name: /Product Photography/ });
-    expect(brochuresCard.className).toMatch(/border-foreground\/50/);
-    expect(photographyCard.className).not.toMatch(/border-foreground\/50/);
-  });
-
   // The preview panel is the robust, not-clamped way to see a complete
   // filename (see DigitalAssetsPage.tsx's SheetTitle) - assert the DOM
   // itself carries no truncate/line-clamp class, not just that the text
@@ -217,31 +175,6 @@ describe("DigitalAssetsPage", () => {
     fireEvent.click(within(list).getByText("Apple Catalog.pdf"));
     const title = await screen.findByRole("heading", { name: "Apple Catalog.pdf" });
     expect(title.className).not.toMatch(/truncate|line-clamp/);
-  });
-
-  // Adaptive collection cards: a folder with a real image asset in its
-  // subtree gets the photo-led card; a folder with none gets the
-  // typographic "label card" instead of a beige placeholder.
-  it("shows a photo-led collection card for a folder with a real image asset", async () => {
-    renderPage();
-    await screen.findByTestId("asset-list");
-    const card = screen.getByRole("button", { name: /Product Photography/ });
-    // The cover photo is deliberately alt="" (decorative - its caption
-    // right below already names the folder), so it has no accessible
-    // "img" role by design; query the element directly instead.
-    await screen.findByText("1 item");
-    expect(card.querySelector("img")).toBeInTheDocument();
-    expect(within(card).getByText("1 item")).toBeInTheDocument();
-  });
-
-  it("shows the typographic card (no image) for a folder with no image assets", async () => {
-    renderPage();
-    await screen.findByTestId("asset-list");
-    const collectionsHeading = screen.getByText("Collections");
-    const strip = collectionsHeading.closest("div")!.nextElementSibling as HTMLElement;
-    const card = within(strip).getByRole("button", { name: /Brochures/ });
-    expect(card.querySelector("img")).not.toBeInTheDocument();
-    expect(within(card).getByText("Empty")).toBeInTheDocument();
   });
 
   it("shows an empty state with no items", async () => {

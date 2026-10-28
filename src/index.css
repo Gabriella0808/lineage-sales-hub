@@ -11,11 +11,11 @@
   system (lineagecollectionswebsite.gabriella-524.workers.dev/css/styles.css
   - see LINEAGE_BRAND_DESIGN_SYSTEM.md for the full audit). Same variable
   names/roles as before this pass - this is a value swap to the site's
-  actual palette, not a restructure. The sidebar shell is light "Sand",
-  with the brand "Dark" tone reserved for the active/selected nav item and
-  the primary chrome actions - the inverse of the once dark-shell/light-
-  accent treatment (see AppLayout.tsx's logo, which switches between the
-  ink and white variants to stay visible on whichever shell is active).
+  actual palette, not a restructure. The one deliberate exception: the
+  sidebar's existing dark-shell treatment is kept (not flattened to match
+  the canvas) and just recolored to the website's own real dark tone,
+  since converting it to a light shell would be a bigger visual-personality
+  change than "apply the website's colors."
 
   Palette (website hex → this file's HSL):
     Ink              #1D1A17 → 30 12% 10%   (text)
@@ -42,11 +42,11 @@
   other real accent color but is no longer the portal's brand-color
   direction; it remains only on chart-3 (a decorative data-viz
   differentiator, not a brand/action accent) and is not used anywhere
-  semantic. On a DARK surface (the active sidebar item, dark-mode canvas)
-  the charcoal itself would be unreadable against another dark tone, so
-  those contexts use the website's own verified warm "Sand" tone (#E7E2DB)
-  instead, the same light-on-dark logic the site itself uses (.btn-light
-  inverts to a light fill, never a mid-tone, against a dark surface).
+  semantic. On a DARK surface (sidebar, dark-mode canvas) the charcoal
+  itself would be unreadable against another dark tone, so those contexts
+  use the website's own verified warm "Sand" tone (#E7E2DB) instead, the
+  same light-on-dark logic the site itself uses (.btn-light inverts to a
+  light fill, never a mid-tone, against a dark surface).
 
   Typography: Cormorant Garamond (display) + Inter (body/UI) - the
   website's exact pairing, unchanged from before this pass.
@@ -116,19 +116,18 @@
        radius language well; left as-is. */
     --radius: 0.25rem;
 
-    /* Sidebar — flipped to a light "Sand" shell with the brand Dark tone
-       reserved for the active/selected nav item (and the primary chrome
-       actions that already used it), instead of a dark shell throughout. */
-    --sidebar-background: 35 20% 88%;   /* Sand */
-    --sidebar-foreground: 30 12% 10%;   /* Ink */
-    --sidebar-primary: 26 10% 14%;      /* Dark - brand action accent */
-    --sidebar-primary-foreground: 35 20% 88%;
-    --sidebar-accent: 26 10% 14%;       /* Dark - active/selected nav item */
+    /* Sidebar — inverted back to a dark architectural shell, with the light
+       "Sand" tone reserved for the active/selected nav item. */
+    --sidebar-background: 26 10% 10%;
+    --sidebar-foreground: 35 20% 88%;
+    --sidebar-primary: 35 20% 88%;      /* light "Sand" accent - reads on the dark shell */
+    --sidebar-primary-foreground: 26 10% 10%;
+    --sidebar-accent: 26 8% 16%;
     --sidebar-accent-foreground: 35 20% 88%;
-    --sidebar-border: 37 18% 86%;       /* Line */
-    --sidebar-ring: 26 10% 14%;
-    --sidebar-muted: 32 7% 45%;         /* Muted text */
-    --sidebar-section: 32 7% 45%;
+    --sidebar-border: 26 8% 18%;
+    --sidebar-ring: 35 20% 88%;
+    --sidebar-muted: 35 10% 55%;
+    --sidebar-section: 35 10% 58%;
 
     /* Charts — editorial, cohesive with the website-derived palette. Olive
        (#5D5A3E) stays here only as a decorative data-viz differentiator -

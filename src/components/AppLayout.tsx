@@ -7,8 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";
-import lineageLogo from "@/assets/lineage-logo.png";
-import lineageLogoWhite from "@/assets/lineage-logo-white.png";
+import lineageLogo from "@/assets/lineage-logo-white.png";
 import { NavLink } from "@/components/NavLink";
 import { isCustomerService } from "@/components/EmailGuard";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -252,8 +251,6 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
   const closeOnMobile = () => { if (isMobile) setOpenMobile(false); };
   const location = useLocation();
   const { pinned, isPinned, togglePin } = useNavPins();
-  const { resolved: themeResolved } = useTheme();
-  const logoSrc = themeResolved === "dark" ? lineageLogoWhite : lineageLogo;
 
   // Resolve each pinned URL back to its NavItem (title/icon) from the
   // visible sections - a pin to a page the current role can no longer see
@@ -287,7 +284,7 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
     <Sidebar collapsible="icon" className="border-r-0 bg-sidebar">
       <SidebarHeader className="px-4 py-5 border-b border-sidebar-border/70">
         <div className="flex items-center gap-3">
-          <img src={logoSrc} alt="Lineage Collections" className="h-9 w-auto" />
+          <img src={lineageLogo} alt="Lineage Collections" className="h-9 w-auto" />
         </div>
       </SidebarHeader>
 
@@ -374,7 +371,7 @@ function ClassicSidebar({ sections, role, user, onReportIssue }: { sections: Nav
       <SidebarFooter className="p-3 border-t border-sidebar-border/70">
         <div className="flex items-center gap-3 px-1.5">
           <div className="w-10 h-10 rounded-sm flex items-center justify-center overflow-hidden">
-            <img src={logoSrc} alt="Lineage Collections" className="w-8 h-8 object-contain" />
+            <img src={lineageLogo} alt="Lineage Collections" className="w-8 h-8 object-contain" />
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
@@ -466,7 +463,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   const goTo = (url: string) => { setSearchOpen(false); setMobileOpen(false); setFlyout(null); navigate(url); };
 
   const { mode: themeMode, setMode: setThemeMode, resolved: themeResolved } = useTheme();
-  const logoSrc = themeResolved === "dark" ? lineageLogoWhite : lineageLogo;
   const [drawerOpen, setDrawerOpen] = useState(false);
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
   const dark = navStyle === "drawer" || navStyle === "top";
@@ -606,7 +602,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const topHeader = (
     <header className="h-14 shrink-0 flex items-center gap-2 bg-sidebar text-sidebar-foreground px-3 sm:px-5">
       <button type="button" onClick={() => setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-md hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" aria-label="Open menu"><Menu className="h-5 w-5" /></button>
-      <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" title="Home"><img src={logoSrc} alt="Lineage Collections" className="h-8 w-auto" /></button>
+      <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" title="Home"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></button>
       <nav className="hidden lg:flex items-center gap-0.5" aria-label="Main navigation">
         {sections.map((sec) => (
           <DropdownMenu key={sec.id}>
@@ -712,7 +708,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const drawerHeader = (
     <>
       <header className="h-14 shrink-0 flex items-center gap-2 bg-sidebar text-sidebar-foreground px-3 sm:px-5">
-        <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" title="Home"><img src={logoSrc} alt="Lineage Collections" className="h-8 w-auto" /></button>
+        <button type="button" onClick={() => goTo("/")} className="mr-3 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar-background" title="Home"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></button>
         <div className="hidden md:block text-sidebar-foreground/80">{breadcrumb}</div>
         <div className="flex-1" />
         {syncPill}
@@ -725,7 +721,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       </header>
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetContent side="right" className="w-[380px] sm:max-w-[380px] p-0 overflow-y-auto">
-          <div className="p-5 border-b bg-sidebar"><img src={logoSrc} alt="Lineage Collections" className="h-8 w-auto" /></div>
+          <div className="p-5 border-b bg-sidebar"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></div>
           <div className="p-4 space-y-6">
             {sections.map((sx) => (
               <div key={sx.id}>
@@ -760,7 +756,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-[290px] p-0 overflow-y-auto">
-          <div className="p-4 border-b bg-sidebar"><img src={logoSrc} alt="Lineage Collections" className="h-8 w-auto" /></div>
+          <div className="p-4 border-b bg-sidebar"><img src={lineageLogo} alt="Lineage Collections" className="h-8 w-auto" /></div>
           <div className="p-3 space-y-5">
             {sections.map((sx) => (
               <div key={sx.id}>

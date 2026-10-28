@@ -188,11 +188,7 @@ export default function DigitalAssetsPage() {
     return m;
   }, [folders, assets]);
 
-  // Folders and files merged into one list, ordered per sortBy. "Modified"
-  // (the default) additionally groups under date headers, matching
-  // Dropbox's "Modified ↓ / Today / Older" pattern; any other sort shows a
-  // single flat, explicitly-ordered list instead (grouping by date wouldn't
-  // make sense once the order isn't by date).
+  // Folders and files merged into one list, ordered per sortBy.
   const sortedItems = useMemo(() => {
     const merged: GridItem[] = [
       ...visibleFolders.map((data): GridItem => ({ kind: "folder", data })),
@@ -208,29 +204,6 @@ export default function DigitalAssetsPage() {
         return merged.sort((a, b) => new Date(b.data.updated_at).getTime() - new Date(a.data.updated_at).getTime());
     }
   }, [visibleFolders, visibleAssets, sortBy]);
-
-  const groupedItems = useMemo(() => {
-    if (sortBy !== "modified") return [{ label: null as string | null, items: sortedItems }];
-    const now = Date.now();
-    const DAY = 86_400_000;
-    const bucketOf = (iso: string): string => {
-      const age = now - new Date(iso).getTime();
-      if (age < DAY) return "Today";
-      if (age < 2 * DAY) return "Yesterday";
-      if (age < 7 * DAY) return "This week";
-      if (age < 31 * DAY) return "This month";
-      return "Older";
-    };
-    const groups = new Map<string, GridItem[]>();
-    for (const item of sortedItems) {
-      const key = bucketOf(item.data.updated_at);
-      const arr = groups.get(key) ?? [];
-      arr.push(item);
-      groups.set(key, arr);
-    }
-    const order = ["Today", "Yesterday", "This week", "This month", "Older"];
-    return order.filter((k) => groups.has(k)).map((k) => ({ label: k as string | null, items: groups.get(k)! }));
-  }, [sortedItems, sortBy]);
 
   // A folder can't be moved into itself or into its own descendant.
   const descendantIds = (folderId: string): Set<string> => {
@@ -646,85 +619,61 @@ export default function DigitalAssetsPage() {
         ) : (
           <div data-testid="asset-list">
             {viewMode === "grid" ? (
-              <div className="space-y-6">
-                {groupedItems.map(({ label, items }) => (
-                  <div key={label ?? "flat"} className="space-y-2">
-                    {label && (
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                        <span>{label}</span>
-                      </div>
-                    )}
-                    <div className="grid sm:grid-cols-4 lg:grid-cols-6 gap-3">
-                      {items.map((item) => item.kind === "folder" ? (
-                        <FolderTile
-                          key={item.data.id} folder={item.data} canManage={canManage} itemCount={childCounts.get(item.data.id) ?? 0} starred={isStarred("folder", item.data.id)} onToggleStar={() => handleToggleStar("folder", item.data.id)}
-                          onOpen={() => { setCurrentFolderId(item.data.id); setSearch(""); setQuickFilter("all"); }}
-                          onRename={() => { setRenameFolderTarget(item.data); setRenameValue(item.data.name); }}
-                          onMove={() => setMoveFolderTarget(item.data)}
-                          onDelete={() => setDeleteFolderTarget(item.data)}
-                          onDragStart={(e) => handleDragStart(e, { kind: "folder", id: item.data.id, name: item.data.name })}
-                          onDragOverTarget={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId(item.data.id); } }}
-                          onDragLeaveTarget={() => setDragOverFolderId(null)}
-                          onDropTarget={(e) => handleDropOnFolder(e, item.data.id)}
-                          isDragOver={dragOverFolderId === item.data.id}
-                        />
-                      ) : (
-                        <AssetTile
-                          key={item.data.id} asset={item.data} canManage={canManage} starred={isStarred("asset", item.data.id)} onToggleStar={() => handleToggleStar("asset", item.data.id)}
-                          onOpen={() => setPreviewAsset(item.data)}
-                          onDownload={() => handleDownload(item.data)}
-                          onRename={() => { setRenameAssetTarget(item.data); setRenameValue(item.data.name); }}
-                          onMove={() => setMoveAssetTarget(item.data)}
-                          onDelete={() => setDeleteAssetTarget(item.data)}
-                          onDragStart={(e) => handleDragStart(e, { kind: "asset", id: item.data.id, name: item.data.name })}
-                        />
-                      ))}
-                    </div>
-                  </div>
+              <div className="grid sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                {sortedItems.map((item) => item.kind === "folder" ? (
+                  <FolderTile
+                    key={item.data.id} folder={item.data} canManage={canManage} itemCount={childCounts.get(item.data.id) ?? 0} starred={isStarred("folder", item.data.id)} onToggleStar={() => handleToggleStar("folder", item.data.id)}
+                    onOpen={() => { setCurrentFolderId(item.data.id); setSearch(""); setQuickFilter("all"); }}
+                    onRename={() => { setRenameFolderTarget(item.data); setRenameValue(item.data.name); }}
+                    onMove={() => setMoveFolderTarget(item.data)}
+                    onDelete={() => setDeleteFolderTarget(item.data)}
+                    onDragStart={(e) => handleDragStart(e, { kind: "folder", id: item.data.id, name: item.data.name })}
+                    onDragOverTarget={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId(item.data.id); } }}
+                    onDragLeaveTarget={() => setDragOverFolderId(null)}
+                    onDropTarget={(e) => handleDropOnFolder(e, item.data.id)}
+                    isDragOver={dragOverFolderId === item.data.id}
+                  />
+                ) : (
+                  <AssetTile
+                    key={item.data.id} asset={item.data} canManage={canManage} starred={isStarred("asset", item.data.id)} onToggleStar={() => handleToggleStar("asset", item.data.id)}
+                    onOpen={() => setPreviewAsset(item.data)}
+                    onDownload={() => handleDownload(item.data)}
+                    onRename={() => { setRenameAssetTarget(item.data); setRenameValue(item.data.name); }}
+                    onMove={() => setMoveAssetTarget(item.data)}
+                    onDelete={() => setDeleteAssetTarget(item.data)}
+                    onDragStart={(e) => handleDragStart(e, { kind: "asset", id: item.data.id, name: item.data.name })}
+                  />
                 ))}
               </div>
             ) : (
-              // One shared header + one bordered Card for the whole list -
-              // the "Today"/"Yesterday" date labels are lightweight dividers
-              // inside it, not a reason to repeat the Name/Type/Size/
-              // Modified header for every bucket.
               <Card className="overflow-hidden">
                 <ListHeaderRow />
-                {groupedItems.map(({ label, items }) => (
-                  <div key={label ?? "flat"}>
-                    {label && (
-                      <div className="flex items-center gap-1.5 px-4 pt-3 pb-1 text-xs font-medium text-muted-foreground">
-                        <span>{label}</span>
-                      </div>
-                    )}
-                    <div className="divide-y divide-border">
-                      {items.map((item) => item.kind === "folder" ? (
-                        <FolderRow
-                          key={item.data.id} folder={item.data} canManage={canManage} itemCount={childCounts.get(item.data.id) ?? 0} starred={isStarred("folder", item.data.id)} onToggleStar={() => handleToggleStar("folder", item.data.id)}
-                          onOpen={() => { setCurrentFolderId(item.data.id); setSearch(""); setQuickFilter("all"); }}
-                          onRename={() => { setRenameFolderTarget(item.data); setRenameValue(item.data.name); }}
-                          onMove={() => setMoveFolderTarget(item.data)}
-                          onDelete={() => setDeleteFolderTarget(item.data)}
-                          onDragStart={(e) => handleDragStart(e, { kind: "folder", id: item.data.id, name: item.data.name })}
-                          onDragOverTarget={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId(item.data.id); } }}
-                          onDragLeaveTarget={() => setDragOverFolderId(null)}
-                          onDropTarget={(e) => handleDropOnFolder(e, item.data.id)}
-                          isDragOver={dragOverFolderId === item.data.id}
-                        />
-                      ) : (
-                        <AssetRow
-                          key={item.data.id} asset={item.data} canManage={canManage} starred={isStarred("asset", item.data.id)} onToggleStar={() => handleToggleStar("asset", item.data.id)}
-                          onOpen={() => setPreviewAsset(item.data)}
-                          onDownload={() => handleDownload(item.data)}
-                          onRename={() => { setRenameAssetTarget(item.data); setRenameValue(item.data.name); }}
-                          onMove={() => setMoveAssetTarget(item.data)}
-                          onDelete={() => setDeleteAssetTarget(item.data)}
-                          onDragStart={(e) => handleDragStart(e, { kind: "asset", id: item.data.id, name: item.data.name })}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                <div className="divide-y divide-border">
+                  {sortedItems.map((item) => item.kind === "folder" ? (
+                    <FolderRow
+                      key={item.data.id} folder={item.data} canManage={canManage} itemCount={childCounts.get(item.data.id) ?? 0} starred={isStarred("folder", item.data.id)} onToggleStar={() => handleToggleStar("folder", item.data.id)}
+                      onOpen={() => { setCurrentFolderId(item.data.id); setSearch(""); setQuickFilter("all"); }}
+                      onRename={() => { setRenameFolderTarget(item.data); setRenameValue(item.data.name); }}
+                      onMove={() => setMoveFolderTarget(item.data)}
+                      onDelete={() => setDeleteFolderTarget(item.data)}
+                      onDragStart={(e) => handleDragStart(e, { kind: "folder", id: item.data.id, name: item.data.name })}
+                      onDragOverTarget={(e) => { if (canManage && e.dataTransfer.types.includes(DRAG_MIME)) { e.preventDefault(); setDragOverFolderId(item.data.id); } }}
+                      onDragLeaveTarget={() => setDragOverFolderId(null)}
+                      onDropTarget={(e) => handleDropOnFolder(e, item.data.id)}
+                      isDragOver={dragOverFolderId === item.data.id}
+                    />
+                  ) : (
+                    <AssetRow
+                      key={item.data.id} asset={item.data} canManage={canManage} starred={isStarred("asset", item.data.id)} onToggleStar={() => handleToggleStar("asset", item.data.id)}
+                      onOpen={() => setPreviewAsset(item.data)}
+                      onDownload={() => handleDownload(item.data)}
+                      onRename={() => { setRenameAssetTarget(item.data); setRenameValue(item.data.name); }}
+                      onMove={() => setMoveAssetTarget(item.data)}
+                      onDelete={() => setDeleteAssetTarget(item.data)}
+                      onDragStart={(e) => handleDragStart(e, { kind: "asset", id: item.data.id, name: item.data.name })}
+                    />
+                  ))}
+                </div>
               </Card>
             )}
           </div>

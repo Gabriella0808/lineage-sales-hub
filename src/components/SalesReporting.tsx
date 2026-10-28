@@ -2066,76 +2066,86 @@ function DealerGoalCell({ customerId, goal, access }: {
 }) {
   const setGoal = useSetDealerAnnualGoal(DEALER_GOAL_YEAR);
   const unlock  = useUnlockDealerAnnualGoal(DEALER_GOAL_YEAR);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState("");
+  const [open, setOpen]   = useState(false);
+  const [draft, setDraft] = useState("");
 
-  const canEdit = !!customerId && (access === "manage" || (access === "rep" && !goal?.locked));
+  const canEdit   = !!customerId && (access === "manage" || (access === "rep" && !goal?.locked));
+  const canUnlock = !!customerId && access === "manage" && !!goal?.locked;
 
-  if (!editing) {
-    return (
-      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
-        <span className={cn("tabular-nums text-sm", !goal && "text-muted-foreground")}>
-          {goal ? formatCurrency(goal.amount) : "—"}
-        </span>
-        {goal?.locked && <Lock className="h-3 w-3 text-muted-foreground" aria-label="Locked in" />}
-        {canEdit && (
-          <Button
-            type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs"
-            onClick={() => { setDraft(goal ? String(goal.amount) : ""); setEditing(true); }}
-          >
-            {goal ? "Edit" : "Set"}
-          </Button>
-        )}
-        {access === "manage" && goal?.locked && (
-          <Button
-            type="button" variant="ghost" size="sm" className="h-6 px-1.5" title="Unlock so the rep can change it"
-            disabled={unlock.isPending}
-            onClick={() => unlock.mutate(customerId!, {
-              onSuccess: () => toast.success("Goal unlocked"),
-              onError: (e: Error) => toast.error(e.message),
-            })}
-          >
-            <LockOpen className="h-3 w-3" />
-          </Button>
-        )}
-      </div>
-    );
-  }
+  // Compact display: amount (or "—") + lock icon. Editing happens in a
+  // popover so the column never widens.
+  const display = (
+    <span className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
+      <span className={cn("tabular-nums text-sm", !goal && "text-muted-foreground")}>
+        {goal ? formatCurrency(goal.amount) : "—"}
+      </span>
+      {goal?.locked && <Lock className="h-3 w-3 text-muted-foreground" aria-label="Locked in" />}
+    </span>
+  );
+
+  if (!canEdit && !canUnlock) return display;
 
   const amount = Number(draft.replace(/[$,\s]/g, ""));
   const valid  = draft.trim() !== "" && Number.isFinite(amount) && amount >= 0;
   const save = () => {
     if (!valid) return;
     setGoal.mutate({ customerId: customerId!, amount }, {
-      onSuccess: () => { toast.success(`${DEALER_GOAL_YEAR} goal locked in`); setEditing(false); },
+      onSuccess: () => { toast.success(`${DEALER_GOAL_YEAR} goal locked in`); setOpen(false); },
       onError: (e: Error) => toast.error(e.message),
     });
   };
 
   return (
-    <div className="flex items-center justify-end gap-1">
-      <Input
-        autoFocus inputMode="decimal" placeholder="$0"
-        className="h-7 w-28 text-right text-sm tabular-nums"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") save();
-          if (e.key === "Escape") setEditing(false);
-        }}
-      />
-      <Button
-        type="button" size="sm" className="h-7 px-2 text-xs gap-1"
-        disabled={!valid || setGoal.isPending}
-        title={access === "rep" ? "Once locked in, only your manager can change it" : undefined}
-        onClick={save}
-      >
-        <Lock className="h-3 w-3" /> Lock in
-      </Button>
-      <Button type="button" variant="ghost" size="sm" className="h-7 px-1.5" onClick={() => setEditing(false)}>
-        <X className="h-3 w-3" />
-      </Button>
-    </div>
+    <Popover
+      open={open}
+      onOpenChange={(next) => { if (next) setDraft(goal ? String(goal.amount) : ""); setOpen(next); }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="rounded px-1 -mx-1 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          title={goal ? "Edit goal" : "Set goal"}
+        >
+          {goal ? display : <span className="text-sm text-muted-foreground underline decoration-dotted underline-offset-4">Set</span>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-48 p-2.5 space-y-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{DEALER_GOAL_YEAR} Goal</p>
+        {canEdit && (
+          <>
+            <Input
+              autoFocus inputMode="decimal" placeholder="$0"
+              className="h-8 text-right tabular-nums"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") save(); }}
+            />
+            {access === "rep" && (
+              <p className="text-[11px] text-muted-foreground">Once locked in, only your manager can change it.</p>
+            )}
+            <Button
+              type="button" size="sm" className="w-full h-8 gap-1.5"
+              disabled={!valid || setGoal.isPending}
+              onClick={save}
+            >
+              <Lock className="h-3 w-3" /> Lock in
+            </Button>
+          </>
+        )}
+        {canUnlock && (
+          <Button
+            type="button" variant="outline" size="sm" className="w-full h-8 gap-1.5"
+            disabled={unlock.isPending}
+            onClick={() => unlock.mutate(customerId!, {
+              onSuccess: () => { toast.success("Goal unlocked"); setOpen(false); },
+              onError: (e: Error) => toast.error(e.message),
+            })}
+          >
+            <LockOpen className="h-3 w-3" /> Unlock for rep
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 

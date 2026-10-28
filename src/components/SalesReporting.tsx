@@ -33,7 +33,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useRegisterReportContext } from "@/contexts/ReportContextProvider";
 import {
-  useDealerAnnualGoals, useSetDealerAnnualGoal, useUnlockDealerAnnualGoal, dealerGoalKey,
+  useDealerAnnualGoals, useDealerGoalTotalsByRep, useSetDealerAnnualGoal, useUnlockDealerAnnualGoal, dealerGoalKey,
   type DealerGoal, type DealerGoalAccess,
 } from "@/hooks/useDealerAnnualGoals";
 
@@ -709,8 +709,10 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // Territory groupBy always uses line mode (needs customer_id → territory mapping).
   // Rep filter is handled via p_rep_ids parameter, no longer falls back to line mode.
   const useRpcMode = display === "total" && groupBy !== "territory";
-  const showDealerGoals = DEALER_GOAL_VISIBLE_TO_EMAILS.has((user?.email ?? "").toLowerCase());
+  // Local dev shows it to every account so rep/manager views can be tested.
+  const showDealerGoals = import.meta.env.DEV || DEALER_GOAL_VISIBLE_TO_EMAILS.has((user?.email ?? "").toLowerCase());
   const dealerGoals = useDealerAnnualGoals(DEALER_GOAL_YEAR, showDealerGoals && useRpcMode && groupBy === "dealer");
+  const repGoalTotals = useDealerGoalTotalsByRep(DEALER_GOAL_YEAR, showDealerGoals && useRpcMode && groupBy === "rep");
 
   // Clamp booking fetch dates at the query level so Jan-Jul 2026 rows are never
   // fetched, aggregated, or counted.  effectiveFrom = max(selectedFrom, cutoff).
@@ -1998,6 +2000,7 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 goalData={groupBy === "rep" ? repGoalMap : undefined}
                 showDealerColumns={groupBy === "dealer"}
                 dealerGoals={showDealerGoals && groupBy === "dealer" ? dealerGoals : undefined}
+                repGoalTotals={showDealerGoals && groupBy === "rep" ? repGoalTotals : undefined}
                 metric={metric}
               />
             ) : display === "monthly" ? (
@@ -2150,7 +2153,7 @@ function DealerGoalCell({ customerId, goal, access }: {
 }
 
 function TotalTable({
-  rows, leftHeader, showComparison, onRowClick, goalData, showDealerColumns, dealerGoals, metric,
+  rows, leftHeader, showComparison, onRowClick, goalData, showDealerColumns, dealerGoals, repGoalTotals, metric,
 }: {
   rows: {
     key: string; label: string; primary: number; comparative: number; container?: number; warehouse?: number;
@@ -2164,6 +2167,8 @@ function TotalTable({
   showDealerColumns?: boolean;
   /** Dealer mode — per-dealer annual goal column, editable per dealerGoals.access. */
   dealerGoals?: { goals: Map<string, DealerGoal>; access: Map<string, DealerGoalAccess> };
+  /** Rep mode — read-only sum of each rep's per-dealer goals, keyed by lower-cased rep key. */
+  repGoalTotals?: Map<string, number>;
   metric: Metric;
 }) {
   const totalP           = rows.reduce((s, r) => s + r.primary, 0);
@@ -2171,6 +2176,9 @@ function TotalTable({
   const totalOpenSo      = rows.reduce((s, r) => s + (r.openSoValue ?? 0), 0);
   const totalDealerGoal  = dealerGoals
     ? rows.reduce((s, r) => s + (r.customerId ? dealerGoals.goals.get(dealerGoalKey(r.customerId))?.amount ?? 0 : 0), 0)
+    : 0;
+  const totalRepGoal = repGoalTotals
+    ? rows.reduce((s, r) => s + (repGoalTotals.get(r.key.trim().toLowerCase()) ?? 0), 0)
     : 0;
   const hasContainerData = rows.some((r) => r.container !== undefined);
   // $-weighted total (total container $ / total primary $), NOT a sum of each
@@ -2221,6 +2229,11 @@ function TotalTable({
           {goalData && (
             <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               YTD % to Goal
+            </th>
+          )}
+          {repGoalTotals && (
+            <th className="text-right px-4 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+              {DEALER_GOAL_YEAR} Goal
             </th>
           )}
           <th className="text-right px-5 py-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -2313,6 +2326,11 @@ function TotalTable({
                   —
                 </td>
               )}
+              {repGoalTotals && (
+                <td className="px-4 py-3 text-right tabular-nums text-sm">
+                  {repGoalTotals.get(r.key.trim().toLowerCase()) ? formatCurrency(repGoalTotals.get(r.key.trim().toLowerCase())!) : "—"}
+                </td>
+              )}
               <td className="px-5 py-3 text-right tabular-nums font-medium">{formatCurrency(r.primary)}</td>
               {hasContainerData && (
                 <td className="px-4 py-3 text-right tabular-nums text-muted-foreground text-sm">
@@ -2347,7 +2365,7 @@ function TotalTable({
         })}
         {rows.length === 0 && (
           <tr>
-            <td colSpan={(showComparison ? 5 : 2) + (goalData ? 2 : 0) + (hasContainerData ? 2 : 0) + (showDealerColumns ? 5 : 0) + (dealerGoals ? 1 : 0)} className="px-5 py-10 text-center text-sm text-muted-foreground">
+            <td colSpan={(showComparison ? 5 : 2) + (goalData ? 2 : 0) + (hasContainerData ? 2 : 0) + (showDealerColumns ? 5 : 0) + (dealerGoals ? 1 : 0) + (repGoalTotals ? 1 : 0)} className="px-5 py-10 text-center text-sm text-muted-foreground">
               No results for the selected filters.
             </td>
           </tr>
@@ -2366,6 +2384,11 @@ function TotalTable({
             )}
             {goalData && <td className="px-4 py-3" />}
             {goalData && <td className="px-4 py-3" />}
+            {repGoalTotals && (
+              <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                {totalRepGoal > 0 ? formatCurrency(totalRepGoal) : "—"}
+              </td>
+            )}
             <td className="px-5 py-3 text-right tabular-nums font-semibold">{formatCurrency(totalP)}</td>
             {hasContainerData && (
               <td className="px-4 py-3 text-right tabular-nums font-semibold text-muted-foreground">

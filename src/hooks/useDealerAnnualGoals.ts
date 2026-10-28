@@ -67,6 +67,25 @@ export function useDealerAnnualGoals(year: number, enabled = true) {
   return { goals, access };
 }
 
+// Rep Reporting: each rep's total of the goals on their assigned dealers,
+// keyed by lower/trimmed Acctivate rep ID.
+export function useDealerGoalTotalsByRep(year: number, enabled = true) {
+  const query = useQuery({
+    queryKey: ["dealer_goal_totals_by_rep", year],
+    enabled,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).rpc("get_dealer_goal_totals_by_rep", { p_year: year });
+      if (error) throw error;
+      return (data ?? []) as { rep_key: string; total_goal: number }[];
+    },
+  });
+  return useMemo(
+    () => new Map((query.data ?? []).map((r) => [r.rep_key, Number(r.total_goal) || 0])),
+    [query.data],
+  );
+}
+
 export function useSetDealerAnnualGoal(year: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -76,7 +95,10 @@ export function useSetDealerAnnualGoal(year: number) {
       });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["dealer_annual_goals", year] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dealer_annual_goals", year] });
+      qc.invalidateQueries({ queryKey: ["dealer_goal_totals_by_rep", year] });
+    },
   });
 }
 
@@ -89,6 +111,9 @@ export function useUnlockDealerAnnualGoal(year: number) {
       });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["dealer_annual_goals", year] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dealer_annual_goals", year] });
+      qc.invalidateQueries({ queryKey: ["dealer_goal_totals_by_rep", year] });
+    },
   });
 }

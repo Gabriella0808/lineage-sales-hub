@@ -514,7 +514,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        {canSeeWhatsNew(role, user?.email) && <DropdownMenuItem onClick={() => window.dispatchEvent(new Event(START_TOUR_EVENT))}><Sparkles className="h-4 w-4 mr-2" />What's new</DropdownMenuItem>}
+        {canSeeWhatsNew(role) && <DropdownMenuItem onClick={() => window.dispatchEvent(new Event(START_TOUR_EVENT))}><Sparkles className="h-4 w-4 mr-2" />What's new</DropdownMenuItem>}
         <DropdownMenuItem onClick={() => goTo("/settings")}><Settings className="h-4 w-4 mr-2" />Settings</DropdownMenuItem>
         <DropdownMenuItem onClick={() => setIssueOpen(true)}><AlertCircle className="h-4 w-4 mr-2" />Report an issue</DropdownMenuItem>
         <DropdownMenuSeparator />

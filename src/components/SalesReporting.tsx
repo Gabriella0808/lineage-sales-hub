@@ -33,7 +33,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useRegisterReportContext } from "@/contexts/ReportContextProvider";
 import {
-  canSeeDealerGoals, useDealerAnnualGoals, useDealerGoalTotalsByRep, useSetDealerAnnualGoal, useUnlockDealerAnnualGoal, dealerGoalKey,
+  useDealerAnnualGoals, useDealerGoalTotalsByRep, useSetDealerAnnualGoal, useUnlockDealerAnnualGoal, dealerGoalKey,
   type DealerGoal, type DealerGoalAccess,
 } from "@/hooks/useDealerAnnualGoals";
 
@@ -702,9 +702,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
   // Territory groupBy always uses line mode (needs customer_id → territory mapping).
   // Rep filter is handled via p_rep_ids parameter, no longer falls back to line mode.
   const useRpcMode = display === "total" && groupBy !== "territory";
-  const showDealerGoals = canSeeDealerGoals(user?.email);
-  const dealerGoals = useDealerAnnualGoals(DEALER_GOAL_YEAR, showDealerGoals && useRpcMode && groupBy === "dealer");
-  const repGoalTotals = useDealerGoalTotalsByRep(DEALER_GOAL_YEAR, showDealerGoals && useRpcMode && groupBy === "rep");
+  const dealerGoals = useDealerAnnualGoals(DEALER_GOAL_YEAR, useRpcMode && groupBy === "dealer");
+  const repGoalTotals = useDealerGoalTotalsByRep(DEALER_GOAL_YEAR, useRpcMode && groupBy === "rep");
 
   // Clamp booking fetch dates at the query level so Jan-Jul 2026 rows are never
   // fetched, aggregated, or counted.  effectiveFrom = max(selectedFrom, cutoff).
@@ -1991,8 +1990,8 @@ export function SalesReporting({ groupBy: initialGroupBy, managerScopeRepIds, gr
                 onRowClick={(key, label) => setDrillRow({ key, label })}
                 goalData={groupBy === "rep" ? repGoalMap : undefined}
                 showDealerColumns={groupBy === "dealer"}
-                dealerGoals={showDealerGoals && groupBy === "dealer" ? dealerGoals : undefined}
-                repGoalTotals={showDealerGoals && groupBy === "rep" ? repGoalTotals : undefined}
+                dealerGoals={groupBy === "dealer" ? dealerGoals : undefined}
+                repGoalTotals={groupBy === "rep" ? repGoalTotals : undefined}
                 metric={metric}
               />
             ) : display === "monthly" ? (

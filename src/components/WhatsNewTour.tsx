@@ -5,7 +5,6 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { canSeeDealerGoals } from "@/hooks/useDealerAnnualGoals";
 
 export const START_TOUR_EVENT = "lc:start-tour";
 
@@ -14,9 +13,8 @@ export const START_TOUR_EVENT = "lc:start-tour";
 // next sign-in); closing it any way marks it seen, after which it only
 // opens from the account menu's "What's new" item. "Seen" is stored on the
 // account (auth user_metadata) so it doesn't reappear on another device or
-// browser; localStorage is just a fast local copy. Audience: rep/manager/admin
-// accounts that can actually see the 2027 Goal column (same
-// canSeeDealerGoals() gate), with wording per role. Dealers never see it.
+// browser; localStorage is just a fast local copy. Audience: every rep,
+// manager and admin account, with wording per role. Dealers never see it.
 const ANNOUNCEMENT_VERSION = "2026-10-28-dealer-goals";
 const ANNOUNCEMENT_SEEN_KEY = "lc.announcementSeen";
 const ANNOUNCEMENT_SEEN_META_KEY = "announcement_seen";
@@ -46,8 +44,8 @@ const announcementRoleFor = (role?: string): AnnouncementRole | null =>
 
 // Shared with AppLayout.tsx so the account-menu item shows for exactly the
 // same audience as the popup.
-export function canSeeWhatsNew(role?: string, email?: string | null) {
-  return !!announcementRoleFor(role) && canSeeDealerGoals(email);
+export function canSeeWhatsNew(role?: string) {
+  return !!announcementRoleFor(role);
 }
 
 export function WhatsNewTour() {
@@ -55,7 +53,7 @@ export function WhatsNewTour() {
   const navigate = useNavigate();
   const { data: roleInfo } = useUserRole();
   const announcementRole = announcementRoleFor(roleInfo?.role);
-  const showAnnouncement = canSeeWhatsNew(roleInfo?.role, user?.email);
+  const showAnnouncement = canSeeWhatsNew(roleInfo?.role);
 
   const [announcementOpen, setAnnouncementOpen] = useState(false);
   useEffect(() => {

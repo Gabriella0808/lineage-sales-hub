@@ -31,7 +31,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Plus, Search, ChevronDown, CalendarDays, Clock, Building2, Mail,
-  Pencil, Trash2, Loader2, Users, TrendingUp, User, Upload, ArrowRightLeft,
+  Pencil, Trash2, Loader2, Users, TrendingUp, User, Upload, Download, ArrowRightLeft,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -65,6 +65,25 @@ function fmtDay(d: string | null): string {
 function showRate(showed: number, noShow: number): string {
   const resolved = showed + noShow;
   return resolved > 0 ? `${Math.round((showed / resolved) * 100)}%` : "—";
+}
+
+// Same quoting-safe CSV pattern already used elsewhere in the portal
+// (e.g. ProspectReportingPage.tsx) - no shared csv util exists yet to import.
+function toCsv(rows: Record<string, string>[]): string {
+  if (rows.length === 0) return "";
+  const headers = Object.keys(rows[0]);
+  const escape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  return [headers.join(","), ...rows.map((r) => headers.map((h) => escape(r[h] ?? "")).join(","))].join("\n");
+}
+
+function downloadCsv(filename: string, rows: Record<string, string>[]) {
+  const blob = new Blob([toCsv(rows)], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -664,6 +683,28 @@ export function HighPointAppointmentsModule() {
     setDeleteTarget(null);
   };
 
+  // Exports exactly what's on screen - respects the phase toggle plus every
+  // active filter (status/rep/manager/search), so filtering to e.g.
+  // "Market" phase + "No-Show" status then clicking Export gives just that
+  // list without any separate export-specific controls.
+  const exportCsv = () => {
+    if (!filtered.length) { toast.error("No leads to export"); return; }
+    const rows = filtered.map((a) => ({
+      Dealer: a.dealer ?? "",
+      Buyer: a.buyer_name ?? "",
+      Email: a.buyer_email ?? "",
+      "Appointment Day": a.appointment_day ?? "",
+      "Appointment Time": a.appointment_time ? fmtTime(a.appointment_time) : "",
+      Rep: a.sales_reps?.name ?? "",
+      Status: a.status,
+      Notes: a.notes ?? "",
+    }));
+    const eventName = events.find((e) => e.id === selectedEventId)?.name ?? "appointments";
+    const safeName = eventName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const statusPart = statusFilter === "all" ? "all-statuses" : statusFilter.toLowerCase();
+    downloadCsv(`${safeName}-${phase.toLowerCase()}-${statusPart}.csv`, rows);
+  };
+
   const showRepCol = true;
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -718,6 +759,10 @@ export function HighPointAppointmentsModule() {
 
           <Button size="sm" variant="outline" className="h-8" onClick={() => setImportOpen(true)}>
             <Upload className="h-3.5 w-3.5 mr-1" /> Import
+          </Button>
+
+          <Button size="sm" variant="outline" className="h-8" onClick={exportCsv}>
+            <Download className="h-3.5 w-3.5 mr-1" /> Export
           </Button>
 
           <Button size="sm" onClick={openNew} className="h-8">
